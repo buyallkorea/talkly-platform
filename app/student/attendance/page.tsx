@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase-server";
+
 import TalklyUserHeader from "@/components/TalklyUserHeader";
+import { createClient } from "@/lib/supabase-server";
 
 type Enrollment = {
   id: number;
@@ -35,6 +36,113 @@ type Teacher = {
   user_id: string;
   display_name: string | null;
 };
+
+type AttendanceStatus =
+  | "present"
+  | "late"
+  | "absent"
+  | "excused"
+  | "teacher_absent"
+  | null;
+
+function formatDateTime(
+  value: string | null
+) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+function normalizeAttendanceStatus(
+  value: string | null | undefined
+): AttendanceStatus {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === "present" || normalized === "attended") {
+    return "present";
+  }
+
+  if (normalized === "late" || normalized === "tardy") {
+    return "late";
+  }
+
+  if (normalized === "absent") {
+    return "absent";
+  }
+
+  if (
+    normalized === "excused" ||
+    normalized === "excused_absence"
+  ) {
+    return "excused";
+  }
+
+  if (
+    normalized === "teacher_absent" ||
+    normalized === "teacher-absent"
+  ) {
+    return "teacher_absent";
+  }
+
+  return null;
+}
+
+function getAttendanceLabel(
+  status: string | null
+) {
+  switch (normalizeAttendanceStatus(status)) {
+    case "present":
+      return "출석";
+    case "late":
+      return "지각";
+    case "absent":
+      return "결석";
+    case "excused":
+      return "인정결석";
+    case "teacher_absent":
+      return "강사결석";
+    default:
+      return "미처리";
+  }
+}
+
+function getAttendanceBadgeClass(
+  status: string | null
+) {
+  switch (normalizeAttendanceStatus(status)) {
+    case "present":
+      return "talkly-badge talkly-badge-success";
+    case "late":
+      return "talkly-badge talkly-badge-warning";
+    case "absent":
+      return "talkly-badge talkly-badge-danger";
+    case "excused":
+      return "talkly-badge talkly-badge-info";
+    case "teacher_absent":
+    default:
+      return "talkly-badge talkly-badge-neutral";
+  }
+}
 
 export default async function StudentAttendancePage() {
   const supabase = await createClient();
@@ -168,9 +276,74 @@ export default async function StudentAttendancePage() {
 
   function getCourseName(session: ClassSession) {
     const enrollment = getEnrollment(session.enrollment_id);
-    if (!enrollment) return "-";
+
+    if (!enrollment) {
+      return "-";
+    }
 
     return (
+      courses.find((course) => course.id === enrollment.course_id)?.name ??
+      "-"
+    );
+  }
+
+  function getTeacherName(session: ClassSession) {
+    const enrollment = getEnrollment(session.enrollment_id);
+
+    if (!enrollment || !enrollment.teacher_user_id) {
+      return "미배정";
+    }
+
+    return (
+      teachers.find(
+        (teacher) => teacher.user_id === enrollment.teacher_user_id
+      )?.display_name ?? "미배정"
+    );
+  }
+
+  function getAttendance(sessionId: number) {
+    return (
+      attendances.find(
+        (attendance) => attendance.class_session_id === sessionId
+      ) ?? null
+    );
+  }
+
+  const presentCount = attendances.filter(
+    (attendance) =>
+      normalizeAttendanceStatus(attendance.status) === "present"
+  ).length;
+
+  const lateCount = attendances.filter(
+    (attendance) =>
+      normalizeAttendanceStatus(attendance.status) === "late"
+  ).length;
+
+  const absentCount = attendances.filter(
+    (attendance) =>
+      normalizeAttendanceStatus(attendance.status) === "absent"
+  ).length;
+
+  const excusedCount = attendances.filter(
+    (attendance) =>
+      normalizeAttendanceStatus(attendance.status) === "excused"
+  ).length;
+
+  const teacherAbsentCount = attendances.filter(
+    (attendance) =>
+      normalizeAttendanceStatus(attendance.status) === "teacher_absent"
+  ).length;
+
+  const attendanceBase = presentCount + lateCount + absentCount;
+
+  const attendanceRate =
+    attendanceBase === 0
+      ? null
+      : Math.round(
+          ((presentCount + lateCount) / attendanceBase) * 100
+        );
+
+  return (
     <div className="talkly-dashboard">
       <TalklyUserHeader
         role="student"
@@ -253,9 +426,7 @@ export default async function StudentAttendancePage() {
                     fontWeight: 900,
                   }}
                 >
-                  {attendanceRate === null
-                    ? "-"
-                    : `${attendanceRate}%`}
+                  {attendanceRate === null ? "-" : `${attendanceRate}%`}
                 </div>
               </div>
 
@@ -273,8 +444,7 @@ export default async function StudentAttendancePage() {
           className="student-attendance-stats"
           style={{
             display: "grid",
-            gridTemplateColumns:
-              "repeat(6, minmax(120px, 1fr))",
+            gridTemplateColumns: "repeat(6, minmax(120px, 1fr))",
             gap: "12px",
             marginTop: "22px",
           }}
@@ -364,7 +534,7 @@ export default async function StudentAttendancePage() {
                   fontSize: "13px",
                 }}
               >
-                최근 수업부터 표시됩니다.
+                최근 수업부터 표시합니다.
               </p>
             </div>
 
@@ -451,9 +621,7 @@ export default async function StudentAttendancePage() {
                           fontSize: "13px",
                         }}
                       >
-                        {formatDateTime(
-                          session.scheduled_start
-                        )}
+                        {formatDateTime(session.scheduled_start)}
                       </div>
                     </div>
 
@@ -471,9 +639,7 @@ export default async function StudentAttendancePage() {
                         attendance?.status ?? null
                       )}
                     >
-                      {getAttendanceLabel(
-                        attendance?.status ?? null
-                      )}
+                      {getAttendanceLabel(attendance?.status ?? null)}
                     </span>
 
                     <div
@@ -483,9 +649,7 @@ export default async function StudentAttendancePage() {
                       }}
                     >
                       입장시간{" "}
-                      {formatDateTime(
-                        attendance?.attended_at ?? null
-                      )}
+                      {formatDateTime(attendance?.attended_at ?? null)}
                     </div>
 
                     <span
@@ -517,7 +681,7 @@ export default async function StudentAttendancePage() {
                             color: "var(--talkly-navy)",
                           }}
                         >
-                          출석 메모
+                          출결 메모
                         </strong>
 
                         <div style={{ marginTop: "5px" }}>

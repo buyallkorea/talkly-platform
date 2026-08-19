@@ -387,15 +387,17 @@ export default async function TeacherClassDetailPage({
     canEditAttendance ||
     canRecordAttendance;
 
-  function getAttendanceUnavailableMessage() {
-    if (session.status === "held") {
+  function getAttendanceUnavailableMessage(
+    status: string
+  ) {
+    if (status === "held") {
       return {
         en: "Attendance is not required for an approved Class Hold.",
         ko: "결석 승인이 완료된 수업은 출석 등록이 필요하지 않습니다.",
       };
     }
 
-    if (session.status === "cancelled") {
+    if (status === "cancelled") {
       return {
         en: "Attendance cannot be recorded for a cancelled class.",
         ko: "취소된 수업은 출석을 등록할 수 없습니다.",
@@ -416,7 +418,9 @@ export default async function TeacherClassDetailPage({
   }
 
   const attendanceUnavailable =
-    getAttendanceUnavailableMessage();
+    getAttendanceUnavailableMessage(
+      session.status
+    );
 
   return (
     <div className="talkly-dashboard">

@@ -287,12 +287,21 @@ export default async function EnrollmentOptionsPage() {
           >
             {options.map((option) => {
               const courseRelation =
-                option.courses;
+                option.courses as unknown as
+                  | {
+                      id?: number | null;
+                      name?: string | null;
+                    }
+                  | Array<{
+                      id?: number | null;
+                      name?: string | null;
+                    }>
+                  | null;
 
               const courseName =
                 Array.isArray(courseRelation)
-                  ? courseRelation[0]?.name
-                  : courseRelation?.name;
+                  ? courseRelation[0]?.name ?? "-"
+                  : courseRelation?.name ?? "-";
 
               const capacityText =
                 option.capacity === null
