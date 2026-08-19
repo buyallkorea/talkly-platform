@@ -1,26 +1,747 @@
 @import "tailwindcss";
 
+/* =========================================================
+   TALKLY DESIGN SYSTEM
+   ========================================================= */
+
 :root {
+  /* Brand */
+  --talkly-navy: #0a1f44;
+  --talkly-navy-dark: #06162f;
+  --talkly-navy-light: #17386f;
+
+  --talkly-blue: #3f75dc;
+  --talkly-blue-light: #eaf2ff;
+  --talkly-blue-soft: #f5f8fd;
+
+  /* Background */
   --background: #ffffff;
-  --foreground: #171717;
+  --background-soft: #f7f9fc;
+  --background-blue: #f1f6fd;
+
+  /* Surface */
+  --surface: #ffffff;
+  --surface-soft: #f9fafc;
+
+  /* Text */
+  --foreground: #101828;
+  --text-primary: #101828;
+  --text-secondary: #475467;
+  --text-muted: #667085;
+  --text-light: #98a2b3;
+
+  /* Border */
+  --border: #e4e7ec;
+  --border-light: #eef1f5;
+
+  /* Status */
+  --success: #22a06b;
+  --warning: #e59a18;
+  --danger: #d92d20;
+
+  /* Layout */
+  --page-width: 1200px;
+  --page-padding: 24px;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+
+  /* Shadow */
+  --shadow-card:
+    0 1px 2px rgba(16, 24, 40, 0.03),
+    0 8px 24px rgba(16, 24, 40, 0.05);
+
+  --shadow-hover:
+    0 4px 10px rgba(16, 24, 40, 0.05),
+    0 16px 36px rgba(16, 24, 40, 0.08);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+
+/* =========================================================
+   BASE
+   ========================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  margin: 0;
+  padding: 0;
+  background: var(--background);
+  color: var(--foreground);
+  scroll-behavior: smooth;
 }
 
 body {
+  margin: 0;
+  padding: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    var(--font-geist-sans),
+    Arial,
+    Helvetica,
+    sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+}
+
+
+/* =========================================================
+   PAGE
+   ========================================================= */
+
+.talkly-page {
+  min-height: 100vh;
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #f8faff 52%,
+      #ffffff 100%
+    );
+}
+
+.talkly-container {
+  width: 100%;
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding-left: var(--page-padding);
+  padding-right: var(--page-padding);
+}
+
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.talkly-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid rgba(10, 31, 68, 0.07);
+  backdrop-filter: blur(14px);
+}
+
+.talkly-header-inner {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+}
+
+.talkly-logo {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--talkly-navy);
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.talkly-nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.talkly-nav a {
+  position: relative;
+  color: var(--talkly-navy);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.talkly-nav a:hover {
+  color: var(--talkly-blue);
+}
+
+.talkly-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+.talkly-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  min-height: 44px;
+  padding: 11px 20px;
+
+  border-radius: 10px;
+  border: 1px solid transparent;
+
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.talkly-button:hover {
+  transform: translateY(-1px);
+}
+
+.talkly-button-primary {
+  background: var(--talkly-navy);
+  color: #ffffff;
+  border-color: var(--talkly-navy);
+  box-shadow: 0 6px 18px rgba(10, 31, 68, 0.16);
+}
+
+.talkly-button-primary:hover {
+  background: var(--talkly-navy-light);
+  border-color: var(--talkly-navy-light);
+  box-shadow: 0 9px 24px rgba(10, 31, 68, 0.2);
+}
+
+.talkly-button-secondary {
+  background: #ffffff;
+  color: var(--talkly-navy);
+  border-color: #cfd8e6;
+}
+
+.talkly-button-secondary:hover {
+  background: var(--talkly-blue-soft);
+  border-color: #9fb7dd;
+}
+
+
+/* =========================================================
+   HERO
+   ========================================================= */
+
+.talkly-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 78px 0 82px;
+  background:
+    radial-gradient(
+      circle at 80% 25%,
+      rgba(81, 132, 226, 0.16),
+      transparent 27%
+    ),
+    radial-gradient(
+      circle at 10% 85%,
+      rgba(181, 211, 255, 0.35),
+      transparent 28%
+    ),
+    linear-gradient(
+      135deg,
+      #ffffff 0%,
+      #f5f9ff 55%,
+      #edf4ff 100%
+    );
+}
+
+.talkly-hero::after {
+  content: "";
+  position: absolute;
+  right: -110px;
+  bottom: -140px;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  background: rgba(63, 117, 220, 0.07);
+}
+
+.talkly-hero-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+  align-items: center;
+  gap: 56px;
+}
+
+.talkly-eyebrow {
+  margin-bottom: 14px;
+  color: var(--talkly-blue);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.talkly-hero-title {
+  margin: 0;
+  color: var(--talkly-navy);
+  font-size: clamp(42px, 5vw, 68px);
+  line-height: 1.12;
+  letter-spacing: -0.055em;
+  font-weight: 900;
+}
+
+.talkly-hero-title-highlight {
+  color: var(--talkly-blue);
+}
+
+.talkly-hero-description {
+  max-width: 580px;
+  margin: 24px 0 0;
+  color: var(--text-secondary);
+  font-size: 18px;
+  line-height: 1.8;
+}
+
+.talkly-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.talkly-hero-visual {
+  min-height: 420px;
+  border-radius: 28px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(10, 31, 68, 0.98),
+      rgba(27, 67, 133, 0.94)
+    );
+  box-shadow:
+    0 30px 70px rgba(10, 31, 68, 0.18);
+  overflow: hidden;
+}
+
+
+/* =========================================================
+   SECTION
+   ========================================================= */
+
+.talkly-section {
+  padding: 86px 0;
+}
+
+.talkly-section-soft {
+  background: var(--background-soft);
+}
+
+.talkly-section-blue {
+  background:
+    linear-gradient(
+      180deg,
+      #f3f7fd 0%,
+      #edf4fd 100%
+    );
+}
+
+.talkly-section-heading {
+  max-width: 700px;
+  margin: 0 auto 42px;
+  text-align: center;
+}
+
+.talkly-section-label {
+  color: var(--talkly-blue);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.talkly-section-title {
+  margin: 8px 0 0;
+  color: var(--talkly-navy);
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.25;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.talkly-section-description {
+  margin: 14px 0 0;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+
+/* =========================================================
+   CARDS
+   ========================================================= */
+
+.talkly-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.talkly-card-hover {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.talkly-card-hover:hover {
+  transform: translateY(-4px);
+  border-color: #ced9e8;
+  box-shadow: var(--shadow-hover);
+}
+
+.talkly-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.talkly-feature-card {
+  padding: 28px 24px;
+  text-align: center;
+}
+
+.talkly-feature-icon {
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 18px;
+  background: var(--talkly-blue-light);
+  color: var(--talkly-blue);
+  font-size: 24px;
+}
+
+.talkly-feature-title {
+  margin: 0;
+  color: var(--talkly-navy);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.talkly-feature-description {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+
+/* =========================================================
+   DASHBOARD
+   ========================================================= */
+
+.talkly-dashboard {
+  min-height: 100vh;
+  background:
+    linear-gradient(
+      180deg,
+      #f7f9fc 0%,
+      #f3f6fb 100%
+    );
+}
+
+.talkly-dashboard-main {
+  width: 100%;
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: 42px var(--page-padding) 80px;
+}
+
+.talkly-dashboard-title {
+  margin: 0;
+  color: var(--talkly-navy);
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -0.035em;
+}
+
+.talkly-dashboard-subtitle {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.talkly-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 30px;
+}
+
+.talkly-stat-card {
+  padding: 24px;
+}
+
+.talkly-stat-label {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.talkly-stat-value {
+  margin-top: 7px;
+  color: var(--talkly-navy);
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+
+/* =========================================================
+   FORM
+   ========================================================= */
+
+.talkly-input,
+.talkly-textarea,
+.talkly-select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--text-primary);
+  outline: none;
+
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.talkly-input,
+.talkly-select {
+  min-height: 46px;
+  padding: 10px 13px;
+}
+
+.talkly-textarea {
+  padding: 13px;
+  resize: vertical;
+}
+
+.talkly-input:focus,
+.talkly-textarea:focus,
+.talkly-select:focus {
+  border-color: var(--talkly-blue);
+  box-shadow: 0 0 0 3px rgba(63, 117, 220, 0.1);
+}
+
+
+/* =========================================================
+   BADGES
+   ========================================================= */
+
+.talkly-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  padding: 6px 10px;
+  border-radius: 999px;
+
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.talkly-badge-blue {
+  background: var(--talkly-blue-light);
+  color: var(--talkly-blue);
+}
+
+.talkly-badge-success {
+  background: #e8f7ef;
+  color: var(--success);
+}
+
+.talkly-badge-neutral {
+  background: #f2f4f7;
+  color: var(--text-secondary);
+}
+
+
+/* =========================================================
+   FOOTER CTA
+   ========================================================= */
+
+.talkly-cta {
+  padding: 70px 24px;
+
+  background:
+    radial-gradient(
+      circle at 20% 40%,
+      rgba(94, 145, 234, 0.22),
+      transparent 30%
+    ),
+    linear-gradient(
+      135deg,
+      var(--talkly-navy-dark),
+      var(--talkly-navy)
+    );
+
+  color: #ffffff;
+  text-align: center;
+}
+
+.talkly-cta h2 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.3;
+  letter-spacing: -0.04em;
+}
+
+.talkly-cta p {
+  margin: 14px auto 0;
+  max-width: 650px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1024px) {
+  :root {
+    --page-padding: 20px;
+  }
+
+  .talkly-nav {
+    gap: 18px;
+  }
+
+  .talkly-hero {
+    padding: 60px 0;
+  }
+
+  .talkly-hero-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .talkly-hero-visual {
+    min-height: 360px;
+  }
+
+  .talkly-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --page-padding: 16px;
+  }
+
+  .talkly-header-inner {
+    min-height: 64px;
+  }
+
+  .talkly-logo {
+    font-size: 21px;
+  }
+
+  .talkly-nav {
+    display: none;
+  }
+
+  .talkly-header-actions .talkly-button-secondary {
+    display: none;
+  }
+
+  .talkly-button {
+    min-height: 42px;
+    padding: 10px 15px;
+  }
+
+  .talkly-hero {
+    padding: 48px 0 52px;
+  }
+
+  .talkly-hero-title {
+    font-size: 42px;
+  }
+
+  .talkly-hero-description {
+    font-size: 16px;
+  }
+
+  .talkly-hero-visual {
+    min-height: 280px;
+    border-radius: 20px;
+  }
+
+  .talkly-section {
+    padding: 60px 0;
+  }
+
+  .talkly-section-heading {
+    margin-bottom: 30px;
+  }
+
+  .talkly-feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .talkly-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .talkly-dashboard-main {
+    padding-top: 28px;
+    padding-bottom: 60px;
+  }
+
+  .talkly-dashboard-title {
+    font-size: 27px;
+  }
 }
