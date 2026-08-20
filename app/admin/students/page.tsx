@@ -59,6 +59,9 @@ type StudentRow = {
   teacherName: string;
   enrollmentStatus: string;
   detailHref: string;
+  parentId: string | null;
+  courseId: number | null;
+  teacherId: string | null;
 };
 
 function getEnrollmentStatusLabel(status: string) {
@@ -233,6 +236,8 @@ export default async function AdminStudentsPage({
         courseName: "-",
         teacherName: "미배정",
         enrollmentStatus: "수강 정보 없음",
+        courseId: null,
+        teacherId: null,
       };
     }
 
@@ -245,6 +250,8 @@ export default async function AdminStudentsPage({
         : "미배정",
       enrollmentStatus:
         getEnrollmentStatusLabel(enrollment.status),
+      courseId: enrollment.course_id,
+      teacherId: enrollment.teacher_user_id,
     };
   }
 
@@ -266,6 +273,7 @@ export default async function AdminStudentsPage({
       parentName:
         profileMap.get(child.parent_user_id)?.name ||
         "학부모 이름 미등록",
+      parentId: child.parent_user_id,
       ...enrollmentInfo,
       detailHref: `/admin/students/child/${child.id}`,
     };
@@ -285,7 +293,8 @@ export default async function AdminStudentsPage({
         type: "adult",
         name: profile?.name || "성인 학생",
         subInfo: "성인 학생 계정",
-        parentName: "-",
+        parentName: "본인 계정",
+        parentId: null,
         ...enrollmentInfo,
         detailHref: `/admin/students/adult/${student.user_id}`,
       };
@@ -390,12 +399,12 @@ export default async function AdminStudentsPage({
           <div
             key={item.label}
             style={{
-              padding: "20px",
+              padding: "16px",
               border:
-                "1px solid rgba(255,255,255,0.16)",
+                "1px solid #e2e8f0",
               borderRadius: "12px",
               background:
-                "rgba(255,255,255,0.03)",
+                "#ffffff",
             }}
           >
             <div
@@ -426,14 +435,14 @@ export default async function AdminStudentsPage({
           marginTop: "22px",
           padding: "18px",
           border:
-            "1px solid rgba(255,255,255,0.16)",
+            "1px solid #e2e8f0",
           borderRadius: "12px",
           display: "grid",
           gridTemplateColumns:
             "minmax(220px, 1fr) 180px auto",
           gap: "10px",
           background:
-            "rgba(255,255,255,0.03)",
+            "#ffffff",
         }}
       >
         <input
@@ -445,10 +454,10 @@ export default async function AdminStudentsPage({
             minWidth: 0,
             padding: "11px 12px",
             border:
-              "1px solid rgba(255,255,255,0.2)",
+              "1px solid #d7dee9",
             borderRadius: "8px",
-            background: "#111",
-            color: "#fff",
+            background: "#ffffff",
+            color: "#172033",
           }}
         />
 
@@ -458,10 +467,10 @@ export default async function AdminStudentsPage({
           style={{
             padding: "11px 12px",
             border:
-              "1px solid rgba(255,255,255,0.2)",
+              "1px solid #d7dee9",
             borderRadius: "8px",
-            background: "#111",
-            color: "#fff",
+            background: "#ffffff",
+            color: "#172033",
           }}
         >
           <option value="all">전체 상태</option>
@@ -477,10 +486,10 @@ export default async function AdminStudentsPage({
           style={{
             padding: "11px 18px",
             border:
-              "1px solid rgba(255,255,255,0.22)",
+              "1px solid #d7dee9",
             borderRadius: "8px",
-            background: "#f5f5f5",
-            color: "#111",
+            background: "#0a1f44",
+            color: "#ffffff",
             fontWeight: 800,
             cursor: "pointer",
           }}
@@ -493,29 +502,30 @@ export default async function AdminStudentsPage({
         style={{
           marginTop: "18px",
           border:
-            "1px solid rgba(255,255,255,0.16)",
+            "1px solid #e2e8f0",
           borderRadius: "14px",
           overflow: "hidden",
           background:
-            "rgba(255,255,255,0.03)",
+            "#ffffff",
         }}
       >
         <div
           style={{
             display: "grid",
             gridTemplateColumns:
-              "minmax(160px, 1.1fr) minmax(130px, 0.9fr) minmax(150px, 1fr) minmax(140px, 1fr) 110px 90px",
+              "minmax(160px, 1.1fr) 80px minmax(130px, 0.9fr) minmax(150px, 1fr) minmax(140px, 1fr) 110px 100px",
             gap: "12px",
             padding: "14px 18px",
             borderBottom:
-              "1px solid rgba(255,255,255,0.14)",
+              "1px solid #e5eaf1",
             fontSize: "12px",
             fontWeight: 700,
             opacity: 0.55,
           }}
         >
           <div>학생</div>
-          <div>학부모</div>
+          <div>유형</div>
+          <div>학부모/계정</div>
           <div>과정</div>
           <div>담당 강사</div>
           <div>상태</div>
@@ -539,12 +549,12 @@ export default async function AdminStudentsPage({
               style={{
                 display: "grid",
                 gridTemplateColumns:
-                  "minmax(160px, 1.1fr) minmax(130px, 0.9fr) minmax(150px, 1fr) minmax(140px, 1fr) 110px 90px",
+                  "minmax(160px, 1.1fr) 80px minmax(130px, 0.9fr) minmax(150px, 1fr) minmax(140px, 1fr) 110px 100px",
                 gap: "12px",
                 alignItems: "center",
-                padding: "16px 18px",
+                padding: "13px 18px",
                 borderBottom:
-                  "1px solid rgba(255,255,255,0.1)",
+                  "1px solid #edf0f4",
               }}
             >
               <div>
@@ -567,16 +577,54 @@ export default async function AdminStudentsPage({
                 </div>
               </div>
 
-              <div>{row.parentName}</div>
-              <div>{row.courseName}</div>
-              <div>{row.teacherName}</div>
+              <div>
+                <span style={{
+                  display: "inline-flex",
+                  padding: "5px 8px",
+                  borderRadius: "999px",
+                  background: row.type === "child" ? "#eaf2ff" : "#f0edff",
+                  color: row.type === "child" ? "#0a4f9e" : "#5f46a8",
+                  fontSize: "12px",
+                  fontWeight: 800,
+                }}>
+                  {row.type === "child" ? "아동" : "성인"}
+                </span>
+              </div>
 
-              <div
-                style={{
-                  fontWeight: 700,
-                }}
-              >
-                {row.enrollmentStatus}
+              <div>
+                {row.parentId ? (
+                  <Link href={`/admin/parents/${row.parentId}`} style={{ color: "#0a4f9e", textDecoration: "none", fontWeight: 700 }}>
+                    {row.parentName}
+                  </Link>
+                ) : row.parentName}
+              </div>
+              <div>
+                {row.courseId ? (
+                  <Link href={`/admin/courses/${row.courseId}`} style={{ color: "#0a4f9e", textDecoration: "none", fontWeight: 700 }}>
+                    {row.courseName}
+                  </Link>
+                ) : row.courseName}
+              </div>
+              <div>
+                {row.teacherId ? (
+                  <Link href={`/admin/teachers/${row.teacherId}`} style={{ color: "#0a4f9e", textDecoration: "none", fontWeight: 700 }}>
+                    {row.teacherName}
+                  </Link>
+                ) : row.teacherName}
+              </div>
+
+              <div>
+                <span style={{
+                  display: "inline-flex",
+                  padding: "6px 9px",
+                  borderRadius: "999px",
+                  background: row.enrollmentStatus === "수강중" ? "#e9f8ef" : row.enrollmentStatus === "수강 정보 없음" ? "#f2f4f7" : "#fff6e5",
+                  color: row.enrollmentStatus === "수강중" ? "#157347" : row.enrollmentStatus === "수강 정보 없음" ? "#667085" : "#9a6700",
+                  fontSize: "12px",
+                  fontWeight: 800,
+                }}>
+                  {row.enrollmentStatus}
+                </span>
               </div>
 
               <Link
@@ -585,7 +633,7 @@ export default async function AdminStudentsPage({
                   textAlign: "center",
                   padding: "9px 10px",
                   border:
-                    "1px solid rgba(255,255,255,0.18)",
+                    "1px solid #d7dee9",
                   borderRadius: "8px",
                   color: "inherit",
                   textDecoration: "none",
@@ -593,7 +641,7 @@ export default async function AdminStudentsPage({
                   fontWeight: 700,
                 }}
               >
-                상세
+                상세 보기 →
               </Link>
             </div>
           ))

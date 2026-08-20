@@ -264,12 +264,12 @@ export default async function AdminParentsPage({
           <div
             key={item.label}
             style={{
-              padding: "20px",
+              padding: "16px",
               border:
-                "1px solid rgba(255,255,255,0.16)",
+                "1px solid #e2e8f0",
               borderRadius: "12px",
               background:
-                "rgba(255,255,255,0.03)",
+                "#ffffff",
             }}
           >
             <div
@@ -300,14 +300,14 @@ export default async function AdminParentsPage({
           marginTop: "22px",
           padding: "18px",
           border:
-            "1px solid rgba(255,255,255,0.16)",
+            "1px solid #e2e8f0",
           borderRadius: "12px",
           display: "grid",
           gridTemplateColumns:
             "minmax(220px, 1fr) auto",
           gap: "10px",
           background:
-            "rgba(255,255,255,0.03)",
+            "#ffffff",
         }}
       >
         <input
@@ -319,10 +319,10 @@ export default async function AdminParentsPage({
             minWidth: 0,
             padding: "11px 12px",
             border:
-              "1px solid rgba(255,255,255,0.2)",
+              "1px solid #d7dee9",
             borderRadius: "8px",
-            background: "#111",
-            color: "#fff",
+            background: "#ffffff",
+            color: "#172033",
           }}
         />
 
@@ -331,10 +331,10 @@ export default async function AdminParentsPage({
           style={{
             padding: "11px 18px",
             border:
-              "1px solid rgba(255,255,255,0.22)",
+              "1px solid #d7dee9",
             borderRadius: "8px",
-            background: "#f5f5f5",
-            color: "#111",
+            background: "#0a1f44",
+            color: "#ffffff",
             fontWeight: 800,
             cursor: "pointer",
           }}
@@ -347,11 +347,11 @@ export default async function AdminParentsPage({
         style={{
           marginTop: "18px",
           border:
-            "1px solid rgba(255,255,255,0.16)",
+            "1px solid #e2e8f0",
           borderRadius: "14px",
           overflow: "hidden",
           background:
-            "rgba(255,255,255,0.03)",
+            "#ffffff",
         }}
       >
         <div
@@ -362,7 +362,7 @@ export default async function AdminParentsPage({
             gap: "12px",
             padding: "14px 18px",
             borderBottom:
-              "1px solid rgba(255,255,255,0.14)",
+              "1px solid #e5eaf1",
             fontSize: "12px",
             fontWeight: 700,
             opacity: 0.55,
@@ -396,9 +396,9 @@ export default async function AdminParentsPage({
                   "minmax(170px, 1.1fr) minmax(220px, 1.5fr) 110px 120px 120px 90px",
                 gap: "12px",
                 alignItems: "center",
-                padding: "16px 18px",
+                padding: "13px 18px",
                 borderBottom:
-                  "1px solid rgba(255,255,255,0.1)",
+                  "1px solid #edf0f4",
               }}
             >
               <div>
@@ -422,13 +422,24 @@ export default async function AdminParentsPage({
                 </div>
               </div>
 
-              <div>
-                {parent.linkedChildren.length >
-                0
-                  ? parent.linkedChildren
-                      .map((child) => child.name)
-                      .join(", ")
-                  : "연결된 자녀 없음"}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {parent.linkedChildren.length > 0 ? (
+                  parent.linkedChildren.map((child) => (
+                    <Link
+                      key={child.id}
+                      href={`/admin/students/child/${child.id}`}
+                      style={{
+                        color: "#0a4f9e",
+                        textDecoration: "none",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {child.name}
+                    </Link>
+                  ))
+                ) : (
+                  <span style={{ color: "#8a94a6" }}>연결된 자녀 없음</span>
+                )}
               </div>
 
               <div
@@ -463,7 +474,7 @@ export default async function AdminParentsPage({
                   textAlign: "center",
                   padding: "9px 10px",
                   border:
-                    "1px solid rgba(255,255,255,0.18)",
+                    "1px solid #d7dee9",
                   borderRadius: "8px",
                   color: "inherit",
                   textDecoration: "none",
@@ -471,7 +482,7 @@ export default async function AdminParentsPage({
                   fontWeight: 700,
                 }}
               >
-                상세
+                상세 보기 →
               </Link>
             </div>
           ))

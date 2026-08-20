@@ -417,7 +417,7 @@ export default async function AdminParentDetailPage({
         <div
           style={{
             padding: "10px 14px",
-            border: "1px solid rgba(255,255,255,0.16)",
+            border: "1px solid #e2e8f0",
             borderRadius: "9px",
             fontSize: "13px",
             fontWeight: 700,
@@ -448,10 +448,10 @@ export default async function AdminParentDetailPage({
           <div
             key={String(label)}
             style={{
-              padding: "20px",
-              border: "1px solid rgba(255,255,255,0.16)",
+              padding: "16px",
+              border: "1px solid #e2e8f0",
               borderRadius: "12px",
-              background: "rgba(255,255,255,0.03)",
+              background: "#ffffff",
             }}
           >
             <div
@@ -479,10 +479,10 @@ export default async function AdminParentDetailPage({
       <section
         style={{
           marginTop: "22px",
-          padding: "24px",
-          border: "1px solid rgba(255,255,255,0.16)",
+          padding: "20px",
+          border: "1px solid #e2e8f0",
           borderRadius: "14px",
-          background: "rgba(255,255,255,0.03)",
+          background: "#ffffff",
         }}
       >
         <h2 style={{ marginTop: 0 }}>
@@ -503,10 +503,10 @@ export default async function AdminParentDetailPage({
       <section
         style={{
           marginTop: "18px",
-          padding: "24px",
-          border: "1px solid rgba(255,255,255,0.16)",
+          padding: "20px",
+          border: "1px solid #e2e8f0",
           borderRadius: "14px",
-          background: "rgba(255,255,255,0.03)",
+          background: "#ffffff",
         }}
       >
         <h2
@@ -521,8 +521,8 @@ export default async function AdminParentDetailPage({
         {children.length === 0 ? (
           <div
             style={{
-              padding: "24px",
-              border: "1px dashed rgba(255,255,255,0.2)",
+              padding: "20px",
+              border: "1px dashed #cfd8e6",
               borderRadius: "10px",
               opacity: 0.62,
             }}
@@ -546,7 +546,7 @@ export default async function AdminParentDetailPage({
                 <div
                   key={child.id}
                   style={{
-                    padding: "20px",
+                    padding: "16px",
                     border:
                       "1px solid rgba(255,255,255,0.13)",
                     borderRadius: "12px",
@@ -604,18 +604,26 @@ export default async function AdminParentDetailPage({
                     >
                       <p>
                         <strong>과정:</strong>{" "}
-                        {courseMap.get(
-                          enrollment.course_id
-                        ) || "-"}
+                        <Link
+                          href={`/admin/courses/${enrollment.course_id}`}
+                          style={{ color: "#0a4f9e", textDecoration: "none", fontWeight: 700 }}
+                        >
+                          {courseMap.get(enrollment.course_id) || "-"}
+                        </Link>
                       </p>
 
                       <p>
                         <strong>담당 강사:</strong>{" "}
-                        {enrollment.teacher_user_id
-                          ? teacherMap.get(
-                              enrollment.teacher_user_id
-                            ) || "미배정"
-                          : "미배정"}
+                        {enrollment.teacher_user_id ? (
+                          <Link
+                            href={`/admin/teachers/${enrollment.teacher_user_id}`}
+                            style={{ color: "#0a4f9e", textDecoration: "none", fontWeight: 700 }}
+                          >
+                            {teacherMap.get(enrollment.teacher_user_id) || "미배정"}
+                          </Link>
+                        ) : (
+                          "미배정"
+                        )}
                       </p>
 
                       <p>
@@ -643,6 +651,26 @@ export default async function AdminParentDetailPage({
                     </p>
                   )}
 
+                  {enrollment && (
+                    <Link
+                      href={`/admin/enrollments/${enrollment.id}`}
+                      style={{
+                        display: "inline-block",
+                        marginTop: "18px",
+                        marginRight: "8px",
+                        padding: "10px 13px",
+                        border: "1px solid #d7dee9",
+                        borderRadius: "8px",
+                        color: "#0a1f44",
+                        textDecoration: "none",
+                        fontWeight: 700,
+                        background: "#ffffff",
+                      }}
+                    >
+                      수강 상세
+                    </Link>
+                  )}
+
                   <Link
                     href={`/admin/students/child/${child.id}`}
                     style={{
@@ -650,7 +678,7 @@ export default async function AdminParentDetailPage({
                       marginTop: "18px",
                       padding: "10px 13px",
                       border:
-                        "1px solid rgba(255,255,255,0.18)",
+                        "1px solid #d7dee9",
                       borderRadius: "8px",
                       color: "inherit",
                       textDecoration: "none",
@@ -669,10 +697,10 @@ export default async function AdminParentDetailPage({
       <section
         style={{
           marginTop: "18px",
-          padding: "24px",
-          border: "1px solid rgba(255,255,255,0.16)",
+          padding: "20px",
+          border: "1px solid #e2e8f0",
           borderRadius: "14px",
-          background: "rgba(255,255,255,0.03)",
+          background: "#ffffff",
         }}
       >
         <div
@@ -705,8 +733,8 @@ export default async function AdminParentDetailPage({
         {sessions.length === 0 ? (
           <div
             style={{
-              padding: "24px",
-              border: "1px dashed rgba(255,255,255,0.2)",
+              padding: "20px",
+              border: "1px dashed #cfd8e6",
               borderRadius: "10px",
               opacity: 0.62,
             }}
@@ -743,7 +771,7 @@ export default async function AdminParentDetailPage({
                     alignItems: "center",
                     padding: "14px",
                     border:
-                      "1px solid rgba(255,255,255,0.12)",
+                      "1px solid #e7ebf0",
                     borderRadius: "10px",
                     color: "inherit",
                     textDecoration: "none",

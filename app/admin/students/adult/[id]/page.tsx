@@ -480,6 +480,13 @@ export default async function AdminAdultStudentDetailPage({
         item.status === "requested"
     ).length;
 
+  const missingEvaluationCount =
+    sessions.filter(
+      (session) =>
+        session.status === "completed" &&
+        !evaluationMap.has(session.id)
+    ).length;
+
   function getCourseName(
     enrollmentId: number
   ) {
@@ -577,7 +584,7 @@ export default async function AdminAdultStudentDetailPage({
           style={{
             padding: "10px 14px",
             border:
-              "1px solid rgba(255,255,255,0.16)",
+              "1px solid #e2e8f0",
             borderRadius: "9px",
             fontSize: "13px",
             fontWeight: 700,
@@ -609,8 +616,12 @@ export default async function AdminAdultStudentDetailPage({
           ["지각", lateCount],
           ["결석", absentCount],
           [
-            "등록 평가",
+            "평가 완료",
             evaluations.length,
+          ],
+          [
+            "평가 미작성",
+            missingEvaluationCount,
           ],
           [
             "승인 대기 결석",
@@ -620,12 +631,12 @@ export default async function AdminAdultStudentDetailPage({
           <div
             key={String(label)}
             style={{
-              padding: "20px",
+              padding: "16px",
               border:
-                "1px solid rgba(255,255,255,0.16)",
+                "1px solid #e2e8f0",
               borderRadius: "12px",
               background:
-                "rgba(255,255,255,0.03)",
+                "#ffffff",
             }}
           >
             <div
@@ -662,12 +673,12 @@ export default async function AdminAdultStudentDetailPage({
       >
         <div
           style={{
-            padding: "24px",
+            padding: "20px",
             border:
-              "1px solid rgba(255,255,255,0.16)",
+              "1px solid #e2e8f0",
             borderRadius: "14px",
             background:
-              "rgba(255,255,255,0.03)",
+              "#ffffff",
           }}
         >
           <h2 style={{ marginTop: 0 }}>
@@ -694,12 +705,12 @@ export default async function AdminAdultStudentDetailPage({
 
         <div
           style={{
-            padding: "24px",
+            padding: "20px",
             border:
-              "1px solid rgba(255,255,255,0.16)",
+              "1px solid #e2e8f0",
             borderRadius: "14px",
             background:
-              "rgba(255,255,255,0.03)",
+              "#ffffff",
           }}
         >
           <h2 style={{ marginTop: 0 }}>
@@ -710,18 +721,18 @@ export default async function AdminAdultStudentDetailPage({
             <>
               <p>
                 <strong>과정:</strong>{" "}
-                {courseMap.get(
-                  activeEnrollment.course_id
-                ) || "-"}
+                <Link href={`/admin/courses/${activeEnrollment.course_id}`} style={{ color: "#0a4f9e", textDecoration: "none", fontWeight: 700 }}>
+                  {courseMap.get(activeEnrollment.course_id) || "-"}
+                </Link>
               </p>
 
               <p>
                 <strong>담당 강사:</strong>{" "}
-                {activeEnrollment.teacher_user_id
-                  ? teacherMap.get(
-                      activeEnrollment.teacher_user_id
-                    ) || "미배정"
-                  : "미배정"}
+                {activeEnrollment.teacher_user_id ? (
+                  <Link href={`/admin/teachers/${activeEnrollment.teacher_user_id}`} style={{ color: "#0a4f9e", textDecoration: "none", fontWeight: 700 }}>
+                    {teacherMap.get(activeEnrollment.teacher_user_id) || "미배정"}
+                  </Link>
+                ) : "미배정"}
               </p>
 
               <p>
@@ -761,7 +772,7 @@ export default async function AdminAdultStudentDetailPage({
                   marginTop: "18px",
                   padding: "10px 13px",
                   border:
-                    "1px solid rgba(255,255,255,0.18)",
+                    "1px solid #d7dee9",
                   borderRadius: "8px",
                   color: "inherit",
                   textDecoration: "none",
@@ -782,12 +793,12 @@ export default async function AdminAdultStudentDetailPage({
       <section
         style={{
           marginTop: "18px",
-          padding: "24px",
+          padding: "20px",
           border:
-            "1px solid rgba(255,255,255,0.16)",
+            "1px solid #e2e8f0",
           borderRadius: "14px",
           background:
-            "rgba(255,255,255,0.03)",
+            "#ffffff",
         }}
       >
         <div
@@ -836,9 +847,9 @@ export default async function AdminAdultStudentDetailPage({
         {sessions.length === 0 ? (
           <div
             style={{
-              padding: "24px",
+              padding: "20px",
               border:
-                "1px dashed rgba(255,255,255,0.2)",
+                "1px dashed #cfd8e6",
               borderRadius: "10px",
               opacity: 0.62,
             }}
@@ -884,7 +895,7 @@ export default async function AdminAdultStudentDetailPage({
                         "center",
                       padding: "14px",
                       border:
-                        "1px solid rgba(255,255,255,0.12)",
+                        "1px solid #e7ebf0",
                       borderRadius:
                         "10px",
                       color: "inherit",
