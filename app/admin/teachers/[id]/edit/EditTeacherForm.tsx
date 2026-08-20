@@ -381,15 +381,21 @@ export default function EditTeacherForm({
     width: "100%",
     boxSizing: "border-box" as const,
     padding: "12px 14px",
-    border: "1px solid #d9d9d9",
-    borderRadius: "8px",
-    fontSize: "16px",
+    border: "1px solid #d6deea",
+    borderRadius: "10px",
+    background: "#ffffff",
+    color: "#101828",
+    fontSize: "15px",
+    outline: "none",
   };
 
   const sectionStyle = {
     padding: "24px",
-    border: "1px solid #ddd",
-    borderRadius: "12px",
+    border: "1px solid #e4e7ec",
+    borderRadius: "14px",
+    background: "#ffffff",
+    boxShadow:
+      "0 1px 2px rgba(16,24,40,0.03), 0 8px 24px rgba(16,24,40,0.04)",
     display: "flex",
     flexDirection: "column" as const,
     gap: "18px",
@@ -424,12 +430,12 @@ export default function EditTeacherForm({
               width: "150px",
               height: "150px",
               borderRadius: "50%",
-              border: "1px solid #ddd",
+              border: "1px solid #d6deea",
               overflow: "hidden",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background: "#f5f5f5",
+              background: "#f2f4f7",
               color: "#777",
               flexShrink: 0,
             }}
@@ -821,9 +827,11 @@ export default function EditTeacherForm({
         style={{
           padding: "15px",
           border: "none",
-          borderRadius: "8px",
+          borderRadius: "10px",
+          background: loading ? "#98a2b3" : "#0a1f44",
+          color: "#ffffff",
           fontSize: "16px",
-          fontWeight: 700,
+          fontWeight: 800,
           cursor: loading
             ? "default"
             : "pointer",

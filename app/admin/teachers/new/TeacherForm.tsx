@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase-browser";
 
 const NATIONALITIES = [
   "미국",
@@ -47,9 +48,51 @@ export default function TeacherForm() {
   const [hourlyRate, setHourlyRate] =
     useState("");
 
+  const [imageFile, setImageFile] =
+    useState<File | null>(null);
+  const [imagePreview, setImagePreview] =
+    useState("");
+
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] =
     useState("");
+
+  function handleImageChange(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+
+    setErrorMessage("");
+
+    if (!file) {
+      return;
+    }
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setErrorMessage(
+        "프로필 사진은 JPG, PNG, WEBP 형식만 등록할 수 있습니다."
+      );
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMessage(
+        "프로필 사진은 5MB 이하만 등록할 수 있습니다."
+      );
+      event.target.value = "";
+      return;
+    }
+
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  }
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -168,7 +211,68 @@ export default function TeacherForm() {
         return;
       }
 
-      router.push("/admin/teachers");
+      const teacherUserId =
+        typeof result.userId === "string"
+          ? result.userId
+          : "";
+
+      if (!teacherUserId) {
+        setErrorMessage(
+          "생성된 강사 ID를 확인할 수 없습니다."
+        );
+        setLoading(false);
+        return;
+      }
+
+      if (imageFile) {
+        const supabase = createClient();
+        const imagePath =
+          `${teacherUserId}/profile-image`;
+
+        const { error: uploadError } =
+          await supabase.storage
+            .from("teacher-profile-images")
+            .upload(imagePath, imageFile, {
+              upsert: true,
+              contentType: imageFile.type,
+              cacheControl: "3600",
+            });
+
+        if (uploadError) {
+          setErrorMessage(
+            `강사 계정은 생성되었지만 프로필 사진 업로드에 실패했습니다: ${uploadError.message}`
+          );
+          setLoading(false);
+          return;
+        }
+
+        const { data: publicUrlData } =
+          supabase.storage
+            .from("teacher-profile-images")
+            .getPublicUrl(imagePath);
+
+        const profileImageUrl =
+          `${publicUrlData.publicUrl}?v=${Date.now()}`;
+
+        const { error: profileImageError } =
+          await supabase
+            .from("profiles")
+            .update({
+              profile_image_url: profileImageUrl,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", teacherUserId);
+
+        if (profileImageError) {
+          setErrorMessage(
+            `강사 계정은 생성되었지만 프로필 사진 정보 저장에 실패했습니다: ${profileImageError.message}`
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
+      router.push(`/admin/teachers/${teacherUserId}`);
       router.refresh();
     } catch (error) {
       console.error(
@@ -196,15 +300,21 @@ export default function TeacherForm() {
     width: "100%",
     boxSizing: "border-box" as const,
     padding: "12px 14px",
-    border: "1px solid #d9d9d9",
-    borderRadius: "8px",
-    fontSize: "16px",
+    border: "1px solid #d6deea",
+    borderRadius: "10px",
+    background: "#ffffff",
+    color: "#101828",
+    fontSize: "15px",
+    outline: "none",
   };
 
   const sectionStyle = {
     padding: "24px",
-    border: "1px solid #ddd",
-    borderRadius: "12px",
+    border: "1px solid #e4e7ec",
+    borderRadius: "14px",
+    background: "#ffffff",
+    boxShadow:
+      "0 1px 2px rgba(16,24,40,0.03), 0 8px 24px rgba(16,24,40,0.04)",
     display: "flex",
     flexDirection: "column" as const,
     gap: "18px",
@@ -221,6 +331,97 @@ export default function TeacherForm() {
         gap: "24px",
       }}
     >
+      <section style={sectionStyle}>
+        <div>
+          <h2 style={{ margin: 0 }}>
+            프로필 사진
+          </h2>
+          <p
+            style={{
+              marginTop: "6px",
+              marginBottom: 0,
+              color: "#667085",
+              fontSize: "13px",
+            }}
+          >
+            메인 페이지와 강사 소개 화면에 표시될 사진입니다.
+          </p>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "22px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div
+            style={{
+              width: "150px",
+              height: "150px",
+              borderRadius: "50%",
+              border: "1px solid #d6deea",
+              overflow: "hidden",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#f2f4f7",
+              color: "#667085",
+              flexShrink: 0,
+            }}
+          >
+            {imagePreview ? (
+              <img
+                src={imagePreview}
+                alt="강사 프로필 사진 미리보기"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+            ) : (
+              <span style={{ fontSize: "13px" }}>
+                등록할 사진 없음
+              </span>
+            )}
+          </div>
+
+          <div style={{ flex: 1, minWidth: "240px" }}>
+            <label
+              htmlFor="profileImage"
+              style={labelStyle}
+            >
+              사진 선택
+            </label>
+
+            <input
+              id="profileImage"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleImageChange}
+              style={{
+                ...fieldStyle,
+                padding: "7px",
+              }}
+            />
+
+            <p
+              style={{
+                marginTop: "9px",
+                marginBottom: 0,
+                fontSize: "13px",
+                color: "#667085",
+                lineHeight: 1.6,
+              }}
+            >
+              JPG, PNG, WEBP · 최대 5MB · 1:1 비율 권장
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* 로그인 정보 */}
       <section style={sectionStyle}>
         <div>
@@ -615,9 +816,11 @@ export default function TeacherForm() {
         style={{
           padding: "15px",
           border: "none",
-          borderRadius: "8px",
+          borderRadius: "10px",
+          background: loading ? "#98a2b3" : "#0a1f44",
+          color: "#ffffff",
           fontSize: "16px",
-          fontWeight: 700,
+          fontWeight: 800,
           cursor: loading
             ? "default"
             : "pointer",

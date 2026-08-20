@@ -24,6 +24,7 @@ type Profile = {
   id: string;
   name: string | null;
   phone: string | null;
+  profile_image_url: string | null;
 };
 
 type Enrollment = {
@@ -139,7 +140,7 @@ export default async function AdminTeachersPage({
   if (teacherIds.length > 0) {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, name, phone")
+      .select("id, name, phone, profile_image_url")
       .in("id", teacherIds);
 
     if (error) {
@@ -310,6 +311,8 @@ export default async function AdminTeachersPage({
           teacherProfile?.name || "-",
         phone:
           teacherProfile?.phone || "-",
+        profileImageUrl:
+          teacherProfile?.profile_image_url || null,
         assignedStudentCount:
           getAssignedStudentCount(
             teacher.user_id
@@ -424,9 +427,10 @@ export default async function AdminTeachersPage({
           style={{
             padding: "11px 16px",
             border:
-              "1px solid rgba(255,255,255,0.2)",
+              "1px solid #d6deea",
             borderRadius: "9px",
-            color: "inherit",
+            color: "#ffffff",
+            background: "#0a1f44",
             textDecoration: "none",
             fontWeight: 800,
           }}
@@ -473,10 +477,10 @@ export default async function AdminTeachersPage({
             style={{
               padding: "20px",
               border:
-                "1px solid rgba(255,255,255,0.16)",
+                "1px solid #e4e7ec",
               borderRadius: "12px",
               background:
-                "rgba(255,255,255,0.03)",
+                "#ffffff",
             }}
           >
             <div
@@ -507,14 +511,14 @@ export default async function AdminTeachersPage({
           marginTop: "22px",
           padding: "18px",
           border:
-            "1px solid rgba(255,255,255,0.16)",
+            "1px solid #e4e7ec",
           borderRadius: "12px",
           display: "grid",
           gridTemplateColumns:
             "minmax(220px, 1fr) 170px auto",
           gap: "10px",
           background:
-            "rgba(255,255,255,0.03)",
+            "#ffffff",
         }}
       >
         <input
@@ -526,10 +530,10 @@ export default async function AdminTeachersPage({
             minWidth: 0,
             padding: "11px 12px",
             border:
-              "1px solid rgba(255,255,255,0.2)",
+              "1px solid #d6deea",
             borderRadius: "8px",
-            background: "#111",
-            color: "#fff",
+            background: "#ffffff",
+            color: "#101828",
           }}
         />
 
@@ -539,10 +543,10 @@ export default async function AdminTeachersPage({
           style={{
             padding: "11px 12px",
             border:
-              "1px solid rgba(255,255,255,0.2)",
+              "1px solid #d6deea",
             borderRadius: "8px",
-            background: "#111",
-            color: "#fff",
+            background: "#ffffff",
+            color: "#101828",
           }}
         >
           <option value="all">
@@ -561,10 +565,10 @@ export default async function AdminTeachersPage({
           style={{
             padding: "11px 18px",
             border:
-              "1px solid rgba(255,255,255,0.22)",
+              "1px solid #d6deea",
             borderRadius: "8px",
-            background: "#f5f5f5",
-            color: "#111",
+            background: "#0a1f44",
+            color: "#ffffff",
             fontWeight: 800,
             cursor: "pointer",
           }}
@@ -577,11 +581,11 @@ export default async function AdminTeachersPage({
         style={{
           marginTop: "18px",
           border:
-            "1px solid rgba(255,255,255,0.16)",
+            "1px solid #e4e7ec",
           borderRadius: "14px",
           overflow: "hidden",
           background:
-            "rgba(255,255,255,0.03)",
+            "#ffffff",
         }}
       >
         <div
@@ -592,7 +596,7 @@ export default async function AdminTeachersPage({
             gap: "12px",
             padding: "14px 18px",
             borderBottom:
-              "1px solid rgba(255,255,255,0.14)",
+              "1px solid #e7ebf0",
             fontSize: "12px",
             fontWeight: 700,
             opacity: 0.55,
@@ -629,33 +633,86 @@ export default async function AdminTeachersPage({
                 alignItems: "center",
                 padding: "16px 18px",
                 borderBottom:
-                  "1px solid rgba(255,255,255,0.1)",
+                  "1px solid #eef1f5",
               }}
             >
-              <div>
-                <div
-                  style={{
-                    fontWeight: 800,
-                  }}
-                >
-                  {teacher.display_name ||
-                    teacher.realName ||
-                    "이름 미등록 강사"}
-                </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  minWidth: 0,
+                }}
+              >
+                {teacher.profileImageUrl ? (
+                  <img
+                    src={teacher.profileImageUrl}
+                    alt={`${teacher.display_name || teacher.realName || "강사"} 프로필`}
+                    style={{
+                      width: "48px",
+                      height: "48px",
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                      border: "1px solid #d6deea",
+                      background: "#f2f4f7",
+                      flexShrink: 0,
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: "48px",
+                      height: "48px",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "#eaf2ff",
+                      color: "#0a1f44",
+                      fontWeight: 900,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {(teacher.display_name ||
+                      teacher.realName ||
+                      "T")
+                      .trim()
+                      .charAt(0)
+                      .toUpperCase()}
+                  </div>
+                )}
 
-                <div
-                  style={{
-                    marginTop: "4px",
-                    fontSize: "12px",
-                    opacity: 0.5,
-                  }}
-                >
-                  실명:{" "}
-                  {teacher.realName}
-                  {" · "}
-                  {teacher.is_active
-                    ? "활성"
-                    : "비활성"}
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontWeight: 800,
+                      color: "#101828",
+                    }}
+                  >
+                    {teacher.display_name ||
+                      teacher.realName ||
+                      "이름 미등록 강사"}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: "4px",
+                      fontSize: "12px",
+                      color: "#667085",
+                    }}
+                  >
+                    실명: {teacher.realName} ·{" "}
+                    <span
+                      style={{
+                        color: teacher.is_active
+                          ? "#14804a"
+                          : "#667085",
+                        fontWeight: 800,
+                      }}
+                    >
+                      {teacher.is_active ? "활성" : "비활성"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -713,8 +770,9 @@ export default async function AdminTeachersPage({
                 style={{
                   textAlign: "center",
                   padding: "9px 10px",
+                  background: "#ffffff",
                   border:
-                    "1px solid rgba(255,255,255,0.18)",
+                    "1px solid #d6deea",
                   borderRadius: "8px",
                   color: "inherit",
                   textDecoration: "none",

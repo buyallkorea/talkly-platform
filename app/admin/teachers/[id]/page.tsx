@@ -511,8 +511,8 @@ export default async function TeacherDetailPage({
                 height: "118px",
                 borderRadius: "50%",
                 objectFit: "cover",
-                border: "1px solid rgba(255,255,255,0.2)",
-                background: "rgba(255,255,255,0.06)",
+                border: "1px solid #d6deea",
+                background: "#f2f4f7",
                 flexShrink: 0,
               }}
             />
@@ -523,8 +523,8 @@ export default async function TeacherDetailPage({
                 width: "118px",
                 height: "118px",
                 borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.2)",
-                background: "rgba(255,255,255,0.06)",
+                border: "1px solid #d6deea",
+                background: "#f2f4f7",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -598,7 +598,7 @@ export default async function TeacherDetailPage({
           <div
             style={{
               padding: "10px 14px",
-              border: "1px solid rgba(255,255,255,0.16)",
+              border: "1px solid #e4e7ec",
               borderRadius: "9px",
               fontSize: "13px",
               fontWeight: 700,
@@ -611,7 +611,7 @@ export default async function TeacherDetailPage({
             href={`/admin/teachers/${teacher.user_id}/edit`}
             style={{
               padding: "10px 14px",
-              border: "1px solid rgba(255,255,255,0.18)",
+              border: "1px solid #d6deea",
               borderRadius: "9px",
               color: "inherit",
               textDecoration: "none",
@@ -646,9 +646,9 @@ export default async function TeacherDetailPage({
             key={String(label)}
             style={{
               padding: "20px",
-              border: "1px solid rgba(255,255,255,0.16)",
+              border: "1px solid #e4e7ec",
               borderRadius: "12px",
-              background: "rgba(255,255,255,0.03)",
+              background: "#ffffff",
             }}
           >
             <div
@@ -686,9 +686,9 @@ export default async function TeacherDetailPage({
         <div
           style={{
             padding: "24px",
-            border: "1px solid rgba(255,255,255,0.16)",
+            border: "1px solid #e4e7ec",
             borderRadius: "14px",
-            background: "rgba(255,255,255,0.03)",
+            background: "#ffffff",
           }}
         >
           <h2 style={{ marginTop: 0 }}>
@@ -734,9 +734,9 @@ export default async function TeacherDetailPage({
         <div
           style={{
             padding: "24px",
-            border: "1px solid rgba(255,255,255,0.16)",
+            border: "1px solid #e4e7ec",
             borderRadius: "14px",
-            background: "rgba(255,255,255,0.03)",
+            background: "#ffffff",
           }}
         >
           <h2 style={{ marginTop: 0 }}>
@@ -790,9 +790,9 @@ export default async function TeacherDetailPage({
         <div
           style={{
             padding: "24px",
-            border: "1px solid rgba(255,255,255,0.16)",
+            border: "1px solid #e4e7ec",
             borderRadius: "14px",
-            background: "rgba(255,255,255,0.03)",
+            background: "#ffffff",
           }}
         >
           <h2 style={{ marginTop: 0 }}>
@@ -803,7 +803,7 @@ export default async function TeacherDetailPage({
             <div
               style={{
                 padding: "24px",
-                border: "1px dashed rgba(255,255,255,0.2)",
+                border: "1px dashed #cfd8e6",
                 borderRadius: "10px",
                 opacity: 0.62,
               }}
@@ -829,7 +829,7 @@ export default async function TeacherDetailPage({
                     gap: "12px",
                     alignItems: "center",
                     padding: "14px",
-                    border: "1px solid rgba(255,255,255,0.12)",
+                    border: "1px solid #e7ebf0",
                     borderRadius: "10px",
                     color: "inherit",
                     textDecoration: "none",
@@ -871,9 +871,9 @@ export default async function TeacherDetailPage({
         <div
           style={{
             padding: "24px",
-            border: "1px solid rgba(255,255,255,0.16)",
+            border: "1px solid #e4e7ec",
             borderRadius: "14px",
-            background: "rgba(255,255,255,0.03)",
+            background: "#ffffff",
           }}
         >
           <h2 style={{ marginTop: 0 }}>
@@ -904,7 +904,7 @@ export default async function TeacherDetailPage({
                   marginTop: "8px",
                   height: "8px",
                   borderRadius: "999px",
-                  background: "rgba(255,255,255,0.1)",
+                  background: "#e9eef5",
                   overflow: "hidden",
                 }}
               >
@@ -912,7 +912,8 @@ export default async function TeacherDetailPage({
                   style={{
                     width: `${attendanceRate}%`,
                     height: "100%",
-                    background: "#f5f5f5",
+                    background: "#0a1f44",
+                      color: "#ffffff",
                   }}
                 />
               </div>
@@ -935,7 +936,7 @@ export default async function TeacherDetailPage({
                   marginTop: "8px",
                   height: "8px",
                   borderRadius: "999px",
-                  background: "rgba(255,255,255,0.1)",
+                  background: "#e9eef5",
                   overflow: "hidden",
                 }}
               >
@@ -943,7 +944,8 @@ export default async function TeacherDetailPage({
                   style={{
                     width: `${evaluationRate}%`,
                     height: "100%",
-                    background: "#f5f5f5",
+                    background: "#0a1f44",
+                      color: "#ffffff",
                   }}
                 />
               </div>
@@ -956,9 +958,9 @@ export default async function TeacherDetailPage({
         style={{
           marginTop: "18px",
           padding: "24px",
-          border: "1px solid rgba(255,255,255,0.16)",
+          border: "1px solid #e4e7ec",
           borderRadius: "14px",
-          background: "rgba(255,255,255,0.03)",
+          background: "#ffffff",
         }}
       >
         <div
@@ -992,7 +994,7 @@ export default async function TeacherDetailPage({
           <div
             style={{
               padding: "24px",
-              border: "1px dashed rgba(255,255,255,0.2)",
+              border: "1px dashed #cfd8e6",
               borderRadius: "10px",
               opacity: 0.62,
             }}
@@ -1025,7 +1027,7 @@ export default async function TeacherDetailPage({
                     gap: "14px",
                     alignItems: "center",
                     padding: "14px",
-                    border: "1px solid rgba(255,255,255,0.12)",
+                    border: "1px solid #e7ebf0",
                     borderRadius: "10px",
                     color: "inherit",
                     textDecoration: "none",
@@ -1085,9 +1087,9 @@ export default async function TeacherDetailPage({
         style={{
           marginTop: "18px",
           padding: "24px",
-          border: "1px solid rgba(255,255,255,0.16)",
+          border: "1px solid #e4e7ec",
           borderRadius: "14px",
-          background: "rgba(255,255,255,0.03)",
+          background: "#ffffff",
         }}
       >
         <h2 style={{ marginTop: 0 }}>
