@@ -37,9 +37,10 @@ function DashboardCard({
     <div
       style={{
         padding: "22px",
-        border: "1px solid rgba(255,255,255,0.16)",
+        border: "1px solid #e4e7ec",
         borderRadius: "14px",
-        background: "rgba(255,255,255,0.03)",
+        background: "#ffffff",
+        boxShadow: "0 1px 2px rgba(16,24,40,0.03), 0 8px 24px rgba(16,24,40,0.05)",
         minHeight: "132px",
         boxSizing: "border-box",
       }}
@@ -859,7 +860,7 @@ export default async function AdminDashboardPage() {
           style={{
             padding: "10px 14px",
             border:
-              "1px solid rgba(255,255,255,0.16)",
+              "1px solid #e4e7ec",
             borderRadius: "10px",
             fontSize: "13px",
             opacity: 0.74,
@@ -900,10 +901,10 @@ export default async function AdminDashboardPage() {
           style={{
             padding: "24px",
             border:
-              "1px solid rgba(255,255,255,0.16)",
+              "1px solid #e4e7ec",
             borderRadius: "14px",
             background:
-              "rgba(255,255,255,0.03)",
+              "#ffffff",
           }}
         >
           <div
@@ -955,7 +956,7 @@ export default async function AdminDashboardPage() {
               style={{
                 padding: "22px",
                 border:
-                  "1px dashed rgba(255,255,255,0.2)",
+                  "1px dashed #cfd8e6",
                 borderRadius: "10px",
                 opacity: 0.6,
               }}
@@ -983,7 +984,7 @@ export default async function AdminDashboardPage() {
                       alignItems: "center",
                       padding: "14px",
                       border:
-                        "1px solid rgba(255,255,255,0.12)",
+                        "1px solid #e7ebf0",
                       borderRadius: "10px",
                       color: "inherit",
                       textDecoration: "none",
@@ -1075,10 +1076,10 @@ export default async function AdminDashboardPage() {
             style={{
               padding: "24px",
               border:
-                "1px solid rgba(255,255,255,0.16)",
+                "1px solid #e4e7ec",
               borderRadius: "14px",
               background:
-                "rgba(255,255,255,0.03)",
+                "#ffffff",
             }}
           >
             <h2
@@ -1109,7 +1110,7 @@ export default async function AdminDashboardPage() {
                     gap: "14px",
                     padding: "12px 14px",
                     border:
-                      "1px solid rgba(255,255,255,0.12)",
+                      "1px solid #e7ebf0",
                     borderRadius: "9px",
                     color: "inherit",
                     textDecoration: "none",
@@ -1126,10 +1127,10 @@ export default async function AdminDashboardPage() {
             style={{
               padding: "24px",
               border:
-                "1px solid rgba(255,255,255,0.16)",
+                "1px solid #e4e7ec",
               borderRadius: "14px",
               background:
-                "rgba(255,255,255,0.03)",
+                "#ffffff",
             }}
           >
             <h2
@@ -1170,7 +1171,7 @@ export default async function AdminDashboardPage() {
                   style={{
                     padding: "12px 10px",
                     border:
-                      "1px solid rgba(255,255,255,0.14)",
+                      "1px solid #d9e0ea",
                     borderRadius: "9px",
                     color: "inherit",
                     textDecoration: "none",
@@ -1188,10 +1189,10 @@ export default async function AdminDashboardPage() {
             style={{
               padding: "24px",
               border:
-                "1px solid rgba(255,255,255,0.16)",
+                "1px solid #e4e7ec",
               borderRadius: "14px",
               background:
-                "rgba(255,255,255,0.03)",
+                "#ffffff",
             }}
           >
             <h2
@@ -1255,7 +1256,7 @@ export default async function AdminDashboardPage() {
                   style={{
                     padding: "12px 14px",
                     border:
-                      "1px solid rgba(255,255,255,0.14)",
+                      "1px solid #d9e0ea",
                     borderRadius: "9px",
                     color: "inherit",
                     textDecoration: "none",
@@ -1276,10 +1277,10 @@ export default async function AdminDashboardPage() {
           marginTop: "18px",
           padding: "24px",
           border:
-            "1px solid rgba(255,255,255,0.16)",
+            "1px solid #e4e7ec",
           borderRadius: "14px",
           background:
-            "rgba(255,255,255,0.03)",
+            "#ffffff",
         }}
       >
         <div
@@ -1331,7 +1332,7 @@ export default async function AdminDashboardPage() {
             style={{
               padding: "22px",
               border:
-                "1px dashed rgba(255,255,255,0.2)",
+                "1px dashed #cfd8e6",
               borderRadius: "10px",
               opacity: 0.6,
             }}
@@ -1355,7 +1356,7 @@ export default async function AdminDashboardPage() {
                   style={{
                     padding: "14px",
                     border:
-                      "1px solid rgba(255,255,255,0.12)",
+                      "1px solid #e7ebf0",
                     borderRadius: "10px",
                     color: "inherit",
                     textDecoration: "none",

@@ -745,3 +745,289 @@ img {
     font-size: 27px;
   }
 }
+
+/* =========================================================
+   ADMIN
+   ========================================================= */
+
+.talkly-admin-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  background: #f5f7fb;
+  color: var(--text-primary);
+}
+
+.talkly-admin-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 26px 18px 22px;
+  background: linear-gradient(180deg, #0a1f44 0%, #0c2855 100%);
+  color: #ffffff;
+  border-right: 1px solid rgba(10, 31, 68, 0.1);
+}
+
+.talkly-admin-brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 22px;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.talkly-admin-brand-main {
+  font-size: 24px;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+}
+
+.talkly-admin-brand-badge {
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.13);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.talkly-admin-brand-sub {
+  width: 100%;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.talkly-admin-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 23px;
+}
+
+.talkly-admin-nav-title {
+  padding: 0 10px 8px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.talkly-admin-nav-items {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.talkly-admin-nav-link {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  color: rgba(255, 255, 255, 0.78);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 730;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.talkly-admin-nav-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  transform: translateX(2px);
+}
+
+.talkly-admin-nav-link-active {
+  background: #ffffff;
+  color: var(--talkly-navy);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+}
+
+.talkly-admin-nav-link-active:hover {
+  background: #ffffff;
+  color: var(--talkly-navy);
+}
+
+.talkly-admin-sidebar-footer {
+  margin-top: 28px;
+  padding: 16px 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.talkly-admin-sidebar-note {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.talkly-admin-sidebar-note-sub {
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 10px;
+}
+
+.talkly-admin-workspace {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.talkly-admin-header {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  min-height: 78px;
+  padding: 14px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid #e5e9f0;
+  backdrop-filter: blur(12px);
+}
+
+.talkly-admin-header-eyebrow {
+  color: var(--talkly-blue);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+}
+
+.talkly-admin-header-user {
+  margin-top: 2px;
+  color: var(--talkly-navy);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.talkly-admin-header-role {
+  margin-top: 1px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.talkly-admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.talkly-admin-site-link {
+  min-height: 40px;
+  padding: 9px 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d6deea;
+  border-radius: 9px;
+  background: #ffffff;
+  color: var(--talkly-navy);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.talkly-admin-site-link:hover {
+  background: var(--talkly-blue-soft);
+  border-color: #a8bbd9;
+}
+
+.talkly-admin-content {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 34px;
+}
+
+.talkly-admin-content input[type="file"] {
+  width: 100%;
+  min-height: 48px;
+  padding: 6px;
+  border: 1px solid #cfd8e6;
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.talkly-admin-content input[type="file"]::file-selector-button {
+  min-height: 36px;
+  margin-right: 12px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--talkly-navy);
+  color: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.talkly-admin-content input[type="file"]::file-selector-button:hover {
+  background: var(--talkly-navy-light);
+}
+
+.talkly-admin-content table {
+  color: var(--text-primary);
+}
+
+.talkly-admin-content input,
+.talkly-admin-content textarea,
+.talkly-admin-content select {
+  color-scheme: light;
+}
+
+@media (max-width: 1000px) {
+  .talkly-admin-shell {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .talkly-admin-content {
+    padding: 26px 22px;
+  }
+}
+
+@media (max-width: 760px) {
+  .talkly-admin-shell {
+    display: block;
+  }
+
+  .talkly-admin-sidebar {
+    position: relative;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+  }
+
+  .talkly-admin-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .talkly-admin-header {
+    position: relative;
+    padding: 14px 16px;
+  }
+
+  .talkly-admin-content {
+    padding: 22px 16px 50px;
+  }
+
+  .talkly-admin-site-link {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .talkly-admin-nav {
+    grid-template-columns: 1fr;
+  }
+}
+
