@@ -25,7 +25,48 @@ export default async function NoticePage() {
     });
 
   if (error) {
-    throw new Error(error.message);
+    return (
+      <main
+        style={{
+          maxWidth: "900px",
+          margin: "0 auto",
+          padding: "60px 24px",
+        }}
+      >
+        <Link
+          href="/"
+          style={{
+            color: "#667085",
+            textDecoration: "none",
+          }}
+        >
+          ← TALKLY 홈
+        </Link>
+
+        <h1
+          style={{
+            marginTop: "24px",
+            color: "#b42318",
+          }}
+        >
+          공지사항 조회 오류
+        </h1>
+
+        <pre
+          style={{
+            marginTop: "20px",
+            padding: "20px",
+            borderRadius: "12px",
+            background: "#fff1f0",
+            color: "#b42318",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+          }}
+        >
+          {error.message}
+        </pre>
+      </main>
+    );
   }
 
   return (
@@ -67,23 +108,20 @@ export default async function NoticePage() {
             lineHeight: 1.7,
           }}
         >
-          TALKLY의 새로운 소식과 중요한 안내를
-          확인하세요.
+          TALKLY의 새로운 소식과 중요한 안내를 확인하세요.
         </p>
       </div>
 
       <section
         style={{
           marginTop: "34px",
-          border:
-            "1px solid #e4e7ec",
+          border: "1px solid #e4e7ec",
           borderRadius: "16px",
           background: "#ffffff",
           overflow: "hidden",
         }}
       >
-        {!notices ||
-        notices.length === 0 ? (
+        {!notices || notices.length === 0 ? (
           <div
             style={{
               padding: "60px 24px",
@@ -94,100 +132,83 @@ export default async function NoticePage() {
             등록된 공지사항이 없습니다.
           </div>
         ) : (
-          notices.map(
-            (notice, index) => (
-              <Link
-                key={notice.id}
-                href={`/notice/${notice.id}`}
+          notices.map((notice, index) => (
+            <Link
+              key={notice.id}
+              href={`/notice/${notice.id}`}
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "minmax(0, 1fr) 110px 80px",
+                gap: "16px",
+                alignItems: "center",
+                padding: "20px 22px",
+                textDecoration: "none",
+                color: "inherit",
+                borderBottom:
+                  index === notices.length - 1
+                    ? "none"
+                    : "1px solid #eef1f5",
+              }}
+            >
+              <div
                 style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    "minmax(0, 1fr) 110px 80px",
-                  gap: "16px",
+                  display: "flex",
                   alignItems: "center",
-                  padding: "20px 22px",
-                  textDecoration: "none",
-                  color: "inherit",
-                  borderBottom:
-                    index ===
-                    notices.length - 1
-                      ? "none"
-                      : "1px solid #eef1f5",
+                  gap: "10px",
+                  minWidth: 0,
                 }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    minWidth: 0,
-                  }}
-                >
-                  {notice.is_pinned && (
-                    <span
-                      style={{
-                        flexShrink: 0,
-                        padding:
-                          "5px 8px",
-                        borderRadius:
-                          "999px",
-                        background:
-                          "#eef4ff",
-                        color:
-                          "#2f6fed",
-                        fontSize:
-                          "11px",
-                        fontWeight:
-                          900,
-                      }}
-                    >
-                      중요
-                    </span>
-                  )}
-
-                  <strong
+                {notice.is_pinned && (
+                  <span
                     style={{
-                      overflow:
-                        "hidden",
-                      textOverflow:
-                        "ellipsis",
-                      whiteSpace:
-                        "nowrap",
-                      color:
-                        "#101828",
+                      flexShrink: 0,
+                      padding: "5px 8px",
+                      borderRadius: "999px",
+                      background: "#eef4ff",
+                      color: "#2f6fed",
+                      fontSize: "11px",
+                      fontWeight: 900,
                     }}
                   >
-                    {notice.title}
-                  </strong>
-                </div>
+                    중요
+                  </span>
+                )}
 
-                <div
+                <strong
                   style={{
-                    color: "#667085",
-                    fontSize: "13px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    color: "#101828",
                   }}
                 >
-                  {new Date(
-                    notice.created_at
-                  ).toLocaleDateString(
-                    "ko-KR"
-                  )}
-                </div>
+                  {notice.title}
+                </strong>
+              </div>
 
-                <div
-                  style={{
-                    color: "#98a2b3",
-                    fontSize: "12px",
-                    textAlign: "right",
-                  }}
-                >
-                  조회{" "}
-                  {notice.view_count ??
-                    0}
-                </div>
-              </Link>
-            )
-          )
+              <div
+                style={{
+                  color: "#667085",
+                  fontSize: "13px",
+                }}
+              >
+                {new Date(
+                  notice.created_at
+                ).toLocaleDateString("ko-KR")}
+              </div>
+
+              <div
+                style={{
+                  color: "#98a2b3",
+                  fontSize: "12px",
+                  textAlign: "right",
+                }}
+              >
+                조회 {notice.view_count ?? 0}
+              </div>
+            </Link>
+          ))
         )}
       </section>
     </main>

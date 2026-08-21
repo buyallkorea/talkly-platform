@@ -7,7 +7,17 @@ export default async function ConsultationPage() {
 
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
+
+  if (userError) {
+    return (
+      <ErrorScreen
+        title="로그인 정보 확인 오류"
+        message={userError.message}
+      />
+    );
+  }
 
   if (!user) {
     redirect("/login");
@@ -32,7 +42,12 @@ export default async function ConsultationPage() {
     });
 
   if (error) {
-    throw new Error(error.message);
+    return (
+      <ErrorScreen
+        title="1:1 상담 조회 오류"
+        message={error.message}
+      />
+    );
   }
 
   const totalCount =
@@ -156,8 +171,7 @@ export default async function ConsultationPage() {
           overflow: "hidden",
         }}
       >
-        {!inquiries ||
-        inquiries.length === 0 ? (
+        {!inquiries || inquiries.length === 0 ? (
           <div
             style={{
               padding: "60px 24px",
@@ -168,70 +182,116 @@ export default async function ConsultationPage() {
             아직 등록한 1:1 문의가 없습니다.
           </div>
         ) : (
-          inquiries.map(
-            (item, index) => (
-              <Link
-                key={item.id}
-                href={`/consultation/${item.id}`}
+          inquiries.map((item, index) => (
+            <Link
+              key={item.id}
+              href={`/consultation/${item.id}`}
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "110px minmax(0, 1fr) 100px 120px",
+                gap: "14px",
+                alignItems: "center",
+                padding: "19px 20px",
+                borderBottom:
+                  index === inquiries.length - 1
+                    ? "none"
+                    : "1px solid #eef1f5",
+                color: "inherit",
+                textDecoration: "none",
+              }}
+            >
+              <div
                 style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    "110px minmax(0, 1fr) 100px 120px",
-                  gap: "14px",
-                  alignItems: "center",
-                  padding: "19px 20px",
-                  borderBottom:
-                    index ===
-                    inquiries.length - 1
-                      ? "none"
-                      : "1px solid #eef1f5",
-                  color: "inherit",
-                  textDecoration: "none",
+                  color: "#667085",
+                  fontSize: "12px",
+                  fontWeight: 800,
                 }}
               >
-                <div
-                  style={{
-                    color: "#667085",
-                    fontSize: "12px",
-                    fontWeight: 800,
-                  }}
-                >
-                  {item.category}
-                </div>
+                {item.category}
+              </div>
 
-                <strong
-                  style={{
-                    color: "#101828",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {item.title}
-                </strong>
+              <strong
+                style={{
+                  color: "#101828",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {item.title}
+              </strong>
 
-                <StatusBadge
-                  status={item.status}
-                />
+              <StatusBadge
+                status={item.status}
+              />
 
-                <div
-                  style={{
-                    color: "#98a2b3",
-                    fontSize: "12px",
-                    textAlign: "right",
-                  }}
-                >
-                  {new Date(
-                    item.created_at
-                  ).toLocaleDateString(
-                    "ko-KR"
-                  )}
-                </div>
-              </Link>
-            )
-          )
+              <div
+                style={{
+                  color: "#98a2b3",
+                  fontSize: "12px",
+                  textAlign: "right",
+                }}
+              >
+                {new Date(
+                  item.created_at
+                ).toLocaleDateString("ko-KR")}
+              </div>
+            </Link>
+          ))
         )}
       </section>
+    </main>
+  );
+}
+
+function ErrorScreen({
+  title,
+  message,
+}: {
+  title: string;
+  message: string;
+}) {
+  return (
+    <main
+      style={{
+        maxWidth: "900px",
+        margin: "0 auto",
+        padding: "60px 24px",
+      }}
+    >
+      <Link
+        href="/"
+        style={{
+          color: "#667085",
+          textDecoration: "none",
+        }}
+      >
+        ← TALKLY 홈
+      </Link>
+
+      <h1
+        style={{
+          marginTop: "24px",
+          color: "#b42318",
+        }}
+      >
+        {title}
+      </h1>
+
+      <pre
+        style={{
+          marginTop: "20px",
+          padding: "20px",
+          borderRadius: "12px",
+          background: "#fff1f0",
+          color: "#b42318",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+        }}
+      >
+        {message}
+      </pre>
     </main>
   );
 }
