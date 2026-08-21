@@ -55,49 +55,90 @@ export default async function AdminNoticesPage() {
     throw new Error(error.message);
   }
 
-  const totalCount =
-    notices?.length ?? 0;
+  const safeNotices = notices ?? [];
+
+  const totalCount = safeNotices.length;
 
   const publishedCount =
-    notices?.filter(
-      (notice) =>
-        notice.is_published
-    ).length ?? 0;
+    safeNotices.filter(
+      (notice) => notice.is_published
+    ).length;
 
   const hiddenCount =
-    totalCount -
-    publishedCount;
+    safeNotices.filter(
+      (notice) => !notice.is_published
+    ).length;
 
   const pinnedCount =
-    notices?.filter(
-      (notice) =>
-        notice.is_pinned
-    ).length ?? 0;
+    safeNotices.filter(
+      (notice) => notice.is_pinned
+    ).length;
+
+  const recentCount =
+    safeNotices.filter((notice) => {
+      const createdAt =
+        new Date(notice.created_at);
+
+      const sevenDaysAgo =
+        new Date();
+
+      sevenDaysAgo.setDate(
+        sevenDaysAgo.getDate() - 7
+      );
+
+      return createdAt >= sevenDaysAgo;
+    }).length;
 
   return (
     <main
       style={{
         width: "100%",
-        maxWidth: "1180px",
+        maxWidth: "1200px",
         margin: "0 auto",
       }}
     >
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
+          justifyContent:
+            "space-between",
+          alignItems:
+            "flex-start",
           gap: "20px",
           flexWrap: "wrap",
         }}
       >
         <div>
+          <div
+            style={{
+              display:
+                "inline-flex",
+              alignItems:
+                "center",
+              minHeight: "28px",
+              padding: "0 10px",
+              borderRadius:
+                "999px",
+              background:
+                "#eef4ff",
+              color: "#2f6fed",
+              fontSize: "11px",
+              fontWeight: 900,
+              letterSpacing:
+                "0.04em",
+            }}
+          >
+            CUSTOMER SUPPORT
+          </div>
+
           <h1
             style={{
-              margin: 0,
-              fontSize: "34px",
-              letterSpacing: "-0.03em",
+              margin: "14px 0 0",
               color: "#101828",
+              fontSize: "36px",
+              lineHeight: 1.2,
+              letterSpacing:
+                "-0.035em",
             }}
           >
             공지사항 관리
@@ -105,42 +146,88 @@ export default async function AdminNoticesPage() {
 
           <p
             style={{
-              margin: "10px 0 0",
+              margin: "11px 0 0",
               color: "#667085",
-              lineHeight: 1.7,
+              fontSize: "15px",
+              lineHeight: 1.75,
             }}
           >
-            TALKLY 이용자에게 공개할 공지사항을
+            TALKLY 이용자에게
+            공개할 공지사항을
             작성하고 관리합니다.
           </p>
         </div>
 
-        <Link
-          href="/admin/notices/new"
+        <div
           style={{
-            minHeight: "44px",
-            padding: "0 18px",
-            display: "inline-flex",
+            display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            borderRadius: "10px",
-            background: "#0A1F44",
-            color: "#ffffff",
-            textDecoration: "none",
-            fontSize: "14px",
-            fontWeight: 900,
+            gap: "10px",
+            flexWrap: "wrap",
           }}
         >
-          + 새 공지 작성
-        </Link>
+          <Link
+            href="/notice"
+            style={{
+              minHeight: "46px",
+              padding: "0 17px",
+              display:
+                "inline-flex",
+              alignItems:
+                "center",
+              justifyContent:
+                "center",
+              border:
+                "1px solid #d6deea",
+              borderRadius:
+                "10px",
+              background:
+                "#ffffff",
+              color: "#344054",
+              textDecoration:
+                "none",
+              fontSize: "13px",
+              fontWeight: 800,
+            }}
+          >
+            사용자 공지 보기 ↗
+          </Link>
+
+          <Link
+            href="/admin/notices/new"
+            style={{
+              minHeight: "46px",
+              padding: "0 18px",
+              display:
+                "inline-flex",
+              alignItems:
+                "center",
+              justifyContent:
+                "center",
+              borderRadius:
+                "10px",
+              background:
+                "#0A1F44",
+              color: "#ffffff",
+              textDecoration:
+                "none",
+              fontSize: "14px",
+              fontWeight: 900,
+              boxShadow:
+                "0 8px 20px rgba(10,31,68,.12)",
+            }}
+          >
+            + 새 공지 작성
+          </Link>
+        </div>
       </div>
 
-      <div
+      <section
         style={{
-          marginTop: "26px",
+          marginTop: "28px",
           display: "grid",
           gridTemplateColumns:
-            "repeat(4, minmax(0, 1fr))",
+            "repeat(5, minmax(0, 1fr))",
           gap: "12px",
         }}
       >
@@ -163,27 +250,77 @@ export default async function AdminNoticesPage() {
           label="상단 고정"
           value={pinnedCount}
         />
-      </div>
+
+        <SummaryCard
+          label="최근 7일"
+          value={recentCount}
+        />
+      </section>
 
       <section
         style={{
           marginTop: "22px",
-          border: "1px solid #e4e7ec",
-          borderRadius: "14px",
+          border:
+            "1px solid #e4e7ec",
+          borderRadius: "16px",
           background: "#ffffff",
           overflow: "hidden",
+          boxShadow:
+            "0 8px 24px rgba(10,31,68,.035)",
         }}
       >
-        {!notices ||
-        notices.length === 0 ? (
+        {safeNotices.length === 0 ? (
           <div
             style={{
-              padding: "60px 24px",
+              padding: "70px 24px",
               textAlign: "center",
-              color: "#667085",
             }}
           >
-            아직 등록된 공지사항이 없습니다.
+            <div
+              style={{
+                width: "54px",
+                height: "54px",
+                margin: "0 auto",
+                display: "flex",
+                alignItems:
+                  "center",
+                justifyContent:
+                  "center",
+                borderRadius: "50%",
+                background:
+                  "#f2f6fc",
+                color: "#7890b7",
+                fontSize: "24px",
+                fontWeight: 900,
+              }}
+            >
+              i
+            </div>
+
+            <h2
+              style={{
+                margin:
+                  "18px 0 0",
+                color: "#101828",
+                fontSize: "18px",
+              }}
+            >
+              아직 등록된
+              공지사항이 없습니다.
+            </h2>
+
+            <p
+              style={{
+                margin:
+                  "8px 0 0",
+                color: "#98a2b3",
+                fontSize: "13px",
+              }}
+            >
+              새 공지를 작성하면
+              이곳에서 관리할 수
+              있습니다.
+            </p>
           </div>
         ) : (
           <>
@@ -191,12 +328,14 @@ export default async function AdminNoticesPage() {
               style={{
                 display: "grid",
                 gridTemplateColumns:
-                  "minmax(0, 1fr) 100px 100px 100px 130px 70px",
+                  "minmax(0, 1fr) 100px 90px 90px 130px 90px",
                 gap: "12px",
-                padding: "14px 18px",
+                alignItems: "center",
+                padding: "14px 20px",
+                background:
+                  "#f8fafc",
                 borderBottom:
                   "1px solid #eef1f5",
-                background: "#f8fafc",
                 color: "#667085",
                 fontSize: "12px",
                 fontWeight: 800,
@@ -210,20 +349,23 @@ export default async function AdminNoticesPage() {
               <div />
             </div>
 
-            {notices.map(
+            {safeNotices.map(
               (notice, index) => (
                 <div
                   key={notice.id}
                   style={{
                     display: "grid",
                     gridTemplateColumns:
-                      "minmax(0, 1fr) 100px 100px 100px 130px 70px",
+                      "minmax(0, 1fr) 100px 90px 90px 130px 90px",
                     gap: "12px",
-                    alignItems: "center",
-                    padding: "17px 18px",
+                    alignItems:
+                      "center",
+                    padding:
+                      "18px 20px",
                     borderBottom:
                       index ===
-                      notices.length - 1
+                      safeNotices.length -
+                        1
                         ? "none"
                         : "1px solid #eef1f5",
                   }}
@@ -231,21 +373,35 @@ export default async function AdminNoticesPage() {
                   <div
                     style={{
                       minWidth: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
+                      display:
+                        "flex",
+                      alignItems:
+                        "center",
+                      gap: "9px",
                     }}
                   >
                     {notice.is_pinned && (
                       <span
                         style={{
-                          padding: "4px 7px",
-                          borderRadius: "999px",
-                          background: "#eef4ff",
-                          color: "#2f6fed",
-                          fontSize: "10px",
-                          fontWeight: 900,
                           flexShrink: 0,
+                          minHeight:
+                            "26px",
+                          padding:
+                            "0 8px",
+                          display:
+                            "inline-flex",
+                          alignItems:
+                            "center",
+                          borderRadius:
+                            "999px",
+                          background:
+                            "#eef4ff",
+                          color:
+                            "#2f6fed",
+                          fontSize:
+                            "10px",
+                          fontWeight:
+                            900,
                         }}
                       >
                         중요
@@ -254,10 +410,17 @@ export default async function AdminNoticesPage() {
 
                     <strong
                       style={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        color: "#101828",
+                        minWidth: 0,
+                        overflow:
+                          "hidden",
+                        textOverflow:
+                          "ellipsis",
+                        whiteSpace:
+                          "nowrap",
+                        color:
+                          "#101828",
+                        fontSize:
+                          "14px",
                       }}
                     >
                       {notice.title}
@@ -265,22 +428,23 @@ export default async function AdminNoticesPage() {
                   </div>
 
                   <div>
-                    <StatusBadge
-                      active={
+                    <PublishedBadge
+                      published={
                         notice.is_published
                       }
-                      activeLabel="공개"
-                      inactiveLabel="비공개"
                     />
                   </div>
 
                   <div
                     style={{
-                      color: notice.is_pinned
-                        ? "#2f6fed"
-                        : "#98a2b3",
-                      fontSize: "12px",
-                      fontWeight: 800,
+                      color:
+                        notice.is_pinned
+                          ? "#2f6fed"
+                          : "#98a2b3",
+                      fontSize:
+                        "12px",
+                      fontWeight:
+                        800,
                     }}
                   >
                     {notice.is_pinned
@@ -290,17 +454,24 @@ export default async function AdminNoticesPage() {
 
                   <div
                     style={{
-                      color: "#667085",
-                      fontSize: "13px",
+                      color:
+                        "#667085",
+                      fontSize:
+                        "13px",
                     }}
                   >
-                    {notice.view_count ?? 0}
+                    {notice.view_count ??
+                      0}
                   </div>
 
                   <div
                     style={{
-                      color: "#667085",
-                      fontSize: "12px",
+                      color:
+                        "#667085",
+                      fontSize:
+                        "12px",
+                      lineHeight:
+                        1.5,
                     }}
                   >
                     {new Date(
@@ -313,11 +484,32 @@ export default async function AdminNoticesPage() {
                   <Link
                     href={`/admin/notices/${notice.id}`}
                     style={{
-                      color: "#0A1F44",
-                      textDecoration: "none",
-                      fontSize: "13px",
-                      fontWeight: 900,
-                      whiteSpace: "nowrap",
+                      minHeight:
+                        "38px",
+                      padding:
+                        "0 12px",
+                      display:
+                        "inline-flex",
+                      alignItems:
+                        "center",
+                      justifyContent:
+                        "center",
+                      border:
+                        "1px solid #d6deea",
+                      borderRadius:
+                        "8px",
+                      background:
+                        "#ffffff",
+                      color:
+                        "#0A1F44",
+                      textDecoration:
+                        "none",
+                      fontSize:
+                        "12px",
+                      fontWeight:
+                        900,
+                      whiteSpace:
+                        "nowrap",
                     }}
                   >
                     관리 →
@@ -328,6 +520,22 @@ export default async function AdminNoticesPage() {
           </>
         )}
       </section>
+
+      <div
+        style={{
+          marginTop: "18px",
+          padding: "16px 18px",
+          borderRadius: "12px",
+          background: "#f8fafc",
+          color: "#667085",
+          fontSize: "12px",
+          lineHeight: 1.7,
+        }}
+      >
+        공개 상태의 공지만 사용자 공지사항
+        화면에 표시됩니다. 중요 공지는 일반 공지보다
+        상단에 우선 표시됩니다.
+      </div>
     </main>
   );
 }
@@ -342,9 +550,10 @@ function SummaryCard({
   return (
     <div
       style={{
-        minHeight: "105px",
+        minHeight: "112px",
         padding: "19px",
-        border: "1px solid #e4e7ec",
+        border:
+          "1px solid #e4e7ec",
         borderRadius: "13px",
         background: "#ffffff",
       }}
@@ -361,9 +570,10 @@ function SummaryCard({
 
       <div
         style={{
-          marginTop: "12px",
+          marginTop: "13px",
           color: "#101828",
           fontSize: "30px",
+          lineHeight: 1,
           fontWeight: 900,
         }}
       >
@@ -373,36 +583,33 @@ function SummaryCard({
   );
 }
 
-function StatusBadge({
-  active,
-  activeLabel,
-  inactiveLabel,
+function PublishedBadge({
+  published,
 }: {
-  active: boolean;
-  activeLabel: string;
-  inactiveLabel: string;
+  published: boolean;
 }) {
   return (
     <span
       style={{
         display: "inline-flex",
+        alignItems: "center",
         minHeight: "27px",
         padding: "0 9px",
-        alignItems: "center",
         borderRadius: "999px",
-        background: active
+        background: published
           ? "#ecfdf3"
           : "#f2f4f7",
-        color: active
+        color: published
           ? "#027a48"
           : "#667085",
         fontSize: "11px",
         fontWeight: 900,
+        whiteSpace: "nowrap",
       }}
     >
-      {active
-        ? activeLabel
-        : inactiveLabel}
+      {published
+        ? "공개"
+        : "비공개"}
     </span>
   );
 }

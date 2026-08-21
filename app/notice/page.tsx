@@ -24,193 +24,260 @@ export default async function NoticePage() {
       ascending: false,
     });
 
-  if (error) {
-    return (
-      <main
-        style={{
-          maxWidth: "900px",
-          margin: "0 auto",
-          padding: "60px 24px",
-        }}
-      >
-        <Link
-          href="/"
-          style={{
-            color: "#667085",
-            textDecoration: "none",
-          }}
-        >
-          ← TALKLY 홈
-        </Link>
-
-        <h1
-          style={{
-            marginTop: "24px",
-            color: "#b42318",
-          }}
-        >
-          공지사항 조회 오류
-        </h1>
-
-        <pre
-          style={{
-            marginTop: "20px",
-            padding: "20px",
-            borderRadius: "12px",
-            background: "#fff1f0",
-            color: "#b42318",
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-          }}
-        >
-          {error.message}
-        </pre>
-      </main>
-    );
-  }
+  const safeNotices = error ? [] : notices ?? [];
 
   return (
     <main
       style={{
-        maxWidth: "1000px",
-        margin: "0 auto",
-        padding: "56px 24px 90px",
+        minHeight: "calc(100vh - 80px)",
+        background:
+          "linear-gradient(180deg, #f8fbff 0%, #ffffff 45%)",
+        padding: "64px 24px 96px",
       }}
     >
-      <div>
-        <Link
-          href="/"
-          style={{
-            color: "#667085",
-            textDecoration: "none",
-            fontSize: "13px",
-            fontWeight: 700,
-          }}
-        >
-          ← TALKLY 홈
-        </Link>
-
-        <h1
-          style={{
-            margin: "18px 0 0",
-            fontSize: "38px",
-            letterSpacing: "-0.04em",
-            color: "#0A1F44",
-          }}
-        >
-          공지사항
-        </h1>
-
-        <p
-          style={{
-            margin: "12px 0 0",
-            color: "#667085",
-            lineHeight: 1.7,
-          }}
-        >
-          TALKLY의 새로운 소식과 중요한 안내를 확인하세요.
-        </p>
-      </div>
-
-      <section
+      <div
         style={{
-          marginTop: "34px",
-          border: "1px solid #e4e7ec",
-          borderRadius: "16px",
-          background: "#ffffff",
-          overflow: "hidden",
+          maxWidth: "980px",
+          margin: "0 auto",
         }}
       >
-        {!notices || notices.length === 0 ? (
-          <div
-            style={{
-              padding: "60px 24px",
-              textAlign: "center",
-              color: "#667085",
-            }}
-          >
-            등록된 공지사항이 없습니다.
-          </div>
-        ) : (
-          notices.map((notice, index) => (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: "20px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
             <Link
-              key={notice.id}
-              href={`/notice/${notice.id}`}
+              href="/"
               style={{
-                display: "grid",
-                gridTemplateColumns:
-                  "minmax(0, 1fr) 110px 80px",
-                gap: "16px",
-                alignItems: "center",
-                padding: "20px 22px",
+                color: "#667085",
                 textDecoration: "none",
-                color: "inherit",
-                borderBottom:
-                  index === notices.length - 1
-                    ? "none"
-                    : "1px solid #eef1f5",
+                fontSize: "13px",
+                fontWeight: 700,
+              }}
+            >
+              ← TALKLY 홈
+            </Link>
+
+            <div
+              style={{
+                marginTop: "22px",
+                display: "inline-flex",
+                alignItems: "center",
+                minHeight: "30px",
+                padding: "0 11px",
+                borderRadius: "999px",
+                background: "#edf4ff",
+                color: "#2f6fed",
+                fontSize: "12px",
+                fontWeight: 900,
+                letterSpacing: "0.02em",
+              }}
+            >
+              INFORMATION
+            </div>
+
+            <h1
+              style={{
+                margin: "16px 0 0",
+                fontSize: "42px",
+                lineHeight: 1.2,
+                letterSpacing: "-0.04em",
+                color: "#0A1F44",
+              }}
+            >
+              공지사항
+            </h1>
+
+            <p
+              style={{
+                margin: "13px 0 0",
+                maxWidth: "620px",
+                color: "#667085",
+                fontSize: "16px",
+                lineHeight: 1.8,
+              }}
+            >
+              TALKLY의 새로운 소식과 수업 운영에 필요한
+              중요한 안내를 확인하세요.
+            </p>
+          </div>
+        </div>
+
+        <section
+          style={{
+            marginTop: "40px",
+            border: "1px solid #e4e7ec",
+            borderRadius: "20px",
+            background: "#ffffff",
+            overflow: "hidden",
+            boxShadow:
+              "0 10px 30px rgba(10,31,68,0.05)",
+          }}
+        >
+          {safeNotices.length === 0 ? (
+            <div
+              style={{
+                padding: "80px 24px",
+                textAlign: "center",
               }}
             >
               <div
                 style={{
+                  width: "54px",
+                  height: "54px",
+                  margin: "0 auto",
+                  borderRadius: "50%",
+                  background: "#f2f6fc",
                   display: "flex",
                   alignItems: "center",
-                  gap: "10px",
-                  minWidth: 0,
+                  justifyContent: "center",
+                  color: "#7890b7",
+                  fontSize: "24px",
+                  fontWeight: 800,
                 }}
               >
-                {notice.is_pinned && (
-                  <span
-                    style={{
-                      flexShrink: 0,
-                      padding: "5px 8px",
-                      borderRadius: "999px",
-                      background: "#eef4ff",
-                      color: "#2f6fed",
-                      fontSize: "11px",
-                      fontWeight: 900,
-                    }}
-                  >
-                    중요
-                  </span>
-                )}
-
-                <strong
-                  style={{
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    color: "#101828",
-                  }}
-                >
-                  {notice.title}
-                </strong>
+                i
               </div>
 
-              <div
+              <h2
                 style={{
-                  color: "#667085",
+                  margin: "18px 0 0",
+                  color: "#101828",
+                  fontSize: "18px",
+                }}
+              >
+                등록된 공지사항이 없습니다.
+              </h2>
+
+              <p
+                style={{
+                  margin: "8px 0 0",
+                  color: "#98a2b3",
                   fontSize: "13px",
                 }}
               >
-                {new Date(
-                  notice.created_at
-                ).toLocaleDateString("ko-KR")}
-              </div>
-
+                새로운 안내가 등록되면 이곳에서 확인할 수
+                있습니다.
+              </p>
+            </div>
+          ) : (
+            <>
               <div
                 style={{
-                  color: "#98a2b3",
+                  display: "grid",
+                  gridTemplateColumns:
+                    "90px minmax(0,1fr) 130px 90px",
+                  gap: "16px",
+                  padding: "15px 22px",
+                  background: "#f8fafc",
+                  borderBottom: "1px solid #eef1f5",
+                  color: "#667085",
                   fontSize: "12px",
-                  textAlign: "right",
+                  fontWeight: 800,
                 }}
               >
-                조회 {notice.view_count ?? 0}
+                <div>구분</div>
+                <div>제목</div>
+                <div>등록일</div>
+                <div style={{ textAlign: "right" }}>
+                  조회수
+                </div>
               </div>
-            </Link>
-          ))
-        )}
-      </section>
+
+              {safeNotices.map((notice, index) => (
+                <Link
+                  key={notice.id}
+                  href={`/notice/${notice.id}`}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "90px minmax(0,1fr) 130px 90px",
+                    gap: "16px",
+                    alignItems: "center",
+                    padding: "20px 22px",
+                    textDecoration: "none",
+                    color: "inherit",
+                    borderBottom:
+                      index === safeNotices.length - 1
+                        ? "none"
+                        : "1px solid #eef1f5",
+                    transition:
+                      "background-color .15s ease",
+                  }}
+                >
+                  <div>
+                    {notice.is_pinned ? (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          minHeight: "28px",
+                          padding: "0 9px",
+                          borderRadius: "999px",
+                          background: "#eef4ff",
+                          color: "#2f6fed",
+                          fontSize: "11px",
+                          fontWeight: 900,
+                        }}
+                      >
+                        중요
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          color: "#98a2b3",
+                          fontSize: "12px",
+                        }}
+                      >
+                        일반
+                      </span>
+                    )}
+                  </div>
+
+                  <strong
+                    style={{
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      color: "#101828",
+                      fontSize: "15px",
+                    }}
+                  >
+                    {notice.title}
+                  </strong>
+
+                  <div
+                    style={{
+                      color: "#667085",
+                      fontSize: "13px",
+                    }}
+                  >
+                    {new Date(
+                      notice.created_at
+                    ).toLocaleDateString("ko-KR")}
+                  </div>
+
+                  <div
+                    style={{
+                      color: "#98a2b3",
+                      fontSize: "12px",
+                      textAlign: "right",
+                    }}
+                  >
+                    {notice.view_count ?? 0}
+                  </div>
+                </Link>
+              ))}
+            </>
+          )}
+        </section>
+      </div>
     </main>
   );
 }
