@@ -223,9 +223,9 @@ export default function Home() {
                 인포메이션 ▾
               </a>
               <div className="talkly-dropdown">
-                <a href="#information">공지사항</a>
+                <Link href="/notice">공지사항</Link>
                 <a href="#reviews">수업후기</a>
-                <a href="#consult">1:1상담</a>
+                <Link href="/consultation">1:1상담</Link>
               </div>
             </div>
           </nav>
@@ -926,7 +926,7 @@ export default function Home() {
           <SectionHead
             tag="Information"
             title="TALKLY 이용안내"
-            description="공지사항, 수업후기, 1:1 상담은 다음 단계에서 Supabase 게시판 기능과 관리자 승인 기능으로 연결합니다."
+            description="공지사항과 1:1 상담을 통해 TALKLY의 주요 안내를 확인하고 필요한 문의를 편리하게 남길 수 있습니다."
           />
 
           <div
@@ -938,18 +938,34 @@ export default function Home() {
             }}
           >
             {[
-              ["공지사항", "수강 전 확인할 내용과 서비스 공지를 확인합니다."],
-              ["수업후기", "학생과 학부모의 실제 학습 경험을 공유합니다."],
-              ["1:1 상담", "수업·레벨·강사 선택에 대해 상담을 신청합니다."],
-            ].map(([title, text], index) => (
-              <article
+              [
+                "공지사항",
+                "수강 전 확인할 내용과 TALKLY의 새로운 소식을 확인합니다.",
+                "/notice",
+              ],
+              [
+                "수업후기",
+                "학생과 학부모의 실제 학습 경험을 공유합니다.",
+                "#reviews",
+              ],
+              [
+                "1:1 상담",
+                "수강·수업·결제·강사 및 TALKLY 이용에 관한 문의를 남깁니다.",
+                "/consultation",
+              ],
+            ].map(([title, text, href], index) => (
+              <Link
                 key={title}
-                id={index === 1 ? "reviews" : index === 2 ? "consult" : undefined}
+                href={href}
+                id={index === 1 ? "reviews" : undefined}
                 style={{
+                  display: "block",
                   padding: "28px",
                   borderRadius: "18px",
                   border: "1px solid #e7e9f0",
                   background: "#fafaf7",
+                  textDecoration: "none",
+                  transition: "transform .18s ease, box-shadow .18s ease, border-color .18s ease",
                 }}
               >
                 <h3
@@ -971,7 +987,18 @@ export default function Home() {
                 >
                   {text}
                 </p>
-              </article>
+
+                <div
+                  style={{
+                    marginTop: "18px",
+                    color: "#2f6fed",
+                    fontSize: "13px",
+                    fontWeight: 900,
+                  }}
+                >
+                  {title === "수업후기" ? "후기 보기 →" : "바로가기 →"}
+                </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -1414,13 +1441,56 @@ function FooterColumn({
           fontSize: "12.5px",
         }}
       >
-        {items.map((item) => (
-          <span key={item}>{item}</span>
-        ))}
+        {items.map((item) => {
+          if (title === "인포메이션") {
+            if (item === "공지사항") {
+              return (
+                <Link
+                  key={item}
+                  href="/notice"
+                  style={footerLinkStyle}
+                >
+                  {item}
+                </Link>
+              );
+            }
+
+            if (item === "1:1상담") {
+              return (
+                <Link
+                  key={item}
+                  href="/consultation"
+                  style={footerLinkStyle}
+                >
+                  {item}
+                </Link>
+              );
+            }
+
+            if (item === "수업후기") {
+              return (
+                <a
+                  key={item}
+                  href="#reviews"
+                  style={footerLinkStyle}
+                >
+                  {item}
+                </a>
+              );
+            }
+          }
+
+          return <span key={item}>{item}</span>;
+        })}
       </div>
     </div>
   );
 }
+
+const footerLinkStyle = {
+  color: "inherit",
+  textDecoration: "none",
+};
 
 const utilityLinkStyle = {
   color: "inherit",
