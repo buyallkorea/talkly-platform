@@ -19,7 +19,10 @@ export default async function EnrollmentRequestDetailPage({
 
   const requestId = Number(id);
 
-  if (!Number.isInteger(requestId)) {
+  if (
+    !Number.isInteger(requestId) ||
+    requestId <= 0
+  ) {
     notFound();
   }
 
@@ -33,13 +36,20 @@ export default async function EnrollmentRequestDetailPage({
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
-  if (!profile || profile.role !== "admin") {
+  if (
+    profileError ||
+    !profile ||
+    profile.role !== "admin"
+  ) {
     redirect("/");
   }
 
@@ -81,11 +91,14 @@ export default async function EnrollmentRequestDetailPage({
         )
       `)
       .eq("id", requestId)
-      .single(),
+      .maybeSingle(),
 
     supabase
       .from("teacher_profiles")
-      .select("user_id, display_name")
+      .select(`
+        user_id,
+        display_name
+      `)
       .eq("is_active", true)
       .order("display_name"),
   ]);
@@ -124,10 +137,76 @@ export default async function EnrollmentRequestDetailPage({
     ? requestData.enrollment_options[0]
     : requestData.enrollment_options;
 
+  /*
+   * 승인된 신청이라면 이 신청으로 생성된
+   * 실제 수강정보를 찾습니다.
+   */
+  let enrollmentId: number | null = null;
+
+  if (
+    requestData.status === "approved" &&
+    requestData.child_id &&
+    requestData.course_id &&
+    requestData.start_date &&
+    requestData.end_date
+  ) {
+    const {
+      data: enrollment,
+      error: enrollmentError,
+    } = await supabase
+      .from("enrollments")
+      .select("id")
+      .eq(
+        "child_id",
+        requestData.child_id
+      )
+      .eq(
+        "course_id",
+        requestData.course_id
+      )
+      .eq(
+        "start_date",
+        requestData.start_date
+      )
+      .eq(
+        "end_date",
+        requestData.end_date
+      )
+      .in("status", [
+        "active",
+        "pending",
+        "completed",
+        "paused",
+      ])
+      .order("id", {
+        ascending: false,
+      })
+      .limit(1)
+      .maybeSingle();
+
+    if (!enrollmentError && enrollment) {
+      enrollmentId = enrollment.id;
+    }
+  }
+
+  const statusLabel =
+    requestData.status === "approved"
+      ? "승인 완료"
+      : requestData.status === "rejected"
+        ? "반려"
+        : "승인 대기";
+
+  const statusColor =
+    requestData.status === "approved"
+      ? "#138a4b"
+      : requestData.status === "rejected"
+        ? "#c0392b"
+        : "#2f6fed";
+
   return (
     <main
       style={{
-        maxWidth: "1000px",
+        maxWidth: "1100px",
         margin: "0 auto",
         padding: "40px",
       }}
@@ -137,41 +216,86 @@ export default async function EnrollmentRequestDetailPage({
         style={{
           color: "inherit",
           textDecoration: "none",
-          fontSize: "13px",
+          fontSize: "14px",
           opacity: 0.65,
         }}
       >
         ← 수강신청 관리
       </Link>
 
-      <h1
+      <div
         style={{
-          margin: "14px 0 0",
-          fontSize: "32px",
+          marginTop: "18px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "20px",
+          flexWrap: "wrap",
         }}
       >
-        수강신청 상세
-      </h1>
+        <div>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: "34px",
+              letterSpacing: "-0.03em",
+            }}
+          >
+            수강신청 상세
+          </h1>
+
+          <p
+            style={{
+              margin: "10px 0 0",
+              opacity: 0.6,
+              lineHeight: 1.7,
+            }}
+          >
+            신청 내용과 승인 처리 결과를
+            확인합니다.
+          </p>
+        </div>
+
+        <div
+          style={{
+            padding: "9px 14px",
+            borderRadius: "999px",
+            background: `${statusColor}18`,
+            color: statusColor,
+            fontSize: "13px",
+            fontWeight: 900,
+          }}
+        >
+          {statusLabel}
+        </div>
+      </div>
 
       <section
         style={{
-          marginTop: "26px",
-          padding: "24px",
+          marginTop: "30px",
+          padding: "28px",
+          background: "#ffffff",
           border:
-            "1px solid rgba(255,255,255,0.15)",
-          borderRadius: "14px",
+            "1px solid rgba(15,35,65,.10)",
+          borderRadius: "16px",
         }}
       >
-        <h2 style={{ marginTop: 0 }}>
+        <h2
+          style={{
+            margin: 0,
+            fontSize: "22px",
+          }}
+        >
           {child?.name ?? "학생"}
         </h2>
 
         <div
           style={{
+            marginTop: "24px",
             display: "grid",
             gridTemplateColumns:
               "repeat(auto-fit,minmax(180px,1fr))",
-            gap: "16px",
+            gap: "24px",
           }}
         >
           <Info
@@ -181,7 +305,9 @@ export default async function EnrollmentRequestDetailPage({
 
           <Info
             label="학교"
-            value={child?.school_name ?? "-"}
+            value={
+              child?.school_name ?? "-"
+            }
           />
 
           <Info
@@ -201,7 +327,9 @@ export default async function EnrollmentRequestDetailPage({
 
           <Info
             label="기간"
-            value={`${requestData.start_date} ~ ${requestData.end_date ?? "-"}`}
+            value={`${requestData.start_date} ~ ${
+              requestData.end_date ?? "-"
+            }`}
           />
 
           <Info
@@ -213,7 +341,9 @@ export default async function EnrollmentRequestDetailPage({
             label="예상 수강료"
             value={`${Number(
               requestData.estimated_price ?? 0
-            ).toLocaleString("ko-KR")}원`}
+            ).toLocaleString(
+              "ko-KR"
+            )}원`}
           />
         </div>
       </section>
@@ -221,7 +351,9 @@ export default async function EnrollmentRequestDetailPage({
       <EnrollmentRequestActions
         requestId={requestData.id}
         status={requestData.status}
-        teachers={teachersResult.data ?? []}
+        teachers={
+          teachersResult.data ?? []
+        }
         initialTeacherUserId={
           requestData.assigned_teacher_user_id ??
           ""
@@ -231,9 +363,9 @@ export default async function EnrollmentRequestDetailPage({
           ""
         }
         initialAdminNote={
-          requestData.admin_note ??
-          ""
+          requestData.admin_note ?? ""
         }
+        enrollmentId={enrollmentId}
       />
     </main>
   );
@@ -250,8 +382,8 @@ function Info({
     <div>
       <div
         style={{
-          fontSize: "11px",
-          opacity: 0.45,
+          fontSize: "12px",
+          color: "#7b8493",
         }}
       >
         {label}
@@ -259,8 +391,10 @@ function Info({
 
       <div
         style={{
-          marginTop: "5px",
+          marginTop: "7px",
+          fontSize: "16px",
           fontWeight: 800,
+          color: "#101828",
         }}
       >
         {value}
