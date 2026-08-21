@@ -102,8 +102,8 @@ const menuGroups: MenuGroup[] = [
         href: "/admin/courses",
       },
       {
-        label: "교재 등록",
-        href: "/admin/textbooks/new",
+        label: "교재 관리",
+        href: "/admin/textbooks",
       },
     ],
   },

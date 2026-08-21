@@ -442,207 +442,41 @@ export default async function AdminCalendarPage({
   ).length;
 
   return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: "20px",
-          flexWrap: "wrap",
-        }}
-      >
+    <main style={{ width: "100%", maxWidth: "1280px", margin: "0 auto", padding: "8px 0 60px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "20px", flexWrap: "wrap" }}>
         <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: "32px",
-              letterSpacing: "-0.03em",
-            }}
-          >
-            수업 캘린더
-          </h1>
-
-          <p
-            style={{
-              marginTop: "9px",
-              marginBottom: 0,
-              opacity: 0.6,
-            }}
-          >
-            오늘의 전체 수업과 처리 상태를 시간순으로 확인합니다.
-          </p>
+          <div style={{ color: "#2f6fed", fontSize: "12px", fontWeight: 900, letterSpacing: "0.08em" }}>TODAY'S CLASSES</div>
+          <h1 style={{ margin: "9px 0 0", color: "#101828", fontSize: "34px", letterSpacing: "-0.04em" }}>오늘 수업</h1>
+          <p style={{ margin: "10px 0 0", color: "#667085", lineHeight: 1.7 }}>오늘 진행되는 전체 수업과 출결·평가 처리 상태를 시간순으로 확인합니다.</p>
         </div>
-
-        <div
-          style={{
-            padding: "10px 14px",
-            border: "1px solid rgba(255,255,255,0.16)",
-            borderRadius: "9px",
-            fontSize: "13px",
-            fontWeight: 700,
-          }}
-        >
+        <div style={{ padding: "11px 15px", border: "1px solid #e4e7ec", borderRadius: "10px", background: "#fff", color: "#344054", fontSize: "13px", fontWeight: 800 }}>
           {formatDateLabel(now)}
         </div>
       </div>
 
-      <section
-        style={{
-          marginTop: "28px",
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fit, minmax(160px, 1fr))",
-          gap: "12px",
-        }}
-      >
-        {[
-          ["오늘 수업", sessions.length],
-          ["예정", scheduledCount],
-          ["완료", completedCount],
-          ["결석 승인", heldCount],
-          ["취소", cancelledCount],
-          ["출결 미처리", missingAttendanceCount],
-          ["평가 미작성", missingEvaluationCount],
-        ].map(([label, value]) => (
-          <div
-            key={String(label)}
-            style={{
-              padding: "20px",
-              border: "1px solid rgba(255,255,255,0.16)",
-              borderRadius: "12px",
-              background: "rgba(255,255,255,0.03)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "13px",
-                opacity: 0.58,
-              }}
-            >
-              {label}
-            </div>
-
-            <div
-              style={{
-                marginTop: "8px",
-                fontSize: "29px",
-                fontWeight: 800,
-              }}
-            >
-              {value}
-            </div>
-          </div>
-        ))}
+      <section style={{ marginTop: "26px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))", gap: "12px" }}>
+        <SummaryCard label="오늘 수업" value={sessions.length} />
+        <SummaryCard label="예정" value={scheduledCount} tone="blue" />
+        <SummaryCard label="완료" value={completedCount} tone="green" />
+        <SummaryCard label="결석 승인" value={heldCount} tone="orange" />
+        <SummaryCard label="취소" value={cancelledCount} tone="gray" />
+        <SummaryCard label="출결 미처리" value={missingAttendanceCount} tone={missingAttendanceCount > 0 ? "red" : "gray"} />
+        <SummaryCard label="평가 미작성" value={missingEvaluationCount} tone={missingEvaluationCount > 0 ? "red" : "gray"} />
       </section>
 
-      <section
-        style={{
-          marginTop: "20px",
-          display: "flex",
-          gap: "10px",
-          flexWrap: "wrap",
-        }}
-      >
-        <Link
-          href="/admin/calendar"
-          style={{
-            padding: "10px 14px",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: "9px",
-            color: "inherit",
-            textDecoration: "none",
-            fontWeight: 800,
-          }}
-        >
-          오늘 수업
-        </Link>
+      <nav style={{ marginTop: "22px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        <CalendarTab href="/admin/calendar" label="오늘" active />
+        <CalendarTab href="/admin/calendar/week" label="주간" />
+        <CalendarTab href="/admin/calendar/month" label="월간" />
+      </nav>
 
-        <span
-          style={{
-            padding: "10px 14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "9px",
-            opacity: 0.45,
-          }}
-        >
-          주간 일정 준비 중
-        </span>
-
-        <span
-          style={{
-            padding: "10px 14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "9px",
-            opacity: 0.45,
-          }}
-        >
-          월간 캘린더 준비 중
-        </span>
-      </section>
-
-      <form
-        method="get"
-        style={{
-          marginTop: "18px",
-          padding: "18px",
-          border: "1px solid rgba(255,255,255,0.16)",
-          borderRadius: "12px",
-          display: "grid",
-          gridTemplateColumns:
-            "minmax(220px, 1fr) 190px 170px auto",
-          gap: "10px",
-          background: "rgba(255,255,255,0.03)",
-        }}
-      >
-        <input
-          type="search"
-          name="q"
-          defaultValue={q}
-          placeholder="학생명, 강사명, 과정 검색"
-          style={{
-            minWidth: 0,
-            padding: "11px 12px",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: "8px",
-            background: "#111",
-            color: "#fff",
-          }}
-        />
-
-        <select
-          name="teacher"
-          defaultValue={teacher}
-          style={{
-            padding: "11px 12px",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: "8px",
-            background: "#111",
-            color: "#fff",
-          }}
-        >
+      <form method="get" style={{ marginTop: "18px", padding: "18px", border: "1px solid #e4e7ec", borderRadius: "14px", display: "grid", gridTemplateColumns: "minmax(240px, 1fr) 190px 170px auto auto", gap: "10px", background: "#fff" }}>
+        <input type="search" name="q" defaultValue={q} placeholder="학생명, 강사명, 과정 검색" style={fieldStyle} />
+        <select name="teacher" defaultValue={teacher} style={fieldStyle}>
           <option value="all">전체 강사</option>
-          {teachers.map((item) => (
-            <option
-              key={item.user_id}
-              value={item.user_id}
-            >
-              {item.display_name || "이름 미등록 강사"}
-            </option>
-          ))}
+          {teachers.map((item) => <option key={item.user_id} value={item.user_id}>{item.display_name || "이름 미등록 강사"}</option>)}
         </select>
-
-        <select
-          name="status"
-          defaultValue={status}
-          style={{
-            padding: "11px 12px",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: "8px",
-            background: "#111",
-            color: "#fff",
-          }}
-        >
+        <select name="status" defaultValue={status} style={fieldStyle}>
           <option value="all">전체 상태</option>
           <option value="scheduled">예정</option>
           <option value="completed">완료</option>
@@ -650,142 +484,96 @@ export default async function AdminCalendarPage({
           <option value="cancelled">취소</option>
           <option value="no_show">무단결석</option>
         </select>
-
-        <button
-          type="submit"
-          style={{
-            padding: "11px 18px",
-            border: "1px solid rgba(255,255,255,0.22)",
-            borderRadius: "8px",
-            background: "#f5f5f5",
-            color: "#111",
-            fontWeight: 800,
-            cursor: "pointer",
-          }}
-        >
-          검색
-        </button>
+        <button type="submit" style={{ minHeight: "44px", padding: "0 18px", border: 0, borderRadius: "9px", background: "#0A1F44", color: "#fff", fontWeight: 900, cursor: "pointer" }}>검색</button>
+        <Link href="/admin/calendar" style={{ minHeight: "44px", padding: "0 15px", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid #d0d5dd", borderRadius: "9px", background: "#fff", color: "#475467", textDecoration: "none", fontSize: "13px", fontWeight: 800 }}>초기화</Link>
       </form>
 
-      <section
-        style={{
-          marginTop: "18px",
-          border: "1px solid rgba(255,255,255,0.16)",
-          borderRadius: "14px",
-          overflow: "hidden",
-          background: "rgba(255,255,255,0.03)",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "90px 90px minmax(150px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) 110px 110px 90px",
-            gap: "12px",
-            padding: "14px 18px",
-            borderBottom:
-              "1px solid rgba(255,255,255,0.14)",
-            fontSize: "12px",
-            fontWeight: 700,
-            opacity: 0.55,
-          }}
-        >
-          <div>시간</div>
-          <div>회차</div>
-          <div>학생</div>
-          <div>강사</div>
-          <div>과정</div>
-          <div>출결</div>
-          <div>평가</div>
-          <div>상태</div>
-        </div>
+      {(missingAttendanceCount > 0 || missingEvaluationCount > 0) && (
+        <section style={{ marginTop: "16px", padding: "15px 18px", border: "1px solid #fed7aa", borderRadius: "12px", background: "#fffaf5", color: "#9a3412", fontSize: "13px", lineHeight: 1.7 }}>
+          <strong>오늘 처리 확인이 필요합니다.</strong>{" "}
+          {missingAttendanceCount > 0 && `출결 미처리 ${missingAttendanceCount}건`}
+          {missingAttendanceCount > 0 && missingEvaluationCount > 0 && " · "}
+          {missingEvaluationCount > 0 && `평가 미작성 ${missingEvaluationCount}건`}
+        </section>
+      )}
 
-        {filteredSessions.length === 0 ? (
-          <div
-            style={{
-              padding: "40px",
-              textAlign: "center",
-              opacity: 0.62,
-            }}
-          >
-            조건에 맞는 오늘 수업이 없습니다.
+      <section style={{ marginTop: "18px", border: "1px solid #e4e7ec", borderRadius: "16px", overflowX: "auto", background: "#fff", boxShadow: "0 1px 2px rgba(16,24,40,.03)" }}>
+        <div style={{ minWidth: "1040px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "90px 80px minmax(150px,1fr) minmax(130px,1fr) minmax(150px,1fr) 110px 110px 110px", gap: "12px", padding: "14px 18px", borderBottom: "1px solid #eaecf0", background: "#f9fafb", color: "#667085", fontSize: "12px", fontWeight: 800 }}>
+            <div>시간</div><div>회차</div><div>학생</div><div>강사</div><div>과정</div><div>출결</div><div>평가</div><div>상태</div>
           </div>
-        ) : (
-          filteredSessions.map((session) => {
-            const attendanceItem =
-              attendanceMap.get(session.id);
 
+          {filteredSessions.length === 0 ? (
+            <div style={{ padding: "58px 24px", textAlign: "center", color: "#667085" }}>
+              <div style={{ fontWeight: 800, color: "#344054" }}>조건에 맞는 오늘 수업이 없습니다.</div>
+              <div style={{ marginTop: "7px", fontSize: "13px" }}>검색 조건을 변경하거나 초기화해주세요.</div>
+            </div>
+          ) : filteredSessions.map((session, index) => {
+            const attendanceItem = attendanceMap.get(session.id);
+            const attendanceLabel = attendanceItem ? getAttendanceStatusLabel(attendanceItem.status) : "미등록";
+            const evaluationDone = evaluationSet.has(session.id);
             return (
-              <Link
-                key={session.id}
-                href={`/admin/enrollments/${session.enrollment_id}/lessons/${session.id}`}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    "90px 90px minmax(150px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) 110px 110px 90px",
-                  gap: "12px",
-                  alignItems: "center",
-                  padding: "16px 18px",
-                  borderBottom:
-                    "1px solid rgba(255,255,255,0.1)",
-                  color: "inherit",
-                  textDecoration: "none",
-                }}
-              >
-                <div>
-                  <strong>
-                    {formatTime(session.scheduled_start)}
-                  </strong>
-
-                  <div
-                    style={{
-                      marginTop: "4px",
-                      fontSize: "11px",
-                      opacity: 0.5,
-                    }}
-                  >
-                    {formatTime(session.scheduled_end)}
-                  </div>
-                </div>
-
-                <div>
-                  {session.lesson_number}회차
-                </div>
-
-                <div style={{ fontWeight: 800 }}>
-                  {getStudentName(session.enrollment_id)}
-                </div>
-
-                <div>
-                  {getTeacherName(session.enrollment_id)}
-                </div>
-
-                <div>
-                  {getCourseName(session.enrollment_id)}
-                </div>
-
-                <div>
-                  {attendanceItem
-                    ? getAttendanceStatusLabel(
-                        attendanceItem.status
-                      )
-                    : "미등록"}
-                </div>
-
-                <div>
-                  {evaluationSet.has(session.id)
-                    ? "작성 완료"
-                    : "미작성"}
-                </div>
-
-                <div style={{ fontWeight: 700 }}>
-                  {getSessionStatusLabel(session.status)}
-                </div>
+              <Link key={session.id} href={`/admin/enrollments/${session.enrollment_id}/lessons/${session.id}`} style={{ display: "grid", gridTemplateColumns: "90px 80px minmax(150px,1fr) minmax(130px,1fr) minmax(150px,1fr) 110px 110px 110px", gap: "12px", alignItems: "center", padding: "17px 18px", borderBottom: index === filteredSessions.length - 1 ? "none" : "1px solid #eef1f5", color: "#344054", textDecoration: "none", fontSize: "13px" }}>
+                <div><strong style={{ color: "#101828", fontSize: "14px" }}>{formatTime(session.scheduled_start)}</strong><div style={{ marginTop: "4px", color: "#98a2b3", fontSize: "11px" }}>~ {formatTime(session.scheduled_end)}</div></div>
+                <div>{session.lesson_number}회차</div>
+                <div style={{ color: "#101828", fontWeight: 900 }}>{getStudentName(session.enrollment_id)}</div>
+                <div>{getTeacherName(session.enrollment_id)}</div>
+                <div>{getCourseName(session.enrollment_id)}</div>
+                <SmallBadge label={attendanceLabel} warning={!attendanceItem} />
+                <SmallBadge label={evaluationDone ? "작성 완료" : "미작성"} warning={!evaluationDone && session.status === "completed"} positive={evaluationDone} />
+                <SessionStatusBadge status={session.status} label={getSessionStatusLabel(session.status)} />
               </Link>
             );
-          })
-        )}
+          })}
+        </div>
       </section>
-    </div>
+
+      <div style={{ marginTop: "14px", color: "#98a2b3", fontSize: "12px", textAlign: "right" }}>검색 결과 {filteredSessions.length}건 / 오늘 전체 {sessions.length}건</div>
+    </main>
   );
+}
+
+const fieldStyle = {
+  width: "100%",
+  minHeight: "44px",
+  boxSizing: "border-box" as const,
+  padding: "0 12px",
+  border: "1px solid #d0d5dd",
+  borderRadius: "9px",
+  background: "#ffffff",
+  color: "#101828",
+  fontFamily: "inherit",
+  fontSize: "13px",
+};
+
+function SummaryCard({ label, value, tone = "default" }: { label: string; value: number; tone?: "default" | "blue" | "green" | "orange" | "red" | "gray" }) {
+  const tones = {
+    default: { background: "#ffffff", border: "#e4e7ec", color: "#101828" },
+    blue: { background: "#f5f8ff", border: "#d6e4ff", color: "#2f6fed" },
+    green: { background: "#f6fef9", border: "#abefc6", color: "#027a48" },
+    orange: { background: "#fffaf5", border: "#fed7aa", color: "#b54708" },
+    red: { background: "#fef3f2", border: "#fecdca", color: "#b42318" },
+    gray: { background: "#f9fafb", border: "#e4e7ec", color: "#475467" },
+  };
+  const style = tones[tone];
+  return <div style={{ minHeight: "104px", padding: "18px", border: `1px solid ${style.border}`, borderRadius: "13px", background: style.background }}><div style={{ color: "#667085", fontSize: "12px", fontWeight: 800 }}>{label}</div><div style={{ marginTop: "11px", color: style.color, fontSize: "29px", fontWeight: 900 }}>{value}</div></div>;
+}
+
+function CalendarTab({ href, label, active = false }: { href: string; label: string; active?: boolean }) {
+  return <Link href={href} style={{ minHeight: "40px", padding: "0 16px", display: "inline-flex", alignItems: "center", justifyContent: "center", border: active ? "1px solid #0A1F44" : "1px solid #d0d5dd", borderRadius: "9px", background: active ? "#0A1F44" : "#fff", color: active ? "#fff" : "#475467", textDecoration: "none", fontSize: "13px", fontWeight: 900 }}>{label}</Link>;
+}
+
+function SmallBadge({ label, warning = false, positive = false }: { label: string; warning?: boolean; positive?: boolean }) {
+  const background = warning ? "#fff7ed" : positive ? "#ecfdf3" : "#f2f4f7";
+  const color = warning ? "#b54708" : positive ? "#027a48" : "#475467";
+  return <div><span style={{ display: "inline-flex", minHeight: "27px", padding: "0 9px", alignItems: "center", borderRadius: "999px", background, color, fontSize: "11px", fontWeight: 900, whiteSpace: "nowrap" }}>{label}</span></div>;
+}
+
+function SessionStatusBadge({ status, label }: { status: string; label: string }) {
+  let background = "#f2f4f7"; let color = "#475467";
+  if (status === "scheduled") { background = "#eef4ff"; color = "#2f6fed"; }
+  if (status === "completed") { background = "#ecfdf3"; color = "#027a48"; }
+  if (status === "held") { background = "#fff7ed"; color = "#b54708"; }
+  if (status === "cancelled" || status === "no_show") { background = "#fef3f2"; color = "#b42318"; }
+  return <div><span style={{ display: "inline-flex", minHeight: "28px", padding: "0 9px", alignItems: "center", justifyContent: "center", borderRadius: "999px", background, color, fontSize: "11px", fontWeight: 900, whiteSpace: "nowrap" }}>{label}</span></div>;
 }

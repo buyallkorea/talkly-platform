@@ -15,7 +15,9 @@ export default function ClassHoldReviewForm({
 }: Props) {
   const router = useRouter();
 
-  const [adminNote, setAdminNote] = useState("");
+  const [adminNote, setAdminNote] =
+    useState("");
+
   const [loading, setLoading] = useState<
     "approved" | "rejected" | null
   >(null);
@@ -26,6 +28,10 @@ export default function ClassHoldReviewForm({
   async function reviewHold(
     status: "approved" | "rejected"
   ) {
+    if (loading) {
+      return;
+    }
+
     setErrorMessage("");
     setLoading(status);
 
@@ -45,7 +51,9 @@ export default function ClassHoldReviewForm({
         return;
       }
 
-      // 관리자 권한 확인
+      /*
+       * 관리자 권한 확인
+       */
       const {
         data: profile,
         error: profileError,
@@ -67,7 +75,9 @@ export default function ClassHoldReviewForm({
         return;
       }
 
-      // 현재 신청상태 확인
+      /*
+       * 현재 신청상태 확인
+       */
       const {
         data: currentHold,
         error: holdReadError,
@@ -109,7 +119,9 @@ export default function ClassHoldReviewForm({
       const now =
         new Date().toISOString();
 
-      // 결석신청 승인 / 거절
+      /*
+       * 결석신청 승인 / 거절
+       */
       const {
         data: updatedHold,
         error: holdUpdateError,
@@ -129,7 +141,7 @@ export default function ClassHoldReviewForm({
 
       if (holdUpdateError) {
         setErrorMessage(
-          `결석신청 처리 실패: ${holdUpdateError.message} / code: ${holdUpdateError.code}`
+          `결석신청 처리 실패: ${holdUpdateError.message}`
         );
         setLoading(null);
         return;
@@ -147,16 +159,8 @@ export default function ClassHoldReviewForm({
       }
 
       /*
-        Class Hold 승인 시
-        class_sessions.status = held
-
-        기존 TALKLY DB의 class_sessions 상태:
-        scheduled
-        completed
-        cancelled
-        no_show
-        held
-      */
+       * 승인 시 대상 수업을 held 상태로 변경
+       */
       if (status === "approved") {
         const {
           data: updatedSession,
@@ -208,52 +212,79 @@ export default function ClassHoldReviewForm({
   }
 
   return (
-    <div
-      style={{
-        marginTop: "24px",
-      }}
-    >
-      <label
-        htmlFor="adminNote"
-        style={{
-          display: "block",
-          marginBottom: "8px",
-          fontWeight: 700,
-        }}
-      >
-        관리자 메모
-      </label>
+    <div>
+      <div>
+        <label
+          htmlFor="adminNote"
+          style={{
+            display: "block",
+            color: "#344054",
+            fontSize: "13px",
+            fontWeight: 900,
+          }}
+        >
+          관리자 메모
+        </label>
 
-      <textarea
-        id="adminNote"
-        value={adminNote}
-        onChange={(event) =>
-          setAdminNote(
-            event.target.value
-          )
-        }
-        rows={5}
-        placeholder="승인 또는 거절 사유, 안내사항 등을 입력해주세요."
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          padding: "12px 14px",
-          border: "1px solid #ddd",
-          borderRadius: "8px",
-          fontSize: "16px",
-          resize: "vertical",
-        }}
-      />
+        <p
+          style={{
+            margin: "6px 0 0",
+            color: "#98a2b3",
+            fontSize: "12px",
+            lineHeight: 1.6,
+          }}
+        >
+          승인 또는 거절 사유와 안내사항을
+          기록할 수 있습니다.
+        </p>
+
+        <textarea
+          id="adminNote"
+          value={adminNote}
+          onChange={(event) =>
+            setAdminNote(
+              event.target.value
+            )
+          }
+          rows={6}
+          placeholder="예: 해당 회차 결석 승인 처리합니다. 보강 일정은 별도 안내 예정입니다."
+          disabled={loading !== null}
+          style={{
+            marginTop: "12px",
+            width: "100%",
+            minHeight: "150px",
+            boxSizing: "border-box",
+            padding: "14px",
+            border:
+              "1px solid #d0d5dd",
+            borderRadius: "10px",
+            background:
+              loading !== null
+                ? "#f9fafb"
+                : "#ffffff",
+            color: "#101828",
+            fontFamily: "inherit",
+            fontSize: "14px",
+            lineHeight: 1.75,
+            resize: "vertical",
+            outline: "none",
+          }}
+        />
+      </div>
 
       {errorMessage && (
         <div
           style={{
             marginTop: "16px",
-            padding: "14px",
+            padding: "14px 16px",
             border:
-              "1px solid #d93025",
-            borderRadius: "8px",
-            color: "#d93025",
+              "1px solid #fecdca",
+            borderRadius: "10px",
+            background: "#fef3f2",
+            color: "#b42318",
+            fontSize: "13px",
+            fontWeight: 700,
+            lineHeight: 1.7,
           }}
         >
           {errorMessage}
@@ -262,56 +293,143 @@ export default function ClassHoldReviewForm({
 
       <div
         style={{
-          display: "flex",
-          gap: "12px",
-          marginTop: "20px",
-          flexWrap: "wrap",
+          marginTop: "22px",
+          paddingTop: "20px",
+          borderTop:
+            "1px solid #eaecf0",
         }}
       >
-        <button
-          type="button"
-          disabled={loading !== null}
-          onClick={() =>
-            reviewHold("approved")
-          }
+        <div
           style={{
-            padding: "13px 22px",
-            border: "none",
-            borderRadius: "8px",
-            fontWeight: 700,
-            cursor:
-              loading !== null
-                ? "default"
-                : "pointer",
+            display: "flex",
+            justifyContent:
+              "space-between",
+            alignItems: "center",
+            gap: "14px",
+            flexWrap: "wrap",
           }}
         >
-          {loading === "approved"
-            ? "승인 처리 중..."
-            : "결석신청 승인"}
-        </button>
+          <div>
+            <div
+              style={{
+                color: "#101828",
+                fontSize: "14px",
+                fontWeight: 900,
+              }}
+            >
+              처리 결과 선택
+            </div>
 
-        <button
-          type="button"
-          disabled={loading !== null}
-          onClick={() =>
-            reviewHold("rejected")
-          }
+            <div
+              style={{
+                marginTop: "5px",
+                color: "#98a2b3",
+                fontSize: "12px",
+                lineHeight: 1.6,
+              }}
+            >
+              처리 후에는 상태가 확정되므로
+              신청 내용을 다시 확인해주세요.
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              type="button"
+              disabled={loading !== null}
+              onClick={() =>
+                reviewHold("rejected")
+              }
+              style={{
+                minHeight: "46px",
+                padding: "0 18px",
+                border:
+                  "1px solid #fda29b",
+                borderRadius: "10px",
+                background: "#ffffff",
+                color: "#b42318",
+                fontFamily: "inherit",
+                fontSize: "13px",
+                fontWeight: 900,
+                cursor:
+                  loading !== null
+                    ? "default"
+                    : "pointer",
+                opacity:
+                  loading !== null
+                    ? 0.55
+                    : 1,
+              }}
+            >
+              {loading === "rejected"
+                ? "거절 처리 중..."
+                : "신청 거절"}
+            </button>
+
+            <button
+              type="button"
+              disabled={loading !== null}
+              onClick={() =>
+                reviewHold("approved")
+              }
+              style={{
+                minHeight: "46px",
+                padding: "0 20px",
+                border: "none",
+                borderRadius: "10px",
+                background: "#0A1F44",
+                color: "#ffffff",
+                fontFamily: "inherit",
+                fontSize: "13px",
+                fontWeight: 900,
+                cursor:
+                  loading !== null
+                    ? "default"
+                    : "pointer",
+                boxShadow:
+                  "0 8px 18px rgba(10,31,68,.12)",
+                opacity:
+                  loading !== null
+                    ? 0.6
+                    : 1,
+              }}
+            >
+              {loading === "approved"
+                ? "승인 처리 중..."
+                : "결석 신청 승인"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          marginTop: "18px",
+          padding: "14px 16px",
+          borderRadius: "10px",
+          background: "#f9fafb",
+          color: "#667085",
+          fontSize: "11px",
+          lineHeight: 1.7,
+        }}
+      >
+        결석 신청을 승인하면 대상 수업의 상태가
+        <strong
           style={{
-            padding: "13px 22px",
-            border:
-              "1px solid #ddd",
-            borderRadius: "8px",
-            fontWeight: 700,
-            cursor:
-              loading !== null
-                ? "default"
-                : "pointer",
+            margin: "0 4px",
+            color: "#344054",
           }}
         >
-          {loading === "rejected"
-            ? "거절 처리 중..."
-            : "결석신청 거절"}
-        </button>
+          held
+        </strong>
+        로 변경됩니다. 거절하는 경우 수업 상태는
+        변경되지 않습니다.
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import CourseForm from "./CourseForm";
@@ -26,23 +27,64 @@ export default async function NewCoursePage() {
   return (
     <main
       style={{
-        padding: "40px",
-        maxWidth: "900px",
+        width: "100%",
+        maxWidth: "980px",
         margin: "0 auto",
+        padding: "54px 42px 90px",
       }}
     >
-      <h1 style={{ marginBottom: "8px" }}>
-        과정 등록
-      </h1>
-
-      <p
+      <Link
+        href="/admin/courses"
         style={{
-          marginTop: 0,
-          marginBottom: "32px",
+          color: "#667085",
+          textDecoration: "none",
+          fontSize: "13px",
+          fontWeight: 800,
         }}
       >
-        TALKLY에서 운영할 수업 과정의 기본 정보를 등록합니다.
-      </p>
+        ← 과정 관리
+      </Link>
+
+      <div
+        style={{
+          marginTop: "22px",
+        }}
+      >
+        <div
+          style={{
+            color: "#2f6fed",
+            fontSize: "12px",
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+          }}
+        >
+          COURSE MANAGEMENT
+        </div>
+
+        <h1
+          style={{
+            margin: "10px 0 0",
+            color: "#101828",
+            fontSize: "36px",
+            lineHeight: 1.2,
+            letterSpacing: "-0.04em",
+          }}
+        >
+          과정 등록
+        </h1>
+
+        <p
+          style={{
+            margin: "13px 0 0",
+            color: "#667085",
+            fontSize: "15px",
+            lineHeight: 1.7,
+          }}
+        >
+          TALKLY에서 운영할 수업 과정의 기본 정보와 학습
+          분류를 등록합니다.
+        </p>
+      </div>
 
       <CourseForm />
     </main>
