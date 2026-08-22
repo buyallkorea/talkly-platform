@@ -501,9 +501,10 @@ export default function LevelTestRequestForm({
       }
 
       if (existingTest) {
-        throw new Error(
-          "현재 진행 중인 레벨테스트가 있습니다. 기존 테스트를 먼저 완료해주세요."
+        router.push(
+          `/parent/level-tests/${existingTest.id}`
         );
+        return;
       }
 
       const now =
