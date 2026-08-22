@@ -67,7 +67,7 @@ export default async function ParentLevelTestAttemptPage({
   }
 
   /*
-   * 학부모 권한 확인
+   * 학부모 / 학생 권한 확인
    */
   const {
     data: profile,
@@ -81,10 +81,16 @@ export default async function ParentLevelTestAttemptPage({
   if (
     profileError ||
     !profile ||
-    profile.role !== "parent"
+    (
+      profile.role !== "parent" &&
+      profile.role !== "student"
+    )
   ) {
     redirect("/");
   }
+
+  const isStudent =
+    profile.role === "student";
 
   /*
    * 레벨테스트 확인
@@ -97,6 +103,8 @@ export default async function ParentLevelTestAttemptPage({
     .select(`
       id,
       parent_user_id,
+      student_user_id,
+      child_id,
       target_group,
       ai_status,
       status
@@ -115,13 +123,69 @@ export default async function ParentLevelTestAttemptPage({
   }
 
   /*
-   * 본인 레벨테스트만 응시 가능
+   * 접근 권한 확인
+   *
+   * 학부모:
+   * 본인이 신청한 레벨테스트만 가능
+   *
+   * 학생:
+   * student_user_id가 본인이거나
+   * child_id에 연결된 학생 계정이 본인이어야 함
    */
-  if (
-    levelTest.parent_user_id !==
-    user.id
-  ) {
-    redirect("/parent");
+  if (!isStudent) {
+    if (
+      levelTest.parent_user_id !==
+      user.id
+    ) {
+      redirect("/parent");
+    }
+  }
+
+  if (isStudent) {
+    let studentHasAccess =
+      levelTest.student_user_id ===
+      user.id;
+
+    if (
+      !studentHasAccess &&
+      levelTest.child_id
+    ) {
+      const {
+        data: linkedChild,
+        error: linkedChildError,
+      } = await supabase
+        .from("children")
+        .select(`
+          id,
+          student_user_id,
+          linked_student_user_id
+        `)
+        .eq(
+          "id",
+          levelTest.child_id
+        )
+        .eq(
+          "is_active",
+          true
+        )
+        .maybeSingle();
+
+      if (linkedChildError) {
+        throw new Error(
+          `학생 연결 정보를 확인하지 못했습니다: ${linkedChildError.message}`
+        );
+      }
+
+      studentHasAccess =
+        linkedChild?.student_user_id ===
+          user.id ||
+        linkedChild?.linked_student_user_id ===
+          user.id;
+    }
+
+    if (!studentHasAccess) {
+      redirect("/student");
+    }
   }
 
   /*
@@ -135,6 +199,7 @@ export default async function ParentLevelTestAttemptPage({
     .select(`
       id,
       level_test_id,
+      student_user_id,
       target_group,
       status,
       current_difficulty,
@@ -159,6 +224,18 @@ export default async function ParentLevelTestAttemptPage({
 
   if (!attempt) {
     notFound();
+  }
+
+  /*
+   * 학생 계정은 본인의 attempt만 허용
+   */
+  if (
+    isStudent &&
+    attempt.student_user_id &&
+    attempt.student_user_id !==
+      user.id
+  ) {
+    redirect("/student");
   }
 
   /*
@@ -336,11 +413,8 @@ export default async function ParentLevelTestAttemptPage({
   /*
    * Listening 음원 Public URL 생성
    *
-   * DB에는 파일명만 저장되어 있음:
-   * elementary-l1-01.mp3
-   *
-   * Storage bucket:
-   * level-test-audio
+   * DB에는 파일명만 저장되어 있음.
+   * Storage bucket: level-test-audio
    */
   let publicAudioUrl:
     | string
@@ -520,10 +594,6 @@ export default async function ParentLevelTestAttemptPage({
                 choice_d:
                   question.choice_d,
 
-                /*
-                 * DB의 파일명이 아니라
-                 * 실제 Public URL 전달
-                 */
                 audio_url:
                   publicAudioUrl,
 
