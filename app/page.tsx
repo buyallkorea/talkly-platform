@@ -146,7 +146,7 @@ export default function Home() {
             레벨테스트신청
           </Link>
           <span style={{ opacity: 0.25 }}>|</span>
-          <a href="#enroll" style={utilityLinkStyle}>
+          <a href="/enroll" style={utilityLinkStyle}>
             수강신청
           </a>
           <span style={{ opacity: 0.25 }}>|</span>
@@ -252,11 +252,11 @@ export default function Home() {
             </Link>
 
             <div className="talkly-nav-item">
-              <a href="#enroll" className="talkly-nav-link">
+              <a href="/enroll" className="talkly-nav-link">
                 수강신청 ▾
               </a>
               <div className="talkly-dropdown">
-                <a href="#enroll">수강신청</a>
+                <a href="/enroll">수강신청</a>
                 <Link href="/login">내 수업관리</Link>
                 <Link href="/login">강의실 입장</Link>
               </div>
