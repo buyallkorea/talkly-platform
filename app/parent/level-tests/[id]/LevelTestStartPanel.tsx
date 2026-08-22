@@ -17,6 +17,8 @@ type Props = {
   } | null;
 };
 
+type UserRole = "parent" | "student";
+
 export default function LevelTestStartPanel({
   levelTestId,
   parentUserId,
@@ -35,14 +37,24 @@ export default function LevelTestStartPanel({
     setErrorMessage,
   ] = useState("");
 
-  async function checkParent() {
+  /*
+   * 현재 로그인 사용자를 확인합니다.
+   *
+   * TALKLY 레벨테스트는
+   * 1. 학부모가 자녀를 대신하여 시작
+   * 2. 연결된 학생이 본인 계정으로 직접 시작
+   *
+   * 두 경우를 모두 허용합니다.
+   */
+  async function checkUser() {
     const supabase =
       createClient();
 
     const {
       data: { user },
       error: userError,
-    } = await supabase.auth.getUser();
+    } =
+      await supabase.auth.getUser();
 
     if (
       userError ||
@@ -50,15 +62,6 @@ export default function LevelTestStartPanel({
     ) {
       throw new Error(
         "로그인 정보를 확인할 수 없습니다."
-      );
-    }
-
-    if (
-      user.id !==
-      parentUserId
-    ) {
-      throw new Error(
-        "학부모 계정 정보를 확인할 수 없습니다."
       );
     }
 
@@ -73,17 +76,29 @@ export default function LevelTestStartPanel({
 
     if (
       profileError ||
-      !profile ||
-      profile.role !== "parent"
+      !profile
     ) {
       throw new Error(
-        "학부모 권한을 확인할 수 없습니다."
+        "회원 정보를 확인할 수 없습니다."
+      );
+    }
+
+    if (
+      profile.role !==
+        "parent" &&
+      profile.role !==
+        "student"
+    ) {
+      throw new Error(
+        "레벨테스트를 시작할 수 있는 계정이 아닙니다."
       );
     }
 
     return {
       supabase,
       user,
+      role:
+        profile.role as UserRole,
     };
   }
 
@@ -95,15 +110,17 @@ export default function LevelTestStartPanel({
       const {
         supabase,
         user,
-      } = await checkParent();
+        role,
+      } = await checkUser();
 
       /*
-       * 로그인한 학부모의 레벨테스트인지
-       * 다시 확인합니다.
+       * 레벨테스트 정보를 먼저 가져옵니다.
        *
-       * 기존 자녀 연결 여부(child_id)는
-       * 응시 시작 조건으로 사용하지 않습니다.
-       * 레벨테스트만 신청한 학생도 응시할 수 있습니다.
+       * parent_user_id:
+       * 신청한 학부모
+       *
+       * student_user_id:
+       * 실제 응시 학생 계정
        */
       const {
         data: levelTest,
@@ -113,6 +130,8 @@ export default function LevelTestStartPanel({
         .select(`
           id,
           parent_user_id,
+          student_user_id,
+          child_id,
           target_group,
           ai_status,
           status
@@ -121,10 +140,6 @@ export default function LevelTestStartPanel({
           "id",
           levelTestId
         )
-        .eq(
-          "parent_user_id",
-          user.id
-        )
         .maybeSingle();
 
       if (
@@ -132,10 +147,48 @@ export default function LevelTestStartPanel({
         !levelTest
       ) {
         throw new Error(
-          "레벨테스트 정보를 확인할 수 없습니다."
+          levelTestError
+            ? `레벨테스트 정보 확인 실패: ${levelTestError.message}`
+            : "레벨테스트 정보를 확인할 수 없습니다."
         );
       }
 
+      /*
+       * 접근 권한 확인
+       *
+       * 학부모:
+       * level_test.parent_user_id와
+       * 현재 로그인 ID가 같아야 합니다.
+       *
+       * 학생:
+       * level_test.student_user_id와
+       * 현재 로그인 ID가 같아야 합니다.
+       */
+      if (
+        role === "parent" &&
+        levelTest.parent_user_id !==
+          user.id
+      ) {
+        throw new Error(
+          "이 레벨테스트에 접근할 수 없습니다."
+        );
+      }
+
+      if (
+        role === "student" &&
+        levelTest.student_user_id !==
+          user.id
+      ) {
+        throw new Error(
+          "본인의 레벨테스트만 응시할 수 있습니다."
+        );
+      }
+
+      /*
+       * 이미 완료되었거나
+       * 관리자 검토 단계로 넘어간 시험은
+       * 다시 시작하지 않습니다.
+       */
       if (
         levelTest.ai_status ===
           "completed" ||
@@ -157,7 +210,8 @@ export default function LevelTestStartPanel({
 
       /*
        * 진행 중인 attempt가 있으면
-       * 새로 만들지 않고 그대로 이어갑니다.
+       * 새로 만들지 않고
+       * 기존 시험을 이어서 진행합니다.
        */
       const {
         data: existingAttempt,
@@ -207,10 +261,26 @@ export default function LevelTestStartPanel({
         new Date().toISOString();
 
       /*
-       * 새로운 응시 기록 생성
+       * 실제 응시 학생 ID 결정
        *
-       * 학생 계정이 없는 레벨테스트도 있으므로
-       * student_user_id는 필수로 사용하지 않습니다.
+       * 학생이 직접 로그인한 경우:
+       * 현재 로그인 학생 ID
+       *
+       * 학부모가 대신 시작하는 경우:
+       * level_tests에 연결되어 있는
+       * student_user_id
+       *
+       * 아직 학생 계정이 연결되지 않은
+       * 일반 레벨테스트 신청은 null 가능
+       */
+      const actualStudentUserId =
+        role === "student"
+          ? user.id
+          : levelTest.student_user_id ??
+            null;
+
+      /*
+       * 새로운 응시 기록 생성
        */
       const {
         data: createdAttempt,
@@ -225,7 +295,7 @@ export default function LevelTestStartPanel({
             levelTestId,
 
           student_user_id:
-            null,
+            actualStudentUserId,
 
           target_group:
             levelTest.target_group ||
@@ -266,6 +336,9 @@ export default function LevelTestStartPanel({
         );
       }
 
+      /*
+       * 레벨테스트 상태 변경
+       */
       const {
         error:
           levelTestUpdateError,
@@ -294,6 +367,9 @@ export default function LevelTestStartPanel({
         );
       }
 
+      /*
+       * 실제 문제 풀이 화면으로 이동
+       */
       router.push(
         `/parent/level-tests/${levelTestId}/attempt/${createdAttempt.id}`
       );
@@ -316,9 +392,12 @@ export default function LevelTestStartPanel({
   const completed =
     aiStatus === "completed" ||
     status === "admin_review" ||
-    status === "interview_required" ||
-    status === "interview_scheduled" ||
-    status === "interview_completed" ||
+    status ===
+      "interview_required" ||
+    status ===
+      "interview_scheduled" ||
+    status ===
+      "interview_completed" ||
     status === "completed" ||
     latestAttempt?.status ===
       "completed";
