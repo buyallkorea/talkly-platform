@@ -594,7 +594,6 @@ export default function Home() {
           <SectionHead
             tag="Programs"
             title="화상영어를 중심으로 이어지는 TALKLY 학습 시스템"
-            description="현재 TALKLY가 실제로 구축하고 있는 화상수업, 레벨별 커리큘럼, 학습관리와 AI 피드백을 하나의 흐름으로 연결합니다."
           />
 
           <div
@@ -708,20 +707,6 @@ export default function Home() {
             <br />
             AI 피드백은 시작됩니다.
           </h2>
-
-          <p
-            style={{
-              margin: "16px 0 0",
-              maxWidth: "760px",
-              color: "#c6cde3",
-              fontSize: "15px",
-              lineHeight: 1.8,
-            }}
-          >
-            수업 녹음 → 음성 전사 → 학생·강사 발화 구분 →
-            문법·어휘·표현·유창성 분석 → AI Lesson Report →
-            장기 학습 데이터와 성장 리포트까지 연결합니다.
-          </p>
 
           <div
             className="talkly-ai-grid"
@@ -986,17 +971,6 @@ export default function Home() {
             >
               수강신청과 내 수업관리를 TALKLY에서.
             </h2>
-            <p
-              style={{
-                margin: "11px 0 0",
-                color: "#697386",
-                lineHeight: 1.75,
-                fontSize: "14px",
-              }}
-            >
-              현재 구축된 회원 역할별 대시보드와 연결해 수업,
-              출결, 평가, 강의실 입장까지 관리합니다.
-            </p>
           </div>
 
           <HomeEnrollActions />
@@ -1135,19 +1109,6 @@ export default function Home() {
                   ))}
                 </div>
 
-                <a
-                  href="#information"
-                  style={{
-                    marginTop: "auto",
-                    paddingTop: "26px",
-                    color: item.accent,
-                    textDecoration: "none",
-                    fontSize: "13px",
-                    fontWeight: 900,
-                  }}
-                >
-                  자세히 보기 →
-                </a>
               </article>
             ))}
           </div>
@@ -1458,7 +1419,7 @@ function SectionHead({
 }: {
   tag: string;
   title: string;
-  description: string;
+  description?: string;
 }) {
   return (
     <div
@@ -1490,16 +1451,18 @@ function SectionHead({
       >
         {title}
       </h2>
-      <p
-        style={{
-          margin: "13px 0 0",
-          color: "#697386",
-          fontSize: "14px",
-          lineHeight: 1.75,
-        }}
-      >
-        {description}
-      </p>
+      {description ? (
+        <p
+          style={{
+            margin: "13px 0 0",
+            color: "#697386",
+            fontSize: "14px",
+            lineHeight: 1.75,
+          }}
+        >
+          {description}
+        </p>
+      ) : null}
     </div>
   );
 }
