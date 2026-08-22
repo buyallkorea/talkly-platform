@@ -3,6 +3,7 @@ import Link from "next/link";
 import HomeAuthMenu from "@/components/HomeAuthMenu";
 import HomeEnrollActions from "@/components/HomeEnrollActions";
 import HomeTeachers from "@/components/HomeTeachers";
+import HomeClassMenu from "@/components/HomeClassMenu";
 
 const reasons = [
   {
@@ -256,9 +257,8 @@ export default function Home() {
                 수강신청 ▾
               </a>
               <div className="talkly-dropdown">
-                <a href="/enroll">수강신청</a>
-                <Link href="/login">내 수업관리</Link>
-                <Link href="/login">강의실 입장</Link>
+                <Link href="/enroll">수강신청</Link>
+                <HomeClassMenu />
               </div>
             </div>
 
