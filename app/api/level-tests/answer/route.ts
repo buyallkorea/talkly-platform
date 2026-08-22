@@ -1,3 +1,6 @@
+
+
+
 import { NextResponse } from "next/server";
 import {
   createClient as createAdminClient,
@@ -679,6 +682,9 @@ export async function POST(
 
         question_id:
           questionId,
+
+        difficulty:
+          question.difficulty,
 
         selected_answer:
           selectedAnswer,
