@@ -20,7 +20,9 @@ type Child = {
 };
 
 type Props = {
+  currentUserId: string;
   parentUserId: string;
+  userRole: "parent" | "student";
   children: Child[];
 };
 
@@ -29,10 +31,13 @@ type StudentMode =
   | "direct";
 
 export default function LevelTestRequestForm({
+  currentUserId,
   parentUserId,
+  userRole,
   children,
 }: Props) {
   const router = useRouter();
+  const isStudent = userRole === "student";
 
   const [studentMode, setStudentMode] =
     useState<StudentMode>(
@@ -316,10 +321,10 @@ export default function LevelTestRequestForm({
 
       if (
         user.id !==
-        parentUserId
+        currentUserId
       ) {
         throw new Error(
-          "학부모 계정 정보를 확인할 수 없습니다."
+          "현재 로그인한 사용자 정보를 확인할 수 없습니다."
         );
       }
 
@@ -335,11 +340,17 @@ export default function LevelTestRequestForm({
       if (
         profileError ||
         !profile ||
-        profile.role !==
-          "parent"
+        (profile.role !== "parent" &&
+          profile.role !== "student")
       ) {
         throw new Error(
-          "학부모 권한을 확인할 수 없습니다."
+          "레벨테스트 이용 권한을 확인할 수 없습니다."
+        );
+      }
+
+      if (profile.role !== userRole) {
+        throw new Error(
+          "로그인 역할 정보가 일치하지 않습니다."
         );
       }
 
@@ -361,11 +372,7 @@ export default function LevelTestRequestForm({
           );
         }
 
-        const {
-          data: childCheck,
-          error:
-            childCheckError,
-        } = await supabase
+        let childQuery = supabase
           .from("children")
           .select(`
             id,
@@ -379,21 +386,43 @@ export default function LevelTestRequestForm({
             selectedChild.id
           )
           .eq(
-            "parent_user_id",
-            user.id
-          )
-          .eq(
             "is_active",
             true
-          )
-          .maybeSingle();
+          );
+
+        if (userRole === "parent") {
+          childQuery = childQuery.eq(
+            "parent_user_id",
+            parentUserId
+          );
+        }
+
+        if (userRole === "student") {
+          childQuery = childQuery.or(
+            `student_user_id.eq.${currentUserId},linked_student_user_id.eq.${currentUserId}`
+          );
+        }
+
+        const {
+          data: childCheck,
+          error: childCheckError,
+        } = await childQuery.maybeSingle();
 
         if (
           childCheckError ||
           !childCheck
         ) {
           throw new Error(
-            "자녀 정보를 확인할 수 없습니다."
+            "학생 정보를 확인할 수 없습니다."
+          );
+        }
+
+        if (
+          childCheck.parent_user_id !==
+          parentUserId
+        ) {
+          throw new Error(
+            "연결된 학부모 정보를 확인할 수 없습니다."
           );
         }
 
@@ -401,9 +430,11 @@ export default function LevelTestRequestForm({
           childCheck.id;
 
         studentUserId =
-          childCheck.student_user_id ||
-          childCheck.linked_student_user_id ||
-          null;
+          userRole === "student"
+            ? currentUserId
+            : childCheck.student_user_id ||
+              childCheck.linked_student_user_id ||
+              null;
       }
 
       /*
@@ -421,7 +452,7 @@ export default function LevelTestRequestForm({
           `)
           .eq(
             "parent_user_id",
-            user.id
+            parentUserId
           )
           .not(
             "status",
@@ -504,7 +535,7 @@ export default function LevelTestRequestForm({
             studentUserId,
 
           parent_user_id:
-            user.id,
+            parentUserId,
 
           student_name:
             studentName.trim(),
@@ -574,7 +605,9 @@ export default function LevelTestRequestForm({
       );
 
       router.push(
-        `/parent/level-tests/${createdTest.id}`
+        userRole === "student"
+          ? `/parent/level-tests/${createdTest.id}?studentMode=1`
+          : `/parent/level-tests/${createdTest.id}`
       );
     } catch (error) {
       console.error(
@@ -625,13 +658,13 @@ export default function LevelTestRequestForm({
             lineHeight: 1.7,
           }}
         >
-          등록된 자녀를 선택하거나
-          레벨테스트를 받을 학생 정보를
-          직접 입력해주세요.
+          {isStudent
+            ? "현재 로그인한 학생 정보로 레벨테스트를 신청합니다."
+            : "등록된 자녀를 선택하거나 레벨테스트를 받을 학생 정보를 직접 입력해주세요."}
         </p>
       </div>
 
-      {children.length > 0 && (
+      {!isStudent && children.length > 0 && (
         <div
           style={{
             marginTop: "24px",
@@ -681,8 +714,9 @@ export default function LevelTestRequestForm({
           gap: "22px",
         }}
       >
-        {studentMode ===
-          "existing" &&
+        {!isStudent &&
+          studentMode ===
+            "existing" &&
           children.length >
             0 && (
             <div>
@@ -762,7 +796,8 @@ export default function LevelTestRequestForm({
               disabled={
                 loading ||
                 studentMode ===
-                  "existing"
+                  "existing" ||
+                isStudent
               }
               style={fieldStyle}
             />
@@ -801,7 +836,8 @@ export default function LevelTestRequestForm({
               }}
               placeholder="예: 초등 4학년"
               disabled={
-                loading
+                loading ||
+                isStudent
               }
               style={fieldStyle}
             />
@@ -833,7 +869,8 @@ export default function LevelTestRequestForm({
                 )
               }
               disabled={
-                loading
+                loading ||
+                isStudent
               }
               style={fieldStyle}
             />
@@ -866,7 +903,8 @@ export default function LevelTestRequestForm({
               }}
               placeholder="예: 10"
               disabled={
-                loading
+                loading ||
+                isStudent
               }
               style={fieldStyle}
             />
@@ -913,7 +951,10 @@ export default function LevelTestRequestForm({
               );
             }}
             placeholder="예: TALKLY초등학교"
-            disabled={loading}
+            disabled={
+              loading ||
+              isStudent
+            }
             style={fieldStyle}
           />
         </div>
@@ -942,7 +983,10 @@ export default function LevelTestRequestForm({
                 ""
               );
             }}
-            disabled={loading}
+            disabled={
+              loading ||
+              isStudent
+            }
             style={fieldStyle}
           >
             <option value="elementary">

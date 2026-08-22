@@ -78,7 +78,7 @@ export default function LevelTestPage() {
           }}
         >
           <Link
-            href="/login?next=/parent/level-tests/new"
+            href="/level-test/start"
             style={{
               minHeight: "52px",
               padding: "0 26px",
@@ -405,7 +405,7 @@ export default function LevelTestPage() {
           </p>
 
           <Link
-            href="/login?next=/parent/level-tests/new"
+            href="/level-test/start"
             style={{
               marginTop: "24px",
               minHeight: "50px",

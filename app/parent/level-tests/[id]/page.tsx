@@ -58,10 +58,14 @@ export default async function ParentLevelTestDetailPage({
   if (
     profileError ||
     !profile ||
-    profile.role !== "parent"
+    (profile.role !== "parent" &&
+      profile.role !== "student")
   ) {
     redirect("/");
   }
+
+  const isStudent =
+    profile.role === "student";
 
   const {
     data: levelTest,
@@ -112,14 +116,70 @@ export default async function ParentLevelTestDetailPage({
   }
 
   /*
-   * 다른 학부모의 레벨테스트에는
-   * 접근할 수 없습니다.
+   * 접근 권한 확인
+   *
+   * 학부모:
+   * 본인이 신청한 레벨테스트만 접근할 수 있습니다.
+   *
+   * 학생:
+   * level_tests.student_user_id가 본인이거나,
+   * 연결된 child_id의 학생 계정이 본인인 경우에만
+   * 접근할 수 있습니다.
    */
-  if (
-    levelTest.parent_user_id !==
-    user.id
-  ) {
-    redirect("/parent");
+  if (!isStudent) {
+    if (
+      levelTest.parent_user_id !==
+      user.id
+    ) {
+      redirect("/parent");
+    }
+  }
+
+  if (isStudent) {
+    let studentHasAccess =
+      levelTest.student_user_id ===
+      user.id;
+
+    if (
+      !studentHasAccess &&
+      levelTest.child_id
+    ) {
+      const {
+        data: linkedChild,
+        error: linkedChildError,
+      } = await supabase
+        .from("children")
+        .select(`
+          id,
+          student_user_id,
+          linked_student_user_id
+        `)
+        .eq(
+          "id",
+          levelTest.child_id
+        )
+        .eq(
+          "is_active",
+          true
+        )
+        .maybeSingle();
+
+      if (linkedChildError) {
+        throw new Error(
+          `학생 연결 정보를 확인하지 못했습니다: ${linkedChildError.message}`
+        );
+      }
+
+      studentHasAccess =
+        linkedChild?.student_user_id ===
+          user.id ||
+        linkedChild?.linked_student_user_id ===
+          user.id;
+    }
+
+    if (!studentHasAccess) {
+      redirect("/student");
+    }
   }
 
   /*
@@ -134,10 +194,7 @@ export default async function ParentLevelTestDetailPage({
     null;
 
   if (levelTest.child_id) {
-    const {
-      data: childData,
-      error: childError,
-    } = await supabase
+    let childQuery = supabase
       .from("children")
       .select(`
         id,
@@ -148,12 +205,21 @@ export default async function ParentLevelTestDetailPage({
       .eq(
         "id",
         levelTest.child_id
-      )
-      .eq(
-        "parent_user_id",
-        user.id
-      )
-      .maybeSingle();
+      );
+
+    if (!isStudent) {
+      childQuery =
+        childQuery.eq(
+          "parent_user_id",
+          user.id
+        );
+    }
+
+    const {
+      data: childData,
+      error: childError,
+    } =
+      await childQuery.maybeSingle();
 
     if (childError) {
       throw new Error(
@@ -256,7 +322,11 @@ export default async function ParentLevelTestDetailPage({
       }}
     >
       <Link
-        href="/parent"
+        href={
+          isStudent
+            ? "/student"
+            : "/parent"
+        }
         style={{
           color: "#667085",
           textDecoration:
@@ -265,7 +335,9 @@ export default async function ParentLevelTestDetailPage({
           fontWeight: 800,
         }}
       >
-        ← 대시보드
+        {isStudent
+          ? "← 학생 마이페이지"
+          : "← 대시보드"}
       </Link>
 
       <div
@@ -546,7 +618,7 @@ export default async function ParentLevelTestDetailPage({
           levelTest.id
         }
         parentUserId={
-          user.id
+          levelTest.parent_user_id
         }
         childId={
           levelTest.child_id
@@ -644,12 +716,18 @@ export default async function ParentLevelTestDetailPage({
         }}
       >
         <Link
-          href="/parent"
+          href={
+            isStudent
+              ? "/student"
+              : "/parent"
+          }
           style={
             secondaryButtonStyle
           }
         >
-          ← 대시보드로
+          {isStudent
+            ? "← 학생 마이페이지"
+            : "← 대시보드로"}
         </Link>
       </div>
     </main>
