@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import HomeAuthMenu from "@/components/HomeAuthMenu";
 import HomeEnrollActions from "@/components/HomeEnrollActions";
+import HomeTeachers from "@/components/HomeTeachers";
 
 const reasons = [
   {
@@ -66,6 +67,50 @@ const programs = [
     subtitle: "수업이 끝난 뒤에도 계속되는 피드백",
     text: "Teacher Evaluation과 AI 분석을 분리해 제공하고, 학부모·학생·강사에게 필요한 정보를 각각 보여줍니다.",
     href: "#ai",
+  },
+];
+
+
+const businessAreas = [
+  {
+    no: "02",
+    title: "지자체·기관 영어 지원 사업",
+    subtitle: "지역 사회와 함께 성장하는 공공 영어 솔루션",
+    text: "지자체 및 교육청과 협력하여 지역 학생과 주민들에게 고품질 화상영어 및 검증된 영어 교육 콘텐츠를 지원합니다.",
+    tags: ["#공공협력", "#지자체사업", "#교육격차해소"],
+    accent: "#f5a623",
+    iconBackground: "#fef1dc",
+    icon: "▥",
+  },
+  {
+    no: "03",
+    title: "영유아 오감 자극 교육",
+    subtitle: "소리·촉감·놀이로 시작하는 첫 영어 생태계",
+    text: "감각을 자극하는 스토리텔링과 오감 중심 커리큘럼으로 아이가 모국어처럼 자연스럽고 친근하게 영어를 받아들이도록 돕습니다.",
+    tags: ["#영유아맞춤", "#오감자극", "#놀이중심"],
+    accent: "#20b6a0",
+    iconBackground: "#e4f7f3",
+    icon: "◉",
+  },
+  {
+    no: "04",
+    title: "영어 체험 행사 & 페스티벌",
+    subtitle: "온 가족이 함께 즐기고 소통하는 영어 축제",
+    text: "오프라인 체험 부스, 미션 이벤트, 문화 축제를 통해 학습한 영어를 마음껏 표현하고 즐기는 살아있는 소통의 장을 만듭니다.",
+    tags: ["#영어축제", "#체험부스", "#가족참여"],
+    accent: "#7c5ce0",
+    iconBackground: "#efeafb",
+    icon: "△",
+  },
+  {
+    no: "05",
+    title: "창의 영어 캠프 & 아웃도어",
+    subtitle: "자연 속에서 온몸으로 체득하는 액티비티 영어",
+    text: "트레킹, 캠핑, 미션 수행 등 다채로운 야외 활동과 창의적 프로젝트를 통해 영어를 언어가 아닌 '경험'으로 체득합니다.",
+    tags: ["#창의체험", "#아웃도어", "#몰입형캠프"],
+    accent: "#4c9a4e",
+    iconBackground: "#e7f3e4",
+    icon: "⌁",
   },
 ];
 
@@ -175,6 +220,7 @@ export default function Home() {
                 <a href="#greeting">인사말</a>
                 <a href="#why">Why TALKLY?</a>
                 <a href="#programs">프로그램</a>
+                <a href="#business-areas">사업영역</a>
               </div>
             </div>
 
@@ -820,23 +866,10 @@ export default function Home() {
           <SectionHead
             tag="Our Teachers"
             title="TALKLY 강사 소개"
-            description="검증된 학력과 경력을 갖춘 강사진이 연령과 목표에 맞는 수업을 담당합니다. 실제 강사 프로필 데이터와 연동하는 구조로 확장합니다."
+            description="검증된 학력과 경력을 갖춘 TALKLY 강사진이 연령과 학습 목표에 맞는 수업을 함께합니다."
           />
 
-          <div
-            style={{
-              padding: "32px",
-              borderRadius: "20px",
-              background: "#ffffff",
-              border: "1px solid #e7e9f0",
-              textAlign: "center",
-              color: "#697386",
-              lineHeight: 1.75,
-            }}
-          >
-            강사 소개 카드는 실제 TALKLY 강사 데이터와 연결해
-            다음 단계에서 구성합니다.
-          </div>
+          <HomeTeachers />
         </div>
       </section>
 
@@ -970,6 +1003,157 @@ export default function Home() {
         </div>
       </section>
 
+
+      <section
+        id="business-areas"
+        style={{
+          background: "#ffffff",
+          padding: "94px 0 100px",
+          borderTop: "1px solid #eef0f4",
+        }}
+      >
+        <div
+          style={{
+            width: "min(1200px, calc(100% - 36px))",
+            margin: "0 auto",
+          }}
+        >
+          <SectionHead
+            tag="Business Areas"
+            title="화상영어를 넘어, TALKLY가 만드는 영어 경험"
+            description="TALKLY는 화상영어를 중심으로 공공 영어교육, 영유아 교육, 영어 체험 행사와 캠프까지 영어를 삶 속에서 경험하는 다양한 사업을 운영합니다."
+          />
+
+          <div
+            className="talkly-business-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+              gap: "20px",
+            }}
+          >
+            {businessAreas.map((item) => (
+              <article
+                key={item.no}
+                style={{
+                  minHeight: "430px",
+                  padding: "28px 26px",
+                  border: "1px solid #e2e6ee",
+                  borderRadius: "20px",
+                  background: "#fffefb",
+                  position: "relative",
+                  display: "flex",
+                  flexDirection: "column",
+                  boxShadow: "0 8px 30px rgba(20,30,60,.035)",
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "25px",
+                    right: "26px",
+                    color: "#e1e6f2",
+                    fontSize: "24px",
+                    fontWeight: 900,
+                  }}
+                >
+                  {item.no}
+                </div>
+
+                <div
+                  style={{
+                    width: "54px",
+                    height: "54px",
+                    borderRadius: "14px",
+                    display: "grid",
+                    placeItems: "center",
+                    background: item.iconBackground,
+                    color: item.accent,
+                    fontSize: "26px",
+                    fontWeight: 900,
+                  }}
+                >
+                  {item.icon}
+                </div>
+
+                <h3
+                  style={{
+                    margin: "25px 0 0",
+                    color: "#1b2a4a",
+                    fontSize: "21px",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {item.title}
+                </h3>
+
+                <div
+                  style={{
+                    marginTop: "10px",
+                    color: "#697386",
+                    fontSize: "13px",
+                    fontWeight: 800,
+                    lineHeight: 1.65,
+                  }}
+                >
+                  {item.subtitle}
+                </div>
+
+                <p
+                  style={{
+                    margin: "28px 0 0",
+                    color: "#697386",
+                    fontSize: "13.5px",
+                    lineHeight: 1.8,
+                  }}
+                >
+                  {item.text}
+                </p>
+
+                <div
+                  style={{
+                    marginTop: "20px",
+                    display: "flex",
+                    gap: "7px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {item.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      style={{
+                        padding: "5px 10px",
+                        border: "1px solid #e0e4ec",
+                        borderRadius: "999px",
+                        background: "#ffffff",
+                        color: "#697386",
+                        fontSize: "11px",
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+
+                <a
+                  href="#information"
+                  style={{
+                    marginTop: "auto",
+                    paddingTop: "26px",
+                    color: item.accent,
+                    textDecoration: "none",
+                    fontSize: "13px",
+                    fontWeight: 900,
+                  }}
+                >
+                  자세히 보기 →
+                </a>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <footer
         style={{
           background: "#1b2a4a",
@@ -1020,7 +1204,7 @@ export default function Home() {
 
             <FooterColumn
               title="토클리소개"
-              items={["인사말", "Why TALKLY?", "프로그램"]}
+              items={["인사말", "Why TALKLY?", "프로그램", "사업영역"]}
             />
             <FooterColumn
               title="교육센터"
@@ -1211,7 +1395,8 @@ export default function Home() {
           }
 
           .talkly-program-grid,
-          .talkly-ai-grid {
+          .talkly-ai-grid,
+          .talkly-business-grid {
             grid-template-columns: repeat(2, minmax(0,1fr)) !important;
           }
 
@@ -1245,7 +1430,8 @@ export default function Home() {
           .talkly-reason-grid,
           .talkly-program-grid,
           .talkly-ai-grid,
-          .talkly-info-grid {
+          .talkly-info-grid,
+          .talkly-business-grid {
             grid-template-columns: 1fr !important;
           }
 
@@ -1379,6 +1565,23 @@ function FooterColumn({
                   href="#reviews"
                   style={footerLinkStyle}
                 >
+                  {item}
+                </a>
+              );
+            }
+          }
+
+          if (title === "토클리소개") {
+            const introLinks: Record<string, string> = {
+              인사말: "#greeting",
+              "Why TALKLY?": "#why",
+              프로그램: "#programs",
+              사업영역: "#business-areas",
+            };
+
+            if (introLinks[item]) {
+              return (
+                <a key={item} href={introLinks[item]} style={footerLinkStyle}>
                   {item}
                 </a>
               );
