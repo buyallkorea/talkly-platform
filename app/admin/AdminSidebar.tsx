@@ -105,6 +105,10 @@ const menuGroups: MenuGroup[] = [
         label: "교재 관리",
         href: "/admin/textbooks",
       },
+      {
+        label: "레벨테스트 관리",
+        href: "/admin/level-tests",
+      },
     ],
   },
 

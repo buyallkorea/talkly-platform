@@ -97,10 +97,22 @@ const textbookGroups = [
     title: "파닉스 · 입문",
     description: "알파벳과 소리, 기초 단어와 문장을 자연스럽게 익히는 교재",
     books: [
-      { name: "Smart Phonics", image: "/textbooks/smart-phonics.png" },
-      { name: "Phonics Monster", image: "/textbooks/phonics-monster.png" },
-      { name: "Let's Go Begin", image: "/textbooks/lets-go-begin.png" },
-      { name: "Let's Go", image: "/textbooks/lets-go.png" },
+      {
+        name: "Smart Phonics",
+        image: "/textbooks/smart-phonics.png",
+      },
+      {
+        name: "Phonics Monster",
+        image: "/textbooks/phonics-monster.png",
+      },
+      {
+        name: "Let's Go Begin",
+        image: "/textbooks/lets-go-begin.png",
+      },
+      {
+        name: "Let's Go",
+        image: "/textbooks/lets-go.png",
+      },
     ],
   },
   {
@@ -108,10 +120,22 @@ const textbookGroups = [
     title: "회화 · 스피킹",
     description: "실제 대화 상황과 다양한 주제를 중심으로 말하기 자신감을 키우는 교재",
     books: [
-      { name: "Hi Five", image: "/textbooks/hi-five.png" },
-      { name: "Super Star", image: "/textbooks/super-star.png" },
-      { name: "Everybody Up", image: "/textbooks/everybody-up.png" },
-      { name: "Speak Up", image: "/textbooks/speak-up.png" },
+      {
+        name: "Hi Five",
+        image: "/textbooks/hi-five.png",
+      },
+      {
+        name: "Super Star",
+        image: "/textbooks/super-star.png",
+      },
+      {
+        name: "Everybody Up",
+        image: "/textbooks/everybody-up.png",
+      },
+      {
+        name: "Speak Up",
+        image: "/textbooks/speak-up.png",
+      },
     ],
   },
   {
@@ -119,9 +143,18 @@ const textbookGroups = [
     title: "리딩 · 표현 확장",
     description: "읽기 이해력과 어휘, 표현을 단계적으로 확장하는 교재",
     books: [
-      { name: "The Best Reading", image: "/textbooks/the-best-reading.png" },
-      { name: "Wonderful World", image: "/textbooks/wonderful-world.png" },
-      { name: "Can You Believe It?", image: "/textbooks/can-you-believe-it.png" },
+      {
+        name: "The Best Reading",
+        image: "/textbooks/the-best-reading.png",
+      },
+      {
+        name: "Wonderful World",
+        image: "/textbooks/wonderful-world.png",
+      },
+      {
+        name: "Can You Believe It?",
+        image: "/textbooks/can-you-believe-it.png",
+      },
     ],
   },
   {
@@ -129,8 +162,14 @@ const textbookGroups = [
     title: "중급 · 고급 회화",
     description: "복합 문장, 실용 회화와 고급 의사소통으로 이어지는 교재",
     books: [
-      { name: "Side by Side", image: "/textbooks/side-by-side.png" },
-      { name: "Interchange", image: "/textbooks/interchange.png" },
+      {
+        name: "Side by Side",
+        image: "/textbooks/side-by-side.png",
+      },
+      {
+        name: "Interchange",
+        image: "/textbooks/interchange.png",
+      },
     ],
   },
 ];
@@ -140,136 +179,559 @@ export default function CurriculumPage() {
     <div className="talkly-page">
       <header className="talkly-header">
         <div className="talkly-container talkly-header-inner">
-          <Link href="/" className="talkly-logo">TALKLY</Link>
+          <Link href="/" className="talkly-logo">
+            TALKLY
+          </Link>
+
           <nav className="talkly-nav" aria-label="메인 메뉴">
-            <Link href="/curriculum">수업 과정</Link>
-            <Link href="/#teachers">강사 소개</Link>
-            <Link href="/#learning">학습 시스템</Link>
-            <Link href="/#guide">수강 안내</Link>
+            <Link href="/curriculum">
+              수업 과정
+            </Link>
+
+            <Link href="/#teachers">
+              강사 소개
+            </Link>
+
+            <Link href="/#learning">
+              학습 시스템
+            </Link>
+
+            <Link href="/#guide">
+              수강 안내
+            </Link>
           </nav>
+
           <div className="talkly-header-actions">
-            <Link href="/login" className="talkly-button talkly-button-secondary">로그인</Link>
-            <Link href="/signup" className="talkly-button talkly-button-primary">무료 레벨테스트</Link>
+            <Link
+              href="/login"
+              className="talkly-button talkly-button-secondary"
+            >
+              로그인
+            </Link>
+
+            <Link
+              href="/level-test"
+              className="talkly-button talkly-button-primary"
+            >
+              무료 레벨테스트
+            </Link>
           </div>
         </div>
       </header>
 
       <main>
-        <section className="talkly-hero" style={{ paddingBottom: 68 }}>
+        <section
+          className="talkly-hero"
+          style={{
+            paddingBottom: 68,
+          }}
+        >
           <div className="talkly-container">
-            <div style={{ maxWidth: 820 }}>
-              <div className="talkly-eyebrow">TALKLY 7-LEVEL CURRICULUM</div>
-              <h1 className="talkly-hero-title" style={{ fontSize: "clamp(42px, 6vw, 72px)" }}>
+            <div
+              style={{
+                maxWidth: 820,
+              }}
+            >
+              <div className="talkly-eyebrow">
+                TALKLY 7-LEVEL CURRICULUM
+              </div>
+
+              <h1
+                className="talkly-hero-title"
+                style={{
+                  fontSize:
+                    "clamp(42px, 6vw, 72px)",
+                }}
+              >
                 수준에 맞게 시작하고,
                 <br />
-                <span className="talkly-hero-title-highlight">단계적으로 성장하는 영어</span>
+
+                <span className="talkly-hero-title-highlight">
+                  단계적으로 성장하는 영어
+                </span>
               </h1>
+
               <p className="talkly-hero-description">
                 유아부터 성인까지 7단계 레벨을 기준으로 학습 목표와 권장 교재를 구성합니다.
                 현재 실력과 학습 목적을 확인한 뒤 학생에게 맞는 단계에서 시작합니다.
               </p>
+
               <div className="talkly-hero-actions">
-                <Link href="#levels" className="talkly-button talkly-button-primary">7단계 커리큘럼 보기 ↓</Link>
-                <Link href="#textbooks" className="talkly-button talkly-button-secondary">교재 살펴보기</Link>
+                <Link
+                  href="#levels"
+                  className="talkly-button talkly-button-primary"
+                >
+                  7단계 커리큘럼 보기 ↓
+                </Link>
+
+                <Link
+                  href="#textbooks"
+                  className="talkly-button talkly-button-secondary"
+                >
+                  교재 살펴보기
+                </Link>
               </div>
             </div>
           </div>
         </section>
 
-        <section id="levels" className="talkly-section">
+        <section
+          id="levels"
+          className="talkly-section"
+        >
           <div className="talkly-container">
             <div className="talkly-section-heading">
-              <div className="talkly-section-label">LEVEL ROADMAP</div>
-              <h2 className="talkly-section-title">TALKLY 7-Level Curriculum</h2>
+              <div className="talkly-section-label">
+                LEVEL ROADMAP
+              </div>
+
+              <h2 className="talkly-section-title">
+                TALKLY 7-Level Curriculum
+              </h2>
+
               <p className="talkly-section-description">
                 학년은 권장 기준이며, 실제 시작 레벨은 학생의 영어 경험과 실력에 따라 달라질 수 있습니다.
               </p>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: 18 }}>
-              {levels.map((level, index) => (
-                <article key={level.name} className="talkly-card talkly-card-hover" style={{ overflow: "hidden" }}>
-                  <div style={{ height: 7, background: index < 2 ? "#8bb5ff" : index < 4 ? "#5c8ee8" : index < 6 ? "#2f62b6" : "var(--talkly-navy)" }} />
-                  <div style={{ padding: 26 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                      <span className="talkly-badge talkly-badge-blue">{level.code}</span>
-                      <span style={{ color: "var(--text-muted)", fontSize: 13, fontWeight: 700 }}>{level.duration}</span>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(290px, 1fr))",
+                gap: 18,
+              }}
+            >
+              {levels.map(
+                (
+                  level,
+                  index
+                ) => (
+                  <article
+                    key={
+                      level.name
+                    }
+                    className="talkly-card talkly-card-hover"
+                    style={{
+                      overflow:
+                        "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: 7,
+                        background:
+                          index < 2
+                            ? "#8bb5ff"
+                            : index < 4
+                            ? "#5c8ee8"
+                            : index < 6
+                            ? "#2f62b6"
+                            : "var(--talkly-navy)",
+                      }}
+                    />
+
+                    <div
+                      style={{
+                        padding: 26,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display:
+                            "flex",
+                          justifyContent:
+                            "space-between",
+                          gap: 12,
+                          alignItems:
+                            "center",
+                        }}
+                      >
+                        <span className="talkly-badge talkly-badge-blue">
+                          {
+                            level.code
+                          }
+                        </span>
+
+                        <span
+                          style={{
+                            color:
+                              "var(--text-muted)",
+                            fontSize:
+                              13,
+                            fontWeight:
+                              700,
+                          }}
+                        >
+                          {
+                            level.duration
+                          }
+                        </span>
+                      </div>
+
+                      <h3
+                        style={{
+                          margin:
+                            "18px 0 0",
+                          color:
+                            "var(--talkly-navy)",
+                          fontSize:
+                            25,
+                        }}
+                      >
+                        {
+                          level.name
+                        }
+                      </h3>
+
+                      <div
+                        style={{
+                          marginTop:
+                            5,
+                          color:
+                            "var(--talkly-blue)",
+                          fontWeight:
+                            800,
+                          fontSize:
+                            14,
+                        }}
+                      >
+                        {
+                          level.age
+                        }
+                      </div>
+
+                      <p
+                        style={{
+                          margin:
+                            "14px 0 0",
+                          color:
+                            "var(--text-secondary)",
+                          lineHeight:
+                            1.7,
+                          minHeight:
+                            48,
+                        }}
+                      >
+                        {
+                          level.summary
+                        }
+                      </p>
+
+                      <div
+                        style={{
+                          marginTop:
+                            20,
+                          paddingTop:
+                            18,
+                          borderTop:
+                            "1px solid var(--border-light)",
+                        }}
+                      >
+                        {level.goals.map(
+                          (
+                            goal
+                          ) => (
+                            <div
+                              key={
+                                goal
+                              }
+                              style={{
+                                display:
+                                  "flex",
+                                gap: 9,
+                                marginTop:
+                                  9,
+                                color:
+                                  "var(--text-secondary)",
+                                fontSize:
+                                  14,
+                                lineHeight:
+                                  1.6,
+                              }}
+                            >
+                              <span
+                                aria-hidden="true"
+                                style={{
+                                  color:
+                                    "var(--talkly-blue)",
+                                  fontWeight:
+                                    900,
+                                }}
+                              >
+                                ✓
+                              </span>
+
+                              <span>
+                                {
+                                  goal
+                                }
+                              </span>
+                            </div>
+                          )
+                        )}
+                      </div>
                     </div>
-                    <h3 style={{ margin: "18px 0 0", color: "var(--talkly-navy)", fontSize: 25 }}>{level.name}</h3>
-                    <div style={{ marginTop: 5, color: "var(--talkly-blue)", fontWeight: 800, fontSize: 14 }}>{level.age}</div>
-                    <p style={{ margin: "14px 0 0", color: "var(--text-secondary)", lineHeight: 1.7, minHeight: 48 }}>{level.summary}</p>
-                    <div style={{ marginTop: 20, paddingTop: 18, borderTop: "1px solid var(--border-light)" }}>
-                      {level.goals.map((goal) => (
-                        <div key={goal} style={{ display: "flex", gap: 9, marginTop: 9, color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.6 }}>
-                          <span aria-hidden="true" style={{ color: "var(--talkly-blue)", fontWeight: 900 }}>✓</span>
-                          <span>{goal}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                )
+              )}
             </div>
           </div>
         </section>
 
-        <section id="textbooks" className="talkly-section talkly-section-blue">
+        <section
+          id="textbooks"
+          className="talkly-section talkly-section-blue"
+        >
           <div className="talkly-container">
             <div className="talkly-section-heading">
-              <div className="talkly-section-label">TALKLY TEXTBOOKS</div>
-              <h2 className="talkly-section-title">레벨과 목표에 맞춘 다양한 교재</h2>
+              <div className="talkly-section-label">
+                TALKLY TEXTBOOKS
+              </div>
+
+              <h2 className="talkly-section-title">
+                레벨과 목표에 맞춘 다양한 교재
+              </h2>
+
               <p className="talkly-section-description">
                 파닉스, 회화, 스피킹, 리딩부터 중·고급 회화까지 다양한 교재를 활용합니다.
                 실제 수업 교재는 레벨과 학습 목표에 맞춰 결정됩니다.
               </p>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-              {textbookGroups.map((group) => (
-                <section key={group.label} className="talkly-card" style={{ padding: 28 }}>
-                  <div className="talkly-section-label">{group.label}</div>
-                  <h3 style={{ margin: "5px 0 0", color: "var(--talkly-navy)", fontSize: 24 }}>{group.title}</h3>
-                  <p style={{ margin: "8px 0 0", color: "var(--text-muted)", fontSize: 14 }}>{group.description}</p>
+            <div
+              style={{
+                display: "flex",
+                flexDirection:
+                  "column",
+                gap: 22,
+              }}
+            >
+              {textbookGroups.map(
+                (group) => (
+                  <section
+                    key={
+                      group.label
+                    }
+                    className="talkly-card"
+                    style={{
+                      padding:
+                        28,
+                    }}
+                  >
+                    <div className="talkly-section-label">
+                      {
+                        group.label
+                      }
+                    </div>
 
-                  <div style={{ marginTop: 22, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
-                    {group.books.map((book) => (
-                      <article key={book.name} style={{ border: "1px solid var(--border)", borderRadius: 14, background: "#fff", overflow: "hidden" }}>
-                        <div style={{ height: 155, padding: 16, background: "#f8faff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <img src={book.image} alt={`${book.name} 교재 표지`} style={{ width: "100%", maxHeight: 120, objectFit: "contain" }} />
-                        </div>
-                        <div style={{ padding: "15px 17px" }}>
-                          <strong style={{ color: "var(--talkly-navy)", fontSize: 15 }}>{book.name}</strong>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              ))}
+                    <h3
+                      style={{
+                        margin:
+                          "5px 0 0",
+                        color:
+                          "var(--talkly-navy)",
+                        fontSize:
+                          24,
+                      }}
+                    >
+                      {
+                        group.title
+                      }
+                    </h3>
+
+                    <p
+                      style={{
+                        margin:
+                          "8px 0 0",
+                        color:
+                          "var(--text-muted)",
+                        fontSize:
+                          14,
+                      }}
+                    >
+                      {
+                        group.description
+                      }
+                    </p>
+
+                    <div
+                      style={{
+                        marginTop:
+                          22,
+                        display:
+                          "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(220px, 1fr))",
+                        gap: 14,
+                      }}
+                    >
+                      {group.books.map(
+                        (
+                          book
+                        ) => (
+                          <article
+                            key={
+                              book.name
+                            }
+                            style={{
+                              border:
+                                "1px solid var(--border)",
+                              borderRadius:
+                                14,
+                              background:
+                                "#fff",
+                              overflow:
+                                "hidden",
+                            }}
+                          >
+                            <div
+                              style={{
+                                height:
+                                  155,
+                                padding:
+                                  16,
+                                background:
+                                  "#f8faff",
+                                display:
+                                  "flex",
+                                alignItems:
+                                  "center",
+                                justifyContent:
+                                  "center",
+                              }}
+                            >
+                              <img
+                                src={
+                                  book.image
+                                }
+                                alt={`${book.name} 교재 표지`}
+                                style={{
+                                  width:
+                                    "100%",
+                                  maxHeight:
+                                    120,
+                                  objectFit:
+                                    "contain",
+                                }}
+                              />
+                            </div>
+
+                            <div
+                              style={{
+                                padding:
+                                  "15px 17px",
+                              }}
+                            >
+                              <strong
+                                style={{
+                                  color:
+                                    "var(--talkly-navy)",
+                                  fontSize:
+                                    15,
+                                }}
+                              >
+                                {
+                                  book.name
+                                }
+                              </strong>
+                            </div>
+                          </article>
+                        )
+                      )}
+                    </div>
+                  </section>
+                )
+              )}
             </div>
           </div>
         </section>
 
         <section className="talkly-section">
           <div className="talkly-container">
-            <div className="talkly-card" style={{ padding: "34px", display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 28, alignItems: "center", background: "linear-gradient(135deg, #ffffff, #edf4ff)" }}>
+            <div
+              className="talkly-card"
+              style={{
+                padding: "34px",
+                display: "grid",
+                gridTemplateColumns:
+                  "minmax(0, 1fr) auto",
+                gap: 28,
+                alignItems:
+                  "center",
+                background:
+                  "linear-gradient(135deg, #ffffff, #edf4ff)",
+              }}
+            >
               <div>
-                <div className="talkly-section-label">START YOUR LEVEL</div>
-                <h2 style={{ margin: "7px 0 0", color: "var(--talkly-navy)", fontSize: 30 }}>어떤 레벨에서 시작해야 할까요?</h2>
-                <p style={{ margin: "10px 0 0", color: "var(--text-secondary)", lineHeight: 1.7 }}>
+                <div className="talkly-section-label">
+                  START YOUR LEVEL
+                </div>
+
+                <h2
+                  style={{
+                    margin:
+                      "7px 0 0",
+                    color:
+                      "var(--talkly-navy)",
+                    fontSize:
+                      30,
+                  }}
+                >
+                  어떤 레벨에서 시작해야 할까요?
+                </h2>
+
+                <p
+                  style={{
+                    margin:
+                      "10px 0 0",
+                    color:
+                      "var(--text-secondary)",
+                    lineHeight:
+                      1.7,
+                  }}
+                >
                   학년만으로 레벨을 정하지 않습니다. 현재 영어 경험과 목표를 함께 확인해 적합한 시작점을 찾습니다.
                 </p>
               </div>
-              <Link href="/signup" className="talkly-button talkly-button-primary">무료 레벨테스트 →</Link>
+
+              <Link
+                href="/level-test"
+                className="talkly-button talkly-button-primary"
+              >
+                무료 레벨테스트 →
+              </Link>
             </div>
           </div>
         </section>
       </main>
 
       <section className="talkly-cta">
-        <h2>나에게 맞는 영어의 시작, TALKLY</h2>
-        <p>레벨을 확인하고 목표에 맞는 커리큘럼과 교재로 수업을 시작해보세요.</p>
-        <div style={{ marginTop: 24 }}>
-          <Link href="/signup" className="talkly-button" style={{ background: "#fff", color: "var(--talkly-navy)" }}>무료 레벨테스트 시작하기 →</Link>
+        <h2>
+          나에게 맞는 영어의 시작, TALKLY
+        </h2>
+
+        <p>
+          레벨을 확인하고 목표에 맞는 커리큘럼과 교재로 수업을 시작해보세요.
+        </p>
+
+        <div
+          style={{
+            marginTop: 24,
+          }}
+        >
+          <Link
+            href="/level-test"
+            className="talkly-button"
+            style={{
+              background:
+                "#fff",
+              color:
+                "var(--talkly-navy)",
+            }}
+          >
+            무료 레벨테스트 시작하기 →
+          </Link>
         </div>
       </section>
     </div>

@@ -1,24 +1,89 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import {
+  FormEvent,
+  Suspense,
+  useState,
+} from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 
-type SignupRole = "student" | "parent";
+type SignupRole =
+  | "student"
+  | "parent";
 
-export default function SignupPage() {
+function SignupPageContent() {
   const router = useRouter();
-  const supabase = createClient();
+  const searchParams =
+    useSearchParams();
 
-  const [role, setRole] = useState<SignupRole>("parent");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordConfirm, setPasswordConfirm] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const supabase =
+    createClient();
+
+  const [role, setRole] =
+    useState<SignupRole>(
+      "parent"
+    );
+
+  const [name, setName] =
+    useState("");
+
+  const [email, setEmail] =
+    useState("");
+
+  const [
+    password,
+    setPassword,
+  ] = useState("");
+
+  const [
+    passwordConfirm,
+    setPasswordConfirm,
+  ] = useState("");
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
+
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] = useState("");
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  /*
+   * 회원가입 전 사용자가
+   * 이동하려고 했던 TALKLY 내부 경로
+   */
+  const nextParam =
+    searchParams.get("next");
+
+  const safeNextPath =
+    nextParam &&
+    nextParam.startsWith("/") &&
+    !nextParam.startsWith("//")
+      ? nextParam
+      : null;
+
+  /*
+   * 로그인 페이지에서도
+   * next 값을 유지합니다.
+   */
+  const loginHref =
+    safeNextPath
+      ? `/login?next=${encodeURIComponent(
+          safeNextPath
+        )}`
+      : "/login";
 
   async function handleSignup(
     event: FormEvent<HTMLFormElement>
@@ -32,21 +97,55 @@ export default function SignupPage() {
     setErrorMessage("");
     setSuccessMessage("");
 
-    const trimmedName = name.trim();
-    const trimmedEmail = email.trim();
+    const trimmedName =
+      name.trim();
+
+    const trimmedEmail =
+      email.trim();
 
     if (!trimmedName) {
-      setErrorMessage("이름을 입력해주세요.");
+      setErrorMessage(
+        "이름을 입력해주세요."
+      );
+
       return;
     }
 
-    if (password !== passwordConfirm) {
-      setErrorMessage("비밀번호가 일치하지 않습니다.");
+    if (
+      password !==
+      passwordConfirm
+    ) {
+      setErrorMessage(
+        "비밀번호가 일치하지 않습니다."
+      );
+
       return;
     }
 
-    if (password.length < 8) {
-      setErrorMessage("비밀번호는 8자 이상 입력해주세요.");
+    if (
+      password.length < 8
+    ) {
+      setErrorMessage(
+        "비밀번호는 8자 이상 입력해주세요."
+      );
+
+      return;
+    }
+
+    /*
+     * /parent 경로로 복귀해야 하는 경우
+     * 학부모 계정만 허용합니다.
+     */
+    if (
+      safeNextPath?.startsWith(
+        "/parent/"
+      ) &&
+      role !== "parent"
+    ) {
+      setErrorMessage(
+        "자녀 레벨테스트는 학부모 계정으로 가입해주세요."
+      );
+
       return;
     }
 
@@ -56,19 +155,30 @@ export default function SignupPage() {
       const {
         data,
         error,
-      } = await supabase.auth.signUp({
-        email: trimmedEmail,
-        password,
-        options: {
-          data: {
-            name: trimmedName,
-            role,
-          },
-        },
-      });
+      } =
+        await supabase.auth.signUp(
+          {
+            email:
+              trimmedEmail,
+
+            password,
+
+            options: {
+              data: {
+                name:
+                  trimmedName,
+
+                role,
+              },
+            },
+          }
+        );
 
       if (error) {
-        setErrorMessage(error.message);
+        setErrorMessage(
+          error.message
+        );
+
         return;
       }
 
@@ -76,19 +186,31 @@ export default function SignupPage() {
         setErrorMessage(
           "회원가입 정보를 확인할 수 없습니다."
         );
+
         return;
       }
 
       setSuccessMessage(
-        "회원가입이 완료되었습니다. 로그인 페이지로 이동합니다."
+        safeNextPath
+          ? "회원가입이 완료되었습니다. 로그인 후 레벨테스트를 계속할 수 있습니다."
+          : "회원가입이 완료되었습니다. 로그인 페이지로 이동합니다."
       );
 
-      window.setTimeout(() => {
-        router.replace("/login");
-        router.refresh();
-      }, 1200);
+      window.setTimeout(
+        () => {
+          router.replace(
+            loginHref
+          );
+
+          router.refresh();
+        },
+        1200
+      );
     } catch (error) {
-      console.error("SIGNUP ERROR:", error);
+      console.error(
+        "SIGNUP ERROR:",
+        error
+      );
 
       setErrorMessage(
         "회원가입 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
@@ -102,10 +224,15 @@ export default function SignupPage() {
     <main
       className="talkly-signup-page"
       style={{
-        minHeight: "100vh",
-        display: "grid",
+        minHeight:
+          "100vh",
+
+        display:
+          "grid",
+
         gridTemplateColumns:
           "minmax(0, 0.9fr) minmax(480px, 1.1fr)",
+
         background:
           "linear-gradient(135deg, #eef4ff 0%, #f8fbff 48%, #ffffff 100%)",
       }}
@@ -113,29 +240,52 @@ export default function SignupPage() {
       <section
         className="talkly-signup-brand"
         style={{
-          position: "relative",
-          overflow: "hidden",
-          display: "flex",
-          alignItems: "center",
-          padding: "70px 7vw",
+          position:
+            "relative",
+
+          overflow:
+            "hidden",
+
+          display:
+            "flex",
+
+          alignItems:
+            "center",
+
+          padding:
+            "70px 7vw",
+
           background:
             "linear-gradient(145deg, #0a1f44 0%, #173d75 72%, #2f66bb 100%)",
-          color: "#ffffff",
+
+          color:
+            "#ffffff",
         }}
       >
         <div
           style={{
-            position: "relative",
+            position:
+              "relative",
+
             zIndex: 1,
-            maxWidth: "560px",
+
+            maxWidth:
+              "560px",
           }}
         >
           <div
             style={{
-              fontSize: "13px",
-              fontWeight: 900,
-              letterSpacing: "0.14em",
-              opacity: 0.72,
+              fontSize:
+                "13px",
+
+              fontWeight:
+                900,
+
+              letterSpacing:
+                "0.14em",
+
+              opacity:
+                0.72,
             }}
           >
             TALKLY
@@ -143,10 +293,17 @@ export default function SignupPage() {
 
           <h1
             style={{
-              margin: "14px 0 0",
-              fontSize: "clamp(38px, 4.6vw, 62px)",
-              lineHeight: 1.1,
-              letterSpacing: "-0.05em",
+              margin:
+                "14px 0 0",
+
+              fontSize:
+                "clamp(38px, 4.6vw, 62px)",
+
+              lineHeight:
+                1.1,
+
+              letterSpacing:
+                "-0.05em",
             }}
           >
             영어 학습의 시작을
@@ -156,41 +313,69 @@ export default function SignupPage() {
 
           <p
             style={{
-              margin: "22px 0 0",
-              color: "rgba(255,255,255,0.76)",
-              fontSize: "16px",
-              lineHeight: 1.8,
+              margin:
+                "22px 0 0",
+
+              color:
+                "rgba(255,255,255,0.76)",
+
+              fontSize:
+                "16px",
+
+              lineHeight:
+                1.8,
             }}
           >
-            학부모는 자녀를 등록해 수업과 학습 기록을 관리하고,
-            성인 학습자는 본인 계정으로 수업에 직접 참여할 수 있습니다.
+            학부모는 자녀를 등록해
+            수업과 학습 기록을
+            관리하고, 성인 학습자는
+            본인 계정으로 수업에
+            직접 참여할 수 있습니다.
           </p>
 
           <div
             style={{
-              marginTop: "32px",
-              display: "grid",
+              marginTop:
+                "32px",
+
+              display:
+                "grid",
+
               gridTemplateColumns:
                 "repeat(2, minmax(0, 1fr))",
-              gap: "12px",
+
+              gap:
+                "12px",
             }}
           >
             <div
               style={{
-                padding: "18px",
-                borderRadius: "14px",
+                padding:
+                  "18px",
+
+                borderRadius:
+                  "14px",
+
                 border:
                   "1px solid rgba(255,255,255,0.16)",
+
                 background:
                   "rgba(255,255,255,0.07)",
               }}
             >
               <div
                 style={{
-                  fontSize: "10px",
-                  fontWeight: 900,
-                  letterSpacing: "0.08em",
-                  opacity: 0.65,
+                  fontSize:
+                    "10px",
+
+                  fontWeight:
+                    900,
+
+                  letterSpacing:
+                    "0.08em",
+
+                  opacity:
+                    0.65,
                 }}
               >
                 PARENT
@@ -198,9 +383,14 @@ export default function SignupPage() {
 
               <div
                 style={{
-                  marginTop: "6px",
-                  fontSize: "17px",
-                  fontWeight: 900,
+                  marginTop:
+                    "6px",
+
+                  fontSize:
+                    "17px",
+
+                  fontWeight:
+                    900,
                 }}
               >
                 학부모
@@ -208,32 +398,52 @@ export default function SignupPage() {
 
               <p
                 style={{
-                  margin: "7px 0 0",
-                  color: "rgba(255,255,255,0.66)",
-                  fontSize: "12px",
-                  lineHeight: 1.6,
+                  margin:
+                    "7px 0 0",
+
+                  color:
+                    "rgba(255,255,255,0.66)",
+
+                  fontSize:
+                    "12px",
+
+                  lineHeight:
+                    1.6,
                 }}
               >
-                자녀 등록 후 수업·출결·평가 관리
+                자녀 등록 후
+                수업·출결·평가 관리
               </p>
             </div>
 
             <div
               style={{
-                padding: "18px",
-                borderRadius: "14px",
+                padding:
+                  "18px",
+
+                borderRadius:
+                  "14px",
+
                 border:
                   "1px solid rgba(255,255,255,0.16)",
+
                 background:
                   "rgba(255,255,255,0.07)",
               }}
             >
               <div
                 style={{
-                  fontSize: "10px",
-                  fontWeight: 900,
-                  letterSpacing: "0.08em",
-                  opacity: 0.65,
+                  fontSize:
+                    "10px",
+
+                  fontWeight:
+                    900,
+
+                  letterSpacing:
+                    "0.08em",
+
+                  opacity:
+                    0.65,
                 }}
               >
                 ADULT STUDENT
@@ -241,9 +451,14 @@ export default function SignupPage() {
 
               <div
                 style={{
-                  marginTop: "6px",
-                  fontSize: "17px",
-                  fontWeight: 900,
+                  marginTop:
+                    "6px",
+
+                  fontSize:
+                    "17px",
+
+                  fontWeight:
+                    900,
                 }}
               >
                 성인 학생
@@ -251,13 +466,21 @@ export default function SignupPage() {
 
               <p
                 style={{
-                  margin: "7px 0 0",
-                  color: "rgba(255,255,255,0.66)",
-                  fontSize: "12px",
-                  lineHeight: 1.6,
+                  margin:
+                    "7px 0 0",
+
+                  color:
+                    "rgba(255,255,255,0.66)",
+
+                  fontSize:
+                    "12px",
+
+                  lineHeight:
+                    1.6,
                 }}
               >
-                본인 계정으로 수업 참여 및 학습관리
+                본인 계정으로
+                수업 참여 및 학습관리
               </p>
             </div>
           </div>
@@ -266,12 +489,24 @@ export default function SignupPage() {
         <div
           aria-hidden="true"
           style={{
-            position: "absolute",
-            width: "420px",
-            height: "420px",
-            left: "-210px",
-            bottom: "-190px",
-            borderRadius: "50%",
+            position:
+              "absolute",
+
+            width:
+              "420px",
+
+            height:
+              "420px",
+
+            left:
+              "-210px",
+
+            bottom:
+              "-190px",
+
+            borderRadius:
+              "50%",
+
             border:
               "1px solid rgba(255,255,255,0.12)",
           }}
@@ -281,68 +516,119 @@ export default function SignupPage() {
       <section
         className="talkly-signup-form-area"
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "48px",
+          display:
+            "flex",
+
+          alignItems:
+            "center",
+
+          justifyContent:
+            "center",
+
+          padding:
+            "48px",
         }}
       >
         <div
           style={{
-            width: "100%",
-            maxWidth: "500px",
+            width:
+              "100%",
+
+            maxWidth:
+              "500px",
           }}
         >
           <div
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "16px",
-              marginBottom: "24px",
+              display:
+                "flex",
+
+              justifyContent:
+                "space-between",
+
+              alignItems:
+                "center",
+
+              gap:
+                "16px",
+
+              marginBottom:
+                "24px",
             }}
           >
             <Link
               href="/"
               style={{
-                color: "#3f75dc",
-                textDecoration: "none",
-                fontSize: "13px",
-                fontWeight: 800,
+                color:
+                  "#3f75dc",
+
+                textDecoration:
+                  "none",
+
+                fontSize:
+                  "13px",
+
+                fontWeight:
+                  800,
               }}
             >
               ← TALKLY 홈
             </Link>
 
             <Link
-              href="/login"
+              href={
+                loginHref
+              }
               style={{
-                color: "#0a1f44",
-                textDecoration: "none",
-                fontSize: "13px",
-                fontWeight: 800,
+                color:
+                  "#0a1f44",
+
+                textDecoration:
+                  "none",
+
+                fontSize:
+                  "13px",
+
+                fontWeight:
+                  800,
               }}
             >
-              이미 회원이신가요? 로그인 →
+              이미 회원이신가요?
+              로그인 →
             </Link>
           </div>
 
           <div
             style={{
-              padding: "34px",
-              borderRadius: "20px",
-              border: "1px solid #e1e9f5",
-              background: "#ffffff",
+              padding:
+                "34px",
+
+              borderRadius:
+                "20px",
+
+              border:
+                "1px solid #e1e9f5",
+
+              background:
+                "#ffffff",
+
               boxShadow:
                 "0 22px 60px rgba(10,31,68,0.10)",
             }}
           >
             <div
               style={{
-                color: "#3f75dc",
-                fontSize: "11px",
-                fontWeight: 900,
-                letterSpacing: "0.09em",
+                color:
+                  "#3f75dc",
+
+                fontSize:
+                  "11px",
+
+                fontWeight:
+                  900,
+
+                letterSpacing:
+                  "0.09em",
               }}
             >
               JOIN TALKLY
@@ -350,10 +636,17 @@ export default function SignupPage() {
 
             <h2
               style={{
-                margin: "8px 0 0",
-                color: "#0a1f44",
-                fontSize: "31px",
-                letterSpacing: "-0.04em",
+                margin:
+                  "8px 0 0",
+
+                color:
+                  "#0a1f44",
+
+                fontSize:
+                  "31px",
+
+                letterSpacing:
+                  "-0.04em",
               }}
             >
               회원가입
@@ -361,28 +654,52 @@ export default function SignupPage() {
 
             <p
               style={{
-                margin: "8px 0 0",
-                color: "#6f7f96",
-                fontSize: "14px",
-                lineHeight: 1.65,
+                margin:
+                  "8px 0 0",
+
+                color:
+                  "#6f7f96",
+
+                fontSize:
+                  "14px",
+
+                lineHeight:
+                  1.65,
               }}
             >
-              회원 유형을 선택하고 기본 정보를 입력해주세요.
+              {safeNextPath
+                ? "레벨테스트를 계속하려면 학부모 계정을 만들어주세요."
+                : "회원 유형을 선택하고 기본 정보를 입력해주세요."}
             </p>
 
             <form
-              onSubmit={handleSignup}
+              onSubmit={
+                handleSignup
+              }
               style={{
-                marginTop: "26px",
+                marginTop:
+                  "26px",
               }}
             >
-              <div style={{ marginBottom: "20px" }}>
+              <div
+                style={{
+                  marginBottom:
+                    "20px",
+                }}
+              >
                 <div
                   style={{
-                    marginBottom: "9px",
-                    color: "#0a1f44",
-                    fontSize: "13px",
-                    fontWeight: 800,
+                    marginBottom:
+                      "9px",
+
+                    color:
+                      "#0a1f44",
+
+                    fontSize:
+                      "13px",
+
+                    fontWeight:
+                      800,
                   }}
                 >
                   회원 유형
@@ -391,74 +708,147 @@ export default function SignupPage() {
                 <div
                   className="talkly-role-selector"
                   style={{
-                    display: "grid",
+                    display:
+                      "grid",
+
                     gridTemplateColumns:
                       "repeat(2, minmax(0, 1fr))",
-                    gap: "10px",
+
+                    gap:
+                      "10px",
                   }}
                 >
                   {[
                     {
-                      value: "parent" as const,
-                      title: "학부모",
-                      description: "자녀의 수업과 학습을 관리합니다.",
+                      value:
+                        "parent" as const,
+
+                      title:
+                        "학부모",
+
+                      description:
+                        "자녀의 수업과 학습을 관리합니다.",
                     },
                     {
-                      value: "student" as const,
-                      title: "성인 학생",
-                      description: "본인이 직접 수업에 참여합니다.",
+                      value:
+                        "student" as const,
+
+                      title:
+                        "성인 학생",
+
+                      description:
+                        "본인이 직접 수업에 참여합니다.",
                     },
-                  ].map((item) => {
-                    const selected = role === item.value;
+                  ].map(
+                    (
+                      item
+                    ) => {
+                      const selected =
+                        role ===
+                        item.value;
 
-                    return (
-                      <button
-                        key={item.value}
-                        type="button"
-                        disabled={loading}
-                        onClick={() =>
-                          setRole(item.value)
-                        }
-                        style={{
-                          textAlign: "left",
-                          padding: "15px",
-                          borderRadius: "11px",
-                          border: selected
-                            ? "2px solid #3f75dc"
-                            : "1px solid #dce4ef",
-                          background: selected
-                            ? "#f1f6ff"
-                            : "#ffffff",
-                          cursor: loading
-                            ? "default"
-                            : "pointer",
-                        }}
-                      >
-                        <div
+                      const lockedForLevelTest =
+                        Boolean(
+                          safeNextPath?.startsWith(
+                            "/parent/"
+                          )
+                        ) &&
+                        item.value ===
+                          "student";
+
+                      return (
+                        <button
+                          key={
+                            item.value
+                          }
+
+                          type="button"
+
+                          disabled={
+                            loading ||
+                            lockedForLevelTest
+                          }
+
+                          onClick={() =>
+                            setRole(
+                              item.value
+                            )
+                          }
+
                           style={{
-                            color: selected
-                              ? "#2f66bb"
-                              : "#0a1f44",
-                            fontSize: "14px",
-                            fontWeight: 900,
+                            textAlign:
+                              "left",
+
+                            padding:
+                              "15px",
+
+                            borderRadius:
+                              "11px",
+
+                            border:
+                              selected
+                                ? "2px solid #3f75dc"
+                                : "1px solid #dce4ef",
+
+                            background:
+                              selected
+                                ? "#f1f6ff"
+                                : "#ffffff",
+
+                            opacity:
+                              lockedForLevelTest
+                                ? 0.45
+                                : 1,
+
+                            cursor:
+                              loading ||
+                              lockedForLevelTest
+                                ? "default"
+                                : "pointer",
                           }}
                         >
-                          {item.title}
-                        </div>
+                          <div
+                            style={{
+                              color:
+                                selected
+                                  ? "#2f66bb"
+                                  : "#0a1f44",
 
-                        <div
-                          style={{
-                            marginTop: "4px",
-                            color: "#7b899c",
-                            fontSize: "11px",
-                            lineHeight: 1.5,
-                          }}
-                        >
-                          {item.description}
-                        </div>
-                      </button>
-                    );
-                  })}
+                              fontSize:
+                                "14px",
+
+                              fontWeight:
+                                900,
+                            }}
+                          >
+                            {
+                              item.title
+                            }
+                          </div>
+
+                          <div
+                            style={{
+                              marginTop:
+                                "4px",
+
+                              color:
+                                "#7b899c",
+
+                              fontSize:
+                                "11px",
+
+                              lineHeight:
+                                1.5,
+                            }}
+                          >
+                            {
+                              item.description
+                            }
+                          </div>
+                        </button>
+                      );
+                    }
+                  )}
                 </div>
               </div>
 
@@ -467,10 +857,14 @@ export default function SignupPage() {
                 label="이름"
                 type="text"
                 value={name}
-                onChange={setName}
+                onChange={
+                  setName
+                }
                 placeholder="이름을 입력해주세요"
                 autoComplete="name"
-                disabled={loading}
+                disabled={
+                  loading
+                }
               />
 
               <SignupField
@@ -478,21 +872,31 @@ export default function SignupPage() {
                 label="이메일"
                 type="email"
                 value={email}
-                onChange={setEmail}
+                onChange={
+                  setEmail
+                }
                 placeholder="email@example.com"
                 autoComplete="email"
-                disabled={loading}
+                disabled={
+                  loading
+                }
               />
 
               <SignupField
                 id="password"
                 label="비밀번호"
                 type="password"
-                value={password}
-                onChange={setPassword}
+                value={
+                  password
+                }
+                onChange={
+                  setPassword
+                }
                 placeholder="8자 이상 입력해주세요"
                 autoComplete="new-password"
-                disabled={loading}
+                disabled={
+                  loading
+                }
                 minLength={8}
               />
 
@@ -500,27 +904,53 @@ export default function SignupPage() {
                 id="passwordConfirm"
                 label="비밀번호 확인"
                 type="password"
-                value={passwordConfirm}
-                onChange={setPasswordConfirm}
+                value={
+                  passwordConfirm
+                }
+                onChange={
+                  setPasswordConfirm
+                }
                 placeholder="비밀번호를 다시 입력해주세요"
                 autoComplete="new-password"
-                disabled={loading}
+                disabled={
+                  loading
+                }
                 minLength={8}
               />
 
               <div
                 style={{
-                  margin: "2px 0 18px",
-                  padding: "13px 14px",
-                  borderRadius: "9px",
-                  background: "#f7faff",
-                  border: "1px solid #e3ebf7",
-                  color: "#6f7f96",
-                  fontSize: "12px",
-                  lineHeight: 1.6,
+                  margin:
+                    "2px 0 18px",
+
+                  padding:
+                    "13px 14px",
+
+                  borderRadius:
+                    "9px",
+
+                  background:
+                    "#f7faff",
+
+                  border:
+                    "1px solid #e3ebf7",
+
+                  color:
+                    "#6f7f96",
+
+                  fontSize:
+                    "12px",
+
+                  lineHeight:
+                    1.6,
                 }}
               >
-                {role === "parent"
+                {safeNextPath?.startsWith(
+                  "/parent/"
+                )
+                  ? "레벨테스트는 학부모 계정으로 신청합니다. 가입 후 로그인하면 학생 정보를 입력하고 바로 레벨테스트를 진행할 수 있습니다."
+                  : role ===
+                    "parent"
                   ? "학부모 가입 후 자녀를 등록하면 수업 일정, 출결, 학습평가를 확인할 수 있습니다."
                   : "성인 학습자만 학생 회원으로 직접 가입해주세요. 미성년 학생은 학부모 계정에서 자녀로 등록합니다."}
               </div>
@@ -529,17 +959,34 @@ export default function SignupPage() {
                 <div
                   role="alert"
                   style={{
-                    marginBottom: "16px",
-                    padding: "13px 14px",
-                    borderRadius: "9px",
-                    border: "1px solid #f1c6c6",
-                    background: "#fff7f7",
-                    color: "#c43c3c",
-                    fontSize: "13px",
-                    lineHeight: 1.55,
+                    marginBottom:
+                      "16px",
+
+                    padding:
+                      "13px 14px",
+
+                    borderRadius:
+                      "9px",
+
+                    border:
+                      "1px solid #f1c6c6",
+
+                    background:
+                      "#fff7f7",
+
+                    color:
+                      "#c43c3c",
+
+                    fontSize:
+                      "13px",
+
+                    lineHeight:
+                      1.55,
                   }}
                 >
-                  {errorMessage}
+                  {
+                    errorMessage
+                  }
                 </div>
               )}
 
@@ -547,37 +994,74 @@ export default function SignupPage() {
                 <div
                   role="status"
                   style={{
-                    marginBottom: "16px",
-                    padding: "13px 14px",
-                    borderRadius: "9px",
-                    border: "1px solid #c9e8d4",
-                    background: "#f4fbf6",
-                    color: "#237443",
-                    fontSize: "13px",
-                    lineHeight: 1.55,
+                    marginBottom:
+                      "16px",
+
+                    padding:
+                      "13px 14px",
+
+                    borderRadius:
+                      "9px",
+
+                    border:
+                      "1px solid #c9e8d4",
+
+                    background:
+                      "#f4fbf6",
+
+                    color:
+                      "#237443",
+
+                    fontSize:
+                      "13px",
+
+                    lineHeight:
+                      1.55,
                   }}
                 >
-                  {successMessage}
+                  {
+                    successMessage
+                  }
                 </div>
               )}
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={
+                  loading
+                }
                 style={{
-                  width: "100%",
-                  minHeight: "50px",
-                  border: "none",
-                  borderRadius: "10px",
-                  background: loading
-                    ? "#91a9d7"
-                    : "#3f75dc",
-                  color: "#ffffff",
-                  fontSize: "15px",
-                  fontWeight: 900,
-                  cursor: loading
-                    ? "default"
-                    : "pointer",
+                  width:
+                    "100%",
+
+                  minHeight:
+                    "50px",
+
+                  border:
+                    "none",
+
+                  borderRadius:
+                    "10px",
+
+                  background:
+                    loading
+                      ? "#91a9d7"
+                      : "#3f75dc",
+
+                  color:
+                    "#ffffff",
+
+                  fontSize:
+                    "15px",
+
+                  fontWeight:
+                    900,
+
+                  cursor:
+                    loading
+                      ? "default"
+                      : "pointer",
+
                   boxShadow:
                     "0 10px 24px rgba(63,117,220,0.24)",
                 }}
@@ -628,13 +1112,29 @@ export default function SignupPage() {
 type SignupFieldProps = {
   id: string;
   label: string;
-  type: "text" | "email" | "password";
+
+  type:
+    | "text"
+    | "email"
+    | "password";
+
   value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  autoComplete: string;
-  disabled: boolean;
-  minLength?: number;
+
+  onChange: (
+    value: string
+  ) => void;
+
+  placeholder:
+    string;
+
+  autoComplete:
+    string;
+
+  disabled:
+    boolean;
+
+  minLength?:
+    number;
 };
 
 function SignupField({
@@ -649,15 +1149,29 @@ function SignupField({
   minLength,
 }: SignupFieldProps) {
   return (
-    <div style={{ marginBottom: "18px" }}>
+    <div
+      style={{
+        marginBottom:
+          "18px",
+      }}
+    >
       <label
         htmlFor={id}
         style={{
-          display: "block",
-          marginBottom: "8px",
-          color: "#0a1f44",
-          fontSize: "13px",
-          fontWeight: 800,
+          display:
+            "block",
+
+          marginBottom:
+            "8px",
+
+          color:
+            "#0a1f44",
+
+          fontSize:
+            "13px",
+
+          fontWeight:
+            800,
         }}
       >
         {label}
@@ -665,31 +1179,112 @@ function SignupField({
 
       <input
         id={id}
+
         type={type}
+
         value={value}
-        onChange={(event) =>
-          onChange(event.target.value)
+
+        onChange={(
+          event
+        ) =>
+          onChange(
+            event.target
+              .value
+          )
         }
+
         required
-        minLength={minLength}
-        autoComplete={autoComplete}
-        disabled={disabled}
-        placeholder={placeholder}
+
+        minLength={
+          minLength
+        }
+
+        autoComplete={
+          autoComplete
+        }
+
+        disabled={
+          disabled
+        }
+
+        placeholder={
+          placeholder
+        }
+
         style={{
-          width: "100%",
-          boxSizing: "border-box",
-          minHeight: "48px",
-          padding: "0 14px",
-          border: "1px solid #dce4ef",
-          borderRadius: "10px",
-          background: disabled
-            ? "#f7f9fc"
-            : "#ffffff",
-          color: "#16233a",
-          fontSize: "15px",
-          outline: "none",
+          width:
+            "100%",
+
+          boxSizing:
+            "border-box",
+
+          minHeight:
+            "48px",
+
+          padding:
+            "0 14px",
+
+          border:
+            "1px solid #dce4ef",
+
+          borderRadius:
+            "10px",
+
+          background:
+            disabled
+              ? "#f7f9fc"
+              : "#ffffff",
+
+          color:
+            "#16233a",
+
+          fontSize:
+            "15px",
+
+          outline:
+            "none",
         }}
       />
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <main
+          style={{
+            minHeight:
+              "100vh",
+
+            display:
+              "flex",
+
+            alignItems:
+              "center",
+
+            justifyContent:
+              "center",
+
+            background:
+              "linear-gradient(135deg, #eef4ff 0%, #f8fbff 48%, #ffffff 100%)",
+
+            color:
+              "#667085",
+
+            fontSize:
+              "14px",
+
+            fontWeight:
+              800,
+          }}
+        >
+          TALKLY 회원가입 페이지를 불러오는 중입니다...
+        </main>
+      }
+    >
+      <SignupPageContent />
+    </Suspense>
   );
 }

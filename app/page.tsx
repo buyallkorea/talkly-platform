@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import HomeAuthMenu from "@/components/HomeAuthMenu";
+import HomeEnrollActions from "@/components/HomeEnrollActions";
 
 const reasons = [
   {
@@ -49,7 +51,7 @@ const programs = [
     title: "화상영어 라이브 멘토링",
     subtitle: "화면 너머 만나는 나만의 1:1 영어 메이트",
     text: "검증된 강사진의 실시간 교정과 TALKLY 학습관리 시스템으로 꾸준한 영어 말하기 습관을 만듭니다.",
-    href: "#level-test",
+    href: "/level-test",
   },
   {
     no: "02",
@@ -95,20 +97,16 @@ export default function Home() {
             gap: "18px",
           }}
         >
-          <a href="#level-test" style={utilityLinkStyle}>
+          <Link href="/level-test" style={utilityLinkStyle}>
             레벨테스트신청
-          </a>
+          </Link>
           <span style={{ opacity: 0.25 }}>|</span>
           <a href="#enroll" style={utilityLinkStyle}>
             수강신청
           </a>
           <span style={{ opacity: 0.25 }}>|</span>
-          <Link href="/login" style={utilityLinkStyle}>
-            강의실 입장
-          </Link>
-          <span style={{ opacity: 0.25 }}>|</span>
-          <Link href="/login" style={utilityLinkStyle}>
-            로그인 바로가기
+          <Link href="/consultation" style={utilityLinkStyle}>
+            1:1상담
           </Link>
         </div>
       </div>
@@ -203,9 +201,9 @@ export default function Home() {
               </div>
             </div>
 
-            <a href="#level-test" className="talkly-nav-link">
+            <Link href="/level-test" className="talkly-nav-link">
               레벨테스트
-            </a>
+            </Link>
 
             <div className="talkly-nav-item">
               <a href="#enroll" className="talkly-nav-link">
@@ -230,51 +228,7 @@ export default function Home() {
             </div>
           </nav>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "9px",
-            }}
-          >
-            <Link
-              href="/login"
-              style={{
-                minHeight: "42px",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "0 18px",
-                borderRadius: "999px",
-                border: "1.5px solid #e0e4ee",
-                color: "#1b2a4a",
-                textDecoration: "none",
-                fontSize: "13px",
-                fontWeight: 800,
-              }}
-            >
-              로그인
-            </Link>
-            <Link
-              href="/signup"
-              style={{
-                minHeight: "42px",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "0 20px",
-                borderRadius: "999px",
-                background: "#2f6fed",
-                color: "#ffffff",
-                textDecoration: "none",
-                fontSize: "13px",
-                fontWeight: 900,
-                boxShadow: "0 8px 20px rgba(47,111,237,.25)",
-              }}
-            >
-              회원가입
-            </Link>
-          </div>
+          <HomeAuthMenu />
         </div>
       </header>
 
@@ -318,72 +272,42 @@ export default function Home() {
             zIndex: 2,
           }}
         >
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "8px 15px",
-              borderRadius: "999px",
-              border: "1px solid rgba(255,255,255,.30)",
-              background: "rgba(20,28,54,.45)",
-              color: "#ffffff",
-              fontSize: "12px",
-              fontWeight: 800,
-              backdropFilter: "blur(6px)",
-            }}
-          >
-            <span
-              style={{
-                width: "7px",
-                height: "7px",
-                borderRadius: "50%",
-                background: "#f5a623",
-              }}
-            />
-            TALKLY 대표 프로그램 · 화상영어
-          </div>
-
           <h1
             style={{
-              margin: "24px 0 0",
-              maxWidth: "760px",
+              margin: "0",
+              maxWidth: "860px",
               color: "#ffffff",
               fontSize: "clamp(44px, 5vw, 64px)",
               lineHeight: 1.22,
-              letterSpacing: "-0.055em",
+              letterSpacing: "-0.045em",
               fontWeight: 900,
               textShadow:
                 "0 2px 10px rgba(0,0,0,.35), 0 8px 30px rgba(0,0,0,.3)",
             }}
           >
-            언제 어디서나,{" "}
-            <span style={{ color: "#8fb4ff" }}>
-              TALK
-            </span>
+            Anytime, Anywhere,
             <br />
-            온라인으로 하나 된 세계와
-            <br />
-            만나는{" "}
             <span style={{ color: "#7fe0cf" }}>
-              진짜 영어
+              AI Real English
+            </span>{" "}
+            - {" "}
+            <span style={{ color: "#8fb4ff" }}>
+              TALKLY
             </span>
           </h1>
 
           <p
             style={{
               margin: "22px 0 0",
-              maxWidth: "610px",
+              maxWidth: "680px",
               color: "#f1f3fa",
               fontSize: "16px",
               lineHeight: 1.82,
               textShadow: "0 2px 8px rgba(0,0,0,.35)",
             }}
           >
-            TALKLY의 중심은 화상영어입니다. 세계는 이미 온라인으로
-            연결되어 있습니다. 어린이부터 성인까지, 화면 하나로
-            영어 선생님과 실시간으로 마주하고 꾸준히 말하는 습관을
-            만들어보세요.
+            세상은 이미 온라인과 AI로 연결되어 있습니다. 어린이부터
+            성인까지 실시간으로 원어민 강사와 즐겁게 영어를 배워요!
           </p>
 
           <div
@@ -394,9 +318,9 @@ export default function Home() {
               flexWrap: "wrap",
             }}
           >
-            <a href="#level-test" className="talkly-hero-primary">
+            <Link href="/level-test" className="talkly-hero-primary">
               무료 레벨테스트 신청
-            </a>
+            </Link>
             <Link href="/login" className="talkly-hero-live">
               <span className="talkly-live-dot" />
               강의실 바로 입장
@@ -847,7 +771,7 @@ export default function Home() {
                 fontSize: "30px",
               }}
             >
-              회원가입하고 무료 레벨테스트를 준비하세요.
+              우리 아이의 영어 수준, 먼저 확인해보세요.
             </h2>
             <p
               style={{
@@ -858,14 +782,14 @@ export default function Home() {
                 lineHeight: 1.75,
               }}
             >
-              현재 TALKLY 회원가입 구조에 맞춰 학부모와 성인 학생
-              계정을 만든 뒤, 레벨과 수업 목표를 연결하는 흐름으로
-              확장할 예정입니다.
+              Grammar와 Listening을 중심으로 TALKLY AI 레벨테스트를
+              진행합니다. AI 분석 후 추가 확인이 필요한 경우
+              원어민 강사의 화상 레벨테스트를 별도로 안내드립니다.
             </p>
           </div>
 
           <Link
-            href="/signup"
+            href="/level-test"
             style={{
               minHeight: "50px",
               padding: "0 24px",
@@ -881,7 +805,7 @@ export default function Home() {
               whiteSpace: "nowrap",
             }}
           >
-            회원가입 →
+            레벨테스트 안내 →
           </Link>
         </div>
       </section>
@@ -1042,26 +966,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              gap: "10px",
-              flexWrap: "wrap",
-            }}
-          >
-            <Link
-              href="/signup"
-              className="talkly-bottom-primary"
-            >
-              회원가입
-            </Link>
-            <Link
-              href="/login"
-              className="talkly-bottom-ghost"
-            >
-              내 수업관리
-            </Link>
-          </div>
+          <HomeEnrollActions />
         </div>
       </section>
 
