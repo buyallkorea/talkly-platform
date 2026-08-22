@@ -5,7 +5,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import Image from "next/image";
 import { createClient } from "@/lib/supabase-browser";
 
 type Teacher = {
@@ -14,6 +13,16 @@ type Teacher = {
   nationality: string | null;
   profile_image_url: string | null;
 };
+
+type TeacherSlot =
+  | {
+      type: "teacher";
+      teacher: Teacher;
+    }
+  | {
+      type: "empty";
+      id: string;
+    };
 
 const DISPLAY_COUNT = 5;
 const ROTATE_INTERVAL = 5000;
@@ -48,7 +57,6 @@ export default function HomeTeachers() {
             "HOME TEACHERS ERROR:",
             error
           );
-
           return;
         }
 
@@ -78,11 +86,6 @@ export default function HomeTeachers() {
     };
   }, []);
 
-  /*
-   * 강사가 5명을 초과하면
-   * 5초마다 한 명씩 이동하면서
-   * 다음 강사들이 자연스럽게 보입니다.
-   */
   useEffect(() => {
     if (
       teachers.length <=
@@ -111,31 +114,70 @@ export default function HomeTeachers() {
     };
   }, [teachers.length]);
 
-  const visibleTeachers =
-    useMemo(() => {
-      if (
-        teachers.length <=
-        DISPLAY_COUNT
-      ) {
-        return teachers;
-      }
+  const slots =
+    useMemo<TeacherSlot[]>(
+      () => {
+        let visible: Teacher[] =
+          [];
 
-      return Array.from(
-        {
-          length:
-            DISPLAY_COUNT,
-        },
-        (_, offset) =>
-          teachers[
-            (startIndex +
-              offset) %
-              teachers.length
-          ]
-      );
-    }, [
-      teachers,
-      startIndex,
-    ]);
+        if (
+          teachers.length <=
+          DISPLAY_COUNT
+        ) {
+          visible = teachers;
+        } else {
+          visible =
+            Array.from(
+              {
+                length:
+                  DISPLAY_COUNT,
+              },
+              (_, offset) =>
+                teachers[
+                  (startIndex +
+                    offset) %
+                    teachers.length
+                ]
+            );
+        }
+
+        const teacherSlots: TeacherSlot[] =
+          visible.map(
+            (teacher) => ({
+              type: "teacher",
+              teacher,
+            })
+          );
+
+        const emptyCount =
+          Math.max(
+            0,
+            DISPLAY_COUNT -
+              teacherSlots.length
+          );
+
+        const emptySlots: TeacherSlot[] =
+          Array.from(
+            {
+              length:
+                emptyCount,
+            },
+            (_, index) => ({
+              type: "empty",
+              id: `empty-${index}`,
+            })
+          );
+
+        return [
+          ...teacherSlots,
+          ...emptySlots,
+        ];
+      },
+      [
+        teachers,
+        startIndex,
+      ]
+    );
 
   if (loading) {
     return (
@@ -157,28 +199,6 @@ export default function HomeTeachers() {
     );
   }
 
-  if (
-    teachers.length === 0
-  ) {
-    return (
-      <div
-        style={{
-          padding: "44px 24px",
-          border:
-            "1px solid #e4e7ec",
-          borderRadius: "18px",
-          background: "#ffffff",
-          textAlign: "center",
-          color: "#667085",
-          fontSize: "14px",
-        }}
-      >
-        현재 공개 중인 강사
-        정보가 없습니다.
-      </div>
-    );
-  }
-
   return (
     <div>
       <div
@@ -186,24 +206,40 @@ export default function HomeTeachers() {
         style={{
           display: "grid",
           gridTemplateColumns:
-            `repeat(${Math.min(
-              visibleTeachers.length,
-              DISPLAY_COUNT
-            )}, minmax(0, 1fr))`,
+            "repeat(5, minmax(0, 1fr))",
           gap: "18px",
         }}
       >
-        {visibleTeachers.map(
-          (teacher) => (
-            <TeacherCard
-              key={
-                teacher.user_id
-              }
-              teacher={
-                teacher
-              }
-            />
-          )
+        {slots.map(
+          (
+            slot,
+            index
+          ) => {
+            if (
+              slot.type ===
+              "empty"
+            ) {
+              return (
+                <EmptyTeacherCard
+                  key={
+                    slot.id
+                  }
+                />
+              );
+            }
+
+            return (
+              <TeacherCard
+                key={
+                  slot.teacher
+                    .user_id
+                }
+                teacher={
+                  slot.teacher
+                }
+              />
+            );
+          }
         )}
       </div>
 
@@ -304,6 +340,9 @@ function TeacherCard({
     teacher.nationality?.trim() ||
     "TALKLY";
 
+  const [imageError, setImageError] =
+    useState(false);
+
   return (
     <article
       style={{
@@ -319,27 +358,41 @@ function TeacherCard({
     >
       <div
         style={{
-          position: "relative",
-          width: "100%",
-          aspectRatio: "4 / 5",
+          position:
+            "relative",
+          width:
+            "100%",
+          aspectRatio:
+            "4 / 5",
           background:
             "linear-gradient(135deg, #eef4ff, #f7f9fc)",
-          overflow: "hidden",
+          overflow:
+            "hidden",
         }}
       >
-        {teacher.profile_image_url ? (
-          <Image
+        {teacher.profile_image_url &&
+        !imageError ? (
+          <img
             src={
               teacher.profile_image_url
             }
             alt={`${name} teacher`}
-            fill
-            sizes="(max-width: 480px) 100vw, (max-width: 760px) 50vw, 240px"
+            onError={() =>
+              setImageError(
+                true
+              )
+            }
             style={{
+              width:
+                "100%",
+              height:
+                "100%",
               objectFit:
                 "cover",
               objectPosition:
                 "center top",
+              display:
+                "block",
             }}
           />
         ) : (
@@ -348,14 +401,18 @@ function TeacherCard({
               position:
                 "absolute",
               inset: 0,
-              display: "flex",
+              display:
+                "flex",
               alignItems:
                 "center",
               justifyContent:
                 "center",
-              color: "#9aaccc",
-              fontSize: "42px",
-              fontWeight: 900,
+              color:
+                "#9aaccc",
+              fontSize:
+                "42px",
+              fontWeight:
+                900,
             }}
           >
             T
@@ -365,16 +422,22 @@ function TeacherCard({
 
       <div
         style={{
-          padding: "18px 16px 20px",
-          textAlign: "center",
+          padding:
+            "18px 16px 20px",
+          textAlign:
+            "center",
         }}
       >
         <div
           style={{
-            color: "#101828",
-            fontSize: "17px",
-            fontWeight: 900,
-            lineHeight: 1.4,
+            color:
+              "#101828",
+            fontSize:
+              "17px",
+            fontWeight:
+              900,
+            lineHeight:
+              1.4,
           }}
         >
           {name}
@@ -382,15 +445,57 @@ function TeacherCard({
 
         <div
           style={{
-            marginTop: "6px",
-            color: "#667085",
-            fontSize: "12px",
-            fontWeight: 700,
+            marginTop:
+              "6px",
+            color:
+              "#667085",
+            fontSize:
+              "12px",
+            fontWeight:
+              700,
           }}
         >
           {nationality}
         </div>
       </div>
+    </article>
+  );
+}
+
+function EmptyTeacherCard() {
+  return (
+    <article
+      style={{
+        minWidth: 0,
+        border:
+          "1px solid #e4e7ec",
+        borderRadius:
+          "20px",
+        overflow:
+          "hidden",
+        background:
+          "#ffffff",
+      }}
+    >
+      <div
+        style={{
+          width:
+            "100%",
+          aspectRatio:
+            "4 / 5",
+          background:
+            "linear-gradient(135deg, #f7f9fc, #fbfcfe)",
+        }}
+      />
+
+      <div
+        style={{
+          height:
+            "74px",
+          padding:
+            "18px 16px 20px",
+        }}
+      />
     </article>
   );
 }
