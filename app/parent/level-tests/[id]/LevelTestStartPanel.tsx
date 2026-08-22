@@ -17,7 +17,9 @@ type Props = {
   } | null;
 };
 
-type UserRole = "parent" | "student";
+type UserRole =
+  | "parent"
+  | "student";
 
 export default function LevelTestStartPanel({
   levelTestId,
@@ -41,10 +43,8 @@ export default function LevelTestStartPanel({
    * 현재 로그인 사용자를 확인합니다.
    *
    * TALKLY 레벨테스트는
-   * 1. 학부모가 자녀를 대신하여 시작
-   * 2. 연결된 학생이 본인 계정으로 직접 시작
-   *
-   * 두 경우를 모두 허용합니다.
+   * 학부모와 연결된 학생 계정 모두
+   * 시작할 수 있습니다.
    */
   async function checkUser() {
     const supabase =
@@ -84,10 +84,8 @@ export default function LevelTestStartPanel({
     }
 
     if (
-      profile.role !==
-        "parent" &&
-      profile.role !==
-        "student"
+      profile.role !== "parent" &&
+      profile.role !== "student"
     ) {
       throw new Error(
         "레벨테스트를 시작할 수 있는 계정이 아닙니다."
@@ -114,13 +112,7 @@ export default function LevelTestStartPanel({
       } = await checkUser();
 
       /*
-       * 레벨테스트 정보를 먼저 가져옵니다.
-       *
-       * parent_user_id:
-       * 신청한 학부모
-       *
-       * student_user_id:
-       * 실제 응시 학생 계정
+       * 현재 레벨테스트 정보를 확인합니다.
        */
       const {
         data: levelTest,
@@ -154,15 +146,7 @@ export default function LevelTestStartPanel({
       }
 
       /*
-       * 접근 권한 확인
-       *
-       * 학부모:
-       * level_test.parent_user_id와
-       * 현재 로그인 ID가 같아야 합니다.
-       *
-       * 학생:
-       * level_test.student_user_id와
-       * 현재 로그인 ID가 같아야 합니다.
+       * 학부모 접근권한 확인
        */
       if (
         role === "parent" &&
@@ -174,6 +158,9 @@ export default function LevelTestStartPanel({
         );
       }
 
+      /*
+       * 학생 접근권한 확인
+       */
       if (
         role === "student" &&
         levelTest.student_user_id !==
@@ -185,8 +172,7 @@ export default function LevelTestStartPanel({
       }
 
       /*
-       * 이미 완료되었거나
-       * 관리자 검토 단계로 넘어간 시험은
+       * 이미 완료된 시험은
        * 다시 시작하지 않습니다.
        */
       if (
@@ -209,9 +195,8 @@ export default function LevelTestStartPanel({
       }
 
       /*
-       * 진행 중인 attempt가 있으면
-       * 새로 만들지 않고
-       * 기존 시험을 이어서 진행합니다.
+       * 이미 진행 중인 응시가 있다면
+       * 새로 만들지 않고 기존 시험으로 이동합니다.
        */
       const {
         data: existingAttempt,
@@ -250,6 +235,10 @@ export default function LevelTestStartPanel({
         );
       }
 
+      /*
+       * 진행 중인 attempt가 이미 있다면
+       * 바로 문제 화면으로 이동합니다.
+       */
       if (existingAttempt) {
         router.push(
           `/parent/level-tests/${levelTestId}/attempt/${existingAttempt.id}`
@@ -263,15 +252,13 @@ export default function LevelTestStartPanel({
       /*
        * 실제 응시 학생 ID 결정
        *
-       * 학생이 직접 로그인한 경우:
-       * 현재 로그인 학생 ID
+       * 학생 로그인:
+       * 현재 로그인한 학생 ID
        *
-       * 학부모가 대신 시작하는 경우:
-       * level_tests에 연결되어 있는
-       * student_user_id
+       * 학부모 로그인:
+       * level_tests에 연결된 학생 ID
        *
-       * 아직 학생 계정이 연결되지 않은
-       * 일반 레벨테스트 신청은 null 가능
+       * 학생 계정이 없는 경우에는 null 허용
        */
       const actualStudentUserId =
         role === "student"
@@ -337,7 +324,15 @@ export default function LevelTestStartPanel({
       }
 
       /*
-       * 레벨테스트 상태 변경
+       * 레벨테스트 AI 상태만
+       * 진행 중으로 변경합니다.
+       *
+       * 중요:
+       * level_tests.status는 건드리지 않습니다.
+       *
+       * 기존 DB의 status CHECK 제약조건에
+       * ai_in_progress 값이 없기 때문에
+       * ai_status만 변경합니다.
        */
       const {
         error:
@@ -347,9 +342,6 @@ export default function LevelTestStartPanel({
         .update({
           ai_status:
             "in_progress",
-
-          status:
-            "ai_in_progress",
 
           updated_at:
             now,
@@ -368,7 +360,7 @@ export default function LevelTestStartPanel({
       }
 
       /*
-       * 실제 문제 풀이 화면으로 이동
+       * 실제 레벨테스트 문제 화면으로 이동
        */
       router.push(
         `/parent/level-tests/${levelTestId}/attempt/${createdAttempt.id}`
@@ -391,14 +383,16 @@ export default function LevelTestStartPanel({
 
   const completed =
     aiStatus === "completed" ||
-    status === "admin_review" ||
+    status ===
+      "admin_review" ||
     status ===
       "interview_required" ||
     status ===
       "interview_scheduled" ||
     status ===
       "interview_completed" ||
-    status === "completed" ||
+    status ===
+      "completed" ||
     latestAttempt?.status ===
       "completed";
 
@@ -490,11 +484,14 @@ export default function LevelTestStartPanel({
         <div
           style={{
             marginTop: "18px",
-            padding: "14px 16px",
+            padding:
+              "14px 16px",
             border:
               "1px solid #fda29b",
-            borderRadius: "10px",
-            background: "#fffbfa",
+            borderRadius:
+              "10px",
+            background:
+              "#fffbfa",
             color: "#b42318",
             fontSize: "12px",
             fontWeight: 700,
@@ -524,9 +521,11 @@ export default function LevelTestStartPanel({
           }
           style={{
             minHeight: "48px",
-            padding: "0 24px",
+            padding:
+              "0 24px",
             border: "none",
-            borderRadius: "10px",
+            borderRadius:
+              "10px",
 
             background:
               loading ||
@@ -534,10 +533,12 @@ export default function LevelTestStartPanel({
                 ? "#98a2b3"
                 : "#0A1F44",
 
-            color: "#ffffff",
+            color:
+              "#ffffff",
             fontFamily:
               "inherit",
-            fontSize: "13px",
+            fontSize:
+              "13px",
             fontWeight: 900,
 
             cursor:
