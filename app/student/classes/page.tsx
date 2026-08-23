@@ -2,13 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import TalklyUserHeader from "@/components/TalklyUserHeader";
+import {
+  getStudentEnrollments,
+  type StudentEnrollmentRow,
+} from "@/lib/student-enrollments";
 
-type Enrollment = {
-  id: number;
-  course_id: number;
-  teacher_user_id: string | null;
-  status: string;
-};
+type Enrollment = StudentEnrollmentRow;
 
 type ClassSession = {
   id: number;
@@ -24,6 +23,11 @@ type ClassSession = {
 type Evaluation = {
   id: number;
   class_session_id: number;
+};
+
+type TeacherReview = {
+  id: number;
+  enrollment_id: number;
 };
 
 type Course = {
@@ -57,22 +61,11 @@ export default async function StudentClassesPage() {
     redirect("/");
   }
 
-  const { data: enrollmentData, error: enrollmentError } =
-    await supabase
-      .from("enrollments")
-      .select(`
-        id,
-        course_id,
-        teacher_user_id,
-        status
-      `)
-      .eq("student_user_id", user.id);
-
-  if (enrollmentError) {
-    throw new Error(enrollmentError.message);
-  }
-
-  const enrollments = (enrollmentData ?? []) as Enrollment[];
+  const enrollments =
+    (await getStudentEnrollments({
+      supabase,
+      userId: user.id,
+    })) as Enrollment[];
   const enrollmentIds = enrollments.map((item) => item.id);
 
   let sessions: ClassSession[] = [];
@@ -119,6 +112,25 @@ export default async function StudentClassesPage() {
 
     evaluations = (data ?? []) as Evaluation[];
   }
+
+  let teacherReviews: TeacherReview[] = [];
+
+  if (enrollmentIds.length > 0) {
+    const { data, error } = await supabase
+      .from("teacher_reviews")
+      .select("id, enrollment_id")
+      .in("enrollment_id", enrollmentIds);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    teacherReviews = (data ?? []) as TeacherReview[];
+  }
+
+  const reviewedEnrollmentIds = new Set(
+    teacherReviews.map((review) => review.enrollment_id)
+  );
 
   const courseIds = Array.from(
     new Set(enrollments.map((enrollment) => enrollment.course_id))
@@ -191,6 +203,22 @@ export default async function StudentClassesPage() {
     );
   }
 
+  function getCourseNameByEnrollment(enrollment: Enrollment) {
+    return (
+      courses.find((course) => course.id === enrollment.course_id)?.name ?? "-"
+    );
+  }
+
+  function getTeacherNameByEnrollment(enrollment: Enrollment) {
+    if (!enrollment.teacher_user_id) return "담당 강사";
+
+    return (
+      teachers.find(
+        (teacher) => teacher.user_id === enrollment.teacher_user_id
+      )?.display_name ?? "담당 강사"
+    );
+  }
+
   function hasEvaluation(sessionId: number) {
     return evaluations.some(
       (evaluation) => evaluation.class_session_id === sessionId
@@ -217,6 +245,10 @@ export default async function StudentClassesPage() {
   }
 
   function getEffectiveStatus(session: ClassSession) {
+    if (["held", "cancelled", "no_show"].includes(session.status)) {
+      return session.status;
+    }
+
     if (session.ended_at || session.status === "completed") {
       return "completed";
     }
@@ -225,7 +257,7 @@ export default async function StudentClassesPage() {
       return "in_progress";
     }
 
-    return session.status;
+    return "scheduled";
   }
 
   function getStatusLabel(status: string) {
@@ -291,6 +323,12 @@ export default async function StudentClassesPage() {
           new Date(b.scheduled_start).getTime()
       )[0] ?? null;
 
+  const pendingReviewEnrollments = enrollments.filter(
+    (enrollment) =>
+      enrollment.status === "completed" &&
+      !reviewedEnrollmentIds.has(enrollment.id)
+  );
+
   return (
     <div className="talkly-dashboard">
       <TalklyUserHeader
@@ -335,7 +373,7 @@ export default async function StudentClassesPage() {
               </h1>
 
               <p className="talkly-dashboard-subtitle">
-                예정된 수업과 지난 수업 기록을 한 곳에서 확인합니다.
+                예정된 수업, 지난 수업과 수강 완료 후 강사평가 상태를 한 곳에서 확인합니다.
               </p>
             </div>
 
@@ -360,6 +398,83 @@ export default async function StudentClassesPage() {
             }}
           />
         </section>
+
+        {pendingReviewEnrollments.length > 0 && (
+          <section
+            className="talkly-card"
+            style={{
+              marginTop: "24px",
+              padding: "24px",
+              border: "1px solid #dbe7ff",
+              background: "#f7faff",
+            }}
+          >
+            <div className="talkly-section-label">TEACHER REVIEW</div>
+            <h2
+              style={{
+                margin: "6px 0 0",
+                color: "var(--talkly-navy)",
+                fontSize: "22px",
+              }}
+            >
+              평가가 필요한 완료 수강 {pendingReviewEnrollments.length}건
+            </h2>
+
+            <div
+              style={{
+                marginTop: "16px",
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(250px, 1fr))",
+                gap: "10px",
+              }}
+            >
+              {pendingReviewEnrollments.map((enrollment) => (
+                <Link
+                  key={enrollment.id}
+                  href={`/student/teacher-reviews/${enrollment.id}`}
+                  style={{
+                    display: "block",
+                    padding: "16px",
+                    border: "1px solid #dbe7ff",
+                    borderRadius: "11px",
+                    background: "#ffffff",
+                    color: "inherit",
+                    textDecoration: "none",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "var(--talkly-navy)",
+                      fontWeight: 900,
+                    }}
+                  >
+                    {getCourseNameByEnrollment(enrollment)}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: "5px",
+                      color: "var(--text-secondary)",
+                      fontSize: "13px",
+                    }}
+                  >
+                    {getTeacherNameByEnrollment(enrollment)}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: "12px",
+                      color: "var(--talkly-blue)",
+                      fontSize: "12px",
+                      fontWeight: 900,
+                    }}
+                  >
+                    강사 평가하기 →
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="talkly-stat-grid">
           <div className="talkly-card talkly-stat-card">

@@ -316,6 +316,54 @@ export default async function TeacherDetailPage({
     evaluations.map((item) => item.class_session_id)
   );
 
+  const [teacherReviewSummaryResult, teacherReviewsResult] =
+    await Promise.all([
+      supabase
+        .from("teacher_review_summary")
+        .select(`
+          teacher_user_id,
+          review_count,
+          attitude_average,
+          lesson_quality_average,
+          explanation_average,
+          communication_average,
+          preparation_average,
+          satisfaction_average,
+          overall_average,
+          latest_review_at
+        `)
+        .eq("teacher_user_id", id)
+        .maybeSingle(),
+
+      supabase
+        .from("teacher_reviews")
+        .select(`
+          id,
+          enrollment_id,
+          attitude_score,
+          lesson_quality_score,
+          explanation_score,
+          communication_score,
+          preparation_score,
+          satisfaction_score,
+          comment,
+          created_at
+        `)
+        .eq("teacher_user_id", id)
+        .order("created_at", { ascending: false }),
+    ]);
+
+  const teacherReviewError =
+    teacherReviewSummaryResult.error ||
+    teacherReviewsResult.error;
+
+  if (teacherReviewError) {
+    throw new Error(teacherReviewError.message);
+  }
+
+  const teacherReviewSummary = teacherReviewSummaryResult.data;
+  const teacherReviews = teacherReviewsResult.data ?? [];
+
   const seoulDate = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
     year: "numeric",
@@ -643,6 +691,13 @@ export default async function TeacherDetailPage({
           ["전체 수업", sessions.length],
           ["출결 처리", attendanceCompletedCount],
           ["평가 작성", evaluationCompletedCount],
+          ["강사 평가", teacherReviewSummary?.review_count ?? 0],
+          [
+            "강사 평점",
+            teacherReviewSummary?.overall_average != null
+              ? `${Number(teacherReviewSummary.overall_average).toFixed(2)}`
+              : "-",
+          ],
         ].map(([label, value]) => (
           <div
             key={String(label)}
@@ -954,6 +1009,191 @@ export default async function TeacherDetailPage({
             </div>
           </div>
         </div>
+      </section>
+
+      <section
+        style={{
+          marginTop: "18px",
+          padding: "24px",
+          border: "1px solid #e4e7ec",
+          borderRadius: "14px",
+          background: "#ffffff",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: "18px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <h2 style={{ margin: 0 }}>강사 평가</h2>
+            <p
+              style={{
+                margin: "6px 0 0",
+                color: "#667085",
+                fontSize: "13px",
+              }}
+            >
+              수강을 완료한 학생이 작성한 평가입니다.
+            </p>
+          </div>
+
+          <div
+            style={{
+              textAlign: "right",
+            }}
+          >
+            <div style={{ color: "#667085", fontSize: "12px" }}>종합 평점</div>
+            <div style={{ marginTop: "3px", fontSize: "28px", fontWeight: 900 }}>
+              {teacherReviewSummary?.overall_average != null
+                ? `${Number(teacherReviewSummary.overall_average).toFixed(2)} / 10`
+                : "-"}
+            </div>
+            <div style={{ marginTop: "3px", color: "#667085", fontSize: "12px" }}>
+              총 {teacherReviewSummary?.review_count ?? 0}건
+            </div>
+          </div>
+        </div>
+
+        {teacherReviewSummary && (teacherReviewSummary.review_count ?? 0) > 0 && (
+          <div
+            style={{
+              marginTop: "20px",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+              gap: "10px",
+            }}
+          >
+            {[
+              ["수업 태도", teacherReviewSummary.attitude_average],
+              ["수업 구성", teacherReviewSummary.lesson_quality_average],
+              ["설명 이해도", teacherReviewSummary.explanation_average],
+              ["소통", teacherReviewSummary.communication_average],
+              ["수업 준비", teacherReviewSummary.preparation_average],
+              ["전반 만족도", teacherReviewSummary.satisfaction_average],
+            ].map(([label, value]) => (
+              <div
+                key={String(label)}
+                style={{
+                  padding: "15px",
+                  border: "1px solid #e5ecf6",
+                  borderRadius: "10px",
+                  background: "#f7faff",
+                }}
+              >
+                <div style={{ color: "#667085", fontSize: "11px", fontWeight: 700 }}>
+                  {label}
+                </div>
+                <div style={{ marginTop: "5px", fontSize: "20px", fontWeight: 900 }}>
+                  {value != null ? `${Number(value).toFixed(2)} / 10` : "-"}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {teacherReviews.length === 0 ? (
+          <div
+            style={{
+              marginTop: "18px",
+              padding: "24px",
+              border: "1px dashed #cfd8e6",
+              borderRadius: "10px",
+              color: "#667085",
+            }}
+          >
+            아직 등록된 강사 평가가 없습니다.
+          </div>
+        ) : (
+          <div
+            style={{
+              marginTop: "18px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+            }}
+          >
+            {teacherReviews.map((review) => (
+              <article
+                key={review.id}
+                style={{
+                  padding: "18px",
+                  border: "1px solid #e7ebf0",
+                  borderRadius: "11px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: "14px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div>
+                    <strong>{getCourseName(review.enrollment_id)}</strong>
+                    <div style={{ marginTop: "4px", color: "#667085", fontSize: "12px" }}>
+                      평가일 {formatDateTime(review.created_at)}
+                    </div>
+                  </div>
+                  <strong>
+                    {((
+                      review.attitude_score +
+                      review.lesson_quality_score +
+                      review.explanation_score +
+                      review.communication_score +
+                      review.preparation_score +
+                      review.satisfaction_score
+                    ) / 6).toFixed(1)} / 10
+                  </strong>
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "14px",
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(115px, 1fr))",
+                    gap: "8px",
+                    fontSize: "12px",
+                  }}
+                >
+                  {[
+                    ["태도", review.attitude_score],
+                    ["구성", review.lesson_quality_score],
+                    ["설명", review.explanation_score],
+                    ["소통", review.communication_score],
+                    ["준비", review.preparation_score],
+                    ["만족", review.satisfaction_score],
+                  ].map(([label, score]) => (
+                    <div key={String(label)} style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
+                      <span style={{ color: "#667085" }}>{label}</span>{" "}
+                      <strong>{score} / 10</strong>
+                    </div>
+                  ))}
+                </div>
+
+                {review.comment && (
+                  <div
+                    style={{
+                      marginTop: "14px",
+                      padding: "14px",
+                      background: "#f9fafb",
+                      borderRadius: "9px",
+                      lineHeight: 1.7,
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {review.comment}
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <section

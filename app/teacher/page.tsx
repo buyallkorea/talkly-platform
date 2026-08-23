@@ -290,6 +290,47 @@ export default async function TeacherPage() {
     );
   }
 
+  const [reviewSummaryResult, recentReviewsResult] = await Promise.all([
+    supabase
+      .from("teacher_review_summary")
+      .select(`
+        teacher_user_id,
+        review_count,
+        overall_average,
+        latest_review_at
+      `)
+      .eq("teacher_user_id", user.id)
+      .maybeSingle(),
+
+    supabase
+      .from("teacher_reviews")
+      .select(`
+        id,
+        attitude_score,
+        lesson_quality_score,
+        explanation_score,
+        communication_score,
+        preparation_score,
+        satisfaction_score,
+        comment,
+        created_at
+      `)
+      .eq("teacher_user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(3),
+  ]);
+
+  const reviewError =
+    reviewSummaryResult.error ||
+    recentReviewsResult.error;
+
+  if (reviewError) {
+    throw new Error(reviewError.message);
+  }
+
+  const reviewSummary = reviewSummaryResult.data;
+  const recentReviews = recentReviewsResult.data ?? [];
+
   return (
     <main
       style={{
@@ -343,6 +384,112 @@ export default async function TeacherPage() {
           배정된 수업 일정을 확인하고 관리할 수 있습니다.
         </div>
       </div>
+
+      <section
+        style={{
+          marginBottom: "24px",
+          padding: "24px",
+          border: "1px solid #dbe7ff",
+          borderRadius: "14px",
+          background: "#f7faff",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: "18px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <div style={{ color: "#2f6fed", fontSize: "11px", fontWeight: 900, letterSpacing: "0.08em" }}>
+              MY REVIEWS
+            </div>
+            <h2 style={{ margin: "6px 0 0", fontSize: "24px" }}>내 강사 평가</h2>
+            <p style={{ margin: "8px 0 0", fontSize: "13px", opacity: 0.68 }}>
+              학생이 남긴 점수와 코멘트를 확인할 수 있습니다. 평가 작성 학생의 이름은 표시되지 않습니다.
+            </p>
+          </div>
+
+          <Link
+            href="/teacher/reviews"
+            style={{
+              padding: "10px 14px",
+              border: "1px solid #b9cdf8",
+              borderRadius: "9px",
+              color: "#175cd3",
+              background: "#ffffff",
+              textDecoration: "none",
+              fontWeight: 800,
+              whiteSpace: "nowrap",
+            }}
+          >
+            전체 평가 보기 →
+          </Link>
+        </div>
+
+        <div
+          style={{
+            marginTop: "18px",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: "10px",
+          }}
+        >
+          <div style={{ padding: "15px", border: "1px solid #dbe7ff", borderRadius: "10px", background: "#ffffff" }}>
+            <div style={{ fontSize: "11px", opacity: 0.6 }}>종합 평점</div>
+            <div style={{ marginTop: "5px", fontSize: "25px", fontWeight: 900 }}>
+              {reviewSummary?.overall_average != null
+                ? `${Number(reviewSummary.overall_average).toFixed(2)} / 10`
+                : "-"}
+            </div>
+          </div>
+
+          <div style={{ padding: "15px", border: "1px solid #dbe7ff", borderRadius: "10px", background: "#ffffff" }}>
+            <div style={{ fontSize: "11px", opacity: 0.6 }}>평가 건수</div>
+            <div style={{ marginTop: "5px", fontSize: "25px", fontWeight: 900 }}>
+              {reviewSummary?.review_count ?? 0}건
+            </div>
+          </div>
+        </div>
+
+        {recentReviews.length > 0 && (
+          <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
+            {recentReviews.map((review) => (
+              <div
+                key={review.id}
+                style={{
+                  padding: "13px 14px",
+                  border: "1px solid #e5ecf6",
+                  borderRadius: "9px",
+                  background: "#ffffff",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+                  <span style={{ fontSize: "12px", opacity: 0.62 }}>최근 평가</span>
+                  <strong>
+                    {((
+                      review.attitude_score +
+                      review.lesson_quality_score +
+                      review.explanation_score +
+                      review.communication_score +
+                      review.preparation_score +
+                      review.satisfaction_score
+                    ) / 6).toFixed(1)} / 10
+                  </strong>
+                </div>
+                {review.comment && (
+                  <div style={{ marginTop: "8px", fontSize: "13px", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>
+                    {review.comment}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section
         style={{

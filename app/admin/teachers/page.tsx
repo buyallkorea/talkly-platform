@@ -35,6 +35,13 @@ type Enrollment = {
   status: string;
 };
 
+
+type TeacherReviewSummary = {
+  teacher_user_id: string;
+  review_count: number;
+  overall_average: number | string | null;
+};
+
 type ClassSession = {
   id: number;
   enrollment_id: number;
@@ -88,6 +95,7 @@ export default async function AdminTeachersPage({
   const [
     teachersResult,
     enrollmentsResult,
+    reviewSummaryResult,
   ] = await Promise.all([
     supabase
       .from("teacher_profiles")
@@ -115,11 +123,20 @@ export default async function AdminTeachersPage({
         status
       `)
       .not("teacher_user_id", "is", null),
+
+    supabase
+      .from("teacher_review_summary")
+      .select(`
+        teacher_user_id,
+        review_count,
+        overall_average
+      `),
   ]);
 
   const firstError =
     teachersResult.error ||
-    enrollmentsResult.error;
+    enrollmentsResult.error ||
+    reviewSummaryResult.error;
 
   if (firstError) {
     throw new Error(firstError.message);
@@ -130,6 +147,13 @@ export default async function AdminTeachersPage({
 
   const enrollments =
     (enrollmentsResult.data ?? []) as Enrollment[];
+
+  const reviewSummaries =
+    (reviewSummaryResult.data ?? []) as TeacherReviewSummary[];
+
+  const reviewSummaryMap = new Map(
+    reviewSummaries.map((item) => [item.teacher_user_id, item])
+  );
 
   const teacherIds = teachers.map(
     (teacher) => teacher.user_id
@@ -324,6 +348,10 @@ export default async function AdminTeachersPage({
           ),
         totalSessionCount:
           teacherSessions.length,
+        reviewCount:
+          reviewSummaryMap.get(teacher.user_id)?.review_count ?? 0,
+        reviewAverage:
+          reviewSummaryMap.get(teacher.user_id)?.overall_average ?? null,
       };
     })
     .filter((teacher) => {
@@ -384,6 +412,24 @@ export default async function AdminTeachersPage({
         ),
       0
     );
+
+  const totalTeacherReviewCount = reviewSummaries.reduce(
+    (sum, item) => sum + Number(item.review_count || 0),
+    0
+  );
+
+  const weightedReviewTotal = reviewSummaries.reduce(
+    (sum, item) =>
+      sum +
+      Number(item.overall_average || 0) *
+        Number(item.review_count || 0),
+    0
+  );
+
+  const overallTeacherReviewAverage =
+    totalTeacherReviewCount > 0
+      ? (weightedReviewTotal / totalTeacherReviewCount).toFixed(2)
+      : null;
 
   return (
     <div>
@@ -470,6 +516,14 @@ export default async function AdminTeachersPage({
           {
             label: "오늘 수업",
             value: totalTodaySessions,
+          },
+          {
+            label: "강사 평가",
+            value: totalTeacherReviewCount,
+          },
+          {
+            label: "평균 평점",
+            value: overallTeacherReviewAverage ?? "-",
           },
         ].map((item) => (
           <div
@@ -592,7 +646,7 @@ export default async function AdminTeachersPage({
           style={{
             display: "grid",
             gridTemplateColumns:
-              "minmax(170px, 1.1fr) 110px 120px 120px 100px 110px 90px",
+              "minmax(170px, 1.1fr) 90px 100px 100px 90px 90px 90px 80px",
             gap: "12px",
             padding: "14px 18px",
             borderBottom:
@@ -607,7 +661,8 @@ export default async function AdminTeachersPage({
           <div>담당 학생</div>
           <div>진행 수강</div>
           <div>오늘 수업</div>
-          <div>전체 수업</div>
+          <div>평가수</div>
+          <div>평균</div>
           <div />
         </div>
 
@@ -628,7 +683,7 @@ export default async function AdminTeachersPage({
               style={{
                 display: "grid",
                 gridTemplateColumns:
-                  "minmax(170px, 1.1fr) 110px 120px 120px 100px 110px 90px",
+                  "minmax(170px, 1.1fr) 90px 100px 100px 90px 90px 90px 80px",
                 gap: "12px",
                 alignItems: "center",
                 padding: "16px 18px",
@@ -759,10 +814,16 @@ export default async function AdminTeachersPage({
                   fontWeight: 700,
                 }}
               >
-                {
-                  teacher.totalSessionCount
-                }
-                건
+                {teacher.reviewCount}건
+              </div>
+
+              <div
+                style={{
+                  fontWeight: 800,
+                  color: teacher.reviewAverage ? "#175cd3" : "#667085",
+                }}
+              >
+                {teacher.reviewAverage ? `${Number(teacher.reviewAverage).toFixed(2)}` : "-"}
               </div>
 
               <Link
