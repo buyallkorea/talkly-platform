@@ -36,7 +36,7 @@ function getEnrollmentStatusLabel(status: string) {
     case "completed":
       return "수강 완료";
     case "cancelled":
-      return "취소";
+      return "수강 취소";
     default:
       return status;
   }
@@ -46,14 +46,16 @@ function getSessionStatusLabel(status: string) {
   switch (status) {
     case "scheduled":
       return "예정";
+    case "in_progress":
+      return "수업 진행 중";
     case "completed":
-      return "완료";
+      return "수업 완료";
     case "cancelled":
-      return "취소";
+      return "수업 취소";
     case "no_show":
-      return "무단결석";
+      return "결석";
     case "held":
-      return "결석 승인";
+      return "수업 연기";
     default:
       return status;
   }
@@ -76,16 +78,21 @@ function getAttendanceStatusLabel(status: string) {
   }
 }
 
-function getHoldStatusLabel(status: string) {
+function getHoldStatusLabel(
+  status: string,
+  adminNote: string | null
+) {
   switch (status) {
     case "requested":
-      return "승인 대기";
+      return "이전 승인 대기";
     case "approved":
-      return "승인";
+      return adminNote?.includes("시스템 자동승인")
+        ? "자동 승인"
+        : "이전 수동 승인";
     case "rejected":
-      return "거절";
+      return "이전 반려";
     case "cancelled":
-      return "신청 취소";
+      return "연기 취소";
     default:
       return status;
   }
@@ -291,6 +298,7 @@ export default async function AdminChildStudentDetailPage({
     class_session_id: number;
     status: string;
     requested_at: string;
+    admin_note: string | null;
   }[] = [];
 
   if (sessionIds.length > 0) {
@@ -328,7 +336,8 @@ export default async function AdminChildStudentDetailPage({
           id,
           class_session_id,
           status,
-          requested_at
+          requested_at,
+          admin_note
         `)
         .in("class_session_id", sessionIds)
         .order("requested_at", { ascending: false }),
@@ -384,9 +393,11 @@ export default async function AdminChildStudentDetailPage({
   ).length;
 
   const absentCount = attendance.filter(
-    (item) =>
-      item.status === "absent" ||
-      item.status === "excused"
+    (item) => item.status === "absent"
+  ).length;
+
+  const excusedCount = attendance.filter(
+    (item) => item.status === "excused"
   ).length;
 
   const completedCount = sessions.filter(
@@ -507,9 +518,10 @@ export default async function AdminChildStudentDetailPage({
           ["출석", presentCount],
           ["지각", lateCount],
           ["결석", absentCount],
+          ["인정결석", excusedCount],
           ["평가 완료", evaluations.length],
           ["평가 미작성", missingEvaluationCount],
-          ["승인 대기 결석", pendingHoldCount],
+          ["이전 승인 대기", pendingHoldCount],
         ].map(([label, value]) => (
           <div
             key={String(label)}
@@ -840,7 +852,8 @@ export default async function AdminChildStudentDetailPage({
                   >
                     {holdItem
                       ? getHoldStatusLabel(
-                          holdItem.status
+                          holdItem.status,
+                          holdItem.admin_note
                         )
                       : getSessionStatusLabel(
                           session.status

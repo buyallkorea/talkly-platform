@@ -1,42 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
-import TalklyUserHeader from "@/components/TalklyUserHeader";
-
-type Enrollment = {
-  id: number;
-  student_user_id: string | null;
-  child_id: number | null;
-  course_id: number;
-  teacher_user_id: string | null;
-  status: string;
-};
-
-type ClassSession = {
-  id: number;
-  enrollment_id: number;
-  lesson_number: number;
-  scheduled_start: string;
-  scheduled_end: string;
-  status: string;
-  meeting_provider: string | null;
-  meeting_url: string | null;
-};
-
-type Child = {
-  id: number;
-  name: string;
-};
-
-type Student = {
-  id: string;
-  name: string | null;
-};
-
-type Course = {
-  id: number;
-  name: string;
-};
 
 export default async function TeacherPage() {
   const supabase = await createClient();
@@ -60,7 +24,7 @@ export default async function TeacherPage() {
   }
 
   const {
-    data: enrollmentData,
+    data: enrollments,
     error: enrollmentError,
   } = await supabase
     .from("enrollments")
@@ -79,10 +43,19 @@ export default async function TeacherPage() {
     throw new Error(enrollmentError.message);
   }
 
-  const enrollments = (enrollmentData ?? []) as Enrollment[];
-  const enrollmentIds = enrollments.map((enrollment) => enrollment.id);
+  const enrollmentIds =
+    enrollments?.map((enrollment) => enrollment.id) ?? [];
 
-  let sessions: ClassSession[] = [];
+  let sessions: {
+    id: number;
+    enrollment_id: number;
+    lesson_number: number;
+    scheduled_start: string;
+    scheduled_end: string;
+    status: string;
+    meeting_provider: string | null;
+    meeting_url: string | null;
+  }[] = [];
 
   if (enrollmentIds.length > 0) {
     const { data, error } = await supabase
@@ -106,66 +79,91 @@ export default async function TeacherPage() {
       throw new Error(error.message);
     }
 
-    sessions = (data ?? []) as ClassSession[];
+    sessions = data ?? [];
   }
 
-  const childIds = enrollments
-    .map((enrollment) => enrollment.child_id)
-    .filter((id): id is number => id !== null);
+  const childIds =
+    enrollments
+      ?.map((enrollment) => enrollment.child_id)
+      .filter((id): id is number => id !== null) ?? [];
 
-  let children: Child[] = [];
+  let children: {
+    id: number;
+    name: string;
+  }[] = [];
 
   if (childIds.length > 0) {
     const { data, error } = await supabase
       .from("children")
       .select("id, name")
-      .in("id", Array.from(new Set(childIds)));
+      .in(
+        "id",
+        Array.from(new Set(childIds))
+      );
 
     if (error) {
       throw new Error(error.message);
     }
 
-    children = (data ?? []) as Child[];
+    children = data ?? [];
   }
 
-  const studentIds = enrollments
-    .map((enrollment) => enrollment.student_user_id)
-    .filter((id): id is string => id !== null);
+  const studentIds =
+    enrollments
+      ?.map((enrollment) => enrollment.student_user_id)
+      .filter((id): id is string => id !== null) ?? [];
 
-  let students: Student[] = [];
+  let students: {
+    id: string;
+    name: string | null;
+  }[] = [];
 
   if (studentIds.length > 0) {
     const { data, error } = await supabase
       .from("profiles")
       .select("id, name")
-      .in("id", Array.from(new Set(studentIds)));
+      .in(
+        "id",
+        Array.from(new Set(studentIds))
+      );
 
     if (error) {
       throw new Error(error.message);
     }
 
-    students = (data ?? []) as Student[];
+    students = data ?? [];
   }
 
-  const courseIds = enrollments.map((enrollment) => enrollment.course_id);
+  const courseIds =
+    enrollments?.map(
+      (enrollment) => enrollment.course_id
+    ) ?? [];
 
-  let courses: Course[] = [];
+  let courses: {
+    id: number;
+    name: string;
+  }[] = [];
 
   if (courseIds.length > 0) {
     const { data, error } = await supabase
       .from("courses")
       .select("id, name")
-      .in("id", Array.from(new Set(courseIds)));
+      .in(
+        "id",
+        Array.from(new Set(courseIds))
+      );
 
     if (error) {
       throw new Error(error.message);
     }
 
-    courses = (data ?? []) as Course[];
+    courses = data ?? [];
   }
 
   function getEnrollment(enrollmentId: number) {
-    return enrollments.find((item) => item.id === enrollmentId) ?? null;
+    return enrollments?.find(
+      (item) => item.id === enrollmentId
+    );
   }
 
   function getStudentName(enrollmentId: number) {
@@ -185,7 +183,8 @@ export default async function TeacherPage() {
 
     if (enrollment.student_user_id) {
       const student = students.find(
-        (item) => item.id === enrollment.student_user_id
+        (item) =>
+          item.id === enrollment.student_user_id
       );
 
       return student?.name || "Adult Student";
@@ -201,9 +200,11 @@ export default async function TeacherPage() {
       return "-";
     }
 
-    return (
-      courses.find((item) => item.id === enrollment.course_id)?.name || "-"
+    const course = courses.find(
+      (item) => item.id === enrollment.course_id
     );
+
+    return course?.name || "-";
   }
 
   function getSessionStatus(status: string) {
@@ -234,14 +235,14 @@ export default async function TeacherPage() {
 
       case "no_show":
         return {
-          en: "No Show",
-          ko: "무단결석",
+          en: "Absent",
+          ko: "결석",
         };
 
       case "held":
         return {
-          en: "Class Hold",
-          ko: "결석 승인",
+          en: "Class Reschedule",
+          ko: "수업 연기",
         };
 
       default:
@@ -250,21 +251,6 @@ export default async function TeacherPage() {
           ko: "",
         };
     }
-  }
-
-  function getBadgeClass(status: string) {
-    if (status === "completed") {
-      return "talkly-badge talkly-badge-success";
-    }
-
-    if (
-      status === "scheduled" ||
-      status === "in_progress"
-    ) {
-      return "talkly-badge talkly-badge-blue";
-    }
-
-    return "talkly-badge talkly-badge-neutral";
   }
 
   function formatEnglishDateTime(value: string) {
@@ -304,571 +290,288 @@ export default async function TeacherPage() {
     );
   }
 
-  const now = new Date();
-  const todayKst = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(now);
-
-  const todaySessions = sessions.filter((session) => {
-    const sessionDate = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Seoul",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date(session.scheduled_start));
-
-    return sessionDate === todayKst;
-  });
-
-  const upcomingSessions = sessions.filter((session) => {
-    if (
-      session.status === "completed" ||
-      session.status === "cancelled" ||
-      session.status === "held"
-    ) {
-      return false;
-    }
-
-    return new Date(session.scheduled_end).getTime() >= now.getTime();
-  });
-
-  const completedSessions = sessions.filter(
-    (session) => session.status === "completed"
-  );
-
-  const uniqueStudents = new Set(
-    enrollments.map((enrollment) =>
-      enrollment.child_id
-        ? `child:${enrollment.child_id}`
-        : `student:${enrollment.student_user_id ?? enrollment.id}`
-    )
-  );
-
   return (
-    <div className="talkly-dashboard">
-      <TalklyUserHeader
-        role="teacher"
-        userName={profile.name}
-      />
-
-      <main className="talkly-dashboard-main">
-        <section
+    <main
+      style={{
+        padding: "40px",
+        maxWidth: "1100px",
+        margin: "0 auto",
+      }}
+    >
+      <div
+        style={{
+          marginBottom: "36px",
+        }}
+      >
+        <h1
           style={{
-            position: "relative",
-            overflow: "hidden",
-            padding: "34px 36px",
-            borderRadius: "22px",
-            background:
-              "linear-gradient(135deg, #ffffff 0%, #f1f6ff 62%, #e8f1ff 100%)",
-            border: "1px solid #e1e9f5",
-            boxShadow: "var(--shadow-card)",
+            marginBottom: "6px",
+            fontSize: "34px",
           }}
         >
-          <div
+          TALKLY Teacher
+        </h1>
+
+        <div
+          style={{
+            fontSize: "14px",
+            opacity: 0.65,
+            marginBottom: "14px",
+          }}
+        >
+          TALKLY 강사
+        </div>
+
+        <p
+          style={{
+            margin: 0,
+            fontSize: "18px",
+          }}
+        >
+          {profile.name
+            ? `Welcome, ${profile.name}.`
+            : "Welcome to your teacher dashboard."}
+        </p>
+
+        <div
+          style={{
+            marginTop: "5px",
+            fontSize: "13px",
+            opacity: 0.6,
+          }}
+        >
+          배정된 수업 일정을 확인하고 관리할 수 있습니다.
+        </div>
+      </div>
+
+      <section
+        style={{
+          padding: "28px",
+          border: "1px solid #ddd",
+          borderRadius: "14px",
+        }}
+      >
+        <div
+          style={{
+            marginBottom: "24px",
+          }}
+        >
+          <h2
             style={{
-              position: "relative",
-              zIndex: 1,
-              maxWidth: "720px",
+              marginTop: 0,
+              marginBottom: "4px",
+              fontSize: "26px",
             }}
           >
-            <div className="talkly-eyebrow">
-              TALKLY TEACHER
-            </div>
-
-            <h1 className="talkly-dashboard-title">
-              {profile.name
-                ? `${profile.name} 강사님, 안녕하세요.`
-                : "강사님, 안녕하세요."}
-            </h1>
-
-            <p
-              style={{
-                margin: "10px 0 0",
-                color: "var(--text-secondary)",
-                fontSize: "16px",
-                lineHeight: 1.75,
-              }}
-            >
-              오늘 수업과 예정된 일정을 확인하고,
-              TALKLY Classroom에서 수업을 진행하세요.
-              <br />
-              수업 종료 후에는 출석과 학습평가를 기록할 수 있습니다.
-            </p>
-          </div>
+            My Classes
+          </h2>
 
           <div
-            aria-hidden="true"
             style={{
-              position: "absolute",
-              right: "-55px",
-              bottom: "-95px",
-              width: "270px",
-              height: "270px",
-              borderRadius: "50%",
-              background: "rgba(63, 117, 220, 0.09)",
-            }}
-          />
-        </section>
-
-        <section
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit, minmax(190px, 1fr))",
-            gap: "16px",
-            marginTop: "30px",
-          }}
-        >
-          <div className="talkly-card talkly-stat-card">
-            <div className="talkly-stat-label">
-              오늘 수업
-            </div>
-
-            <div className="talkly-stat-value">
-              {todaySessions.length}회
-            </div>
-
-            <div
-              style={{
-                marginTop: "6px",
-                color: "var(--text-muted)",
-                fontSize: "13px",
-              }}
-            >
-              오늘 예정된 수업
-            </div>
-          </div>
-
-          <div className="talkly-card talkly-stat-card">
-            <div className="talkly-stat-label">
-              예정 수업
-            </div>
-
-            <div className="talkly-stat-value">
-              {upcomingSessions.length}회
-            </div>
-
-            <div
-              style={{
-                marginTop: "6px",
-                color: "var(--text-muted)",
-                fontSize: "13px",
-              }}
-            >
-              앞으로 진행할 수업
-            </div>
-          </div>
-
-          <div className="talkly-card talkly-stat-card">
-            <div className="talkly-stat-label">
-              완료 수업
-            </div>
-
-            <div className="talkly-stat-value">
-              {completedSessions.length}회
-            </div>
-
-            <div
-              style={{
-                marginTop: "6px",
-                color: "var(--text-muted)",
-                fontSize: "13px",
-              }}
-            >
-              완료 처리된 수업
-            </div>
-          </div>
-
-          <div className="talkly-card talkly-stat-card">
-            <div className="talkly-stat-label">
-              담당 학생
-            </div>
-
-            <div className="talkly-stat-value">
-              {uniqueStudents.size}명
-            </div>
-
-            <div
-              style={{
-                marginTop: "6px",
-                color: "var(--text-muted)",
-                fontSize: "13px",
-              }}
-            >
-              현재 배정된 학생
-            </div>
-          </div>
-        </section>
-
-        <section
-          className="talkly-card"
-          style={{
-            marginTop: "28px",
-            padding: "28px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-end",
-              gap: "16px",
-              flexWrap: "wrap",
+              fontSize: "13px",
+              opacity: 0.6,
             }}
           >
-            <div>
-              <div className="talkly-section-label">
-                TODAY
-              </div>
+            내 수업
+          </div>
 
-              <h2
-                style={{
-                  margin: "5px 0 0",
-                  color: "var(--talkly-navy)",
-                  fontSize: "24px",
-                }}
-              >
-                오늘 수업
-              </h2>
-            </div>
+          <div
+            style={{
+              marginTop: "14px",
+              fontSize: "17px",
+            }}
+          >
+            {sessions.length} Classes
+          </div>
 
+          <div
+            style={{
+              marginTop: "2px",
+              fontSize: "12px",
+              opacity: 0.55,
+            }}
+          >
+            총 {sessions.length}회 수업
+          </div>
+        </div>
+
+        {sessions.length === 0 ? (
+          <div
+            style={{
+              padding: "28px",
+              border: "1px dashed #ccc",
+              borderRadius: "10px",
+            }}
+          >
             <div
               style={{
-                color: "var(--text-muted)",
-                fontSize: "14px",
+                fontSize: "18px",
                 fontWeight: 700,
               }}
             >
-              {todaySessions.length}회
-            </div>
-          </div>
-
-          {todaySessions.length === 0 ? (
-            <div
-              style={{
-                marginTop: "22px",
-                padding: "26px",
-                border: "1px dashed var(--border)",
-                borderRadius: "12px",
-                color: "var(--text-muted)",
-              }}
-            >
-              오늘 예정된 수업이 없습니다.
-            </div>
-          ) : (
-            <div
-              style={{
-                marginTop: "22px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-              }}
-            >
-              {todaySessions.map((session) => {
-                const status =
-                  getSessionStatus(session.status);
-
-                return (
-                  <Link
-                    key={session.id}
-                    href={`/teacher/classes/${session.id}`}
-                    className="talkly-card-hover"
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns:
-                        "90px minmax(180px, 1fr) minmax(220px, 1.2fr) 100px 120px 24px",
-                      gap: "14px",
-                      alignItems: "center",
-                      padding: "18px",
-                      border: "1px solid var(--border)",
-                      borderRadius: "12px",
-                      textDecoration: "none",
-                      color: "inherit",
-                      background: "#ffffff",
-                    }}
-                  >
-                    <strong
-                      style={{
-                        color: "var(--talkly-navy)",
-                      }}
-                    >
-                      {session.lesson_number}회차
-                    </strong>
-
-                    <div>
-                      <div
-                        style={{
-                          color: "var(--talkly-navy)",
-                          fontWeight: 900,
-                        }}
-                      >
-                        {getStudentName(
-                          session.enrollment_id
-                        )}
-                      </div>
-
-                      <div
-                        style={{
-                          marginTop: "3px",
-                          color: "var(--text-muted)",
-                          fontSize: "13px",
-                        }}
-                      >
-                        {getCourseName(
-                          session.enrollment_id
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div
-                        style={{
-                          color: "var(--text-secondary)",
-                          fontSize: "14px",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {formatEnglishDateTime(
-                          session.scheduled_start
-                        )}
-                      </div>
-
-                      <div
-                        style={{
-                          marginTop: "3px",
-                          color: "var(--text-muted)",
-                          fontSize: "12px",
-                        }}
-                      >
-                        {formatKoreanDateTime(
-                          session.scheduled_start
-                        )}
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        color: "var(--text-muted)",
-                        fontSize: "13px",
-                      }}
-                    >
-                      {getDurationMinutes(
-                        session.scheduled_start,
-                        session.scheduled_end
-                      )}
-                      분
-                    </div>
-
-                    <span
-                      className={getBadgeClass(
-                        session.status
-                      )}
-                    >
-                      {status.ko || status.en}
-                    </span>
-
-                    <span
-                      style={{
-                        color: "var(--talkly-blue)",
-                        fontWeight: 900,
-                        textAlign: "right",
-                      }}
-                    >
-                      →
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <section
-          className="talkly-card"
-          style={{
-            marginTop: "24px",
-            padding: "28px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-end",
-              gap: "16px",
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <div className="talkly-section-label">
-                MY CLASSES
-              </div>
-
-              <h2
-                style={{
-                  margin: "5px 0 0",
-                  color: "var(--talkly-navy)",
-                  fontSize: "24px",
-                }}
-              >
-                전체 수업
-              </h2>
+              No classes assigned.
             </div>
 
             <div
               style={{
-                color: "var(--text-muted)",
-                fontSize: "14px",
-                fontWeight: 700,
-              }}
-            >
-              총 {sessions.length}회
-            </div>
-          </div>
-
-          {sessions.length === 0 ? (
-            <div
-              style={{
-                marginTop: "24px",
-                padding: "28px",
-                border: "1px dashed var(--border)",
-                borderRadius: "12px",
-                color: "var(--text-muted)",
+                marginTop: "5px",
+                fontSize: "13px",
+                opacity: 0.6,
               }}
             >
               현재 배정된 수업이 없습니다.
             </div>
-          ) : (
-            <div
-              style={{
-                marginTop: "22px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-              }}
-            >
-              {sessions.map((session) => {
-                const status =
-                  getSessionStatus(session.status);
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "14px",
+            }}
+          >
+            {sessions.map((session) => {
+              const status =
+                getSessionStatus(session.status);
 
-                return (
-                  <Link
-                    key={session.id}
-                    href={`/teacher/classes/${session.id}`}
-                    className="talkly-card-hover"
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns:
-                        "90px minmax(180px, 1fr) minmax(220px, 1.2fr) 100px 120px 24px",
-                      gap: "14px",
-                      alignItems: "center",
-                      padding: "18px",
-                      border: "1px solid var(--border)",
-                      borderRadius: "12px",
-                      textDecoration: "none",
-                      color: "inherit",
-                      background: "#ffffff",
-                    }}
-                  >
+              return (
+                <Link
+                  key={session.id}
+                  href={`/teacher/classes/${session.id}`}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "100px 1.2fr 1.3fr 90px 110px",
+                    gap: "18px",
+                    alignItems: "center",
+                    padding: "18px",
+                    border: "1px solid #ddd",
+                    borderRadius: "10px",
+                    textDecoration: "none",
+                    color: "inherit",
+                  }}
+                >
+                  <div>
                     <strong
                       style={{
-                        color: "var(--talkly-navy)",
+                        fontSize: "17px",
+                      }}
+                    >
+                      Lesson {session.lesson_number}
+                    </strong>
+
+                    <div
+                      style={{
+                        marginTop: "3px",
+                        fontSize: "12px",
+                        opacity: 0.55,
                       }}
                     >
                       {session.lesson_number}회차
+                    </div>
+                  </div>
+
+                  <div>
+                    <strong
+                      style={{
+                        fontSize: "17px",
+                      }}
+                    >
+                      {getStudentName(
+                        session.enrollment_id
+                      )}
                     </strong>
 
-                    <div>
-                      <div
-                        style={{
-                          color: "var(--talkly-navy)",
-                          fontWeight: 900,
-                        }}
-                      >
-                        {getStudentName(
-                          session.enrollment_id
-                        )}
-                      </div>
-
-                      <div
-                        style={{
-                          marginTop: "3px",
-                          color: "var(--text-muted)",
-                          fontSize: "13px",
-                        }}
-                      >
-                        {getCourseName(
-                          session.enrollment_id
-                        )}
-                      </div>
+                    <div
+                      style={{
+                        marginTop: "5px",
+                        fontSize: "13px",
+                        opacity: 0.65,
+                      }}
+                    >
+                      {getCourseName(
+                        session.enrollment_id
+                      )}
                     </div>
+                  </div>
 
-                    <div>
-                      <div
-                        style={{
-                          color: "var(--text-secondary)",
-                          fontSize: "14px",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {formatEnglishDateTime(
-                          session.scheduled_start
-                        )}
-                      </div>
-
-                      <div
-                        style={{
-                          marginTop: "3px",
-                          color: "var(--text-muted)",
-                          fontSize: "12px",
-                        }}
-                      >
-                        {formatKoreanDateTime(
-                          session.scheduled_start
-                        )}
-                      </div>
+                  <div>
+                    <div
+                      style={{
+                        fontSize: "16px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {formatEnglishDateTime(
+                        session.scheduled_start
+                      )}
                     </div>
 
                     <div
                       style={{
-                        color: "var(--text-muted)",
-                        fontSize: "13px",
+                        marginTop: "5px",
+                        fontSize: "12px",
+                        opacity: 0.55,
+                      }}
+                    >
+                      {formatKoreanDateTime(
+                        session.scheduled_start
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div
+                      style={{
+                        fontSize: "16px",
+                        fontWeight: 600,
                       }}
                     >
                       {getDurationMinutes(
                         session.scheduled_start,
                         session.scheduled_end
-                      )}
-                      분
+                      )}{" "}
+                      min
                     </div>
 
-                    <span
-                      className={getBadgeClass(
-                        session.status
-                      )}
-                    >
-                      {status.ko || status.en}
-                    </span>
-
-                    <span
+                    <div
                       style={{
-                        color: "var(--talkly-blue)",
-                        fontWeight: 900,
-                        textAlign: "right",
+                        marginTop: "3px",
+                        fontSize: "12px",
+                        opacity: 0.55,
                       }}
                     >
-                      →
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </main>
-    </div>
+                      수업시간
+                    </div>
+                  </div>
+
+                  <div>
+                    <strong
+                      style={{
+                        fontSize: "16px",
+                      }}
+                    >
+                      {status.en}
+                    </strong>
+
+                    {status.ko && (
+                      <div
+                        style={{
+                          marginTop: "3px",
+                          fontSize: "12px",
+                          opacity: 0.55,
+                        }}
+                      >
+                        {status.ko}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </main>
   );
 }

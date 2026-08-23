@@ -27,7 +27,6 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
-
   {
     title: "회원 관리",
     items: [
@@ -49,7 +48,6 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
-
   {
     title: "수강 관리",
     items: [
@@ -71,12 +69,11 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
-
   {
     title: "수업 운영",
     items: [
       {
-        label: "결석 신청 관리",
+        label: "수업 연기 내역",
         href: "/admin/class-holds",
       },
       {
@@ -93,7 +90,6 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
-
   {
     title: "교육 콘텐츠",
     items: [
@@ -102,30 +98,11 @@ const menuGroups: MenuGroup[] = [
         href: "/admin/courses",
       },
       {
-        label: "교재 관리",
-        href: "/admin/textbooks",
-      },
-      {
-        label: "레벨테스트 관리",
-        href: "/admin/level-tests",
+        label: "교재 등록",
+        href: "/admin/textbooks/new",
       },
     ],
   },
-
-  {
-    title: "고객 지원",
-    items: [
-      {
-        label: "공지사항 관리",
-        href: "/admin/notices",
-      },
-      {
-        label: "1:1 문의 관리",
-        href: "/admin/support-inquiries",
-      },
-    ],
-  },
-
   {
     title: "AI 서비스",
     items: [
@@ -145,26 +122,18 @@ function isActivePath(
     return pathname === "/admin";
   }
 
-  if (
-    href === "/admin/calendar"
-  ) {
-    return (
-      pathname ===
-      "/admin/calendar"
-    );
+  if (href === "/admin/calendar") {
+    return pathname === "/admin/calendar";
   }
 
   return (
     pathname === href ||
-    pathname.startsWith(
-      `${href}/`
-    )
+    pathname.startsWith(`${href}/`)
   );
 }
 
 export default function AdminSidebar() {
-  const pathname =
-    usePathname();
+  const pathname = usePathname();
 
   return (
     <aside className="talkly-admin-sidebar">
@@ -186,44 +155,40 @@ export default function AdminSidebar() {
       </Link>
 
       <nav className="talkly-admin-nav">
-        {menuGroups.map(
-          (group) => (
-            <section
-              key={group.title}
-              className="talkly-admin-nav-group"
-            >
-              <div className="talkly-admin-nav-title">
-                {group.title}
-              </div>
+        {menuGroups.map((group) => (
+          <section
+            key={group.title}
+            className="talkly-admin-nav-group"
+          >
+            <div className="talkly-admin-nav-title">
+              {group.title}
+            </div>
 
-              <div className="talkly-admin-nav-items">
-                {group.items.map(
-                  (item) => {
-                    const active =
-                      isActivePath(
-                        pathname,
-                        item.href
-                      );
+            <div className="talkly-admin-nav-items">
+              {group.items.map((item) => {
+                const active =
+                  isActivePath(
+                    pathname,
+                    item.href
+                  );
 
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={
-                          active
-                            ? "talkly-admin-nav-link talkly-admin-nav-link-active"
-                            : "talkly-admin-nav-link"
-                        }
-                      >
-                        {item.label}
-                      </Link>
-                    );
-                  }
-                )}
-              </div>
-            </section>
-          )
-        )}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={
+                      active
+                        ? "talkly-admin-nav-link talkly-admin-nav-link-active"
+                        : "talkly-admin-nav-link"
+                    }
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        ))}
       </nav>
 
       <div className="talkly-admin-sidebar-footer">
@@ -232,7 +197,7 @@ export default function AdminSidebar() {
         </div>
 
         <div className="talkly-admin-sidebar-note-sub">
-          수강 · 수업 · 회원 · 고객지원 · AI 통합
+          수강 · 수업 · 회원 · AI 통합
         </div>
       </div>
     </aside>

@@ -91,11 +91,11 @@ function getSessionStatusLabel(status: string) {
     case "completed":
       return "완료";
     case "cancelled":
-      return "취소";
+      return "수업 취소";
     case "held":
-      return "결석 승인";
+      return "수업 연기";
     case "no_show":
-      return "무단결석";
+      return "결석";
     default:
       return status;
   }
@@ -613,14 +613,14 @@ export default async function AdminWeekCalendarPage({
           description="완료 처리된 수업"
         />
         <SummaryCard
-          label="결석 승인"
+          label="수업 연기"
           value={totalHeld}
-          description="결석 승인 처리"
+          description="사전 신청 후 자동 승인된 수업"
         />
         <SummaryCard
-          label="취소·무단결석"
+          label="수업 취소·결석"
           value={totalCancelled + totalNoShow}
-          description={`취소 ${totalCancelled} · 무단결석 ${totalNoShow}`}
+          description={`수업 취소 ${totalCancelled} · 결석 ${totalNoShow}`}
         />
       </section>
 
@@ -694,9 +694,9 @@ export default async function AdminWeekCalendarPage({
           <option value="all">전체 상태</option>
           <option value="scheduled">예정</option>
           <option value="completed">완료</option>
-          <option value="held">결석 승인</option>
-          <option value="cancelled">취소</option>
-          <option value="no_show">무단결석</option>
+          <option value="held">수업 연기</option>
+          <option value="cancelled">수업 취소</option>
+          <option value="no_show">결석</option>
         </select>
 
         <button

@@ -262,14 +262,16 @@ export default async function ParentChildAttendancePage({
     switch (status) {
       case "scheduled":
         return "예정";
+      case "in_progress":
+        return "수업 진행 중";
       case "completed":
         return "수업 완료";
       case "cancelled":
         return "수업 취소";
       case "no_show":
-        return "무단결석";
+        return "결석";
       case "held":
-        return "결석 승인";
+        return "수업 연기";
       default:
         return status;
     }
@@ -549,7 +551,7 @@ export default async function ParentChildAttendancePage({
             ["지각", lateCount],
             ["결석", absentCount],
             ["인정결석", excusedCount],
-            ["결석 승인", holdCount],
+            ["수업 연기", holdCount],
             ["강사결석", teacherAbsentCount],
           ].map(([label, value]) => (
             <div

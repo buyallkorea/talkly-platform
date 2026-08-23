@@ -135,11 +135,11 @@ function getSessionStatusLabel(status: string) {
     case "completed":
       return "완료";
     case "cancelled":
-      return "취소";
+      return "수업 취소";
     case "held":
-      return "결석 승인";
+      return "수업 연기";
     case "no_show":
-      return "무단결석";
+      return "결석";
     default:
       return status;
   }
@@ -744,162 +744,754 @@ export default async function AdminMonthCalendarPage({
     return `/admin/calendar/month?${params.toString()}`;
   }
 
-  const missingAttendanceCount = monthSessions.filter(
-    (session) =>
-      session.status === "completed" &&
-      !attendanceMap.has(session.id)
-  ).length;
-
-  const missingEvaluationCount = monthSessions.filter(
-    (session) =>
-      session.status === "completed" &&
-      !evaluationSet.has(session.id)
-  ).length;
-
   return (
-    <main style={{ width:"100%", maxWidth:"1500px", margin:"0 auto", padding:"52px 40px 90px" }}>
-      <section style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:"20px", flexWrap:"wrap" }}>
+    <div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent:
+            "space-between",
+          alignItems: "flex-start",
+          gap: "20px",
+          flexWrap: "wrap",
+        }}
+      >
         <div>
-          <div style={{ color:"#2f6fed", fontSize:"12px", fontWeight:900, letterSpacing:"0.08em" }}>MONTHLY CLASS OPERATION</div>
-          <h1 style={{ margin:"10px 0 0", color:"#101828", fontSize:"36px", lineHeight:1.2, letterSpacing:"-0.04em" }}>월간 수업 캘린더</h1>
-          <p style={{ margin:"13px 0 0", color:"#667085", fontSize:"15px", lineHeight:1.7 }}>월 전체 수업 일정과 날짜별 운영 현황을 한눈에 확인합니다.</p>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: "32px",
+              letterSpacing:
+                "-0.03em",
+            }}
+          >
+            월간 수업 캘린더
+          </h1>
+
+          <p
+            style={{
+              marginTop: "9px",
+              marginBottom: 0,
+              opacity: 0.6,
+            }}
+          >
+            월 전체 수업 일정과 날짜별
+            운영 현황을 확인합니다.
+          </p>
         </div>
-        <div style={{ minHeight:"44px", padding:"0 16px", display:"inline-flex", alignItems:"center", border:"1px solid #d0d5dd", borderRadius:"10px", background:"#fff", color:"#344054", fontSize:"13px", fontWeight:900 }}>
-          {formatMonthTitle(monthStart)}
+
+        <div
+          style={{
+            padding: "10px 14px",
+            border:
+              "1px solid rgba(255,255,255,0.16)",
+            borderRadius: "9px",
+            fontSize: "14px",
+            fontWeight: 800,
+          }}
+        >
+          {formatMonthTitle(
+            monthStart
+          )}
         </div>
+      </div>
+
+      <section
+        style={{
+          marginTop: "24px",
+          display: "flex",
+          gap: "10px",
+          flexWrap: "wrap",
+        }}
+      >
+        <Link
+          href="/admin/calendar"
+          style={{
+            padding: "10px 14px",
+            border:
+              "1px solid rgba(255,255,255,0.16)",
+            borderRadius: "9px",
+            color: "inherit",
+            textDecoration: "none",
+            opacity: 0.72,
+          }}
+        >
+          오늘 수업
+        </Link>
+
+        <Link
+          href="/admin/calendar/week"
+          style={{
+            padding: "10px 14px",
+            border:
+              "1px solid rgba(255,255,255,0.16)",
+            borderRadius: "9px",
+            color: "inherit",
+            textDecoration: "none",
+            opacity: 0.72,
+          }}
+        >
+          주간 일정
+        </Link>
+
+        <Link
+          href={buildMonthUrl(
+            previousMonth
+          )}
+          style={{
+            padding: "10px 14px",
+            border:
+              "1px solid rgba(255,255,255,0.16)",
+            borderRadius: "9px",
+            color: "inherit",
+            textDecoration: "none",
+          }}
+        >
+          ← 이전 달
+        </Link>
+
+        <Link
+          href={buildMonthUrl(
+            currentMonth,
+            formatDateKey(now)
+          )}
+          style={{
+            padding: "10px 14px",
+            border:
+              "1px solid rgba(255,255,255,0.16)",
+            borderRadius: "9px",
+            color: "inherit",
+            textDecoration: "none",
+            fontWeight: 800,
+          }}
+        >
+          이번 달
+        </Link>
+
+        <Link
+          href={buildMonthUrl(
+            nextMonth
+          )}
+          style={{
+            padding: "10px 14px",
+            border:
+              "1px solid rgba(255,255,255,0.16)",
+            borderRadius: "9px",
+            color: "inherit",
+            textDecoration: "none",
+          }}
+        >
+          다음 달 →
+        </Link>
       </section>
 
-      <section style={{ marginTop:"26px", display:"flex", justifyContent:"space-between", alignItems:"center", gap:"12px", flexWrap:"wrap" }}>
-        <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
-          <Link href="/admin/calendar" style={tabStyle}>오늘</Link>
-          <Link href="/admin/calendar/week" style={tabStyle}>주간</Link>
-          <Link href={buildMonthUrl(formatMonthKey(monthStart), selectedDateKey)} style={{...tabStyle, background:"#0A1F44", color:"#fff", borderColor:"#0A1F44"}}>월간</Link>
-        </div>
-        <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
-          <Link href={buildMonthUrl(previousMonth)} style={secondaryButtonStyle}>← 이전 달</Link>
-          <Link href={buildMonthUrl(currentMonth, formatDateKey(now))} style={secondaryButtonStyle}>이번 달</Link>
-          <Link href={buildMonthUrl(nextMonth)} style={secondaryButtonStyle}>다음 달 →</Link>
-        </div>
+      <section
+        style={{
+          marginTop: "18px",
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fit, minmax(160px, 1fr))",
+          gap: "12px",
+        }}
+      >
+        {[
+          [
+            "이번 달 전체",
+            monthSessions.length,
+          ],
+          ["예정", scheduledCount],
+          ["완료", completedCount],
+          ["수업 연기", heldCount],
+          ["결석", absentCount],
+          ["수업 취소", cancelledCount],
+        ].map(([label, value]) => (
+          <div
+            key={String(label)}
+            style={{
+              padding: "18px",
+              border:
+                "1px solid rgba(255,255,255,0.16)",
+              borderRadius: "12px",
+              background:
+                "rgba(255,255,255,0.03)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "13px",
+                opacity: 0.58,
+              }}
+            >
+              {label}
+            </div>
+
+            <div
+              style={{
+                marginTop: "8px",
+                fontSize: "28px",
+                fontWeight: 800,
+              }}
+            >
+              {value}
+            </div>
+          </div>
+        ))}
       </section>
 
-      <section style={{ marginTop:"24px", display:"grid", gridTemplateColumns:"repeat(6, minmax(0, 1fr))", gap:"12px" }}>
-        <SummaryCard label="이번 달 전체" value={monthSessions.length} />
-        <SummaryCard label="예정" value={scheduledCount} />
-        <SummaryCard label="완료" value={completedCount} />
-        <SummaryCard label="결석 승인" value={heldCount} />
-        <SummaryCard label="무단결석" value={absentCount} />
-        <SummaryCard label="취소" value={cancelledCount} />
-      </section>
+      <form
+        method="get"
+        style={{
+          marginTop: "18px",
+          padding: "18px",
+          border:
+            "1px solid rgba(255,255,255,0.16)",
+          borderRadius: "12px",
+          display: "grid",
+          gridTemplateColumns:
+            "minmax(220px, 1fr) 190px 170px auto",
+          gap: "10px",
+          background:
+            "rgba(255,255,255,0.03)",
+        }}
+      >
+        <input
+          type="hidden"
+          name="month"
+          value={formatMonthKey(
+            monthStart
+          )}
+        />
 
-      <section style={{ marginTop:"12px", display:"grid", gridTemplateColumns:"repeat(2, minmax(0,1fr))", gap:"12px" }}>
-        <AlertCard label="출결 미처리" value={missingAttendanceCount} warning={missingAttendanceCount > 0} />
-        <AlertCard label="평가 미작성" value={missingEvaluationCount} warning={missingEvaluationCount > 0} />
-      </section>
+        <input
+          type="hidden"
+          name="date"
+          value={selectedDateKey}
+        />
 
-      <form method="get" style={{ marginTop:"22px", padding:"18px", display:"grid", gridTemplateColumns:"minmax(240px,1fr) 200px 180px auto auto", gap:"10px", border:"1px solid #e4e7ec", borderRadius:"14px", background:"#fff" }}>
-        <input type="hidden" name="month" value={formatMonthKey(monthStart)} />
-        <input type="hidden" name="date" value={selectedDateKey} />
-        <input type="search" name="q" defaultValue={q} placeholder="학생명, 강사명, 과정 검색" style={fieldStyle} />
-        <select name="teacher" defaultValue={teacher} style={fieldStyle}>
-          <option value="all">전체 강사</option>
-          {teachers.map((item)=><option key={item.user_id} value={item.user_id}>{item.display_name || "이름 미등록 강사"}</option>)}
+        <input
+          type="search"
+          name="q"
+          defaultValue={q}
+          placeholder="학생명, 강사명, 과정 검색"
+          style={{
+            minWidth: 0,
+            padding: "11px 12px",
+            border:
+              "1px solid rgba(255,255,255,0.2)",
+            borderRadius: "8px",
+            background: "#111",
+            color: "#fff",
+          }}
+        />
+
+        <select
+          name="teacher"
+          defaultValue={teacher}
+          style={{
+            padding: "11px 12px",
+            border:
+              "1px solid rgba(255,255,255,0.2)",
+            borderRadius: "8px",
+            background: "#111",
+            color: "#fff",
+          }}
+        >
+          <option value="all">
+            전체 강사
+          </option>
+
+          {teachers.map((item) => (
+            <option
+              key={item.user_id}
+              value={item.user_id}
+            >
+              {item.display_name ||
+                "이름 미등록 강사"}
+            </option>
+          ))}
         </select>
-        <select name="status" defaultValue={status} style={fieldStyle}>
-          <option value="all">전체 상태</option><option value="scheduled">예정</option><option value="completed">완료</option><option value="held">결석 승인</option><option value="no_show">무단결석</option><option value="cancelled">취소</option>
+
+        <select
+          name="status"
+          defaultValue={status}
+          style={{
+            padding: "11px 12px",
+            border:
+              "1px solid rgba(255,255,255,0.2)",
+            borderRadius: "8px",
+            background: "#111",
+            color: "#fff",
+          }}
+        >
+          <option value="all">
+            전체 상태
+          </option>
+          <option value="scheduled">
+            예정
+          </option>
+          <option value="completed">
+            완료
+          </option>
+          <option value="held">
+            수업 연기
+          </option>
+          <option value="no_show">
+            결석
+          </option>
+          <option value="cancelled">
+            수업 취소
+          </option>
         </select>
-        <button type="submit" style={{ minHeight:"44px", padding:"0 18px", border:"none", borderRadius:"9px", background:"#0A1F44", color:"#fff", fontWeight:900, cursor:"pointer" }}>검색</button>
-        <Link href={`/admin/calendar/month?month=${formatMonthKey(monthStart)}&date=${selectedDateKey}`} style={{...secondaryButtonStyle,minHeight:"44px"}}>초기화</Link>
+
+        <button
+          type="submit"
+          style={{
+            padding: "11px 18px",
+            border:
+              "1px solid rgba(255,255,255,0.22)",
+            borderRadius: "8px",
+            background: "#f5f5f5",
+            color: "#111",
+            fontWeight: 800,
+            cursor: "pointer",
+          }}
+        >
+          검색
+        </button>
       </form>
 
-      <section style={{ marginTop:"20px", display:"grid", gridTemplateColumns:"minmax(0,1.9fr) minmax(300px,.7fr)", gap:"18px", alignItems:"start" }}>
-        <div style={{ overflowX:"auto", border:"1px solid #e4e7ec", borderRadius:"15px", background:"#fff" }}>
-          <div style={{ minWidth:"910px" }}>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(7,minmax(130px,1fr))", borderBottom:"1px solid #e4e7ec", background:"#f9fafb" }}>
-              {["월","화","수","목","금","토","일"].map(label=><div key={label} style={{ padding:"12px", textAlign:"center", color:"#667085", fontSize:"12px", fontWeight:900, borderRight:"1px solid #eef1f5" }}>{label}</div>)}
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(7,minmax(130px,1fr))" }}>
-              {calendarDays.map((dayItem)=>{
-                const key=formatDateKey(dayItem);
-                const daySessions=sessionsByDate.get(key) ?? [];
-                const inCurrentMonth=dayItem.getMonth()===monthStart.getMonth();
-                const isToday=key===formatDateKey(now);
-                const isSelected=key===selectedDateKey;
-                return (
-                  <Link key={key} href={buildMonthUrl(formatMonthKey(monthStart),key)} style={{ minHeight:"150px", padding:"10px", borderRight:"1px solid #eef1f5", borderBottom:"1px solid #eef1f5", color:"inherit", textDecoration:"none", background:isSelected?"#eef4ff":isToday?"#f8faff":"#fff", opacity:inCurrentMonth?1:.42, boxSizing:"border-box" }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:"8px" }}>
-                      <strong style={{ color:isSelected||isToday?"#2f6fed":"#344054", fontSize:"13px" }}>{formatDayNumber(dayItem)}</strong>
-                      {daySessions.length>0 && <span style={{ padding:"3px 6px", borderRadius:"999px", background:"#f2f4f7", color:"#667085", fontSize:"10px", fontWeight:900 }}>{daySessions.length}건</span>}
-                    </div>
-                    <div style={{ marginTop:"9px", display:"flex", flexDirection:"column", gap:"5px" }}>
-                      {daySessions.slice(0,3).map(session=>(
-                        <div key={session.id} style={{ display:"grid", gridTemplateColumns:"4px minmax(0,1fr)", gap:"6px", alignItems:"stretch", fontSize:"10px" }}>
-                          <span style={{ width:"4px", minHeight:"28px", borderRadius:"999px", background:getStatusAccent(session.status) }} />
-                          <div style={{ minWidth:0 }}>
-                            <div style={{ color:"#101828", fontWeight:900, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{formatTime(session.scheduled_start)} {getStudentName(session.enrollment_id)}</div>
-                            <div style={{ marginTop:"2px", color:"#98a2b3", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{getTeacherName(session.enrollment_id)}</div>
+      <section
+        style={{
+          marginTop: "18px",
+          display: "grid",
+          gridTemplateColumns:
+            "minmax(0, 1.8fr) minmax(300px, 0.8fr)",
+          gap: "18px",
+          alignItems: "start",
+        }}
+      >
+        <div
+          style={{
+            border:
+              "1px solid rgba(255,255,255,0.16)",
+            borderRadius: "14px",
+            overflow: "hidden",
+            background:
+              "rgba(255,255,255,0.03)",
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(7, minmax(130px, 1fr))",
+              borderBottom:
+                "1px solid rgba(255,255,255,0.14)",
+              fontSize: "12px",
+              fontWeight: 800,
+              opacity: 0.62,
+            }}
+          >
+            {[
+              "월",
+              "화",
+              "수",
+              "목",
+              "금",
+              "토",
+              "일",
+            ].map((label) => (
+              <div
+                key={label}
+                style={{
+                  padding: "12px",
+                  textAlign: "center",
+                  borderRight:
+                    "1px solid rgba(255,255,255,0.08)",
+                }}
+              >
+                {label}
+              </div>
+            ))}
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(7, minmax(130px, 1fr))",
+            }}
+          >
+            {calendarDays.map((dayItem) => {
+              const key =
+                formatDateKey(dayItem);
+
+              const daySessions =
+                sessionsByDate.get(key) ??
+                [];
+
+              const inCurrentMonth =
+                dayItem.getMonth() ===
+                monthStart.getMonth();
+
+              const isToday =
+                key === formatDateKey(now);
+
+              const isSelected =
+                key === selectedDateKey;
+
+              return (
+                <Link
+                  key={key}
+                  href={buildMonthUrl(
+                    formatMonthKey(
+                      monthStart
+                    ),
+                    key
+                  )}
+                  style={{
+                    minHeight: "145px",
+                    padding: "10px",
+                    borderRight:
+                      "1px solid rgba(255,255,255,0.08)",
+                    borderBottom:
+                      "1px solid rgba(255,255,255,0.08)",
+                    color: "inherit",
+                    textDecoration: "none",
+                    background: isSelected
+                      ? "rgba(255,255,255,0.08)"
+                      : isToday
+                        ? "rgba(255,255,255,0.05)"
+                        : "transparent",
+                    opacity:
+                      inCurrentMonth
+                        ? 1
+                        : 0.38,
+                    boxSizing:
+                      "border-box",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent:
+                        "space-between",
+                      alignItems:
+                        "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <strong>
+                      {formatDayNumber(
+                        dayItem
+                      )}
+                    </strong>
+
+                    {daySessions.length >
+                      0 && (
+                      <span
+                        style={{
+                          fontSize:
+                            "11px",
+                          opacity: 0.58,
+                        }}
+                      >
+                        {
+                          daySessions.length
+                        }
+                        건
+                      </span>
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: "9px",
+                      display: "flex",
+                      flexDirection:
+                        "column",
+                      gap: "5px",
+                    }}
+                  >
+                    {daySessions
+                      .slice(0, 3)
+                      .map((session) => (
+                        <div
+                          key={session.id}
+                          style={{
+                            display:
+                              "grid",
+                            gridTemplateColumns:
+                              "5px minmax(0,1fr)",
+                            gap: "7px",
+                            alignItems:
+                              "start",
+                            fontSize:
+                              "11px",
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: "5px",
+                              height:
+                                "100%",
+                              minHeight:
+                                "28px",
+                              borderRadius:
+                                "999px",
+                              background:
+                                getStatusAccent(
+                                  session.status
+                                ),
+                            }}
+                          />
+
+                          <div
+                            style={{
+                              minWidth: 0,
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontWeight:
+                                  800,
+                                whiteSpace:
+                                  "nowrap",
+                                overflow:
+                                  "hidden",
+                                textOverflow:
+                                  "ellipsis",
+                              }}
+                            >
+                              {formatTime(
+                                session.scheduled_start
+                              )}{" "}
+                              {getStudentName(
+                                session.enrollment_id
+                              )}
+                            </div>
+
+                            <div
+                              style={{
+                                marginTop:
+                                  "2px",
+                                opacity:
+                                  0.5,
+                                whiteSpace:
+                                  "nowrap",
+                                overflow:
+                                  "hidden",
+                                textOverflow:
+                                  "ellipsis",
+                              }}
+                            >
+                              {getTeacherName(
+                                session.enrollment_id
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
-                      {daySessions.length>3 && <div style={{ color:"#667085", fontSize:"10px", fontWeight:800 }}>+{daySessions.length-3}건 더 보기</div>}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+
+                    {daySessions.length >
+                      3 && (
+                      <div
+                        style={{
+                          fontSize:
+                            "11px",
+                          opacity: 0.58,
+                        }}
+                      >
+                        +
+                        {daySessions.length -
+                          3}
+                        건 더 보기
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
 
-        <aside style={{ padding:"20px", border:"1px solid #e4e7ec", borderRadius:"15px", background:"#fff", position:"sticky", top:"96px" }}>
-          <div style={{ color:"#2f6fed", fontSize:"11px", fontWeight:900, letterSpacing:".06em" }}>SELECTED DATE</div>
-          <h2 style={{ margin:"8px 0 0", color:"#101828", fontSize:"21px", letterSpacing:"-0.03em" }}>{formatDateTitle(selectedDate)}</h2>
-          <p style={{ margin:"8px 0 0", color:"#98a2b3", fontSize:"12px" }}>선택한 날짜의 수업 목록입니다.</p>
-          {selectedDateSessions.length===0 ? (
-            <div style={{ marginTop:"18px", padding:"28px 18px", border:"1px dashed #d0d5dd", borderRadius:"10px", textAlign:"center", color:"#98a2b3", fontSize:"12px" }}>등록된 수업이 없습니다.</div>
+        <aside
+          style={{
+            padding: "22px",
+            border:
+              "1px solid rgba(255,255,255,0.16)",
+            borderRadius: "14px",
+            background:
+              "rgba(255,255,255,0.03)",
+            position: "sticky",
+            top: "96px",
+          }}
+        >
+          <h2
+            style={{
+              marginTop: 0,
+              marginBottom: "6px",
+            }}
+          >
+            {formatDateTitle(
+              selectedDate
+            )}
+          </h2>
+
+          <p
+            style={{
+              marginTop: 0,
+              fontSize: "13px",
+              opacity: 0.56,
+            }}
+          >
+            선택한 날짜의 수업 목록입니다.
+          </p>
+
+          {selectedDateSessions.length ===
+          0 ? (
+            <div
+              style={{
+                marginTop: "18px",
+                padding: "22px",
+                border:
+                  "1px dashed rgba(255,255,255,0.2)",
+                borderRadius:
+                  "10px",
+                opacity: 0.62,
+              }}
+            >
+              등록된 수업이 없습니다.
+            </div>
           ) : (
-            <div style={{ marginTop:"18px", display:"flex", flexDirection:"column", gap:"10px" }}>
-              {selectedDateSessions.map(session=>{
-                const attendanceStatus=attendanceMap.get(session.id);
-                const hasEvaluation=evaluationSet.has(session.id);
-                return (
-                  <Link key={session.id} href={`/admin/enrollments/${session.enrollment_id}/lessons/${session.id}`} style={{ display:"block", padding:"14px", border:"1px solid #e4e7ec", borderRadius:"11px", color:"inherit", textDecoration:"none" }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:"8px" }}>
-                      <strong style={{ color:"#101828", fontSize:"13px" }}>{formatTime(session.scheduled_start)}</strong>
-                      <StatusBadge status={session.status} />
-                    </div>
-                    <div style={{ marginTop:"9px", color:"#101828", fontSize:"14px", fontWeight:900 }}>{getStudentName(session.enrollment_id)}</div>
-                    <div style={{ marginTop:"4px", color:"#667085", fontSize:"11px" }}>{getTeacherName(session.enrollment_id)} · {getCourseName(session.enrollment_id)}</div>
-                    <div style={{ marginTop:"10px", paddingTop:"9px", borderTop:"1px solid #eef1f5", display:"flex", justifyContent:"space-between", gap:"8px", flexWrap:"wrap" }}>
-                      <SmallState label={attendanceStatus?getAttendanceStatusLabel(attendanceStatus):"출결 미등록"} warning={session.status==="completed"&&!attendanceStatus} />
-                      <SmallState label={hasEvaluation?"평가 완료":"평가 미작성"} warning={session.status==="completed"&&!hasEvaluation} />
-                    </div>
-                  </Link>
-                );
-              })}
+            <div
+              style={{
+                marginTop: "18px",
+                display: "flex",
+                flexDirection:
+                  "column",
+                gap: "10px",
+              }}
+            >
+              {selectedDateSessions.map(
+                (session) => {
+                  const attendanceStatus =
+                    attendanceMap.get(
+                      session.id
+                    );
+
+                  return (
+                    <Link
+                      key={session.id}
+                      href={`/admin/enrollments/${session.enrollment_id}/lessons/${session.id}`}
+                      style={{
+                        display: "block",
+                        padding: "14px",
+                        border:
+                          "1px solid rgba(255,255,255,0.12)",
+                        borderRadius:
+                          "10px",
+                        color: "inherit",
+                        textDecoration:
+                          "none",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent:
+                            "space-between",
+                          gap: "10px",
+                          fontSize:
+                            "12px",
+                        }}
+                      >
+                        <strong>
+                          {formatTime(
+                            session.scheduled_start
+                          )}
+                        </strong>
+
+                        <span
+                          style={{
+                            opacity:
+                              0.62,
+                          }}
+                        >
+                          {getSessionStatusLabel(
+                            session.status
+                          )}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop:
+                            "8px",
+                          fontWeight:
+                            800,
+                        }}
+                      >
+                        {getStudentName(
+                          session.enrollment_id
+                        )}
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop:
+                            "4px",
+                          fontSize:
+                            "12px",
+                          opacity: 0.56,
+                        }}
+                      >
+                        {getTeacherName(
+                          session.enrollment_id
+                        )}
+                        {" · "}
+                        {getCourseName(
+                          session.enrollment_id
+                        )}
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop:
+                            "10px",
+                          display: "flex",
+                          justifyContent:
+                            "space-between",
+                          gap: "10px",
+                          fontSize:
+                            "11px",
+                          opacity: 0.64,
+                        }}
+                      >
+                        <span>
+                          {attendanceStatus
+                            ? getAttendanceStatusLabel(
+                                attendanceStatus
+                              )
+                            : "출결 미등록"}
+                        </span>
+
+                        <span>
+                          {evaluationSet.has(
+                            session.id
+                          )
+                            ? "평가 완료"
+                            : "평가 미작성"}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                }
+              )}
             </div>
           )}
         </aside>
       </section>
-    </main>
+    </div>
   );
 }
-
-function SummaryCard({label,value}:{label:string;value:number}) {
-  return <div style={{ minHeight:"105px", padding:"18px", border:"1px solid #e4e7ec", borderRadius:"13px", background:"#fff" }}><div style={{ color:"#667085", fontSize:"12px", fontWeight:800 }}>{label}</div><div style={{ marginTop:"12px", color:"#101828", fontSize:"29px", fontWeight:900 }}>{value}</div></div>;
-}
-function AlertCard({label,value,warning}:{label:string;value:number;warning:boolean}) {
-  return <div style={{ padding:"17px 19px", border:warning?"1px solid #fed7aa":"1px solid #e4e7ec", borderRadius:"13px", background:warning?"#fffaf5":"#fff", display:"flex", justifyContent:"space-between", alignItems:"center" }}><div><div style={{ color:warning?"#b54708":"#667085", fontSize:"13px", fontWeight:900 }}>{label}</div><div style={{ marginTop:"4px", color:"#98a2b3", fontSize:"11px" }}>완료 수업 기준 운영 확인 항목</div></div><div style={{ color:warning?"#b54708":"#101828", fontSize:"27px", fontWeight:900 }}>{value}</div></div>;
-}
-function StatusBadge({status}:{status:string}) {
-  let background="#f2f4f7", color="#475467";
-  if(status==="scheduled"){background="#eef4ff";color="#2f6fed";}
-  else if(status==="completed"){background="#ecfdf3";color="#027a48";}
-  else if(status==="held"){background="#fff7ed";color="#b54708";}
-  else if(status==="no_show"||status==="cancelled"){background="#fef3f2";color="#b42318";}
-  return <span style={{ minHeight:"24px", padding:"0 7px", display:"inline-flex", alignItems:"center", borderRadius:"999px", background, color, fontSize:"10px", fontWeight:900 }}>{getSessionStatusLabel(status)}</span>;
-}
-function SmallState({label,warning}:{label:string;warning:boolean}) {
-  return <span style={{ color:warning?"#b54708":"#667085", fontSize:"10px", fontWeight:warning?900:700 }}>{label}</span>;
-}
-const fieldStyle={width:"100%",minWidth:0,boxSizing:"border-box" as const,minHeight:"44px",padding:"0 12px",border:"1px solid #d0d5dd",borderRadius:"9px",background:"#fff",color:"#101828",fontFamily:"inherit",fontSize:"13px",outline:"none"};
-const tabStyle={minHeight:"42px",padding:"0 15px",display:"inline-flex",alignItems:"center",justifyContent:"center",border:"1px solid #d0d5dd",borderRadius:"9px",background:"#fff",color:"#344054",textDecoration:"none",fontSize:"13px",fontWeight:900};
-const secondaryButtonStyle={minHeight:"42px",padding:"0 14px",display:"inline-flex",alignItems:"center",justifyContent:"center",border:"1px solid #d0d5dd",borderRadius:"9px",background:"#fff",color:"#344054",textDecoration:"none",fontSize:"12px",fontWeight:800};

@@ -3,6 +3,7 @@ import {
   notFound,
   redirect,
 } from "next/navigation";
+
 import { createClient } from "@/lib/supabase-server";
 import ClassHoldReviewForm from "./ClassHoldReviewForm";
 
@@ -12,95 +13,233 @@ type PageProps = {
   }>;
 };
 
-export default async function ClassHoldDetailPage({
+type HoldRow = {
+  id: number;
+  class_session_id: number;
+  requested_by: string;
+  reason: string | null;
+  requested_at: string;
+  status: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  admin_note: string | null;
+};
+
+function formatDateTime(
+  value: string | null
+) {
+  if (!value) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat(
+    "ko-KR",
+    {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }
+  ).format(
+    new Date(value)
+  );
+}
+
+function getSessionStatusLabel(
+  status: string
+) {
+  switch (status) {
+    case "scheduled":
+      return "예정";
+
+    case "in_progress":
+      return "수업 진행 중";
+
+    case "completed":
+      return "완료";
+
+    case "held":
+      return "수업 연기";
+
+    case "no_show":
+      return "결석";
+
+    case "cancelled":
+      return "수업 취소";
+
+    default:
+      return status;
+  }
+}
+
+function getHoldStatusLabel(
+  status: string,
+  automaticApproval: boolean
+) {
+  switch (status) {
+    case "approved":
+      return automaticApproval
+        ? "자동 승인"
+        : "이전 수동 승인";
+
+    case "requested":
+      return "이전 승인 대기";
+
+    case "rejected":
+      return "이전 반려";
+
+    case "cancelled":
+      return "연기 취소";
+
+    default:
+      return status;
+  }
+}
+
+export default async function AdminClassHoldDetailPage({
   params,
 }: PageProps) {
-  const { id } = await params;
+  const {
+    id,
+  } = await params;
 
-  const holdId = Number(id);
+  const holdId =
+    Number(id);
 
   if (
-    !Number.isInteger(holdId) ||
+    !Number.isInteger(
+      holdId
+    ) ||
     holdId <= 0
   ) {
     notFound();
   }
 
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
+
+  /*
+   * ==========================================
+   * 관리자 인증
+   * ==========================================
+   */
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: {
+      user,
+    },
+  } =
+    await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  const {
+    data:
+      adminProfile,
+    error:
+      adminProfileError,
+  } =
+    await supabase
+      .from("profiles")
+      .select(
+        "role, name"
+      )
+      .eq(
+        "id",
+        user.id
+      )
+      .maybeSingle();
 
-  if (!profile || profile.role !== "admin") {
+  if (
+    adminProfileError ||
+    !adminProfile ||
+    adminProfile.role !==
+      "admin"
+  ) {
     redirect("/");
   }
 
   /*
-   * 결석 신청
+   * ==========================================
+   * 수업 연기 내역
+   * ==========================================
    */
+
   const {
-    data: hold,
-    error: holdError,
-  } = await supabase
-    .from("class_holds")
-    .select(`
-      id,
-      class_session_id,
-      requested_by,
-      reason,
-      requested_at,
-      status,
-      reviewed_by,
-      reviewed_at,
-      admin_note,
-      created_at,
-      updated_at
-    `)
-    .eq("id", holdId)
-    .maybeSingle();
+    data:
+      holdData,
+    error:
+      holdError,
+  } =
+    await supabase
+      .from(
+        "class_holds"
+      )
+      .select(`
+        id,
+        class_session_id,
+        requested_by,
+        reason,
+        requested_at,
+        status,
+        reviewed_by,
+        reviewed_at,
+        admin_note
+      `)
+      .eq(
+        "id",
+        holdId
+      )
+      .maybeSingle();
 
   if (holdError) {
-    throw new Error(holdError.message);
+    throw new Error(
+      holdError.message
+    );
   }
 
-  if (!hold) {
+  if (!holdData) {
     notFound();
   }
 
+  const hold =
+    holdData as HoldRow;
+
   /*
+   * ==========================================
    * 대상 수업
+   * ==========================================
    */
+
   const {
-    data: session,
-    error: sessionError,
-  } = await supabase
-    .from("class_sessions")
-    .select(`
-      id,
-      enrollment_id,
-      lesson_number,
-      scheduled_start,
-      scheduled_end,
-      status,
-      meeting_provider,
-      meeting_url
-    `)
-    .eq(
-      "id",
-      hold.class_session_id
-    )
-    .maybeSingle();
+    data:
+      session,
+    error:
+      sessionError,
+  } =
+    await supabase
+      .from(
+        "class_sessions"
+      )
+      .select(`
+        id,
+        enrollment_id,
+        lesson_number,
+        scheduled_start,
+        scheduled_end,
+        status
+      `)
+      .eq(
+        "id",
+        hold.class_session_id
+      )
+      .maybeSingle();
 
   if (sessionError) {
     throw new Error(
@@ -108,920 +247,774 @@ export default async function ClassHoldDetailPage({
     );
   }
 
-  if (!session) {
-    notFound();
-  }
-
   /*
-   * 수강정보
+   * ==========================================
+   * 신청자
+   * ==========================================
    */
-  const {
-    data: enrollment,
-    error: enrollmentError,
-  } = await supabase
-    .from("enrollments")
-    .select(`
-      id,
-      child_id,
-      student_user_id,
-      course_id,
-      teacher_user_id
-    `)
-    .eq(
-      "id",
-      session.enrollment_id
-    )
-    .maybeSingle();
 
-  if (enrollmentError) {
+  const {
+    data:
+      requester,
+    error:
+      requesterError,
+  } =
+    await supabase
+      .from(
+        "profiles"
+      )
+      .select(`
+        id,
+        name,
+        role
+      `)
+      .eq(
+        "id",
+        hold.requested_by
+      )
+      .maybeSingle();
+
+  if (
+    requesterError
+  ) {
     throw new Error(
-      enrollmentError.message
+      requesterError.message
     );
   }
 
-  if (!enrollment) {
-    notFound();
+  /*
+   * ==========================================
+   * 수강정보
+   * ==========================================
+   */
+
+  let enrollment:
+    | {
+        id: number;
+        child_id:
+          | number
+          | null;
+        student_user_id:
+          | string
+          | null;
+        course_id: number;
+        teacher_user_id:
+          | string
+          | null;
+      }
+    | null = null;
+
+  if (session) {
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from(
+          "enrollments"
+        )
+        .select(`
+          id,
+          child_id,
+          student_user_id,
+          course_id,
+          teacher_user_id
+        `)
+        .eq(
+          "id",
+          session.enrollment_id
+        )
+        .maybeSingle();
+
+    if (error) {
+      throw new Error(
+        error.message
+      );
+    }
+
+    enrollment =
+      data;
   }
 
   /*
-   * 학생 이름
+   * ==========================================
+   * 학생명
+   * ==========================================
    */
+
   let studentName =
     "학생 정보 없음";
 
-  if (enrollment.child_id) {
-    const { data: child } =
+  if (
+    enrollment?.child_id
+  ) {
+    const {
+      data:
+        child,
+      error:
+        childError,
+    } =
       await supabase
-        .from("children")
-        .select("name")
+        .from(
+          "children"
+        )
+        .select(
+          "id, name"
+        )
         .eq(
           "id",
           enrollment.child_id
         )
         .maybeSingle();
 
+    if (childError) {
+      throw new Error(
+        childError.message
+      );
+    }
+
     if (child?.name) {
-      studentName = child.name;
+      studentName =
+        child.name;
     }
   } else if (
-    enrollment.student_user_id
+    enrollment
+      ?.student_user_id
   ) {
-    const { data: student } =
+    const {
+      data:
+        studentProfile,
+      error:
+        studentProfileError,
+    } =
       await supabase
-        .from("profiles")
-        .select("name")
+        .from(
+          "profiles"
+        )
+        .select(
+          "id, name"
+        )
         .eq(
           "id",
           enrollment.student_user_id
         )
         .maybeSingle();
 
+    if (
+      studentProfileError
+    ) {
+      throw new Error(
+        studentProfileError.message
+      );
+    }
+
     studentName =
-      student?.name ||
+      studentProfile?.name ||
       "성인 학생";
   }
 
   /*
-   * 신청자
+   * ==========================================
+   * 과정
+   * ==========================================
    */
-  const {
-    data: requester,
-  } = await supabase
-    .from("profiles")
-    .select("name, role")
-    .eq(
-      "id",
-      hold.requested_by
-    )
-    .maybeSingle();
 
-  /*
-   * 검토 관리자
-   */
-  let reviewerName = "-";
+  let courseName =
+    "-";
 
-  if (hold.reviewed_by) {
-    const { data: reviewer } =
+  if (
+    enrollment?.course_id
+  ) {
+    const {
+      data:
+        course,
+      error:
+        courseError,
+    } =
       await supabase
-        .from("profiles")
-        .select("name")
+        .from(
+          "courses"
+        )
+        .select(
+          "id, name"
+        )
         .eq(
           "id",
-          hold.reviewed_by
+          enrollment.course_id
         )
         .maybeSingle();
 
-    if (reviewer?.name) {
-      reviewerName =
-        reviewer.name;
+    if (courseError) {
+      throw new Error(
+        courseError.message
+      );
+    }
+
+    if (course?.name) {
+      courseName =
+        course.name;
     }
   }
 
   /*
-   * 과정
+   * ==========================================
+   * 강사
+   * ==========================================
    */
-  const { data: course } =
-    await supabase
-      .from("courses")
-      .select("name")
-      .eq(
-        "id",
-        enrollment.course_id
-      )
-      .maybeSingle();
 
-  /*
-   * 담당 강사
-   */
-  let teacherName = "미배정";
+  let teacherName =
+    "미배정";
 
   if (
-    enrollment.teacher_user_id
+    enrollment
+      ?.teacher_user_id
   ) {
-    const { data: teacher } =
+    const {
+      data:
+        teacher,
+      error:
+        teacherError,
+    } =
       await supabase
-        .from("teacher_profiles")
-        .select("display_name")
+        .from(
+          "teacher_profiles"
+        )
+        .select(
+          "display_name"
+        )
         .eq(
           "user_id",
           enrollment.teacher_user_id
         )
         .maybeSingle();
 
-    if (teacher?.display_name) {
+    if (
+      teacherError
+    ) {
+      throw new Error(
+        teacherError.message
+      );
+    }
+
+    if (
+      teacher?.display_name
+    ) {
       teacherName =
         teacher.display_name;
     }
   }
 
   /*
-   * 현재 신청 외의 다음 승인대기 신청
+   * ==========================================
+   * 자동승인 여부
    *
-   * 가장 오래 기다리고 있는 requested 신청을
-   * 다음 처리 대상으로 표시합니다.
+   * 새 자동승인 API는
+   * admin_note에
+   * "시스템 자동승인"을 기록합니다.
+   *
+   * 과거 수동 승인 데이터와
+   * 구분하기 위한 기준입니다.
+   * ==========================================
    */
-  const {
-    data: nextRequestedHold,
-    error: nextRequestedError,
-  } = await supabase
-    .from("class_holds")
-    .select(`
-      id,
-      requested_at
-    `)
-    .eq("status", "requested")
-    .neq("id", hold.id)
-    .order(
-      "requested_at",
-      {
-        ascending: true,
-      }
-    )
-    .limit(1)
-    .maybeSingle();
 
-  if (nextRequestedError) {
-    throw new Error(
-      nextRequestedError.message
-    );
-  }
-
-  function getHoldStatusLabel(
-    status: string
-  ) {
-    switch (status) {
-      case "requested":
-        return "승인대기";
-
-      case "approved":
-        return "승인완료";
-
-      case "rejected":
-        return "거절";
-
-      case "cancelled":
-        return "신청취소";
-
-      default:
-        return status;
-    }
-  }
-
-  function getSessionStatusLabel(
-    status: string
-  ) {
-    switch (status) {
-      case "scheduled":
-        return "예정";
-
-      case "in_progress":
-        return "수업중";
-
-      case "completed":
-        return "완료";
-
-      case "absent":
-        return "결석";
-
-      case "makeup":
-        return "보강";
-
-      case "cancelled":
-        return "취소";
-
-      default:
-        return status;
-    }
-  }
-
-  function getRequesterRoleLabel(
-    role: string | null | undefined
-  ) {
-    switch (role) {
-      case "parent":
-        return "학부모";
-
-      case "student":
-        return "학생";
-
-      case "teacher":
-        return "강사";
-
-      case "admin":
-        return "관리자";
-
-      default:
-        return "회원";
-    }
-  }
-
-  function formatDateTime(
-    value: string | null
-  ) {
-    if (!value) {
-      return "-";
-    }
-
-    return new Intl.DateTimeFormat(
-      "ko-KR",
-      {
-        timeZone: "Asia/Seoul",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }
-    ).format(
-      new Date(value)
-    );
-  }
-
-  function getDurationMinutes(
-    start: string,
-    end: string
-  ) {
-    return Math.round(
-      (new Date(end).getTime() -
-        new Date(start).getTime()) /
-        60000
-    );
-  }
-
-  const durationMinutes =
-    getDurationMinutes(
-      session.scheduled_start,
-      session.scheduled_end
+  const automaticApproval =
+    hold.status ===
+      "approved" &&
+    Boolean(
+      hold.admin_note?.includes(
+        "시스템 자동승인"
+      )
     );
 
   return (
     <main
       style={{
         width: "100%",
-        maxWidth: "1050px",
-        margin: "0 auto",
-        padding: "54px 42px 90px",
+        maxWidth:
+          "1080px",
+        margin:
+          "0 auto",
+        padding:
+          "8px 0 70px",
       }}
     >
-      {/* 상단 이동 */}
+      {/* ======================================
+          HEADER
+      ====================================== */}
 
-      <Link
-        href="/admin/class-holds"
+      <div
         style={{
-          color: "#667085",
-          textDecoration: "none",
-          fontSize: "13px",
-          fontWeight: 800,
+          display:
+            "flex",
+          justifyContent:
+            "space-between",
+          alignItems:
+            "flex-start",
+          gap:
+            "20px",
+          flexWrap:
+            "wrap",
         }}
       >
-        ← 결석 신청 목록
-      </Link>
-
-      {/* 제목 */}
-
-      <section
-        style={{
-          marginTop: "22px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent:
-              "space-between",
-            alignItems:
-              "flex-start",
-            gap: "20px",
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                color: "#2f6fed",
-                fontSize: "12px",
-                fontWeight: 900,
-                letterSpacing:
-                  "0.08em",
-              }}
-            >
-              CLASS ABSENCE REQUEST
-            </div>
-
-            <h1
-              style={{
-                margin: "10px 0 0",
-                color: "#101828",
-                fontSize: "36px",
-                lineHeight: 1.2,
-                letterSpacing:
-                  "-0.04em",
-              }}
-            >
-              결석 신청 상세
-            </h1>
-
-            <p
-              style={{
-                margin: "13px 0 0",
-                color: "#667085",
-                fontSize: "15px",
-                lineHeight: 1.7,
-              }}
-            >
-              <strong
-                style={{
-                  color: "#344054",
-                }}
-              >
-                {studentName}
-              </strong>{" "}
-              학생의 결석 신청 내용을
-              확인합니다.
-            </p>
-          </div>
-
-          <StatusBadge
-            status={hold.status}
-            label={getHoldStatusLabel(
-              hold.status
-            )}
-          />
-        </div>
-      </section>
-
-      {/* 신청 기본 정보 */}
-
-      <section
-        style={{
-          marginTop: "30px",
-          border:
-            "1px solid #e4e7ec",
-          borderRadius: "18px",
-          background: "#ffffff",
-          overflow: "hidden",
-          boxShadow:
-            "0 1px 2px rgba(16,24,40,.03)",
-        }}
-      >
-        <div
-          style={{
-            padding: "21px 24px",
-            borderBottom:
-              "1px solid #eaecf0",
-          }}
-        >
-          <h2
-            style={{
-              margin: 0,
-              color: "#101828",
-              fontSize: "18px",
-            }}
-          >
-            신청 정보
-          </h2>
-
-          <p
-            style={{
-              margin: "6px 0 0",
-              color: "#98a2b3",
-              fontSize: "12px",
-            }}
-          >
-            회원이 제출한 결석 신청
-            정보입니다.
-          </p>
-        </div>
-
-        <div
-          style={{
-            padding: "24px",
-          }}
-        >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(4, minmax(0,1fr))",
-              gap: "22px",
-            }}
-          >
-            <InfoItem
-              label="학생"
-              value={studentName}
-            />
-
-            <InfoItem
-              label="신청자"
-              value={
-                requester?.name ||
-                "이름 미등록"
-              }
-              subValue={getRequesterRoleLabel(
-                requester?.role
-              )}
-            />
-
-            <InfoItem
-              label="신청일"
-              value={formatDateTime(
-                hold.requested_at
-              )}
-            />
-
-            <InfoItem
-              label="처리상태"
-              value={getHoldStatusLabel(
-                hold.status
-              )}
-            />
-          </div>
-
-          <div
-            style={{
-              marginTop: "26px",
-              padding: "20px",
-              border:
-                "1px solid #e4e7ec",
-              borderRadius: "12px",
-              background: "#f9fafb",
-            }}
-          >
-            <div
-              style={{
-                color: "#667085",
-                fontSize: "12px",
-                fontWeight: 800,
-              }}
-            >
-              신청 사유
-            </div>
-
-            <div
-              style={{
-                marginTop: "11px",
-                color: "#344054",
-                fontSize: "14px",
-                lineHeight: 1.85,
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-              }}
-            >
-              {hold.reason ||
-                "사유가 입력되지 않았습니다."}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 대상 수업 */}
-
-      <section
-        style={{
-          marginTop: "22px",
-          border:
-            "1px solid #e4e7ec",
-          borderRadius: "18px",
-          background: "#ffffff",
-          overflow: "hidden",
-          boxShadow:
-            "0 1px 2px rgba(16,24,40,.03)",
-        }}
-      >
-        <div
-          style={{
-            padding: "21px 24px",
-            display: "flex",
-            justifyContent:
-              "space-between",
-            alignItems: "center",
-            gap: "16px",
-            borderBottom:
-              "1px solid #eaecf0",
-          }}
-        >
-          <div>
-            <h2
-              style={{
-                margin: 0,
-                color: "#101828",
-                fontSize: "18px",
-              }}
-            >
-              대상 수업
-            </h2>
-
-            <p
-              style={{
-                margin: "6px 0 0",
-                color: "#98a2b3",
-                fontSize: "12px",
-              }}
-            >
-              결석 신청이 접수된
-              수업입니다.
-            </p>
-          </div>
-
-          <Link
-            href={`/admin/enrollments/${enrollment.id}/lessons/${session.id}`}
-            style={{
-              minHeight: "38px",
-              padding: "0 13px",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent:
-                "center",
-              border:
-                "1px solid #d0d5dd",
-              borderRadius: "9px",
-              background: "#ffffff",
-              color: "#344054",
-              textDecoration: "none",
-              fontSize: "12px",
-              fontWeight: 900,
-              whiteSpace: "nowrap",
-            }}
-          >
-            수업 상세보기 →
-          </Link>
-        </div>
-
-        <div
-          style={{
-            padding: "24px",
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(3, minmax(0,1fr))",
-            gap: "24px 20px",
-          }}
-        >
-          <InfoItem
-            label="학생"
-            value={studentName}
-          />
-
-          <InfoItem
-            label="과정"
-            value={
-              course?.name || "-"
-            }
-          />
-
-          <InfoItem
-            label="담당 강사"
-            value={teacherName}
-          />
-
-          <InfoItem
-            label="수업 회차"
-            value={`${session.lesson_number}회차`}
-          />
-
-          <InfoItem
-            label="수업 시작"
-            value={formatDateTime(
-              session.scheduled_start
-            )}
-          />
-
-          <InfoItem
-            label="수업 시간"
-            value={`${durationMinutes}분`}
-          />
-
-          <InfoItem
-            label="현재 수업 상태"
-            value={getSessionStatusLabel(
-              session.status
-            )}
-          />
-        </div>
-      </section>
-
-      {/* 관리자 검토 */}
-
-      <section
-        style={{
-          marginTop: "22px",
-          border:
-            hold.status ===
-            "requested"
-              ? "1px solid #bfd0ff"
-              : "1px solid #e4e7ec",
-          borderRadius: "18px",
-          background:
-            hold.status ===
-            "requested"
-              ? "#fbfcff"
-              : "#ffffff",
-          overflow: "hidden",
-          boxShadow:
-            "0 1px 2px rgba(16,24,40,.03)",
-        }}
-      >
-        <div
-          style={{
-            padding: "21px 24px",
-            borderBottom:
-              "1px solid #eaecf0",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent:
-                "space-between",
-              alignItems: "center",
-              gap: "14px",
-            }}
-          >
-            <div>
-              <h2
-                style={{
-                  margin: 0,
-                  color: "#101828",
-                  fontSize: "18px",
-                }}
-              >
-                관리자 검토
-              </h2>
-
-              <p
-                style={{
-                  margin: "6px 0 0",
-                  color: "#98a2b3",
-                  fontSize: "12px",
-                }}
-              >
-                결석 신청을 확인하고
-                처리합니다.
-              </p>
-            </div>
-
-            {hold.status ===
-              "requested" && (
-              <span
-                style={{
-                  padding: "6px 10px",
-                  borderRadius:
-                    "999px",
-                  background:
-                    "#fff7ed",
-                  color: "#b54708",
-                  fontSize: "11px",
-                  fontWeight: 900,
-                }}
-              >
-                처리 필요
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div
-          style={{
-            padding: "24px",
-          }}
-        >
-          {hold.status ===
-          "requested" ? (
-            <>
-              <div
-                style={{
-                  marginBottom: "20px",
-                  padding: "15px 16px",
-                  border:
-                    "1px solid #d6e4ff",
-                  borderRadius: "11px",
-                  background: "#f5f8ff",
-                  color: "#475467",
-                  fontSize: "13px",
-                  lineHeight: 1.7,
-                }}
-              >
-                아직 처리되지 않은
-                결석 신청입니다. 신청
-                내용을 확인한 뒤 승인
-                또는 거절해주세요.
-              </div>
-
-              <ClassHoldReviewForm
-                holdId={hold.id}
-                sessionId={session.id}
-              />
-            </>
-          ) : (
-            <>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    "repeat(3, minmax(0,1fr))",
-                  gap: "20px",
-                }}
-              >
-                <InfoItem
-                  label="처리 결과"
-                  value={getHoldStatusLabel(
-                    hold.status
-                  )}
-                />
-
-                <InfoItem
-                  label="검토 관리자"
-                  value={reviewerName}
-                />
-
-                <InfoItem
-                  label="검토일"
-                  value={formatDateTime(
-                    hold.reviewed_at
-                  )}
-                />
-              </div>
-
-              <div
-                style={{
-                  marginTop: "24px",
-                  padding: "20px",
-                  border:
-                    "1px solid #e4e7ec",
-                  borderRadius: "12px",
-                  background: "#f9fafb",
-                }}
-              >
-                <div
-                  style={{
-                    color: "#667085",
-                    fontSize: "12px",
-                    fontWeight: 800,
-                  }}
-                >
-                  관리자 메모
-                </div>
-
-                <div
-                  style={{
-                    marginTop: "11px",
-                    color: "#344054",
-                    fontSize: "14px",
-                    lineHeight: 1.8,
-                    whiteSpace:
-                      "pre-wrap",
-                    wordBreak:
-                      "break-word",
-                  }}
-                >
-                  {hold.admin_note ||
-                    "등록된 관리자 메모가 없습니다."}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* 하단 이동 */}
-
-      <section
-        style={{
-          marginTop: "22px",
-          padding: "18px 20px",
-          border:
-            "1px solid #e4e7ec",
-          borderRadius: "14px",
-          background: "#f9fafb",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent:
-              "space-between",
-            alignItems: "center",
-            gap: "16px",
-            flexWrap: "wrap",
-          }}
-        >
+        <div>
           <Link
             href="/admin/class-holds"
             style={{
-              minHeight: "42px",
-              padding: "0 15px",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent:
-                "center",
-              border:
-                "1px solid #d0d5dd",
-              borderRadius: "9px",
-              background: "#ffffff",
-              color: "#344054",
-              textDecoration: "none",
-              fontSize: "13px",
-              fontWeight: 800,
+              color:
+                "#667085",
+              textDecoration:
+                "none",
+              fontSize:
+                "13px",
+              fontWeight:
+                800,
             }}
           >
-            ← 결석 신청 목록으로
+            ← 수업 연기 내역
           </Link>
 
-          {nextRequestedHold ? (
-            <Link
-              href={`/admin/class-holds/${nextRequestedHold.id}`}
+          <div
+            style={{
+              marginTop:
+                "24px",
+              color:
+                "#2f6fed",
+              fontSize:
+                "12px",
+              fontWeight:
+                900,
+              letterSpacing:
+                "0.08em",
+            }}
+          >
+            CLASS RESCHEDULE DETAIL
+          </div>
+
+          <h1
+            style={{
+              margin:
+                "8px 0 0",
+              color:
+                "#101828",
+              fontSize:
+                "34px",
+              letterSpacing:
+                "-0.04em",
+            }}
+          >
+            수업 연기 상세
+          </h1>
+
+          <p
+            style={{
+              margin:
+                "10px 0 0",
+              color:
+                "#667085",
+              fontSize:
+                "14px",
+              lineHeight:
+                1.7,
+            }}
+          >
+            수업 연기 신청 내용과
+            시스템 처리 결과를
+            확인합니다.
+          </p>
+        </div>
+
+        <Link
+          href="/admin"
+          style={{
+            minHeight:
+              "42px",
+            padding:
+              "0 16px",
+            display:
+              "inline-flex",
+            alignItems:
+              "center",
+            border:
+              "1px solid #d0d5dd",
+            borderRadius:
+              "9px",
+            background:
+              "#ffffff",
+            color:
+              "#344054",
+            textDecoration:
+              "none",
+            fontSize:
+              "13px",
+            fontWeight:
+              800,
+          }}
+        >
+          관리자 대시보드
+        </Link>
+      </div>
+
+      {/* ======================================
+          기본 정보
+      ====================================== */}
+
+      <section
+        style={{
+          marginTop:
+            "26px",
+          padding:
+            "24px",
+          border:
+            "1px solid #e4e7ec",
+          borderRadius:
+            "16px",
+          background:
+            "#ffffff",
+        }}
+      >
+        <div
+          style={{
+            display:
+              "flex",
+            justifyContent:
+              "space-between",
+            alignItems:
+              "center",
+            gap:
+              "16px",
+            flexWrap:
+              "wrap",
+          }}
+        >
+          <div>
+            <div
               style={{
-                minHeight: "42px",
-                padding: "0 16px",
-                display: "inline-flex",
-                alignItems: "center",
+                color:
+                  "#667085",
+                fontSize:
+                  "12px",
+                fontWeight:
+                  800,
+              }}
+            >
+              대상 학생
+            </div>
+
+            <h2
+              style={{
+                margin:
+                  "5px 0 0",
+                color:
+                  "#101828",
+                fontSize:
+                  "23px",
+              }}
+            >
+              {studentName}
+            </h2>
+          </div>
+
+          <span
+            style={{
+              display:
+                "inline-flex",
+              minHeight:
+                "30px",
+              padding:
+                "0 11px",
+              alignItems:
+                "center",
+              borderRadius:
+                "999px",
+              background:
+                automaticApproval
+                  ? "#ecfdf3"
+                  : "#f2f4f7",
+              color:
+                automaticApproval
+                  ? "#067647"
+                  : "#475467",
+              fontSize:
+                "12px",
+              fontWeight:
+                900,
+            }}
+          >
+            {getHoldStatusLabel(
+              hold.status,
+              automaticApproval
+            )}
+          </span>
+        </div>
+
+        <div
+          style={{
+            marginTop:
+              "22px",
+            display:
+              "grid",
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(190px, 1fr))",
+            gap:
+              "12px",
+          }}
+        >
+          <DetailBox
+            label="회차"
+            value={
+              session
+                ? `${session.lesson_number}회차`
+                : "-"
+            }
+          />
+
+          <DetailBox
+            label="수업 시작"
+            value={
+              session
+                ? formatDateTime(
+                    session.scheduled_start
+                  )
+                : "-"
+            }
+          />
+
+          <DetailBox
+            label="과정"
+            value={
+              courseName
+            }
+          />
+
+          <DetailBox
+            label="담당 강사"
+            value={
+              teacherName
+            }
+          />
+
+          <DetailBox
+            label="수업 상태"
+            value={
+              session
+                ? getSessionStatusLabel(
+                    session.status
+                  )
+                : "-"
+            }
+          />
+
+          <DetailBox
+            label="신청자"
+            value={
+              requester?.name ||
+              "이름 미등록"
+            }
+          />
+        </div>
+      </section>
+
+      {/* ======================================
+          자동처리 규칙
+      ====================================== */}
+
+      <section
+        style={{
+          marginTop:
+            "18px",
+          padding:
+            "18px 20px",
+          border:
+            "1px solid #dbe7ff",
+          borderRadius:
+            "14px",
+          background:
+            "#f5f8ff",
+        }}
+      >
+        <div
+          style={{
+            color:
+              "#2f6fed",
+            fontSize:
+              "13px",
+            fontWeight:
+              900,
+          }}
+        >
+          TALKLY 수업 연기 규정
+        </div>
+
+        <div
+          style={{
+            marginTop:
+              "10px",
+            color:
+              "#475467",
+            fontSize:
+              "13px",
+            lineHeight:
+              1.75,
+          }}
+        >
+          학생 또는 학부모는
+          한 달에 최대{" "}
+          <strong>
+            2회
+          </strong>
+          까지 수업 연기를
+          신청할 수 있으며,
+          수업 시작{" "}
+          <strong>
+            2시간 전
+          </strong>
+          까지 신청해야 합니다.
+          조건을 충족한 신청은
+          별도의 관리자 승인 없이
+          시스템에서 즉시
+          처리됩니다.
+        </div>
+      </section>
+
+      {/* ======================================
+          처리 결과
+      ====================================== */}
+
+      <div
+        style={{
+          marginTop:
+            "18px",
+        }}
+      >
+        <ClassHoldReviewForm
+          status={
+            hold.status
+          }
+          requestedAt={
+            hold.requested_at
+          }
+          reviewedAt={
+            hold.reviewed_at
+          }
+          reason={
+            hold.reason
+          }
+          adminNote={
+            hold.admin_note
+          }
+          automaticApproval={
+            automaticApproval
+          }
+        />
+      </div>
+
+      {/* ======================================
+          바로가기
+      ====================================== */}
+
+      <section
+        style={{
+          marginTop:
+            "18px",
+          display:
+            "flex",
+          gap:
+            "10px",
+          flexWrap:
+            "wrap",
+        }}
+      >
+        <Link
+          href="/admin/class-holds"
+          style={{
+            minHeight:
+              "42px",
+            padding:
+              "0 16px",
+            display:
+              "inline-flex",
+            alignItems:
+              "center",
+            justifyContent:
+              "center",
+            border:
+              "1px solid #d0d5dd",
+            borderRadius:
+              "9px",
+            background:
+              "#ffffff",
+            color:
+              "#344054",
+            textDecoration:
+              "none",
+            fontSize:
+              "13px",
+            fontWeight:
+              800,
+          }}
+        >
+          ← 수업 연기 내역
+        </Link>
+
+        {session &&
+          enrollment && (
+            <Link
+              href={`/admin/enrollments/${enrollment.id}/lessons/${session.id}`}
+              style={{
+                minHeight:
+                  "42px",
+                padding:
+                  "0 16px",
+                display:
+                  "inline-flex",
+                alignItems:
+                  "center",
                 justifyContent:
                   "center",
-                borderRadius: "9px",
-                background: "#2f6fed",
-                color: "#ffffff",
-                textDecoration: "none",
-                fontSize: "13px",
-                fontWeight: 900,
+                border:
+                  "1px solid #0A1F44",
+                borderRadius:
+                  "9px",
+                background:
+                  "#0A1F44",
+                color:
+                  "#ffffff",
+                textDecoration:
+                  "none",
+                fontSize:
+                  "13px",
+                fontWeight:
+                  900,
               }}
             >
-              다음 승인대기 신청 →
+              수업 상세 보기 →
             </Link>
-          ) : (
-            <span
-              style={{
-                color: "#027a48",
-                fontSize: "13px",
-                fontWeight: 800,
-              }}
-            >
-              다른 승인대기 신청이 없습니다.
-            </span>
           )}
-        </div>
       </section>
     </main>
   );
 }
 
-function InfoItem({
+function DetailBox({
   label,
   value,
-  subValue,
 }: {
   label: string;
   value: string;
-  subValue?: string;
 }) {
   return (
     <div
       style={{
-        minWidth: 0,
+        padding: "16px",
+        border:
+          "1px solid #e4e7ec",
+        borderRadius: "11px",
+        background: "#f9fafb",
       }}
     >
       <div
         style={{
-          color: "#98a2b3",
+          color: "#667085",
           fontSize: "11px",
           fontWeight: 800,
         }}
@@ -1034,81 +1027,12 @@ function InfoItem({
           marginTop: "7px",
           color: "#101828",
           fontSize: "14px",
-          fontWeight: 900,
-          lineHeight: 1.5,
-          wordBreak: "break-word",
+          fontWeight: 800,
+          lineHeight: 1.55,
         }}
       >
         {value}
       </div>
-
-      {subValue && (
-        <div
-          style={{
-            marginTop: "3px",
-            color: "#98a2b3",
-            fontSize: "11px",
-          }}
-        >
-          {subValue}
-        </div>
-      )}
     </div>
-  );
-}
-
-function StatusBadge({
-  status,
-  label,
-}: {
-  status: string;
-  label: string;
-}) {
-  let background =
-    "#f2f4f7";
-
-  let color =
-    "#475467";
-
-  let border =
-    "#e4e7ec";
-
-  if (status === "requested") {
-    background = "#fff7ed";
-    color = "#b54708";
-    border = "#fed7aa";
-  }
-
-  if (status === "approved") {
-    background = "#ecfdf3";
-    color = "#027a48";
-    border = "#abefc6";
-  }
-
-  if (status === "rejected") {
-    background = "#fef3f2";
-    color = "#b42318";
-    border = "#fecdca";
-  }
-
-  return (
-    <span
-      style={{
-        minHeight: "32px",
-        padding: "0 11px",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        border: `1px solid ${border}`,
-        borderRadius: "999px",
-        background,
-        color,
-        fontSize: "12px",
-        fontWeight: 900,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {label}
-    </span>
   );
 }

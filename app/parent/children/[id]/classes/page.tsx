@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import {
+  notFound,
+  redirect,
+} from "next/navigation";
+
 import { createClient } from "@/lib/supabase-server";
 import TalklyUserHeader from "@/components/TalklyUserHeader";
 
@@ -14,27 +18,38 @@ export default async function ParentChildClassesPage({
 }: PageProps) {
   const { id } = await params;
 
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } =
+    await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, name")
-    .eq("id", user.id)
-    .single();
+  const {
+    data: profile,
+  } =
+    await supabase
+      .from("profiles")
+      .select("role, name")
+      .eq("id", user.id)
+      .single();
 
-  if (!profile || profile.role !== "parent") {
+  if (
+    !profile ||
+    profile.role !== "parent"
+  ) {
     redirect("/");
   }
 
-  const { data: child, error: childError } =
+  const {
+    data: child,
+    error: childError,
+  } =
     await supabase
       .from("children")
       .select(`
@@ -43,13 +58,24 @@ export default async function ParentChildClassesPage({
         grade,
         is_active
       `)
-      .eq("id", Number(id))
-      .eq("parent_user_id", user.id)
-      .eq("is_active", true)
+      .eq(
+        "id",
+        Number(id)
+      )
+      .eq(
+        "parent_user_id",
+        user.id
+      )
+      .eq(
+        "is_active",
+        true
+      )
       .maybeSingle();
 
   if (childError) {
-    throw new Error(childError.message);
+    throw new Error(
+      childError.message
+    );
   }
 
   if (!child) {
@@ -59,32 +85,42 @@ export default async function ParentChildClassesPage({
   const {
     data: enrollments,
     error: enrollmentError,
-  } = await supabase
-    .from("enrollments")
-    .select(`
-      id,
-      course_id,
-      teacher_user_id,
-      status,
-      start_date,
-      end_date,
-      lessons_per_week,
-      total_lessons,
-      created_at
-    `)
-    .eq("child_id", child.id)
-    .order("created_at", {
-      ascending: false,
-    });
+  } =
+    await supabase
+      .from("enrollments")
+      .select(`
+        id,
+        course_id,
+        teacher_user_id,
+        status,
+        start_date,
+        end_date,
+        lessons_per_week,
+        total_lessons,
+        created_at
+      `)
+      .eq(
+        "child_id",
+        child.id
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        }
+      );
 
   if (enrollmentError) {
-    throw new Error(enrollmentError.message);
+    throw new Error(
+      enrollmentError.message
+    );
   }
 
   const activeEnrollment =
     enrollments?.find(
       (enrollment) =>
-        enrollment.status === "active"
+        enrollment.status ===
+        "active"
     ) ??
     enrollments?.[0] ??
     null;
@@ -94,18 +130,29 @@ export default async function ParentChildClassesPage({
       <div className="talkly-dashboard">
         <TalklyUserHeader
           role="parent"
-          userName={profile.name}
+          userName={
+            profile.name
+          }
         />
 
         <main className="talkly-dashboard-main">
-          <div style={{ marginBottom: "20px" }}>
+          <div
+            style={{
+              marginBottom:
+                "20px",
+            }}
+          >
             <Link
               href={`/parent/children/${child.id}`}
               style={{
-                color: "var(--talkly-blue)",
-                textDecoration: "none",
-                fontSize: "14px",
-                fontWeight: 800,
+                color:
+                  "var(--talkly-blue)",
+                textDecoration:
+                  "none",
+                fontSize:
+                  "14px",
+                fontWeight:
+                  800,
               }}
             >
               ← 자녀 상세
@@ -115,7 +162,8 @@ export default async function ParentChildClassesPage({
           <section
             className="talkly-card"
             style={{
-              padding: "34px",
+              padding:
+                "34px",
             }}
           >
             <div className="talkly-section-label">
@@ -124,18 +172,24 @@ export default async function ParentChildClassesPage({
 
             <h1
               className="talkly-dashboard-title"
-              style={{ marginTop: "6px" }}
+              style={{
+                marginTop:
+                  "6px",
+              }}
             >
               {child.name} 수업
             </h1>
 
             <p
               style={{
-                margin: "10px 0 0",
-                color: "var(--text-muted)",
+                margin:
+                  "10px 0 0",
+                color:
+                  "var(--text-muted)",
               }}
             >
-              현재 등록된 수강정보가 없습니다.
+              현재 등록된
+              수강정보가 없습니다.
             </p>
           </section>
         </main>
@@ -143,54 +197,79 @@ export default async function ParentChildClassesPage({
     );
   }
 
-  const { data: course } = await supabase
-    .from("courses")
-    .select(`
-      id,
-      name,
-      duration_minutes
-    `)
-    .eq("id", activeEnrollment.course_id)
-    .maybeSingle();
-
-  let teacherName = "미배정";
-
-  if (activeEnrollment.teacher_user_id) {
-    const { data: teacher } = await supabase
-      .from("teacher_profiles")
-      .select("display_name")
+  const {
+    data: course,
+  } =
+    await supabase
+      .from("courses")
+      .select(`
+        id,
+        name,
+        duration_minutes
+      `)
       .eq(
-        "user_id",
-        activeEnrollment.teacher_user_id
+        "id",
+        activeEnrollment.course_id
       )
       .maybeSingle();
 
-    if (teacher?.display_name) {
-      teacherName = teacher.display_name;
+  let teacherName =
+    "미배정";
+
+  if (
+    activeEnrollment.teacher_user_id
+  ) {
+    const {
+      data: teacher,
+    } =
+      await supabase
+        .from(
+          "teacher_profiles"
+        )
+        .select(
+          "display_name"
+        )
+        .eq(
+          "user_id",
+          activeEnrollment.teacher_user_id
+        )
+        .maybeSingle();
+
+    if (
+      teacher?.display_name
+    ) {
+      teacherName =
+        teacher.display_name;
     }
   }
 
   const {
     data: classSessions,
     error: sessionsError,
-  } = await supabase
-    .from("class_sessions")
-    .select(`
-      id,
-      lesson_number,
-      scheduled_start,
-      scheduled_end,
-      status,
-      meeting_provider,
-      meeting_url
-    `)
-    .eq(
-      "enrollment_id",
-      activeEnrollment.id
-    )
-    .order("lesson_number", {
-      ascending: true,
-    });
+  } =
+    await supabase
+      .from(
+        "class_sessions"
+      )
+      .select(`
+        id,
+        lesson_number,
+        scheduled_start,
+        scheduled_end,
+        status,
+        meeting_provider,
+        meeting_url
+      `)
+      .eq(
+        "enrollment_id",
+        activeEnrollment.id
+      )
+      .order(
+        "lesson_number",
+        {
+          ascending: true,
+        }
+      );
 
   if (sessionsError) {
     throw new Error(
@@ -204,14 +283,19 @@ export default async function ParentChildClassesPage({
     switch (status) {
       case "pending":
         return "수강 대기";
+
       case "active":
         return "수강중";
+
       case "paused":
         return "일시중지";
+
       case "completed":
         return "수강완료";
+
       case "cancelled":
         return "취소";
+
       default:
         return status;
     }
@@ -223,16 +307,22 @@ export default async function ParentChildClassesPage({
     switch (status) {
       case "scheduled":
         return "예정";
+
       case "in_progress":
         return "수업 진행 중";
+
       case "completed":
         return "수업 완료";
+
       case "cancelled":
         return "수업 취소";
+
       case "no_show":
-        return "무단결석";
+        return "결석";
+
       case "held":
-        return "결석 승인";
+        return "수업 연기";
+
       default:
         return status;
     }
@@ -241,7 +331,9 @@ export default async function ParentChildClassesPage({
   function getSessionBadgeClass(
     status: string
   ) {
-    if (status === "completed") {
+    if (
+      status === "completed"
+    ) {
       return "talkly-badge talkly-badge-success";
     }
 
@@ -261,16 +353,26 @@ export default async function ParentChildClassesPage({
     return new Intl.DateTimeFormat(
       "ko-KR",
       {
-        timeZone: "Asia/Seoul",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        weekday: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
+        timeZone:
+          "Asia/Seoul",
+        year:
+          "numeric",
+        month:
+          "2-digit",
+        day:
+          "2-digit",
+        weekday:
+          "short",
+        hour:
+          "2-digit",
+        minute:
+          "2-digit",
+        hour12:
+          false,
       }
-    ).format(new Date(value));
+    ).format(
+      new Date(value)
+    );
   }
 
   function getDurationMinutes(
@@ -278,8 +380,12 @@ export default async function ParentChildClassesPage({
     end: string
   ) {
     return Math.round(
-      (new Date(end).getTime() -
-        new Date(start).getTime()) /
+      (new Date(
+        end
+      ).getTime() -
+        new Date(
+          start
+        ).getTime()) /
         60000
     );
   }
@@ -288,18 +394,29 @@ export default async function ParentChildClassesPage({
     <div className="talkly-dashboard">
       <TalklyUserHeader
         role="parent"
-        userName={profile.name}
+        userName={
+          profile.name
+        }
       />
 
       <main className="talkly-dashboard-main">
-        <div style={{ marginBottom: "20px" }}>
+        <div
+          style={{
+            marginBottom:
+              "20px",
+          }}
+        >
           <Link
             href={`/parent/children/${child.id}`}
             style={{
-              color: "var(--talkly-blue)",
-              textDecoration: "none",
-              fontSize: "14px",
-              fontWeight: 800,
+              color:
+                "var(--talkly-blue)",
+              textDecoration:
+                "none",
+              fontSize:
+                "14px",
+              fontWeight:
+                800,
             }}
           >
             ← 자녀 상세
@@ -308,20 +425,28 @@ export default async function ParentChildClassesPage({
 
         <section
           style={{
-            position: "relative",
-            overflow: "hidden",
-            padding: "32px",
-            borderRadius: "22px",
+            position:
+              "relative",
+            overflow:
+              "hidden",
+            padding:
+              "32px",
+            borderRadius:
+              "22px",
             background:
               "linear-gradient(135deg, #ffffff 0%, #f1f6ff 65%, #e8f1ff 100%)",
-            border: "1px solid #e1e9f5",
-            boxShadow: "var(--shadow-card)",
+            border:
+              "1px solid #e1e9f5",
+            boxShadow:
+              "var(--shadow-card)",
           }}
         >
           <div
             style={{
-              position: "relative",
-              zIndex: 1,
+              position:
+                "relative",
+              zIndex:
+                1,
             }}
           >
             <div className="talkly-section-label">
@@ -330,19 +455,27 @@ export default async function ParentChildClassesPage({
 
             <h1
               className="talkly-dashboard-title"
-              style={{ marginTop: "6px" }}
+              style={{
+                marginTop:
+                  "6px",
+              }}
             >
               {child.name} 수업
             </h1>
 
             <p
               style={{
-                margin: "8px 0 0",
-                color: "var(--text-secondary)",
-                fontSize: "15px",
+                margin:
+                  "8px 0 0",
+                color:
+                  "var(--text-secondary)",
+                fontSize:
+                  "15px",
               }}
             >
-              현재 수강정보와 전체 수업 일정을 확인합니다.
+              현재 수강정보와
+              전체 수업 일정을
+              확인합니다.
             </p>
           </div>
         </section>
@@ -350,17 +483,24 @@ export default async function ParentChildClassesPage({
         <section
           className="talkly-card"
           style={{
-            marginTop: "24px",
-            padding: "28px",
+            marginTop:
+              "24px",
+            padding:
+              "28px",
           }}
         >
           <div
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: "16px",
-              flexWrap: "wrap",
+              display:
+                "flex",
+              justifyContent:
+                "space-between",
+              alignItems:
+                "flex-start",
+              gap:
+                "16px",
+              flexWrap:
+                "wrap",
             }}
           >
             <div>
@@ -370,9 +510,12 @@ export default async function ParentChildClassesPage({
 
               <h2
                 style={{
-                  margin: "5px 0 0",
-                  color: "var(--talkly-navy)",
-                  fontSize: "23px",
+                  margin:
+                    "5px 0 0",
+                  color:
+                    "var(--talkly-navy)",
+                  fontSize:
+                    "23px",
                 }}
               >
                 현재 수강정보
@@ -388,85 +531,128 @@ export default async function ParentChildClassesPage({
 
           <div
             style={{
-              marginTop: "22px",
-              display: "grid",
+              marginTop:
+                "22px",
+              display:
+                "grid",
               gridTemplateColumns:
                 "repeat(auto-fit, minmax(180px, 1fr))",
-              gap: "12px",
+              gap:
+                "12px",
             }}
           >
             {[
-              ["과정", course?.name || "-"],
-              ["담당 강사", teacherName],
+              [
+                "과정",
+                course?.name ||
+                  "-",
+              ],
+              [
+                "담당 강사",
+                teacherName,
+              ],
               [
                 "수강 시작일",
-                activeEnrollment.start_date || "-",
+                activeEnrollment.start_date ||
+                  "-",
               ],
               [
                 "수강 종료일",
-                activeEnrollment.end_date || "-",
+                activeEnrollment.end_date ||
+                  "-",
               ],
               [
                 "주당 수업",
-                activeEnrollment.lessons_per_week != null
+                activeEnrollment.lessons_per_week !=
+                null
                   ? `${activeEnrollment.lessons_per_week}회`
                   : "-",
               ],
               [
                 "총 수업",
-                activeEnrollment.total_lessons != null
+                activeEnrollment.total_lessons !=
+                null
                   ? `${activeEnrollment.total_lessons}회`
                   : "-",
               ],
-            ].map(([label, value]) => (
-              <div
-                key={label}
-                style={{
-                  padding: "16px",
-                  borderRadius: "11px",
-                  background: "var(--talkly-blue-soft)",
-                  border: "1px solid #e5ecf6",
-                }}
-              >
+            ].map(
+              ([
+                label,
+                value,
+              ]) => (
                 <div
+                  key={
+                    label
+                  }
                   style={{
-                    color: "var(--text-muted)",
-                    fontSize: "12px",
-                    fontWeight: 700,
+                    padding:
+                      "16px",
+                    borderRadius:
+                      "11px",
+                    background:
+                      "var(--talkly-blue-soft)",
+                    border:
+                      "1px solid #e5ecf6",
                   }}
                 >
-                  {label}
-                </div>
+                  <div
+                    style={{
+                      color:
+                        "var(--text-muted)",
+                      fontSize:
+                        "12px",
+                      fontWeight:
+                        700,
+                    }}
+                  >
+                    {
+                      label
+                    }
+                  </div>
 
-                <div
-                  style={{
-                    marginTop: "6px",
-                    color: "var(--talkly-navy)",
-                    fontSize: "15px",
-                    fontWeight: 800,
-                  }}
-                >
-                  {value}
+                  <div
+                    style={{
+                      marginTop:
+                        "6px",
+                      color:
+                        "var(--talkly-navy)",
+                      fontSize:
+                        "15px",
+                      fontWeight:
+                        800,
+                    }}
+                  >
+                    {
+                      value
+                    }
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
         </section>
 
         <section
           className="talkly-card"
           style={{
-            marginTop: "24px",
-            padding: "28px",
+            marginTop:
+              "24px",
+            padding:
+              "28px",
           }}
         >
           <div
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-end",
-              gap: "16px",
-              flexWrap: "wrap",
+              display:
+                "flex",
+              justifyContent:
+                "space-between",
+              alignItems:
+                "flex-end",
+              gap:
+                "16px",
+              flexWrap:
+                "wrap",
             }}
           >
             <div>
@@ -476,9 +662,12 @@ export default async function ParentChildClassesPage({
 
               <h2
                 style={{
-                  margin: "5px 0 0",
-                  color: "var(--talkly-navy)",
-                  fontSize: "23px",
+                  margin:
+                    "5px 0 0",
+                  color:
+                    "var(--talkly-navy)",
+                  fontSize:
+                    "23px",
                 }}
               >
                 수업 일정
@@ -487,73 +676,107 @@ export default async function ParentChildClassesPage({
 
             <div
               style={{
-                color: "var(--text-muted)",
-                fontSize: "14px",
-                fontWeight: 700,
+                color:
+                  "var(--text-muted)",
+                fontSize:
+                  "14px",
+                fontWeight:
+                  700,
               }}
             >
-              전체 {classSessions?.length ?? 0}회
+              전체{" "}
+              {classSessions?.length ??
+                0}
+              회
             </div>
           </div>
 
           {!classSessions ||
-          classSessions.length === 0 ? (
+          classSessions.length ===
+            0 ? (
             <div
               style={{
-                marginTop: "24px",
-                padding: "24px",
+                marginTop:
+                  "24px",
+                padding:
+                  "24px",
                 border:
                   "1px dashed var(--border)",
-                borderRadius: "10px",
-                color: "var(--text-muted)",
+                borderRadius:
+                  "10px",
+                color:
+                  "var(--text-muted)",
               }}
             >
-              아직 등록된 수업 일정이 없습니다.
+              아직 등록된 수업
+              일정이 없습니다.
             </div>
           ) : (
             <div
               style={{
-                marginTop: "22px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
+                marginTop:
+                  "22px",
+                display:
+                  "flex",
+                flexDirection:
+                  "column",
+                gap:
+                  "10px",
               }}
             >
               {classSessions.map(
-                (session) => (
+                (
+                  session
+                ) => (
                   <Link
-                    key={session.id}
+                    key={
+                      session.id
+                    }
                     href={`/parent/children/${child.id}/classes/${session.id}`}
                     className="talkly-card-hover"
                     style={{
-                      display: "grid",
+                      display:
+                        "grid",
                       gridTemplateColumns:
                         "90px minmax(220px, 1fr) 90px 120px 24px",
-                      gap: "14px",
-                      alignItems: "center",
-                      padding: "16px 18px",
+                      gap:
+                        "14px",
+                      alignItems:
+                        "center",
+                      padding:
+                        "16px 18px",
                       border:
                         "1px solid var(--border)",
-                      borderRadius: "11px",
-                      textDecoration: "none",
-                      color: "inherit",
-                      background: "#ffffff",
+                      borderRadius:
+                        "11px",
+                      textDecoration:
+                        "none",
+                      color:
+                        "inherit",
+                      background:
+                        "#ffffff",
                     }}
                   >
                     <strong
                       style={{
-                        color: "var(--talkly-navy)",
-                        fontSize: "15px",
+                        color:
+                          "var(--talkly-navy)",
+                        fontSize:
+                          "15px",
                       }}
                     >
-                      {session.lesson_number}
+                      {
+                        session.lesson_number
+                      }
                       회차
                     </strong>
 
                     <span
                       style={{
-                        color: "var(--text-secondary)",
-                        fontSize: "14px",
+                        color:
+                          "var(--text-secondary)",
+                        fontSize:
+                          "14px",
                       }}
                     >
                       {formatDateTime(
@@ -563,8 +786,10 @@ export default async function ParentChildClassesPage({
 
                     <span
                       style={{
-                        color: "var(--text-muted)",
-                        fontSize: "13px",
+                        color:
+                          "var(--text-muted)",
+                        fontSize:
+                          "13px",
                       }}
                     >
                       {getDurationMinutes(
@@ -586,9 +811,12 @@ export default async function ParentChildClassesPage({
 
                     <span
                       style={{
-                        color: "var(--talkly-blue)",
-                        fontWeight: 900,
-                        textAlign: "right",
+                        color:
+                          "var(--talkly-blue)",
+                        fontWeight:
+                          900,
+                        textAlign:
+                          "right",
                       }}
                     >
                       →

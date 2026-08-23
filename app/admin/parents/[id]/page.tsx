@@ -36,7 +36,7 @@ function getEnrollmentStatusLabel(status: string) {
     case "completed":
       return "수강 완료";
     case "cancelled":
-      return "취소";
+      return "수강 취소";
     default:
       return status;
   }
@@ -46,14 +46,16 @@ function getSessionStatusLabel(status: string) {
   switch (status) {
     case "scheduled":
       return "예정";
+    case "in_progress":
+      return "수업 진행 중";
     case "completed":
-      return "완료";
+      return "수업 완료";
     case "cancelled":
-      return "취소";
+      return "수업 취소";
     case "no_show":
-      return "무단결석";
+      return "결석";
     case "held":
-      return "결석 승인";
+      return "수업 연기";
     default:
       return status;
   }

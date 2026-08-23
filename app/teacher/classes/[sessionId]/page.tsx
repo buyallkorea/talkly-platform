@@ -206,14 +206,14 @@ export default async function TeacherClassDetailPage({
 
       case "no_show":
         return {
-          en: "No Show",
-          ko: "무단결석",
+          en: "Absent",
+          ko: "결석",
         };
 
       case "held":
         return {
-          en: "Class Hold",
-          ko: "결석 승인",
+          en: "Class Reschedule",
+          ko: "수업 연기",
         };
 
       default:
@@ -264,30 +264,32 @@ export default async function TeacherClassDetailPage({
     }
   }
 
-  function getHoldStatus(status: string) {
+  function getHoldStatus(status: string, adminNote: string | null) {
     switch (status) {
       case "requested":
         return {
-          en: "Pending Review",
-          ko: "확인 대기중",
+          en: "Legacy Pending Review",
+          ko: "이전 승인 대기",
         };
 
-      case "approved":
+      case "approved": {
+        const automatic = Boolean(adminNote?.includes("시스템 자동승인"));
         return {
-          en: "Approved",
-          ko: "승인 완료",
+          en: automatic ? "Automatically Approved" : "Legacy Manual Approval",
+          ko: automatic ? "자동 승인" : "이전 수동 승인",
         };
+      }
 
       case "rejected":
         return {
-          en: "Rejected",
-          ko: "거절",
+          en: "Legacy Rejected",
+          ko: "이전 반려",
         };
 
       case "cancelled":
         return {
-          en: "Cancelled",
-          ko: "신청 취소",
+          en: "Reschedule Cancelled",
+          ko: "연기 취소",
         };
 
       default:
@@ -351,7 +353,7 @@ export default async function TeacherClassDetailPage({
     : null;
 
   const holdStatus = hold
-    ? getHoldStatus(hold.status)
+    ? getHoldStatus(hold.status, hold.admin_note)
     : null;
 
   const now = new Date();
@@ -392,8 +394,8 @@ export default async function TeacherClassDetailPage({
   ) {
     if (status === "held") {
       return {
-        en: "Attendance is not required for an approved Class Hold.",
-        ko: "결석 승인이 완료된 수업은 출석 등록이 필요하지 않습니다.",
+        en: "Attendance is not required for a rescheduled class.",
+        ko: "수업 연기 처리된 수업은 출석 등록이 필요하지 않습니다.",
       };
     }
 
@@ -734,7 +736,7 @@ export default async function TeacherClassDetailPage({
             }}
           >
             <div className="talkly-section-label">
-              CLASS HOLD
+              CLASS RESCHEDULE
             </div>
 
             <h2
@@ -744,7 +746,7 @@ export default async function TeacherClassDetailPage({
                 fontSize: "23px",
               }}
             >
-              결석신청
+              수업 연기
             </h2>
 
             <div

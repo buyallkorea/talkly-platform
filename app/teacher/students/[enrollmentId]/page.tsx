@@ -296,9 +296,9 @@ export default async function TeacherStudentDetailPage({
       case "cancelled":
         return "수업 취소";
       case "no_show":
-        return "무단결석";
+        return "결석";
       case "held":
-        return "결석 승인";
+        return "수업 연기";
       default:
         return status;
     }
@@ -441,68 +441,6 @@ export default async function TeacherStudentDetailPage({
 
   const pronunciationAverage =
     getSkillAverage("pronunciation_score");
-
-  const recentEvaluationTrend = evaluations
-    .map((evaluation) => {
-      const session = sessions.find(
-        (item) => item.id === evaluation.class_session_id
-      );
-
-      const scores = [
-        evaluation.participation_score,
-        evaluation.comprehension_score,
-        evaluation.speaking_score,
-        evaluation.pronunciation_score,
-      ];
-
-      if (
-        !session ||
-        !scores.every((score) => typeof score === "number")
-      ) {
-        return null;
-      }
-
-      const average =
-        scores.reduce((sum, score) => sum + (score ?? 0), 0) /
-        scores.length;
-
-      return {
-        lessonNumber: session.lesson_number,
-        average,
-        scheduledStart: session.scheduled_start,
-      };
-    })
-    .filter(
-      (
-        item
-      ): item is {
-        lessonNumber: number;
-        average: number;
-        scheduledStart: string;
-      } => Boolean(item)
-    )
-    .sort(
-      (a, b) =>
-        new Date(a.scheduledStart).getTime() -
-        new Date(b.scheduledStart).getTime()
-    )
-    .slice(-6);
-
-  const latestTrendScore =
-    recentEvaluationTrend.length > 0
-      ? recentEvaluationTrend[
-          recentEvaluationTrend.length - 1
-        ].average.toFixed(1)
-      : null;
-
-  const bestTrendScore =
-    recentEvaluationTrend.length > 0
-      ? Math.max(
-          ...recentEvaluationTrend.map(
-            (item) => item.average
-          )
-        ).toFixed(1)
-      : null;
 
   return (
     <div className="talkly-dashboard">
@@ -770,145 +708,6 @@ export default async function TeacherStudentDetailPage({
         <section
           className="talkly-card"
           style={{
-            marginTop: "24px",
-            padding: "28px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-end",
-              gap: "16px",
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <div className="talkly-section-label">
-                LEARNING TREND
-              </div>
-
-              <h2
-                style={{
-                  margin: "5px 0 0",
-                  color: "var(--talkly-navy)",
-                  fontSize: "22px",
-                }}
-              >
-                최근 학습평가 추이
-              </h2>
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                gap: "10px",
-                flexWrap: "wrap",
-              }}
-            >
-              <span className="talkly-badge talkly-badge-blue">
-                최근 {latestTrendScore ?? "-"} / 5
-              </span>
-
-              <span className="talkly-badge talkly-badge-success">
-                최고 {bestTrendScore ?? "-"} / 5
-              </span>
-            </div>
-          </div>
-
-          {recentEvaluationTrend.length === 0 ? (
-            <div
-              style={{
-                marginTop: "20px",
-                padding: "22px",
-                border: "1px dashed var(--border)",
-                borderRadius: "10px",
-                color: "var(--text-muted)",
-              }}
-            >
-              아직 추이를 표시할 수 있는 평가가 없습니다.
-            </div>
-          ) : (
-            <div
-              className="teacher-trend-grid"
-              style={{
-                marginTop: "24px",
-                display: "grid",
-                gridTemplateColumns:
-                  `repeat(${recentEvaluationTrend.length}, minmax(72px, 1fr))`,
-                gap: "12px",
-                alignItems: "end",
-              }}
-            >
-              {recentEvaluationTrend.map((item) => {
-                const percent = Math.max(
-                  0,
-                  Math.min(100, (item.average / 5) * 100)
-                );
-
-                return (
-                  <div
-                    key={`${item.lessonNumber}-${item.scheduledStart}`}
-                    style={{
-                      minWidth: 0,
-                    }}
-                  >
-                    <div
-                      style={{
-                        height: "180px",
-                        display: "flex",
-                        alignItems: "flex-end",
-                        justifyContent: "center",
-                        padding: "0 8px",
-                        borderRadius: "12px",
-                        background: "var(--talkly-blue-soft)",
-                        border: "1px solid #e5ecf6",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: "100%",
-                          maxWidth: "54px",
-                          height: `${percent}%`,
-                          minHeight: "8px",
-                          borderRadius: "10px 10px 4px 4px",
-                          background:
-                            "linear-gradient(180deg, var(--talkly-blue), var(--talkly-navy))",
-                          display: "flex",
-                          alignItems: "flex-start",
-                          justifyContent: "center",
-                          paddingTop: "8px",
-                          color: "#ffffff",
-                          fontSize: "12px",
-                          fontWeight: 900,
-                        }}
-                      >
-                        {item.average.toFixed(1)}
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        marginTop: "8px",
-                        textAlign: "center",
-                        color: "var(--talkly-navy)",
-                        fontSize: "12px",
-                        fontWeight: 800,
-                      }}
-                    >
-                      {item.lessonNumber}회차
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <section
-          className="talkly-card"
-          style={{
             marginTop: "28px",
             padding: "28px",
           }}
@@ -1096,7 +895,7 @@ export default async function TeacherStudentDetailPage({
                   <Link
                     key={session.id}
                     href={`/teacher/classes/${session.id}`}
-                    className="talkly-card-hover teacher-session-row"
+                    className="talkly-card-hover"
                     style={{
                       display: "grid",
                       gridTemplateColumns:
@@ -1190,77 +989,6 @@ export default async function TeacherStudentDetailPage({
           )}
         </section>
       </main>
-
-      <style>{`
-        @media (max-width: 820px) {
-          .teacher-trend-grid {
-            grid-template-columns: repeat(3, minmax(80px, 1fr)) !important;
-          }
-
-          .teacher-session-row {
-            grid-template-columns: 1fr 1fr !important;
-            gap: 12px !important;
-            padding: 16px !important;
-          }
-
-          .teacher-session-row > :nth-child(2) {
-            grid-column: 1 / -1;
-            grid-row: 2;
-          }
-
-          .teacher-session-row > :nth-child(3),
-          .teacher-session-row > :nth-child(4),
-          .teacher-session-row > :nth-child(5) {
-            justify-self: start;
-          }
-
-          .teacher-session-row > :nth-child(6) {
-            grid-column: 2;
-            grid-row: 1;
-            justify-self: end;
-          }
-        }
-
-        @media (max-width: 560px) {
-          .talkly-dashboard-main {
-            padding-left: 16px !important;
-            padding-right: 16px !important;
-          }
-
-          .talkly-stat-grid {
-            grid-template-columns: 1fr !important;
-          }
-
-          .teacher-trend-grid {
-            display: flex !important;
-            overflow-x: auto;
-            gap: 10px !important;
-            padding-bottom: 8px;
-            scroll-snap-type: x proximity;
-          }
-
-          .teacher-trend-grid > div {
-            min-width: 88px;
-            scroll-snap-align: start;
-          }
-
-          .teacher-session-row {
-            display: flex !important;
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 10px !important;
-          }
-
-          .teacher-session-row > * {
-            width: auto;
-          }
-
-          .teacher-session-row > :nth-child(6) {
-            align-self: flex-end;
-            margin-top: -28px;
-          }
-        }
-      `}</style>
     </div>
   );
 }

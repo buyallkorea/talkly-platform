@@ -1,435 +1,432 @@
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase-browser";
-
 type Props = {
-  holdId: number;
-  sessionId: number;
+  status: string;
+  requestedAt: string;
+  reviewedAt: string | null;
+  reason: string | null;
+  adminNote: string | null;
+  automaticApproval: boolean;
 };
 
-export default function ClassHoldReviewForm({
-  holdId,
-  sessionId,
-}: Props) {
-  const router = useRouter();
-
-  const [adminNote, setAdminNote] =
-    useState("");
-
-  const [loading, setLoading] = useState<
-    "approved" | "rejected" | null
-  >(null);
-
-  const [errorMessage, setErrorMessage] =
-    useState("");
-
-  async function reviewHold(
-    status: "approved" | "rejected"
-  ) {
-    if (loading) {
-      return;
-    }
-
-    setErrorMessage("");
-    setLoading(status);
-
-    try {
-      const supabase = createClient();
-
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        setErrorMessage(
-          "로그인 정보를 확인할 수 없습니다."
-        );
-        setLoading(null);
-        return;
-      }
-
-      /*
-       * 관리자 권한 확인
-       */
-      const {
-        data: profile,
-        error: profileError,
-      } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (
-        profileError ||
-        !profile ||
-        profile.role !== "admin"
-      ) {
-        setErrorMessage(
-          "관리자 권한을 확인할 수 없습니다."
-        );
-        setLoading(null);
-        return;
-      }
-
-      /*
-       * 현재 신청상태 확인
-       */
-      const {
-        data: currentHold,
-        error: holdReadError,
-      } = await supabase
-        .from("class_holds")
-        .select(`
-          id,
-          status
-        `)
-        .eq("id", holdId)
-        .maybeSingle();
-
-      if (holdReadError) {
-        setErrorMessage(
-          `결석신청 확인 실패: ${holdReadError.message}`
-        );
-        setLoading(null);
-        return;
-      }
-
-      if (!currentHold) {
-        setErrorMessage(
-          "결석신청 정보를 찾을 수 없습니다."
-        );
-        setLoading(null);
-        return;
-      }
-
-      if (
-        currentHold.status !== "requested"
-      ) {
-        setErrorMessage(
-          "이미 처리된 결석신청입니다."
-        );
-        setLoading(null);
-        return;
-      }
-
-      const now =
-        new Date().toISOString();
-
-      /*
-       * 결석신청 승인 / 거절
-       */
-      const {
-        data: updatedHold,
-        error: holdUpdateError,
-      } = await supabase
-        .from("class_holds")
-        .update({
-          status,
-          reviewed_by: user.id,
-          reviewed_at: now,
-          admin_note:
-            adminNote.trim() || null,
-          updated_at: now,
-        })
-        .eq("id", holdId)
-        .eq("status", "requested")
-        .select("id");
-
-      if (holdUpdateError) {
-        setErrorMessage(
-          `결석신청 처리 실패: ${holdUpdateError.message}`
-        );
-        setLoading(null);
-        return;
-      }
-
-      if (
-        !updatedHold ||
-        updatedHold.length === 0
-      ) {
-        setErrorMessage(
-          "결석신청 상태가 변경되어 처리할 수 없습니다."
-        );
-        setLoading(null);
-        return;
-      }
-
-      /*
-       * 승인 시 대상 수업을 held 상태로 변경
-       */
-      if (status === "approved") {
-        const {
-          data: updatedSession,
-          error: sessionUpdateError,
-        } = await supabase
-          .from("class_sessions")
-          .update({
-            status: "held",
-            updated_at: now,
-          })
-          .eq("id", sessionId)
-          .select("id");
-
-        if (sessionUpdateError) {
-          setErrorMessage(
-            `결석신청은 승인되었지만 수업 상태 변경에 실패했습니다: ${sessionUpdateError.message}`
-          );
-          setLoading(null);
-          return;
-        }
-
-        if (
-          !updatedSession ||
-          updatedSession.length === 0
-        ) {
-          setErrorMessage(
-            "결석신청은 승인되었지만 대상 수업의 상태를 변경하지 못했습니다."
-          );
-          setLoading(null);
-          return;
-        }
-      }
-
-      router.refresh();
-    } catch (error) {
-      console.error(
-        "CLASS HOLD REVIEW ERROR:",
-        error
-      );
-
-      setErrorMessage(
-        error instanceof Error
-          ? `결석신청 처리 오류: ${error.message}`
-          : "결석신청 처리 중 오류가 발생했습니다."
-      );
-
-      setLoading(null);
-    }
+function formatDateTime(
+  value: string | null
+) {
+  if (!value) {
+    return "-";
   }
 
+  return new Intl.DateTimeFormat(
+    "ko-KR",
+    {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }
+  ).format(
+    new Date(value)
+  );
+}
+
+function getStatusLabel(
+  status: string,
+  automaticApproval: boolean
+) {
+  switch (status) {
+    case "approved":
+      return automaticApproval
+        ? "자동 승인"
+        : "이전 수동 승인";
+
+    case "requested":
+      return "이전 승인 대기";
+
+    case "rejected":
+      return "이전 반려";
+
+    case "cancelled":
+      return "연기 취소";
+
+    default:
+      return status;
+  }
+}
+
+function getStatusStyle(
+  status: string,
+  automaticApproval: boolean
+) {
+  if (
+    status === "approved" &&
+    automaticApproval
+  ) {
+    return {
+      background: "#ecfdf3",
+      border: "#abefc6",
+      color: "#067647",
+    };
+  }
+
+  if (status === "approved") {
+    return {
+      background: "#eff8ff",
+      border: "#b2ddff",
+      color: "#175cd3",
+    };
+  }
+
+  if (status === "requested") {
+    return {
+      background: "#fffaeb",
+      border: "#fedf89",
+      color: "#b54708",
+    };
+  }
+
+  if (status === "rejected") {
+    return {
+      background: "#fef3f2",
+      border: "#fecdca",
+      color: "#b42318",
+    };
+  }
+
+  return {
+    background: "#f2f4f7",
+    border: "#e4e7ec",
+    color: "#475467",
+  };
+}
+
+export default function ClassHoldReviewForm({
+  status,
+  requestedAt,
+  reviewedAt,
+  reason,
+  adminNote,
+  automaticApproval,
+}: Props) {
+  const badge =
+    getStatusStyle(
+      status,
+      automaticApproval
+    );
+
   return (
-    <div>
-      <div>
-        <label
-          htmlFor="adminNote"
+    <section
+      style={{
+        padding: "24px",
+        border:
+          "1px solid #e4e7ec",
+        borderRadius: "16px",
+        background: "#ffffff",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent:
+            "space-between",
+          alignItems: "flex-start",
+          gap: "16px",
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              color: "#2f6fed",
+              fontSize: "12px",
+              fontWeight: 900,
+              letterSpacing:
+                "0.08em",
+            }}
+          >
+            PROCESSING RESULT
+          </div>
+
+          <h2
+            style={{
+              margin: "7px 0 0",
+              color: "#101828",
+              fontSize: "22px",
+            }}
+          >
+            수업 연기 처리 결과
+          </h2>
+        </div>
+
+        <span
           style={{
-            display: "block",
-            color: "#344054",
-            fontSize: "13px",
+            display:
+              "inline-flex",
+            minHeight: "32px",
+            padding: "0 12px",
+            alignItems: "center",
+            border:
+              `1px solid ${badge.border}`,
+            borderRadius: "999px",
+            background:
+              badge.background,
+            color: badge.color,
+            fontSize: "12px",
             fontWeight: 900,
           }}
         >
-          관리자 메모
-        </label>
-
-        <p
-          style={{
-            margin: "6px 0 0",
-            color: "#98a2b3",
-            fontSize: "12px",
-            lineHeight: 1.6,
-          }}
-        >
-          승인 또는 거절 사유와 안내사항을
-          기록할 수 있습니다.
-        </p>
-
-        <textarea
-          id="adminNote"
-          value={adminNote}
-          onChange={(event) =>
-            setAdminNote(
-              event.target.value
-            )
-          }
-          rows={6}
-          placeholder="예: 해당 회차 결석 승인 처리합니다. 보강 일정은 별도 안내 예정입니다."
-          disabled={loading !== null}
-          style={{
-            marginTop: "12px",
-            width: "100%",
-            minHeight: "150px",
-            boxSizing: "border-box",
-            padding: "14px",
-            border:
-              "1px solid #d0d5dd",
-            borderRadius: "10px",
-            background:
-              loading !== null
-                ? "#f9fafb"
-                : "#ffffff",
-            color: "#101828",
-            fontFamily: "inherit",
-            fontSize: "14px",
-            lineHeight: 1.75,
-            resize: "vertical",
-            outline: "none",
-          }}
-        />
+          {getStatusLabel(
+            status,
+            automaticApproval
+          )}
+        </span>
       </div>
-
-      {errorMessage && (
-        <div
-          style={{
-            marginTop: "16px",
-            padding: "14px 16px",
-            border:
-              "1px solid #fecdca",
-            borderRadius: "10px",
-            background: "#fef3f2",
-            color: "#b42318",
-            fontSize: "13px",
-            fontWeight: 700,
-            lineHeight: 1.7,
-          }}
-        >
-          {errorMessage}
-        </div>
-      )}
 
       <div
         style={{
           marginTop: "22px",
-          paddingTop: "20px",
-          borderTop:
-            "1px solid #eaecf0",
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fit, minmax(190px, 1fr))",
+          gap: "12px",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent:
-              "space-between",
-            alignItems: "center",
-            gap: "14px",
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                color: "#101828",
-                fontSize: "14px",
-                fontWeight: 900,
-              }}
-            >
-              처리 결과 선택
-            </div>
+        <InfoBox
+          label="신청일시"
+          value={formatDateTime(
+            requestedAt
+          )}
+        />
 
-            <div
-              style={{
-                marginTop: "5px",
-                color: "#98a2b3",
-                fontSize: "12px",
-                lineHeight: 1.6,
-              }}
-            >
-              처리 후에는 상태가 확정되므로
-              신청 내용을 다시 확인해주세요.
-            </div>
-          </div>
+        <InfoBox
+          label="처리일시"
+          value={formatDateTime(
+            reviewedAt
+          )}
+        />
 
-          <div
-            style={{
-              display: "flex",
-              gap: "10px",
-              flexWrap: "wrap",
-            }}
-          >
-            <button
-              type="button"
-              disabled={loading !== null}
-              onClick={() =>
-                reviewHold("rejected")
-              }
-              style={{
-                minHeight: "46px",
-                padding: "0 18px",
-                border:
-                  "1px solid #fda29b",
-                borderRadius: "10px",
-                background: "#ffffff",
-                color: "#b42318",
-                fontFamily: "inherit",
-                fontSize: "13px",
-                fontWeight: 900,
-                cursor:
-                  loading !== null
-                    ? "default"
-                    : "pointer",
-                opacity:
-                  loading !== null
-                    ? 0.55
-                    : 1,
-              }}
-            >
-              {loading === "rejected"
-                ? "거절 처리 중..."
-                : "신청 거절"}
-            </button>
-
-            <button
-              type="button"
-              disabled={loading !== null}
-              onClick={() =>
-                reviewHold("approved")
-              }
-              style={{
-                minHeight: "46px",
-                padding: "0 20px",
-                border: "none",
-                borderRadius: "10px",
-                background: "#0A1F44",
-                color: "#ffffff",
-                fontFamily: "inherit",
-                fontSize: "13px",
-                fontWeight: 900,
-                cursor:
-                  loading !== null
-                    ? "default"
-                    : "pointer",
-                boxShadow:
-                  "0 8px 18px rgba(10,31,68,.12)",
-                opacity:
-                  loading !== null
-                    ? 0.6
-                    : 1,
-              }}
-            >
-              {loading === "approved"
-                ? "승인 처리 중..."
-                : "결석 신청 승인"}
-            </button>
-          </div>
-        </div>
+        <InfoBox
+          label="처리 방식"
+          value={
+            automaticApproval
+              ? "시스템 자동승인"
+              : status ===
+                  "approved"
+                ? "이전 수동 승인"
+                : status ===
+                    "requested"
+                  ? "이전 수동처리 방식"
+                  : "기존 처리 내역"
+          }
+        />
       </div>
 
       <div
         style={{
           marginTop: "18px",
-          padding: "14px 16px",
-          borderRadius: "10px",
+          padding: "18px",
+          border:
+            "1px solid #e4e7ec",
+          borderRadius: "12px",
           background: "#f9fafb",
+        }}
+      >
+        <div
+          style={{
+            color: "#667085",
+            fontSize: "12px",
+            fontWeight: 800,
+          }}
+        >
+          신청 사유
+        </div>
+
+        <div
+          style={{
+            marginTop: "8px",
+            color: "#344054",
+            fontSize: "14px",
+            lineHeight: 1.75,
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {reason ||
+            "신청 사유가 입력되지 않았습니다."}
+        </div>
+      </div>
+
+      {adminNote && (
+        <div
+          style={{
+            marginTop: "12px",
+            padding: "18px",
+            border:
+              automaticApproval
+                ? "1px solid #b2ddff"
+                : "1px solid #e4e7ec",
+            borderRadius: "12px",
+            background:
+              automaticApproval
+                ? "#f5f8ff"
+                : "#f9fafb",
+          }}
+        >
+          <div
+            style={{
+              color:
+                automaticApproval
+                  ? "#175cd3"
+                  : "#667085",
+              fontSize: "12px",
+              fontWeight: 900,
+            }}
+          >
+            처리 안내
+          </div>
+
+          <div
+            style={{
+              marginTop: "8px",
+              color: "#475467",
+              fontSize: "13px",
+              lineHeight: 1.75,
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {adminNote}
+          </div>
+        </div>
+      )}
+
+      {automaticApproval && (
+        <div
+          style={{
+            marginTop: "18px",
+            padding: "18px",
+            border:
+              "1px solid #dbe7ff",
+            borderRadius: "12px",
+            background: "#f7faff",
+          }}
+        >
+          <div
+            style={{
+              color: "#2f6fed",
+              fontSize: "13px",
+              fontWeight: 900,
+            }}
+          >
+            자동승인 기준
+          </div>
+
+          <div
+            style={{
+              marginTop: "9px",
+              color: "#475467",
+              fontSize: "13px",
+              lineHeight: 1.75,
+            }}
+          >
+            이 수업 연기는 시스템이
+            신청 시점에 규정을
+            확인하여 자동
+            승인했습니다.
+            <br />
+            • 월 최대 2회
+            <br />
+            • 수업 시작 2시간
+            전까지 신청
+          </div>
+        </div>
+      )}
+
+      {status === "requested" && (
+        <div
+          style={{
+            marginTop: "18px",
+            padding: "18px",
+            border:
+              "1px solid #fedf89",
+            borderRadius: "12px",
+            background: "#fffaeb",
+            color: "#b54708",
+            fontSize: "13px",
+            lineHeight: 1.7,
+          }}
+        >
+          이 신청은 자동승인
+          시스템 도입 전에 생성된
+          과거 승인 대기
+          데이터입니다. 현재
+          시스템에서는 관리자가
+          수업 연기를 승인하거나
+          반려하지 않습니다.
+        </div>
+      )}
+
+      <div
+        style={{
+          marginTop: "18px",
+          padding: "15px 17px",
+          border:
+            "1px solid #e4e7ec",
+          borderRadius: "11px",
+          background: "#ffffff",
           color: "#667085",
-          fontSize: "11px",
+          fontSize: "12px",
           lineHeight: 1.7,
         }}
       >
-        결석 신청을 승인하면 대상 수업의 상태가
-        <strong
-          style={{
-            margin: "0 4px",
-            color: "#344054",
-          }}
-        >
-          held
-        </strong>
-        로 변경됩니다. 거절하는 경우 수업 상태는
-        변경되지 않습니다.
+        현재 TALKLY의 수업 연기는
+        규정 충족 여부를 시스템이
+        자동으로 판단합니다. 이
+        화면에서는 처리 결과만
+        확인할 수 있으며 관리자가
+        승인 또는 반려할 수
+        없습니다.
+      </div>
+    </section>
+  );
+}
+
+function InfoBox({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      style={{
+        padding: "16px",
+        border:
+          "1px solid #e4e7ec",
+        borderRadius: "11px",
+        background: "#ffffff",
+      }}
+    >
+      <div
+        style={{
+          color: "#667085",
+          fontSize: "11px",
+          fontWeight: 800,
+        }}
+      >
+        {label}
+      </div>
+
+      <div
+        style={{
+          marginTop: "7px",
+          color: "#101828",
+          fontSize: "14px",
+          fontWeight: 800,
+          lineHeight: 1.5,
+        }}
+      >
+        {value}
       </div>
     </div>
   );

@@ -15,6 +15,18 @@ export default async function LessonDetailPage({
 }: PageProps) {
   const { id, lessonId } = await params;
 
+  const enrollmentId = Number(id);
+  const classSessionId = Number(lessonId);
+
+  if (
+    !Number.isInteger(enrollmentId) ||
+    enrollmentId <= 0 ||
+    !Number.isInteger(classSessionId) ||
+    classSessionId <= 0
+  ) {
+    notFound();
+  }
+
   const supabase = await createClient();
 
   const {
@@ -25,36 +37,39 @@ export default async function LessonDetailPage({
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
+
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
 
   if (!profile || profile.role !== "admin") {
     redirect("/");
   }
 
-  const { data: session, error: sessionError } =
-    await supabase
-      .from("class_sessions")
-      .select(`
-        id,
-        enrollment_id,
-        lesson_number,
-        scheduled_start,
-        scheduled_end,
-        status,
-        meeting_provider,
-        meeting_id,
-        meeting_url,
-        teacher_notes,
-        created_at,
-        updated_at
-      `)
-      .eq("id", Number(lessonId))
-      .eq("enrollment_id", Number(id))
-      .maybeSingle();
+  const { data: session, error: sessionError } = await supabase
+    .from("class_sessions")
+    .select(`
+      id,
+      enrollment_id,
+      lesson_number,
+      scheduled_start,
+      scheduled_end,
+      status,
+      meeting_provider,
+      meeting_id,
+      meeting_url,
+      teacher_notes,
+      created_at,
+      updated_at
+    `)
+    .eq("id", classSessionId)
+    .eq("enrollment_id", enrollmentId)
+    .maybeSingle();
 
   if (sessionError) {
     throw new Error(sessionError.message);
@@ -64,18 +79,17 @@ export default async function LessonDetailPage({
     notFound();
   }
 
-  const { data: enrollment, error: enrollmentError } =
-    await supabase
-      .from("enrollments")
-      .select(`
-        id,
-        student_user_id,
-        child_id,
-        course_id,
-        teacher_user_id
-      `)
-      .eq("id", session.enrollment_id)
-      .maybeSingle();
+  const { data: enrollment, error: enrollmentError } = await supabase
+    .from("enrollments")
+    .select(`
+      id,
+      student_user_id,
+      child_id,
+      course_id,
+      teacher_user_id
+    `)
+    .eq("id", session.enrollment_id)
+    .maybeSingle();
 
   if (enrollmentError) {
     throw new Error(enrollmentError.message);
@@ -88,39 +102,55 @@ export default async function LessonDetailPage({
   let studentName = "학생 정보 없음";
 
   if (enrollment.child_id) {
-    const { data: child } = await supabase
+    const { data: child, error: childError } = await supabase
       .from("children")
       .select("name")
       .eq("id", enrollment.child_id)
       .maybeSingle();
 
+    if (childError) {
+      throw new Error(childError.message);
+    }
+
     if (child?.name) {
       studentName = child.name;
     }
   } else if (enrollment.student_user_id) {
-    const { data: student } = await supabase
+    const { data: student, error: studentError } = await supabase
       .from("profiles")
       .select("name")
       .eq("id", enrollment.student_user_id)
       .maybeSingle();
 
+    if (studentError) {
+      throw new Error(studentError.message);
+    }
+
     studentName = student?.name || "성인 학생";
   }
 
-  const { data: course } = await supabase
+  const { data: course, error: courseError } = await supabase
     .from("courses")
     .select("name")
     .eq("id", enrollment.course_id)
     .maybeSingle();
 
+  if (courseError) {
+    throw new Error(courseError.message);
+  }
+
   let teacherName = "미배정";
 
   if (enrollment.teacher_user_id) {
-    const { data: teacher } = await supabase
+    const { data: teacher, error: teacherError } = await supabase
       .from("teacher_profiles")
       .select("display_name")
       .eq("user_id", enrollment.teacher_user_id)
       .maybeSingle();
+
+    if (teacherError) {
+      throw new Error(teacherError.message);
+    }
 
     if (teacher?.display_name) {
       teacherName = teacher.display_name;
@@ -131,14 +161,16 @@ export default async function LessonDetailPage({
     switch (status) {
       case "scheduled":
         return "예정";
+      case "in_progress":
+        return "수업 진행 중";
       case "completed":
         return "수업 완료";
       case "cancelled":
         return "수업 취소";
       case "no_show":
-        return "무단결석";
+        return "결석";
       case "held":
-        return "결석 승인";
+        return "수업 연기";
       default:
         return status;
     }
@@ -150,20 +182,16 @@ export default async function LessonDetailPage({
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
+      weekday: "short",
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
     }).format(new Date(value));
   }
 
-  function getDurationMinutes(
-    start: string,
-    end: string
-  ) {
+  function getDurationMinutes(start: string, end: string) {
     return Math.round(
-      (new Date(end).getTime() -
-        new Date(start).getTime()) /
-        60000
+      (new Date(end).getTime() - new Date(start).getTime()) / 60000
     );
   }
 
@@ -239,16 +267,28 @@ export default async function LessonDetailPage({
           borderRadius: "12px",
         }}
       >
-        <h2 style={{ marginTop: 0 }}>
-          수업 기본정보
-        </h2>
+        <h2 style={{ marginTop: 0 }}>수업 기본정보</h2>
 
-        <p><strong>학생:</strong> {studentName}</p>
-        <p><strong>과정:</strong> {course?.name || "-"}</p>
-        <p><strong>담당 강사:</strong> {teacherName}</p>
-        <p><strong>회차:</strong> {session.lesson_number}회차</p>
-        <p><strong>수업 시작:</strong> {formatDateTime(session.scheduled_start)}</p>
-        <p><strong>수업 종료:</strong> {formatDateTime(session.scheduled_end)}</p>
+        <p>
+          <strong>학생:</strong> {studentName}
+        </p>
+        <p>
+          <strong>과정:</strong> {course?.name || "-"}
+        </p>
+        <p>
+          <strong>담당 강사:</strong> {teacherName}
+        </p>
+        <p>
+          <strong>회차:</strong> {session.lesson_number}회차
+        </p>
+        <p>
+          <strong>수업 시작:</strong>{" "}
+          {formatDateTime(session.scheduled_start)}
+        </p>
+        <p>
+          <strong>수업 종료:</strong>{" "}
+          {formatDateTime(session.scheduled_end)}
+        </p>
         <p>
           <strong>수업시간:</strong>{" "}
           {getDurationMinutes(
@@ -257,8 +297,12 @@ export default async function LessonDetailPage({
           )}
           분
         </p>
-        <p><strong>수업 상태:</strong> {getStatusLabel(session.status)}</p>
-        <p><strong>수업 플랫폼:</strong> {session.meeting_provider || "-"}</p>
+        <p>
+          <strong>수업 상태:</strong> {getStatusLabel(session.status)}
+        </p>
+        <p>
+          <strong>수업 플랫폼:</strong> {session.meeting_provider || "-"}
+        </p>
         <p>
           <strong>Zoom Meeting ID:</strong>{" "}
           {session.meeting_id || "아직 등록되지 않음"}
@@ -276,6 +320,18 @@ export default async function LessonDetailPage({
             >
               TALKLY 수업 입장
             </Link>
+          ) : session.meeting_url ? (
+            <a
+              href={session.meeting_url}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                fontWeight: 700,
+                textDecoration: "underline",
+              }}
+            >
+              Zoom 링크 열기
+            </a>
           ) : (
             "아직 등록되지 않음"
           )}
@@ -290,15 +346,11 @@ export default async function LessonDetailPage({
           borderRadius: "12px",
         }}
       >
-        <h2 style={{ marginTop: 0 }}>
-          Zoom 연결
-        </h2>
+        <h2 style={{ marginTop: 0 }}>Zoom 연결</h2>
 
         {hasZoomMeeting ? (
           <div>
-            <strong>
-              Zoom 회의가 이미 연결되어 있습니다.
-            </strong>
+            <strong>Zoom 회의가 이미 연결되어 있습니다.</strong>
             <p
               style={{
                 marginBottom: 0,
@@ -343,9 +395,7 @@ export default async function LessonDetailPage({
           borderRadius: "12px",
         }}
       >
-        <h2 style={{ marginTop: 0 }}>
-          강사 / 관리자 메모
-        </h2>
+        <h2 style={{ marginTop: 0 }}>강사 / 관리자 메모</h2>
 
         <p
           style={{
@@ -353,8 +403,7 @@ export default async function LessonDetailPage({
             marginBottom: 0,
           }}
         >
-          {session.teacher_notes ||
-            "등록된 메모가 없습니다."}
+          {session.teacher_notes || "등록된 메모가 없습니다."}
         </p>
       </div>
     </main>

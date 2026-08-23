@@ -91,7 +91,7 @@ export default async function StudentClassesPage() {
         status
       `)
       .in("enrollment_id", enrollmentIds)
-      .order("scheduled_start", { ascending: true });
+      .order("scheduled_start", { ascending: false });
 
     if (error) {
       throw new Error(error.message);
@@ -239,9 +239,9 @@ export default async function StudentClassesPage() {
       case "cancelled":
         return "수업 취소";
       case "no_show":
-        return "무단결석";
+        return "결석";
       case "held":
-        return "결석 승인";
+        return "수업 연기";
       default:
         return status;
     }
@@ -275,6 +275,22 @@ export default async function StudentClassesPage() {
     (session) => getEffectiveStatus(session) === "completed"
   ).length;
 
+  const nextSession =
+    sessions
+      .filter((session) => {
+        const status = getEffectiveStatus(session);
+
+        if (status === "completed") return false;
+        if (status === "cancelled" || status === "held") return false;
+
+        return new Date(session.scheduled_end).getTime() >= now.getTime();
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.scheduled_start).getTime() -
+          new Date(b.scheduled_start).getTime()
+      )[0] ?? null;
+
   return (
     <div className="talkly-dashboard">
       <TalklyUserHeader
@@ -285,36 +301,64 @@ export default async function StudentClassesPage() {
       <main className="talkly-dashboard-main">
         <section
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            gap: "20px",
-            flexWrap: "wrap",
+            position: "relative",
+            overflow: "hidden",
+            padding: "32px",
+            borderRadius: "22px",
+            background:
+              "linear-gradient(135deg, #ffffff 0%, #f1f6ff 65%, #e8f1ff 100%)",
+            border: "1px solid #e1e9f5",
+            boxShadow: "var(--shadow-card)",
           }}
         >
-          <div>
-            <div className="talkly-section-label">
-              MY CLASSES
+          <div
+            style={{
+              position: "relative",
+              zIndex: 1,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "24px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div className="talkly-section-label">
+                MY CLASSES
+              </div>
+
+              <h1
+                className="talkly-dashboard-title"
+                style={{ marginTop: "6px" }}
+              >
+                내 수업
+              </h1>
+
+              <p className="talkly-dashboard-subtitle">
+                예정된 수업과 지난 수업 기록을 한 곳에서 확인합니다.
+              </p>
             </div>
 
-            <h1
-              className="talkly-dashboard-title"
-              style={{ marginTop: "6px" }}
+            <Link
+              href="/student"
+              className="talkly-button talkly-button-secondary"
             >
-              내 수업
-            </h1>
-
-            <p className="talkly-dashboard-subtitle">
-              예정된 수업과 지난 수업 기록을 한 곳에서 확인합니다.
-            </p>
+              ← 대시보드
+            </Link>
           </div>
 
-          <Link
-            href="/student"
-            className="talkly-button talkly-button-secondary"
-          >
-            ← 대시보드
-          </Link>
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              width: "220px",
+              height: "220px",
+              right: "-70px",
+              bottom: "-115px",
+              borderRadius: "50%",
+              background: "rgba(63,117,220,0.08)",
+            }}
+          />
         </section>
 
         <section className="talkly-stat-grid">
@@ -357,6 +401,212 @@ export default async function StudentClassesPage() {
               }}
             >
               종료된 수업
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="student-next-class-grid"
+          style={{
+            marginTop: "28px",
+            display: "grid",
+            gridTemplateColumns:
+              "minmax(0, 1.35fr) minmax(280px, 0.65fr)",
+            gap: "18px",
+          }}
+        >
+          <div
+            className="talkly-card"
+            style={{
+              padding: "28px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "16px",
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <div className="talkly-section-label">
+                  NEXT CLASS
+                </div>
+
+                <h2
+                  style={{
+                    margin: "5px 0 0",
+                    color: "var(--talkly-navy)",
+                    fontSize: "23px",
+                  }}
+                >
+                  다음 수업
+                </h2>
+              </div>
+
+              {nextSession && (
+                <span
+                  className={getBadgeClass(
+                    getEffectiveStatus(nextSession)
+                  )}
+                >
+                  {getStatusLabel(
+                    getEffectiveStatus(nextSession)
+                  )}
+                </span>
+              )}
+            </div>
+
+            {nextSession ? (
+              <div style={{ marginTop: "22px" }}>
+                <div
+                  style={{
+                    color: "var(--talkly-navy)",
+                    fontSize: "20px",
+                    fontWeight: 900,
+                  }}
+                >
+                  {getCourseName(nextSession)} ·{" "}
+                  {nextSession.lesson_number}회차
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "8px",
+                    color: "var(--text-secondary)",
+                    fontSize: "14px",
+                  }}
+                >
+                  {getTeacherName(nextSession)}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "4px",
+                    color: "var(--text-muted)",
+                    fontSize: "14px",
+                  }}
+                >
+                  {formatDateTime(nextSession.scheduled_start)}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "5px",
+                    color: "var(--text-muted)",
+                    fontSize: "13px",
+                  }}
+                >
+                  {getDurationMinutes(
+                    nextSession.scheduled_start,
+                    nextSession.scheduled_end
+                  )}
+                  분 수업
+                </div>
+
+                <Link
+                  href={`/classroom/${nextSession.id}`}
+                  className="talkly-button talkly-button-primary"
+                  style={{
+                    marginTop: "20px",
+                  }}
+                >
+                  TALKLY Classroom 입장 →
+                </Link>
+              </div>
+            ) : (
+              <div
+                style={{
+                  marginTop: "20px",
+                  padding: "22px",
+                  border: "1px dashed var(--border)",
+                  borderRadius: "10px",
+                  color: "var(--text-muted)",
+                }}
+              >
+                예정된 수업이 없습니다.
+              </div>
+            )}
+          </div>
+
+          <div
+            className="talkly-card"
+            style={{
+              padding: "28px",
+              background:
+                "linear-gradient(145deg, #0a1f44 0%, #15386f 100%)",
+              color: "#ffffff",
+              border: "none",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "11px",
+                fontWeight: 900,
+                letterSpacing: "0.08em",
+                opacity: 0.7,
+              }}
+            >
+              STUDY FLOW
+            </div>
+
+            <h2
+              style={{
+                margin: "8px 0 0",
+                fontSize: "22px",
+                lineHeight: 1.4,
+              }}
+            >
+              수업 전에는 일정 확인,
+              <br />
+              수업 후에는 평가 확인.
+            </h2>
+
+            <p
+              style={{
+                margin: "13px 0 0",
+                color: "rgba(255,255,255,0.72)",
+                fontSize: "13px",
+                lineHeight: 1.75,
+              }}
+            >
+              모든 수업 기록은 이 페이지에 계속 쌓입니다.
+              완료된 수업은 평가 등록 여부도 함께 확인할 수 있습니다.
+            </p>
+
+            <div
+              style={{
+                marginTop: "20px",
+                display: "flex",
+                gap: "12px",
+                flexWrap: "wrap",
+              }}
+            >
+              <Link
+                href="/student/attendance"
+                style={{
+                  color: "#ffffff",
+                  textDecoration: "none",
+                  fontSize: "13px",
+                  fontWeight: 800,
+                }}
+              >
+                출결 보기 →
+              </Link>
+
+              <Link
+                href="/student/evaluations"
+                style={{
+                  color: "#ffffff",
+                  textDecoration: "none",
+                  fontSize: "13px",
+                  fontWeight: 800,
+                }}
+              >
+                학습평가 →
+              </Link>
             </div>
           </div>
         </section>
@@ -434,7 +684,7 @@ export default async function StudentClassesPage() {
                 return (
                   <article
                     key={session.id}
-                    className="talkly-card-hover"
+                    className="talkly-card-hover student-class-row"
                     style={{
                       display: "grid",
                       gridTemplateColumns:
@@ -542,6 +792,81 @@ export default async function StudentClassesPage() {
           )}
         </section>
       </main>
+
+      <style>{`
+        @media (max-width: 940px) {
+          .student-next-class-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .student-class-row {
+            grid-template-columns:
+              80px minmax(180px, 1fr) 130px 110px !important;
+          }
+
+          .student-class-row > :nth-child(4) {
+            display: none;
+          }
+
+          .student-class-row > :nth-child(6) {
+            grid-column: 4;
+          }
+        }
+
+        @media (max-width: 700px) {
+          .student-class-row {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 10px !important;
+          }
+
+          .student-class-row > :nth-child(2) {
+            grid-column: 1 / -1;
+            grid-row: 2;
+          }
+
+          .student-class-row > :nth-child(3) {
+            grid-column: 1 / -1;
+            grid-row: 3;
+          }
+
+          .student-class-row > :nth-child(5) {
+            justify-self: start;
+          }
+
+          .student-class-row > :nth-child(6) {
+            grid-column: 2;
+            grid-row: 1;
+            justify-self: end;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .talkly-dashboard-main {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+          }
+
+          .talkly-stat-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .student-class-row {
+            display: flex !important;
+            flex-direction: column;
+            align-items: flex-start !important;
+          }
+
+          .student-class-row > :nth-child(6) {
+            align-self: stretch;
+            width: 100%;
+          }
+
+          .student-class-row > :nth-child(6) a {
+            width: 100%;
+            justify-content: center;
+          }
+        }
+      `}</style>
     </div>
   );
 }
