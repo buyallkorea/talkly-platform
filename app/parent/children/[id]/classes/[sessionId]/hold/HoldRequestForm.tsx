@@ -1,417 +1,303 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase-browser";
+import { useState } from "react";
+import {
+  useRouter,
+} from "next/navigation";
 
 type Props = {
-  childId: number;
   sessionId: number;
+  childId: number;
 };
 
 export default function HoldRequestForm({
-  childId,
   sessionId,
+  childId,
 }: Props) {
-  const router = useRouter();
+  const router =
+    useRouter();
 
-  const [reason, setReason] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [
+    reason,
+    setReason,
+  ] =
+    useState("");
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(false);
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
+    useState("");
+
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] =
+    useState("");
 
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
+    event:
+      React.FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
-    setErrorMessage("");
-
-    if (!reason.trim()) {
-      setErrorMessage("결석 사유를 입력해주세요.");
+    if (loading) {
       return;
     }
 
-    if (reason.trim().length < 2) {
-      setErrorMessage(
-        "결석 사유를 조금 더 자세히 입력해주세요."
+    const confirmed =
+      window.confirm(
+        "이 수업의 연기를 신청하시겠습니까?\n\n조건을 충족하면 즉시 자동 승인됩니다."
       );
-      return;
-    }
-
-    const confirmed = window.confirm(
-      "이 수업에 대한 결석신청을 접수하시겠습니까?"
-    );
 
     if (!confirmed) {
       return;
     }
 
     setLoading(true);
+    setErrorMessage("");
+    setSuccessMessage("");
 
     try {
-      const supabase = createClient();
+      const response =
+        await fetch(
+          "/api/class-holds/request",
+          {
+            method:
+              "POST",
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
 
-      if (userError || !user) {
-        setErrorMessage(
-          "로그인 정보를 확인할 수 없습니다."
+            body:
+              JSON.stringify({
+                sessionId,
+                reason,
+              }),
+          }
         );
-        setLoading(false);
-        return;
-      }
 
-      // 학부모 계정 확인
-      const {
-        data: profile,
-        error: profileError,
-      } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
+      const result =
+        await response.json();
 
       if (
-        profileError ||
-        !profile ||
-        profile.role !== "parent"
+        !response.ok ||
+        !result.success
       ) {
         setErrorMessage(
-          "학부모 계정에서만 결석신청을 할 수 있습니다."
+          result.error ||
+            "수업 연기 신청을 처리하지 못했습니다."
         );
+
         setLoading(false);
         return;
       }
 
-      // 본인의 자녀인지 다시 확인
-      const {
-        data: child,
-        error: childError,
-      } = await supabase
-        .from("children")
-        .select("id")
-        .eq("id", childId)
-        .eq("parent_user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle();
-
-      if (childError) {
-        setErrorMessage(
-          `자녀 정보 확인 실패: ${childError.message}`
-        );
-        setLoading(false);
-        return;
-      }
-
-      if (!child) {
-        setErrorMessage(
-          "결석신청 권한이 없는 학생입니다."
-        );
-        setLoading(false);
-        return;
-      }
-
-      // 대상 수업 확인
-      const {
-        data: session,
-        error: sessionError,
-      } = await supabase
-        .from("class_sessions")
-        .select(`
-          id,
-          enrollment_id,
-          status
-        `)
-        .eq("id", sessionId)
-        .maybeSingle();
-
-      if (sessionError) {
-        setErrorMessage(
-          `수업정보 확인 실패: ${sessionError.message}`
-        );
-        setLoading(false);
-        return;
-      }
-
-      if (!session) {
-        setErrorMessage(
-          "해당 수업을 찾을 수 없습니다."
-        );
-        setLoading(false);
-        return;
-      }
-
-      if (session.status !== "scheduled") {
-        setErrorMessage(
-          "현재 결석신청이 가능한 수업이 아닙니다."
-        );
-        setLoading(false);
-        return;
-      }
-
-      // 이 수업이 해당 자녀의 수강인지 확인
-      const {
-        data: enrollment,
-        error: enrollmentError,
-      } = await supabase
-        .from("enrollments")
-        .select("id")
-        .eq("id", session.enrollment_id)
-        .eq("child_id", childId)
-        .maybeSingle();
-
-      if (enrollmentError) {
-        setErrorMessage(
-          `수강정보 확인 실패: ${enrollmentError.message}`
-        );
-        setLoading(false);
-        return;
-      }
-
-      if (!enrollment) {
-        setErrorMessage(
-          "해당 학생의 수업이 아닙니다."
-        );
-        setLoading(false);
-        return;
-      }
-
-      // 중복 신청 확인
-      const {
-        data: existingHold,
-        error: existingHoldError,
-      } = await supabase
-        .from("class_holds")
-        .select(`
-          id,
-          status
-        `)
-        .eq("class_session_id", sessionId)
-        .eq("requested_by", user.id)
-        .in("status", [
-          "requested",
-          "approved",
-        ])
-        .limit(1)
-        .maybeSingle();
-
-      if (existingHoldError) {
-        setErrorMessage(
-          `기존 신청 확인 실패: ${existingHoldError.message}`
-        );
-        setLoading(false);
-        return;
-      }
-
-      if (existingHold) {
-        setErrorMessage(
-          existingHold.status === "requested"
-            ? "이미 확인 대기중인 결석신청이 있습니다."
-            : "이미 승인된 결석신청이 있습니다."
-        );
-        setLoading(false);
-        return;
-      }
-
-      const now = new Date().toISOString();
-
-      // 실제 Class Hold 신청 생성
-      const {
-        data: insertedHold,
-        error: insertError,
-      } = await supabase
-        .from("class_holds")
-        .insert({
-          class_session_id: sessionId,
-          requested_by: user.id,
-          reason: reason.trim(),
-          requested_at: now,
-          status: "requested",
-          created_at: now,
-          updated_at: now,
-        })
-        .select("id")
-        .single();
-
-      if (insertError) {
-        setErrorMessage(
-          `결석신청 실패: ${insertError.message} / code: ${insertError.code}`
-        );
-        setLoading(false);
-        return;
-      }
-
-      if (!insertedHold) {
-        setErrorMessage(
-          "결석신청 저장 결과를 확인할 수 없습니다."
-        );
-        setLoading(false);
-        return;
-      }
-
-      router.push(
-        `/parent/children/${childId}/classes/${sessionId}`
+      setSuccessMessage(
+        `수업 연기 신청이 자동 승인되었습니다. 이번 달 ${result.monthlyUsage}/${result.monthlyLimit}회 사용했습니다.`
       );
 
-      router.refresh();
+      setTimeout(() => {
+        router.push(
+          `/parent/children/${childId}/classes/${sessionId}`
+        );
+
+        router.refresh();
+      }, 1200);
     } catch (error) {
       console.error(
-        "CLASS HOLD REQUEST ERROR:",
         error
       );
 
       setErrorMessage(
-        error instanceof Error
-          ? `결석신청 오류: ${error.message}`
-          : "결석신청 중 알 수 없는 오류가 발생했습니다."
+        "수업 연기 신청 중 오류가 발생했습니다."
       );
 
       setLoading(false);
     }
   }
 
-  function handleCancel() {
-    router.push(
-      `/parent/children/${childId}/classes/${sessionId}`
-    );
-  }
-
   return (
-    <section
+    <form
+      onSubmit={
+        handleSubmit
+      }
       style={{
-        padding: "28px",
-        border: "1px solid #ddd",
-        borderRadius: "12px",
+        marginTop:
+          "24px",
       }}
     >
-      <h2
+      <label
         style={{
-          marginTop: 0,
+          display:
+            "block",
+          color:
+            "#344054",
+          fontSize:
+            "13px",
+          fontWeight:
+            900,
         }}
       >
-        결석 사유
-      </h2>
-
-      <p
-        style={{
-          marginTop: 0,
-          marginBottom: "20px",
-          opacity: 0.75,
-        }}
-      >
-        결석 사유를 입력하여 신청해주세요.
-        신청 후 관리자가 내용을 확인하여 승인 또는
-        거절합니다.
-      </p>
-
-      <form onSubmit={handleSubmit}>
-        <label
-          htmlFor="reason"
+        연기 사유
+        <span
           style={{
-            display: "block",
-            marginBottom: "8px",
-            fontWeight: 700,
+            marginLeft:
+              "5px",
+            color:
+              "#98a2b3",
+            fontWeight:
+              600,
           }}
         >
-          신청 사유
-        </label>
+          (선택)
+        </span>
+      </label>
 
-        <textarea
-          id="reason"
-          value={reason}
-          onChange={(event) =>
-            setReason(event.target.value)
+      <textarea
+        value={
+          reason
+        }
+        onChange={(
+          event
+        ) =>
+          setReason(
+            event.target
+              .value
+          )
+        }
+        maxLength={
+          500
+        }
+        placeholder="수업 연기 사유가 있다면 입력해주세요."
+        style={{
+          width:
+            "100%",
+          minHeight:
+            "120px",
+          marginTop:
+            "9px",
+          padding:
+            "14px",
+          boxSizing:
+            "border-box",
+          border:
+            "1px solid #d0d5dd",
+          borderRadius:
+            "10px",
+          background:
+            "#ffffff",
+          color:
+            "#101828",
+          fontFamily:
+            "inherit",
+          fontSize:
+            "14px",
+          lineHeight:
+            1.6,
+          resize:
+            "vertical",
+        }}
+      />
+
+      {errorMessage && (
+        <div
+          style={{
+            marginTop:
+              "14px",
+            padding:
+              "14px 16px",
+            border:
+              "1px solid #fecdca",
+            borderRadius:
+              "10px",
+            background:
+              "#fef3f2",
+            color:
+              "#b42318",
+            fontSize:
+              "13px",
+            lineHeight:
+              1.6,
+          }}
+        >
+          {
+            errorMessage
           }
-          disabled={loading}
-          rows={7}
-          maxLength={1000}
-          placeholder="예: 가족 일정으로 인해 해당 수업 참석이 어렵습니다."
-          style={{
-            width: "100%",
-            boxSizing: "border-box",
-            padding: "14px",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            fontSize: "16px",
-            lineHeight: 1.6,
-            resize: "vertical",
-          }}
-        />
+        </div>
+      )}
 
+      {successMessage && (
         <div
           style={{
-            marginTop: "6px",
-            textAlign: "right",
-            fontSize: "13px",
-            opacity: 0.65,
+            marginTop:
+              "14px",
+            padding:
+              "14px 16px",
+            border:
+              "1px solid #abefc6",
+            borderRadius:
+              "10px",
+            background:
+              "#ecfdf3",
+            color:
+              "#067647",
+            fontSize:
+              "13px",
+            lineHeight:
+              1.6,
           }}
         >
-          {reason.length} / 1000
+          {
+            successMessage
+          }
         </div>
+      )}
 
-        {errorMessage && (
-          <div
-            style={{
-              marginTop: "16px",
-              padding: "14px",
-              border: "1px solid #d93025",
-              borderRadius: "8px",
-              color: "#d93025",
-            }}
-          >
-            {errorMessage}
-          </div>
-        )}
-
-        <div
-          style={{
-            display: "flex",
-            gap: "12px",
-            marginTop: "24px",
-            flexWrap: "wrap",
-          }}
-        >
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              padding: "13px 22px",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "15px",
-              fontWeight: 700,
-              cursor: loading
-                ? "default"
-                : "pointer",
-            }}
-          >
-            {loading
-              ? "결석신청 접수 중..."
-              : "결석신청"}
-          </button>
-
-          <button
-            type="button"
-            disabled={loading}
-            onClick={handleCancel}
-            style={{
-              padding: "13px 22px",
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-              fontSize: "15px",
-              fontWeight: 700,
-              cursor: loading
-                ? "default"
-                : "pointer",
-            }}
-          >
-            취소
-          </button>
-        </div>
-      </form>
-    </section>
+      <button
+        type="submit"
+        disabled={
+          loading
+        }
+        style={{
+          width:
+            "100%",
+          minHeight:
+            "50px",
+          marginTop:
+            "18px",
+          border:
+            "none",
+          borderRadius:
+            "10px",
+          background:
+            loading
+              ? "#98a2b3"
+              : "#2f6fed",
+          color:
+            "#ffffff",
+          fontSize:
+            "14px",
+          fontWeight:
+            900,
+          cursor:
+            loading
+              ? "default"
+              : "pointer",
+        }}
+      >
+        {loading
+          ? "신청 처리 중..."
+          : "수업 연기 신청"}
+      </button>
+    </form>
   );
 }

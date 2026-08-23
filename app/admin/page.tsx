@@ -1242,17 +1242,6 @@ export default async function AdminDashboardPage() {
    */
 
   const alerts = [
-    {
-      label:
-        "결석 승인 대기",
-
-      value:
-        pendingHoldsResult.count ??
-        0,
-
-      href:
-        "/admin/holds",
-    },
 
     {
       label:
@@ -1973,10 +1962,8 @@ export default async function AdminDashboardPage() {
                     "/admin/teachers",
                 },
                 {
-                  label:
-                    "결석신청 처리",
-                  href:
-                    "/admin/holds",
+                  label: "수업 연기 내역",
+                  href: "/admin/class-holds",
                 },
                 {
                   label:

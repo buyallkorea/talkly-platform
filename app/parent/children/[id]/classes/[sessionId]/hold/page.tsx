@@ -1,5 +1,13 @@
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase-server";
+import Link from "next/link";
+import {
+  notFound,
+  redirect,
+} from "next/navigation";
+
+import {
+  createClient,
+} from "@/lib/supabase-server";
+
 import HoldRequestForm from "./HoldRequestForm";
 
 type PageProps = {
@@ -9,56 +17,159 @@ type PageProps = {
   }>;
 };
 
-export default async function HoldRequestPage({
+function formatDateTime(
+  value: string
+) {
+  return new Intl.DateTimeFormat(
+    "ko-KR",
+    {
+      timeZone:
+        "Asia/Seoul",
+      year:
+        "numeric",
+      month:
+        "2-digit",
+      day:
+        "2-digit",
+      weekday:
+        "short",
+      hour:
+        "2-digit",
+      minute:
+        "2-digit",
+      hour12:
+        false,
+    }
+  ).format(
+    new Date(value)
+  );
+}
+
+export default async function ParentClassHoldPage({
   params,
 }: PageProps) {
-  const { id, sessionId } = await params;
-
-  const supabase = await createClient();
-
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    id,
+    sessionId,
+  } =
+    await params;
 
-  if (!user) {
-    redirect("/login");
+  const childId =
+    Number(id);
+
+  const classSessionId =
+    Number(
+      sessionId
+    );
+
+  if (
+    !Number.isInteger(
+      childId
+    ) ||
+    !Number.isInteger(
+      classSessionId
+    )
+  ) {
+    notFound();
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  const supabase =
+    await createClient();
 
-  if (!profile || profile.role !== "parent") {
+  const {
+    data: {
+      user,
+    },
+  } =
+    await supabase.auth.getUser();
+
+  if (!user) {
+    redirect(
+      "/login"
+    );
+  }
+
+  const {
+    data:
+      profile,
+  } =
+    await supabase
+      .from(
+        "profiles"
+      )
+      .select(
+        "role"
+      )
+      .eq(
+        "id",
+        user.id
+      )
+      .maybeSingle();
+
+  if (
+    !profile ||
+    profile.role !==
+      "parent"
+  ) {
     redirect("/");
   }
 
-  const { data: child, error: childError } =
+  /*
+   * 자녀 소유권
+   */
+  const {
+    data:
+      child,
+    error:
+      childError,
+  } =
     await supabase
-      .from("children")
+      .from(
+        "children"
+      )
       .select(`
         id,
-        name,
-        parent_user_id,
-        is_active
+        name
       `)
-      .eq("id", Number(id))
-      .eq("parent_user_id", user.id)
-      .eq("is_active", true)
+      .eq(
+        "id",
+        childId
+      )
+      .eq(
+        "parent_user_id",
+        user.id
+      )
+      .eq(
+        "is_active",
+        true
+      )
       .maybeSingle();
 
-  if (childError) {
-    throw new Error(childError.message);
+  if (
+    childError
+  ) {
+    throw new Error(
+      childError.message
+    );
   }
 
   if (!child) {
     notFound();
   }
 
-  const { data: session, error: sessionError } =
+  /*
+   * 대상 수업
+   */
+  const {
+    data:
+      session,
+    error:
+      sessionError,
+  } =
     await supabase
-      .from("class_sessions")
+      .from(
+        "class_sessions"
+      )
       .select(`
         id,
         enrollment_id,
@@ -67,156 +178,381 @@ export default async function HoldRequestPage({
         scheduled_end,
         status
       `)
-      .eq("id", Number(sessionId))
+      .eq(
+        "id",
+        classSessionId
+      )
       .maybeSingle();
 
-  if (sessionError) {
-    throw new Error(sessionError.message);
+  if (
+    sessionError
+  ) {
+    throw new Error(
+      sessionError.message
+    );
   }
 
   if (!session) {
     notFound();
   }
 
-  const { data: enrollment, error: enrollmentError } =
+  /*
+   * 이 자녀의 수업인지 확인
+   */
+  const {
+    data:
+      enrollment,
+    error:
+      enrollmentError,
+  } =
     await supabase
-      .from("enrollments")
+      .from(
+        "enrollments"
+      )
       .select(`
         id,
         child_id,
-        course_id,
-        teacher_user_id
+        course_id
       `)
-      .eq("id", session.enrollment_id)
-      .eq("child_id", child.id)
+      .eq(
+        "id",
+        session.enrollment_id
+      )
+      .eq(
+        "child_id",
+        child.id
+      )
       .maybeSingle();
 
-  if (enrollmentError) {
-    throw new Error(enrollmentError.message);
+  if (
+    enrollmentError
+  ) {
+    throw new Error(
+      enrollmentError.message
+    );
   }
 
-  if (!enrollment) {
+  if (
+    !enrollment
+  ) {
     notFound();
   }
 
-  if (session.status !== "scheduled") {
-    redirect(
-      `/parent/children/${child.id}/classes/${session.id}`
-    );
-  }
-
-  const { data: existingHold } = await supabase
-    .from("class_holds")
-    .select("id")
-    .eq("class_session_id", session.id)
-    .eq("requested_by", user.id)
-    .limit(1)
-    .maybeSingle();
-
-  if (existingHold) {
-    redirect(
-      `/parent/children/${child.id}/classes/${session.id}`
-    );
-  }
-
-  const { data: course } = await supabase
-    .from("courses")
-    .select("name")
-    .eq("id", enrollment.course_id)
-    .maybeSingle();
-
-  let teacherName = "미배정";
-
-  if (enrollment.teacher_user_id) {
-    const { data: teacher } = await supabase
-      .from("teacher_profiles")
-      .select("display_name")
-      .eq("user_id", enrollment.teacher_user_id)
+  /*
+   * 이미 신청된 연기 확인
+   */
+  const {
+    data:
+      existingHold,
+    error:
+      holdError,
+  } =
+    await supabase
+      .from(
+        "class_holds"
+      )
+      .select(`
+        id,
+        status,
+        requested_at
+      `)
+      .eq(
+        "class_session_id",
+        session.id
+      )
+      .in(
+        "status",
+        [
+          "requested",
+          "approved",
+        ]
+      )
+      .limit(1)
       .maybeSingle();
 
-    if (teacher?.display_name) {
-      teacherName = teacher.display_name;
-    }
+  if (
+    holdError
+  ) {
+    throw new Error(
+      holdError.message
+    );
   }
 
-  function formatDateTime(value: string) {
-    return new Intl.DateTimeFormat("ko-KR", {
-      timeZone: "Asia/Seoul",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      weekday: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }).format(new Date(value));
+  if (
+    existingHold ||
+    session.status !==
+      "scheduled"
+  ) {
+    redirect(
+      `/parent/children/${child.id}/classes/${session.id}`
+    );
   }
+
+  const startTime =
+    new Date(
+      session.scheduled_start
+    ).getTime();
+
+  const nowTime =
+    Date.now();
+
+  const remainingHours =
+    Math.max(
+      0,
+      (startTime -
+        nowTime) /
+        3600000
+    );
 
   return (
     <main
       style={{
-        padding: "40px",
-        maxWidth: "900px",
-        margin: "0 auto",
+        width:
+          "100%",
+        maxWidth:
+          "760px",
+        margin:
+          "0 auto",
+        padding:
+          "44px 24px 90px",
       }}
     >
-      <h1 style={{ marginBottom: "8px" }}>
-        결석신청
-      </h1>
-
-      <p
+      <Link
+        href={`/parent/children/${child.id}/classes/${session.id}`}
         style={{
-          marginTop: 0,
-          marginBottom: "32px",
+          color:
+            "#667085",
+          textDecoration:
+            "none",
+          fontSize:
+            "13px",
+          fontWeight:
+            800,
         }}
       >
-        {child.name} 학생의 {session.lesson_number}회차
-        수업에 대한 결석신청입니다.
-      </p>
+        ← 수업 상세
+      </Link>
 
+      <div
+        style={{
+          marginTop:
+            "28px",
+        }}
+      >
+        <div
+          style={{
+            color:
+              "#2f6fed",
+            fontSize:
+              "12px",
+            fontWeight:
+              900,
+            letterSpacing:
+              "0.08em",
+          }}
+        >
+          CLASS RESCHEDULE
+        </div>
+
+        <h1
+          style={{
+            margin:
+              "9px 0 0",
+            color:
+              "#101828",
+            fontSize:
+              "34px",
+            letterSpacing:
+              "-0.04em",
+          }}
+        >
+          수업 연기 신청
+        </h1>
+
+        <p
+          style={{
+            margin:
+              "12px 0 0",
+            color:
+              "#667085",
+            fontSize:
+              "14px",
+            lineHeight:
+              1.75,
+          }}
+        >
+          신청 조건을
+          충족하면 별도의
+          관리자 확인 없이
+          즉시 자동
+          승인됩니다.
+        </p>
+      </div>
+
+      {/* 수업 정보 */}
       <section
         style={{
-          marginBottom: "24px",
-          padding: "24px",
-          border: "1px solid #ddd",
-          borderRadius: "12px",
+          marginTop:
+            "26px",
+          padding:
+            "20px",
+          border:
+            "1px solid #e4e7ec",
+          borderRadius:
+            "14px",
+          background:
+            "#ffffff",
         }}
       >
-        <h2 style={{ marginTop: 0 }}>
-          대상 수업
-        </h2>
+        <div
+          style={{
+            color:
+              "#101828",
+            fontSize:
+              "15px",
+            fontWeight:
+              900,
+          }}
+        >
+          {child.name} ·{" "}
+          {
+            session.lesson_number
+          }
+          회차
+        </div>
 
-        <p>
-          <strong>학생:</strong> {child.name}
-        </p>
-
-        <p>
-          <strong>과정:</strong>{" "}
-          {course?.name || "-"}
-        </p>
-
-        <p>
-          <strong>담당 강사:</strong>{" "}
-          {teacherName}
-        </p>
-
-        <p>
-          <strong>회차:</strong>{" "}
-          {session.lesson_number}회차
-        </p>
-
-        <p style={{ marginBottom: 0 }}>
-          <strong>수업일시:</strong>{" "}
+        <div
+          style={{
+            marginTop:
+              "8px",
+            color:
+              "#667085",
+            fontSize:
+              "13px",
+          }}
+        >
           {formatDateTime(
             session.scheduled_start
           )}
-        </p>
+        </div>
       </section>
 
-      <HoldRequestForm
-        childId={child.id}
-        sessionId={session.id}
-      />
+      {/* 규칙 */}
+      <section
+        style={{
+          marginTop:
+            "18px",
+          padding:
+            "20px",
+          border:
+            "1px solid #dbe7ff",
+          borderRadius:
+            "14px",
+          background:
+            "#f5f8ff",
+        }}
+      >
+        <div
+          style={{
+            color:
+              "#2f6fed",
+            fontSize:
+              "13px",
+            fontWeight:
+              900,
+          }}
+        >
+          수업 연기 규정
+        </div>
+
+        <div
+          style={{
+            marginTop:
+              "12px",
+            display:
+              "flex",
+            flexDirection:
+              "column",
+            gap:
+              "8px",
+            color:
+              "#475467",
+            fontSize:
+              "13px",
+            lineHeight:
+              1.65,
+          }}
+        >
+          <div>
+            • 한 달 최대{" "}
+            <strong>
+              2회
+            </strong>
+            까지 신청할 수
+            있습니다.
+          </div>
+
+          <div>
+            • 수업 시작{" "}
+            <strong>
+              2시간 전
+            </strong>
+            까지만 신청할 수
+            있습니다.
+          </div>
+
+          <div>
+            • 두 조건을
+            만족하면 시스템이
+            즉시 자동
+            승인합니다.
+          </div>
+
+          <div>
+            • 조건을 충족하지
+            못하면 신청 자체가
+            처리되지 않습니다.
+          </div>
+        </div>
+      </section>
+
+      {remainingHours <
+      2 ? (
+        <div
+          style={{
+            marginTop:
+              "18px",
+            padding:
+              "18px",
+            border:
+              "1px solid #fecdca",
+            borderRadius:
+              "12px",
+            background:
+              "#fef3f2",
+            color:
+              "#b42318",
+            fontSize:
+              "13px",
+            lineHeight:
+              1.7,
+          }}
+        >
+          현재 수업 시작까지
+          2시간 미만이 남아
+          수업 연기 신청이
+          불가능합니다.
+        </div>
+      ) : (
+        <HoldRequestForm
+          sessionId={
+            session.id
+          }
+          childId={
+            child.id
+          }
+        />
+      )}
     </main>
   );
 }

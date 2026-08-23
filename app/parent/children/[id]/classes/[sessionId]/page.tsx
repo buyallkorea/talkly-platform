@@ -175,7 +175,7 @@ export default async function ParentClassSessionPage({
       case "no_show":
         return "무단결석";
       case "held":
-        return "결석 승인";
+        return "수업 연기";
       default:
         return status;
     }
@@ -810,7 +810,10 @@ export default async function ParentClassSessionPage({
                   lineHeight: 1.7,
                 }}
               >
-                수업 참여가 어려운 경우 결석신청을 할 수 있습니다.
+            
+                수업 참여가 어려운 경우 수업 연기를 신청할 수 있습니다.
+                월 최대 2회, 수업 시작 2시간 전까지 신청 가능하며
+                조건을 충족하면 자동 승인됩니다.
               </p>
 
               <Link
@@ -829,7 +832,7 @@ export default async function ParentClassSessionPage({
                   fontWeight: 900,
                 }}
               >
-                결석신청
+                수업 연기 신청
               </Link>
             </div>
           ) : (
