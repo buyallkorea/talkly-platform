@@ -35,11 +35,13 @@ type Enrollment = {
   status: string;
 };
 
-
 type TeacherReviewSummary = {
   teacher_user_id: string;
   review_count: number;
-  overall_average: number | string | null;
+  overall_average:
+    | number
+    | string
+    | null;
 };
 
 type ClassSession = {
@@ -49,18 +51,25 @@ type ClassSession = {
   status: string;
 };
 
-function getEnrollmentStatusLabel(status: string) {
+function getEnrollmentStatusLabel(
+  status: string
+) {
   switch (status) {
     case "pending":
       return "대기";
+
     case "active":
       return "수강중";
+
     case "paused":
       return "일시중지";
+
     case "completed":
       return "수강완료";
+
     case "cancelled":
       return "취소";
+
     default:
       return status;
   }
@@ -69,26 +78,40 @@ function getEnrollmentStatusLabel(status: string) {
 export default async function AdminTeachersPage({
   searchParams,
 }: PageProps) {
-  const { q = "", status = "all" } =
+  const {
+    q = "",
+    status = "all",
+  } =
     await searchParams;
 
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } =
+    await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  const {
+    data: profile,
+  } =
+    await supabase
+      .from("profiles")
+      .select("role")
+      .eq(
+        "id",
+        user.id
+      )
+      .single();
 
-  if (!profile || profile.role !== "admin") {
+  if (
+    !profile ||
+    profile.role !== "admin"
+  ) {
     redirect("/");
   }
 
@@ -96,42 +119,52 @@ export default async function AdminTeachersPage({
     teachersResult,
     enrollmentsResult,
     reviewSummaryResult,
-  ] = await Promise.all([
-    supabase
-      .from("teacher_profiles")
-      .select(`
-        user_id,
-        display_name,
-        nationality,
-        specialties,
-        years_experience,
-        education,
-        is_active,
-        created_at
-      `)
-      .order("created_at", {
-        ascending: false,
-      }),
+  ] =
+    await Promise.all([
+      supabase
+        .from("teacher_profiles")
+        .select(`
+          user_id,
+          display_name,
+          nationality,
+          specialties,
+          years_experience,
+          education,
+          is_active,
+          created_at
+        `)
+        .order(
+          "created_at",
+          {
+            ascending: false,
+          }
+        ),
 
-    supabase
-      .from("enrollments")
-      .select(`
-        id,
-        child_id,
-        student_user_id,
-        teacher_user_id,
-        status
-      `)
-      .not("teacher_user_id", "is", null),
+      supabase
+        .from("enrollments")
+        .select(`
+          id,
+          child_id,
+          student_user_id,
+          teacher_user_id,
+          status
+        `)
+        .not(
+          "teacher_user_id",
+          "is",
+          null
+        ),
 
-    supabase
-      .from("teacher_review_summary")
-      .select(`
-        teacher_user_id,
-        review_count,
-        overall_average
-      `),
-  ]);
+      supabase
+        .from(
+          "teacher_review_summary"
+        )
+        .select(`
+          teacher_user_id,
+          review_count,
+          overall_average
+        `),
+    ]);
 
   const firstError =
     teachersResult.error ||
@@ -139,95 +172,150 @@ export default async function AdminTeachersPage({
     reviewSummaryResult.error;
 
   if (firstError) {
-    throw new Error(firstError.message);
+    throw new Error(
+      firstError.message
+    );
   }
 
   const teachers =
-    (teachersResult.data ?? []) as TeacherProfile[];
+    (teachersResult.data ??
+      []) as TeacherProfile[];
 
   const enrollments =
-    (enrollmentsResult.data ?? []) as Enrollment[];
+    (enrollmentsResult.data ??
+      []) as Enrollment[];
 
   const reviewSummaries =
-    (reviewSummaryResult.data ?? []) as TeacherReviewSummary[];
+    (reviewSummaryResult.data ??
+      []) as TeacherReviewSummary[];
 
-  const reviewSummaryMap = new Map(
-    reviewSummaries.map((item) => [item.teacher_user_id, item])
-  );
+  const reviewSummaryMap =
+    new Map(
+      reviewSummaries.map(
+        (item) => [
+          item.teacher_user_id,
+          item,
+        ]
+      )
+    );
 
-  const teacherIds = teachers.map(
-    (teacher) => teacher.user_id
-  );
+  const teacherIds =
+    teachers.map(
+      (teacher) =>
+        teacher.user_id
+    );
 
-  let profiles: Profile[] = [];
+  let profiles:
+    Profile[] = [];
 
-  if (teacherIds.length > 0) {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, name, phone, profile_image_url")
-      .in("id", teacherIds);
+  if (
+    teacherIds.length > 0
+  ) {
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from("profiles")
+        .select(`
+          id,
+          name,
+          phone,
+          profile_image_url
+        `)
+        .in(
+          "id",
+          teacherIds
+        );
 
     if (error) {
-      throw new Error(error.message);
+      throw new Error(
+        error.message
+      );
     }
 
-    profiles = (data ?? []) as Profile[];
+    profiles =
+      (data ??
+        []) as Profile[];
   }
 
-  const enrollmentIds = enrollments.map(
-    (enrollment) => enrollment.id
-  );
+  const enrollmentIds =
+    enrollments.map(
+      (enrollment) =>
+        enrollment.id
+    );
 
-  let sessions: ClassSession[] = [];
+  let sessions:
+    ClassSession[] = [];
 
-  if (enrollmentIds.length > 0) {
-    const { data, error } = await supabase
-      .from("class_sessions")
-      .select(`
-        id,
-        enrollment_id,
-        scheduled_start,
-        status
-      `)
-      .in("enrollment_id", enrollmentIds);
+  if (
+    enrollmentIds.length > 0
+  ) {
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from("class_sessions")
+        .select(`
+          id,
+          enrollment_id,
+          scheduled_start,
+          status
+        `)
+        .in(
+          "enrollment_id",
+          enrollmentIds
+        );
 
     if (error) {
-      throw new Error(error.message);
+      throw new Error(
+        error.message
+      );
     }
 
     sessions =
-      (data ?? []) as ClassSession[];
+      (data ??
+        []) as ClassSession[];
   }
 
-  const profileMap = new Map(
-    profiles.map((item) => [item.id, item])
-  );
-
-  const enrollmentMap = new Map(
-    enrollments.map((item) => [
-      item.id,
-      item,
-    ])
-  );
+  const profileMap =
+    new Map(
+      profiles.map(
+        (item) => [
+          item.id,
+          item,
+        ]
+      )
+    );
 
   const seoulDate =
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Seoul",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date());
+    new Intl.DateTimeFormat(
+      "en-CA",
+      {
+        timeZone:
+          "Asia/Seoul",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }
+    ).format(
+      new Date()
+    );
 
-  const todayStart = new Date(
-    `${seoulDate}T00:00:00+09:00`
-  );
+  const todayStart =
+    new Date(
+      `${seoulDate}T00:00:00+09:00`
+    );
 
-  const tomorrowStart = new Date(
-    `${seoulDate}T00:00:00+09:00`
-  );
+  const tomorrowStart =
+    new Date(
+      `${seoulDate}T00:00:00+09:00`
+    );
 
   tomorrowStart.setDate(
-    tomorrowStart.getDate() + 1
+    tomorrowStart.getDate() +
+      1
   );
 
   function getTeacherEnrollments(
@@ -267,9 +355,10 @@ export default async function AdminTeachersPage({
     return getTeacherSessions(
       teacherUserId
     ).filter((session) => {
-      const start = new Date(
-        session.scheduled_start
-      );
+      const start =
+        new Date(
+          session.scheduled_start
+        );
 
       return (
         start >= todayStart &&
@@ -284,10 +373,15 @@ export default async function AdminTeachersPage({
     const uniqueStudentKeys =
       new Set<string>();
 
-    for (const enrollment of getTeacherEnrollments(
-      teacherUserId
-    )) {
-      if (enrollment.child_id) {
+    for (
+      const enrollment of
+      getTeacherEnrollments(
+        teacherUserId
+      )
+    ) {
+      if (
+        enrollment.child_id
+      ) {
         uniqueStudentKeys.add(
           `child-${enrollment.child_id}`
         );
@@ -304,89 +398,128 @@ export default async function AdminTeachersPage({
   }
 
   const normalizedQuery =
-    q.trim().toLowerCase();
+    q
+      .trim()
+      .toLowerCase();
 
-  const rows = teachers
-    .map((teacher) => {
-      const teacherProfile =
-        profileMap.get(
-          teacher.user_id
-        );
-
-      const teacherEnrollments =
-        getTeacherEnrollments(
-          teacher.user_id
-        );
-
-      const activeEnrollmentCount =
-        teacherEnrollments.filter(
-          (enrollment) =>
-            enrollment.status === "active"
-        ).length;
-
-      const teacherSessions =
-        getTeacherSessions(
-          teacher.user_id
-        );
-
-      return {
-        ...teacher,
-        realName:
-          teacherProfile?.name || "-",
-        phone:
-          teacherProfile?.phone || "-",
-        profileImageUrl:
-          teacherProfile?.profile_image_url || null,
-        assignedStudentCount:
-          getAssignedStudentCount(
+  const rows =
+    teachers
+      .map((teacher) => {
+        const teacherProfile =
+          profileMap.get(
             teacher.user_id
-          ),
-        activeEnrollmentCount,
-        todaySessionCount:
-          getTodaySessionCount(
+          );
+
+        const teacherEnrollments =
+          getTeacherEnrollments(
             teacher.user_id
-          ),
-        totalSessionCount:
-          teacherSessions.length,
-        reviewCount:
-          reviewSummaryMap.get(teacher.user_id)?.review_count ?? 0,
-        reviewAverage:
-          reviewSummaryMap.get(teacher.user_id)?.overall_average ?? null,
-      };
-    })
-    .filter((teacher) => {
-      const matchesSearch =
-        !normalizedQuery ||
-        [
-          teacher.display_name || "",
-          teacher.realName,
-          teacher.nationality || "",
-          teacher.phone,
-          ...(teacher.specialties ?? []),
-        ].some((value) =>
-          value
-            .toLowerCase()
-            .includes(
-              normalizedQuery
-            )
+          );
+
+        const activeEnrollmentCount =
+          teacherEnrollments.filter(
+            (enrollment) =>
+              enrollment.status ===
+              "active"
+          ).length;
+
+        const teacherSessions =
+          getTeacherSessions(
+            teacher.user_id
+          );
+
+        return {
+          ...teacher,
+
+          realName:
+            teacherProfile?.name ||
+            "-",
+
+          phone:
+            teacherProfile?.phone ||
+            "-",
+
+          profileImageUrl:
+            teacherProfile
+              ?.profile_image_url ||
+            null,
+
+          assignedStudentCount:
+            getAssignedStudentCount(
+              teacher.user_id
+            ),
+
+          activeEnrollmentCount,
+
+          todaySessionCount:
+            getTodaySessionCount(
+              teacher.user_id
+            ),
+
+          totalSessionCount:
+            teacherSessions.length,
+
+          reviewCount:
+            reviewSummaryMap.get(
+              teacher.user_id
+            )?.review_count ??
+            0,
+
+          reviewAverage:
+            reviewSummaryMap.get(
+              teacher.user_id
+            )?.overall_average ??
+            null,
+        };
+      })
+      .filter((teacher) => {
+        const matchesSearch =
+          !normalizedQuery ||
+          [
+            teacher.display_name ||
+              "",
+
+            teacher.realName,
+
+            teacher.nationality ||
+              "",
+
+            teacher.phone,
+
+            ...(
+              teacher.specialties ??
+              []
+            ),
+          ].some((value) =>
+            value
+              .toLowerCase()
+              .includes(
+                normalizedQuery
+              )
+          );
+
+        const matchesStatus =
+          status === "all" ||
+          (
+            status ===
+              "active" &&
+            teacher.is_active
+          ) ||
+          (
+            status ===
+              "inactive" &&
+            !teacher.is_active
+          );
+
+        return (
+          matchesSearch &&
+          matchesStatus
         );
-
-      const matchesStatus =
-        status === "all" ||
-        (status === "active" &&
-          teacher.is_active) ||
-        (status === "inactive" &&
-          !teacher.is_active);
-
-      return (
-        matchesSearch &&
-        matchesStatus
-      );
-    });
+      });
 
   const activeTeacherCount =
     teachers.filter(
-      (teacher) => teacher.is_active
+      (teacher) =>
+        teacher.is_active
     ).length;
 
   const inactiveTeacherCount =
@@ -395,7 +528,10 @@ export default async function AdminTeachersPage({
 
   const totalAssignedStudents =
     teachers.reduce(
-      (sum, teacher) =>
+      (
+        sum,
+        teacher
+      ) =>
         sum +
         getAssignedStudentCount(
           teacher.user_id
@@ -405,7 +541,10 @@ export default async function AdminTeachersPage({
 
   const totalTodaySessions =
     teachers.reduce(
-      (sum, teacher) =>
+      (
+        sum,
+        teacher
+      ) =>
         sum +
         getTodaySessionCount(
           teacher.user_id
@@ -413,22 +552,45 @@ export default async function AdminTeachersPage({
       0
     );
 
-  const totalTeacherReviewCount = reviewSummaries.reduce(
-    (sum, item) => sum + Number(item.review_count || 0),
-    0
-  );
+  const totalTeacherReviewCount =
+    reviewSummaries.reduce(
+      (
+        sum,
+        item
+      ) =>
+        sum +
+        Number(
+          item.review_count ||
+            0
+        ),
+      0
+    );
 
-  const weightedReviewTotal = reviewSummaries.reduce(
-    (sum, item) =>
-      sum +
-      Number(item.overall_average || 0) *
-        Number(item.review_count || 0),
-    0
-  );
+  const weightedReviewTotal =
+    reviewSummaries.reduce(
+      (
+        sum,
+        item
+      ) =>
+        sum +
+        Number(
+          item.overall_average ||
+            0
+        ) *
+          Number(
+            item.review_count ||
+              0
+          ),
+      0
+    );
 
   const overallTeacherReviewAverage =
-    totalTeacherReviewCount > 0
-      ? (weightedReviewTotal / totalTeacherReviewCount).toFixed(2)
+    totalTeacherReviewCount >
+    0
+      ? (
+          weightedReviewTotal /
+          totalTeacherReviewCount
+        ).toFixed(2)
       : null;
 
   return (
@@ -438,7 +600,8 @@ export default async function AdminTeachersPage({
           display: "flex",
           justifyContent:
             "space-between",
-          alignItems: "flex-start",
+          alignItems:
+            "flex-start",
           gap: "20px",
           flexWrap: "wrap",
         }}
@@ -471,17 +634,20 @@ export default async function AdminTeachersPage({
         <Link
           href="/admin/teachers/new"
           style={{
-            padding: "11px 16px",
+            padding:
+              "11px 16px",
             border:
               "1px solid #d6deea",
             borderRadius: "9px",
             color: "#ffffff",
-            background: "#0a1f44",
-            textDecoration: "none",
+            background:
+              "#0a1f44",
+            textDecoration:
+              "none",
             fontWeight: 800,
           }}
         >
-          + 강사 등록
+          + 강사 초대
         </Link>
       </div>
 
@@ -496,67 +662,97 @@ export default async function AdminTeachersPage({
       >
         {[
           {
-            label: "전체 강사",
-            value: teachers.length,
+            label:
+              "전체 강사",
+            value:
+              teachers.length,
           },
+
           {
-            label: "활성 강사",
-            value: activeTeacherCount,
+            label:
+              "활성 강사",
+            value:
+              activeTeacherCount,
           },
+
           {
-            label: "비활성 강사",
+            label:
+              "비활성 강사",
             value:
               inactiveTeacherCount,
           },
+
           {
-            label: "담당 학생",
+            label:
+              "담당 학생",
             value:
               totalAssignedStudents,
           },
-          {
-            label: "오늘 수업",
-            value: totalTodaySessions,
-          },
-          {
-            label: "강사 평가",
-            value: totalTeacherReviewCount,
-          },
-          {
-            label: "평균 평점",
-            value: overallTeacherReviewAverage ?? "-",
-          },
-        ].map((item) => (
-          <div
-            key={item.label}
-            style={{
-              padding: "20px",
-              border:
-                "1px solid #e4e7ec",
-              borderRadius: "12px",
-              background:
-                "#ffffff",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "13px",
-                opacity: 0.58,
-              }}
-            >
-              {item.label}
-            </div>
 
+          {
+            label:
+              "오늘 수업",
+            value:
+              totalTodaySessions,
+          },
+
+          {
+            label:
+              "강사 평가",
+            value:
+              totalTeacherReviewCount,
+          },
+
+          {
+            label:
+              "평균 평점",
+            value:
+              overallTeacherReviewAverage ??
+              "-",
+          },
+        ].map(
+          (item) => (
             <div
+              key={
+                item.label
+              }
               style={{
-                marginTop: "8px",
-                fontSize: "30px",
-                fontWeight: 800,
+                padding:
+                  "20px",
+                border:
+                  "1px solid #e4e7ec",
+                borderRadius:
+                  "12px",
+                background:
+                  "#ffffff",
               }}
             >
-              {item.value}
+              <div
+                style={{
+                  fontSize:
+                    "13px",
+                  opacity:
+                    0.58,
+                }}
+              >
+                {item.label}
+              </div>
+
+              <div
+                style={{
+                  marginTop:
+                    "8px",
+                  fontSize:
+                    "30px",
+                  fontWeight:
+                    800,
+                }}
+              >
+                {item.value}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        )}
       </section>
 
       <form
@@ -582,11 +778,14 @@ export default async function AdminTeachersPage({
           placeholder="강사명, 국적, 연락처, 전문분야 검색"
           style={{
             minWidth: 0,
-            padding: "11px 12px",
+            padding:
+              "11px 12px",
             border:
               "1px solid #d6deea",
-            borderRadius: "8px",
-            background: "#ffffff",
+            borderRadius:
+              "8px",
+            background:
+              "#ffffff",
             color: "#101828",
           }}
         />
@@ -595,20 +794,25 @@ export default async function AdminTeachersPage({
           name="status"
           defaultValue={status}
           style={{
-            padding: "11px 12px",
+            padding:
+              "11px 12px",
             border:
               "1px solid #d6deea",
-            borderRadius: "8px",
-            background: "#ffffff",
+            borderRadius:
+              "8px",
+            background:
+              "#ffffff",
             color: "#101828",
           }}
         >
           <option value="all">
             전체 상태
           </option>
+
           <option value="active">
             활성
           </option>
+
           <option value="inactive">
             비활성
           </option>
@@ -617,11 +821,14 @@ export default async function AdminTeachersPage({
         <button
           type="submit"
           style={{
-            padding: "11px 18px",
+            padding:
+              "11px 18px",
             border:
               "1px solid #d6deea",
-            borderRadius: "8px",
-            background: "#0a1f44",
+            borderRadius:
+              "8px",
+            background:
+              "#0a1f44",
             color: "#ffffff",
             fontWeight: 800,
             cursor: "pointer",
@@ -648,7 +855,8 @@ export default async function AdminTeachersPage({
             gridTemplateColumns:
               "minmax(170px, 1.1fr) 90px 100px 100px 90px 90px 90px 80px",
             gap: "12px",
-            padding: "14px 18px",
+            padding:
+              "14px 18px",
             borderBottom:
               "1px solid #e7ebf0",
             fontSize: "12px",
@@ -670,181 +878,259 @@ export default async function AdminTeachersPage({
           <div
             style={{
               padding: "36px",
-              textAlign: "center",
+              textAlign:
+                "center",
               opacity: 0.62,
             }}
           >
-            조건에 맞는 강사가 없습니다.
+            조건에 맞는 강사가
+            없습니다.
           </div>
         ) : (
-          rows.map((teacher) => (
-            <div
-              key={teacher.user_id}
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  "minmax(170px, 1.1fr) 90px 100px 100px 90px 90px 90px 80px",
-                gap: "12px",
-                alignItems: "center",
-                padding: "16px 18px",
-                borderBottom:
-                  "1px solid #eef1f5",
-              }}
-            >
+          rows.map(
+            (teacher) => (
               <div
+                key={
+                  teacher.user_id
+                }
                 style={{
-                  display: "flex",
-                  alignItems: "center",
+                  display:
+                    "grid",
+                  gridTemplateColumns:
+                    "minmax(170px, 1.1fr) 90px 100px 100px 90px 90px 90px 80px",
                   gap: "12px",
-                  minWidth: 0,
+                  alignItems:
+                    "center",
+                  padding:
+                    "16px 18px",
+                  borderBottom:
+                    "1px solid #eef1f5",
                 }}
               >
-                {teacher.profileImageUrl ? (
-                  <img
-                    src={teacher.profileImageUrl}
-                    alt={`${teacher.display_name || teacher.realName || "강사"} 프로필`}
-                    style={{
-                      width: "48px",
-                      height: "48px",
-                      borderRadius: "50%",
-                      objectFit: "cover",
-                      border: "1px solid #d6deea",
-                      background: "#f2f4f7",
-                      flexShrink: 0,
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: "48px",
-                      height: "48px",
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "#eaf2ff",
-                      color: "#0a1f44",
-                      fontWeight: 900,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {(teacher.display_name ||
-                      teacher.realName ||
-                      "T")
-                      .trim()
-                      .charAt(0)
-                      .toUpperCase()}
-                  </div>
-                )}
-
-                <div style={{ minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontWeight: 800,
-                      color: "#101828",
-                    }}
-                  >
-                    {teacher.display_name ||
-                      teacher.realName ||
-                      "이름 미등록 강사"}
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: "4px",
-                      fontSize: "12px",
-                      color: "#667085",
-                    }}
-                  >
-                    실명: {teacher.realName} ·{" "}
-                    <span
+                <div
+                  style={{
+                    display:
+                      "flex",
+                    alignItems:
+                      "center",
+                    gap: "12px",
+                    minWidth:
+                      0,
+                  }}
+                >
+                  {teacher.profileImageUrl ? (
+                    <img
+                      src={
+                        teacher.profileImageUrl
+                      }
+                      alt={`${teacher.display_name ||
+                        teacher.realName ||
+                        "강사"} 프로필`}
                       style={{
-                        color: teacher.is_active
-                          ? "#14804a"
-                          : "#667085",
-                        fontWeight: 800,
+                        width:
+                          "48px",
+                        height:
+                          "48px",
+                        borderRadius:
+                          "50%",
+                        objectFit:
+                          "cover",
+                        border:
+                          "1px solid #d6deea",
+                        background:
+                          "#f2f4f7",
+                        flexShrink:
+                          0,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width:
+                          "48px",
+                        height:
+                          "48px",
+                        borderRadius:
+                          "50%",
+                        display:
+                          "flex",
+                        alignItems:
+                          "center",
+                        justifyContent:
+                          "center",
+                        background:
+                          "#eaf2ff",
+                        color:
+                          "#0a1f44",
+                        fontWeight:
+                          900,
+                        flexShrink:
+                          0,
                       }}
                     >
-                      {teacher.is_active ? "활성" : "비활성"}
-                    </span>
+                      {(teacher.display_name ||
+                        teacher.realName ||
+                        "T")
+                        .trim()
+                        .charAt(0)
+                        .toUpperCase()}
+                    </div>
+                  )}
+
+                  <div
+                    style={{
+                      minWidth:
+                        0,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight:
+                          800,
+                        color:
+                          "#101828",
+                      }}
+                    >
+                      {teacher.display_name ||
+                        teacher.realName ||
+                        "이름 미등록 강사"}
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop:
+                          "4px",
+                        fontSize:
+                          "12px",
+                        color:
+                          "#667085",
+                      }}
+                    >
+                      실명:{" "}
+                      {
+                        teacher.realName
+                      }{" "}
+                      ·{" "}
+                      <span
+                        style={{
+                          color:
+                            teacher.is_active
+                              ? "#14804a"
+                              : "#667085",
+
+                          fontWeight:
+                            800,
+                        }}
+                      >
+                        {teacher.is_active
+                          ? "활성"
+                          : "비활성"}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div>
-                {teacher.nationality ||
-                  "-"}
-              </div>
+                <div>
+                  {teacher.nationality ||
+                    "-"}
+                </div>
 
-              <div
-                style={{
-                  fontWeight: 700,
-                }}
-              >
-                {
-                  teacher.assignedStudentCount
-                }
-                명
-              </div>
+                <div
+                  style={{
+                    fontWeight:
+                      700,
+                  }}
+                >
+                  {
+                    teacher.assignedStudentCount
+                  }
+                  명
+                </div>
 
-              <div
-                style={{
-                  fontWeight: 700,
-                }}
-              >
-                {
-                  teacher.activeEnrollmentCount
-                }
-                건
-              </div>
+                <div
+                  style={{
+                    fontWeight:
+                      700,
+                  }}
+                >
+                  {
+                    teacher.activeEnrollmentCount
+                  }
+                  건
+                </div>
 
-              <div
-                style={{
-                  fontWeight: 700,
-                }}
-              >
-                {
-                  teacher.todaySessionCount
-                }
-                건
-              </div>
+                <div
+                  style={{
+                    fontWeight:
+                      700,
+                  }}
+                >
+                  {
+                    teacher.todaySessionCount
+                  }
+                  건
+                </div>
 
-              <div
-                style={{
-                  fontWeight: 700,
-                }}
-              >
-                {teacher.reviewCount}건
-              </div>
+                <div
+                  style={{
+                    fontWeight:
+                      700,
+                  }}
+                >
+                  {
+                    teacher.reviewCount
+                  }
+                  건
+                </div>
 
-              <div
-                style={{
-                  fontWeight: 800,
-                  color: teacher.reviewAverage ? "#175cd3" : "#667085",
-                }}
-              >
-                {teacher.reviewAverage ? `${Number(teacher.reviewAverage).toFixed(2)}` : "-"}
-              </div>
+                <div
+                  style={{
+                    fontWeight:
+                      800,
 
-              <Link
-                href={`/admin/teachers/${teacher.user_id}`}
-                style={{
-                  textAlign: "center",
-                  padding: "9px 10px",
-                  background: "#ffffff",
-                  border:
-                    "1px solid #d6deea",
-                  borderRadius: "8px",
-                  color: "inherit",
-                  textDecoration: "none",
-                  fontSize: "13px",
-                  fontWeight: 700,
-                }}
-              >
-                상세
-              </Link>
-            </div>
-          ))
+                    color:
+                      teacher.reviewAverage
+                        ? "#175cd3"
+                        : "#667085",
+                  }}
+                >
+                  {teacher.reviewAverage
+                    ? Number(
+                        teacher.reviewAverage
+                      ).toFixed(
+                        2
+                      )
+                    : "-"}
+                </div>
+
+                <Link
+                  href={`/admin/teachers/${teacher.user_id}`}
+                  style={{
+                    textAlign:
+                      "center",
+                    padding:
+                      "9px 10px",
+                    background:
+                      "#ffffff",
+                    border:
+                      "1px solid #d6deea",
+                    borderRadius:
+                      "8px",
+                    color:
+                      "inherit",
+                    textDecoration:
+                      "none",
+                    fontSize:
+                      "13px",
+                    fontWeight:
+                      700,
+                  }}
+                >
+                  상세
+                </Link>
+              </div>
+            )
+          )
         )}
       </section>
     </div>

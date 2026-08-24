@@ -1,6 +1,10 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useState } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 
@@ -16,53 +20,106 @@ const NATIONALITIES = [
 ] as const;
 
 export default function TeacherForm() {
-  const router = useRouter();
+  const router =
+    useRouter();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordConfirm, setPasswordConfirm] =
-    useState("");
+  const [
+    email,
+    setEmail,
+  ] = useState("");
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [displayName, setDisplayName] =
-    useState("");
+  const [
+    name,
+    setName,
+  ] = useState("");
 
-  const [nationality, setNationality] =
-    useState("");
+  const [
+    phone,
+    setPhone,
+  ] = useState("");
 
-  const [customNationality, setCustomNationality] =
-    useState("");
+  const [
+    displayName,
+    setDisplayName,
+  ] = useState("");
 
-  const [bio, setBio] = useState("");
-  const [specialties, setSpecialties] =
-    useState("");
+  const [
+    nationality,
+    setNationality,
+  ] = useState("");
 
-  const [yearsExperience, setYearsExperience] =
-    useState("");
+  const [
+    customNationality,
+    setCustomNationality,
+  ] = useState("");
 
-  const [education, setEducation] = useState("");
-  const [certifications, setCertifications] =
-    useState("");
+  const [
+    bio,
+    setBio,
+  ] = useState("");
 
-  const [hourlyRate, setHourlyRate] =
-    useState("");
+  const [
+    specialties,
+    setSpecialties,
+  ] = useState("");
 
-  const [imageFile, setImageFile] =
-    useState<File | null>(null);
-  const [imagePreview, setImagePreview] =
-    useState("");
+  const [
+    yearsExperience,
+    setYearsExperience,
+  ] = useState("");
 
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [
+    education,
+    setEducation,
+  ] = useState("");
+
+  const [
+    certifications,
+    setCertifications,
+  ] = useState("");
+
+  const [
+    hourlyRate,
+    setHourlyRate,
+  ] = useState("");
+
+  const [
+    imageFile,
+    setImageFile,
+  ] =
+    useState<File | null>(
+      null
+    );
+
+  const [
+    imagePreview,
+    setImagePreview,
+  ] = useState("");
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
+
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] = useState("");
 
   function handleImageChange(
-    event: ChangeEvent<HTMLInputElement>
+    event:
+      ChangeEvent<HTMLInputElement>
   ) {
-    const file = event.target.files?.[0];
+    const file =
+      event.target.files?.[0];
 
     setErrorMessage("");
+    setSuccessMessage("");
 
     if (!file) {
       return;
@@ -74,59 +131,76 @@ export default function TeacherForm() {
       "image/webp",
     ];
 
-    if (!allowedTypes.includes(file.type)) {
+    if (
+      !allowedTypes.includes(
+        file.type
+      )
+    ) {
       setErrorMessage(
         "프로필 사진은 JPG, PNG, WEBP 형식만 등록할 수 있습니다."
       );
+
       event.target.value = "";
+
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (
+      file.size >
+      5 * 1024 * 1024
+    ) {
       setErrorMessage(
         "프로필 사진은 5MB 이하만 등록할 수 있습니다."
       );
+
       event.target.value = "";
+
       return;
     }
 
     setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+
+    setImagePreview(
+      URL.createObjectURL(
+        file
+      )
+    );
   }
 
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
+    if (loading) {
+      return;
+    }
+
     setErrorMessage("");
+    setSuccessMessage("");
 
     if (!email.trim()) {
-      setErrorMessage("이메일을 입력해주세요.");
+      setErrorMessage(
+        "이메일을 입력해주세요."
+      );
+
       return;
     }
 
     if (!name.trim()) {
-      setErrorMessage("강사 이름을 입력해주세요.");
-      return;
-    }
-
-    if (password.length < 8) {
       setErrorMessage(
-        "비밀번호는 8자 이상이어야 합니다."
+        "강사 이름을 입력해주세요."
       );
-      return;
-    }
 
-    if (password !== passwordConfirm) {
-      setErrorMessage(
-        "비밀번호와 비밀번호 확인이 일치하지 않습니다."
-      );
       return;
     }
 
     if (!nationality) {
-      setErrorMessage("강사 국적을 선택해주세요.");
+      setErrorMessage(
+        "강사 국적을 선택해주세요."
+      );
+
       return;
     }
 
@@ -137,77 +211,114 @@ export default function TeacherForm() {
       setErrorMessage(
         "기타 국적을 직접 입력해주세요."
       );
+
       return;
     }
 
     if (
       yearsExperience &&
-      Number(yearsExperience) < 0
+      Number(
+        yearsExperience
+      ) < 0
     ) {
       setErrorMessage(
         "강사 경력을 확인해주세요."
       );
+
       return;
     }
 
     if (
       hourlyRate &&
-      Number(hourlyRate) < 0
+      Number(
+        hourlyRate
+      ) < 0
     ) {
       setErrorMessage(
         "시간당 수업료를 확인해주세요."
       );
+
       return;
     }
 
     setLoading(true);
 
     try {
-      const specialtyArray = specialties
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean);
+      const specialtyArray =
+        specialties
+          .split(",")
+          .map((item) =>
+            item.trim()
+          )
+          .filter(Boolean);
 
       const finalNationality =
         nationality === "기타"
           ? customNationality.trim()
           : nationality;
 
-      const response = await fetch(
-        "/api/admin/teachers",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: email.trim(),
-            password,
-            name: name.trim(),
-            phone: phone.trim(),
-            displayName: displayName.trim(),
+      /*
+       * 관리자에게 강사의 비밀번호를
+       * 입력받지 않습니다.
+       */
+      const response =
+        await fetch(
+          "/api/admin/teachers",
+          {
+            method: "POST",
 
-            nationality: finalNationality,
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
 
-            bio: bio.trim(),
-            specialties: specialtyArray,
-            yearsExperience,
-            education: education.trim(),
-            certifications:
-              certifications.trim(),
-            hourlyRate,
-          }),
-        }
-      );
+            body:
+              JSON.stringify({
+                email:
+                  email
+                    .trim()
+                    .toLowerCase(),
 
-      const result = await response.json();
+                name:
+                  name.trim(),
+
+                phone:
+                  phone.trim(),
+
+                displayName:
+                  displayName.trim(),
+
+                nationality:
+                  finalNationality,
+
+                bio:
+                  bio.trim(),
+
+                specialties:
+                  specialtyArray,
+
+                yearsExperience,
+
+                education:
+                  education.trim(),
+
+                certifications:
+                  certifications.trim(),
+
+                hourlyRate,
+              }),
+          }
+        );
+
+      const result =
+        await response.json();
 
       if (!response.ok) {
         setErrorMessage(
           result.error ||
-            "강사 등록에 실패했습니다."
+            "강사 초대에 실패했습니다."
         );
-        setLoading(false);
+
         return;
       }
 
@@ -220,72 +331,117 @@ export default function TeacherForm() {
         setErrorMessage(
           "생성된 강사 ID를 확인할 수 없습니다."
         );
-        setLoading(false);
+
         return;
       }
 
+      /*
+       * 기존 프로필 사진 등록 기능 유지
+       */
       if (imageFile) {
-        const supabase = createClient();
+        const supabase =
+          createClient();
+
         const imagePath =
           `${teacherUserId}/profile-image`;
 
-        const { error: uploadError } =
+        const {
+          error: uploadError,
+        } =
           await supabase.storage
-            .from("teacher-profile-images")
-            .upload(imagePath, imageFile, {
-              upsert: true,
-              contentType: imageFile.type,
-              cacheControl: "3600",
-            });
+            .from(
+              "teacher-profile-images"
+            )
+            .upload(
+              imagePath,
+              imageFile,
+              {
+                upsert: true,
+
+                contentType:
+                  imageFile.type,
+
+                cacheControl:
+                  "3600",
+              }
+            );
 
         if (uploadError) {
           setErrorMessage(
-            `강사 계정은 생성되었지만 프로필 사진 업로드에 실패했습니다: ${uploadError.message}`
+            `강사 초대는 완료되었지만 프로필 사진 업로드에 실패했습니다: ${uploadError.message}`
           );
-          setLoading(false);
+
           return;
         }
 
-        const { data: publicUrlData } =
+        const {
+          data: publicUrlData,
+        } =
           supabase.storage
-            .from("teacher-profile-images")
-            .getPublicUrl(imagePath);
+            .from(
+              "teacher-profile-images"
+            )
+            .getPublicUrl(
+              imagePath
+            );
 
         const profileImageUrl =
           `${publicUrlData.publicUrl}?v=${Date.now()}`;
 
-        const { error: profileImageError } =
+        const {
+          error: profileImageError,
+        } =
           await supabase
             .from("profiles")
             .update({
-              profile_image_url: profileImageUrl,
-              updated_at: new Date().toISOString(),
+              profile_image_url:
+                profileImageUrl,
+
+              updated_at:
+                new Date().toISOString(),
             })
-            .eq("id", teacherUserId);
+            .eq(
+              "id",
+              teacherUserId
+            );
 
         if (profileImageError) {
           setErrorMessage(
-            `강사 계정은 생성되었지만 프로필 사진 정보 저장에 실패했습니다: ${profileImageError.message}`
+            `강사 초대는 완료되었지만 프로필 사진 정보 저장에 실패했습니다: ${profileImageError.message}`
           );
-          setLoading(false);
+
           return;
         }
       }
 
-      router.push(`/admin/teachers/${teacherUserId}`);
-      router.refresh();
+      setSuccessMessage(
+        typeof result.message === "string"
+          ? result.message
+          : "강사 초대 이메일을 발송했습니다."
+      );
+
+      window.setTimeout(
+        () => {
+          router.push(
+            `/admin/teachers/${teacherUserId}`
+          );
+
+          router.refresh();
+        },
+        900
+      );
     } catch (error) {
       console.error(
-        "TEACHER CREATE ERROR:",
+        "TEACHER INVITE ERROR:",
         error
       );
 
       setErrorMessage(
         error instanceof Error
-          ? `강사 등록 오류: ${error.message}`
-          : "강사 등록 중 오류가 발생했습니다."
+          ? `강사 초대 오류: ${error.message}`
+          : "강사 초대 중 오류가 발생했습니다."
       );
-
+    } finally {
       setLoading(false);
     }
   }
@@ -293,14 +449,16 @@ export default function TeacherForm() {
   const labelStyle = {
     display: "block",
     marginBottom: "8px",
-    fontWeight: 600,
+    fontWeight: 700,
   };
 
   const fieldStyle = {
     width: "100%",
-    boxSizing: "border-box" as const,
+    boxSizing:
+      "border-box" as const,
     padding: "12px 14px",
-    border: "1px solid #d6deea",
+    border:
+      "1px solid #d6deea",
     borderRadius: "10px",
     background: "#ffffff",
     color: "#101828",
@@ -310,13 +468,15 @@ export default function TeacherForm() {
 
   const sectionStyle = {
     padding: "24px",
-    border: "1px solid #e4e7ec",
+    border:
+      "1px solid #e4e7ec",
     borderRadius: "14px",
     background: "#ffffff",
     boxShadow:
       "0 1px 2px rgba(16,24,40,0.03), 0 8px 24px rgba(16,24,40,0.04)",
     display: "flex",
-    flexDirection: "column" as const,
+    flexDirection:
+      "column" as const,
     gap: "18px",
   };
 
@@ -331,11 +491,17 @@ export default function TeacherForm() {
         gap: "24px",
       }}
     >
+      {/* 프로필 사진 */}
       <section style={sectionStyle}>
         <div>
-          <h2 style={{ margin: 0 }}>
+          <h2
+            style={{
+              margin: 0,
+            }}
+          >
             프로필 사진
           </h2>
+
           <p
             style={{
               marginTop: "6px",
@@ -344,7 +510,8 @@ export default function TeacherForm() {
               fontSize: "13px",
             }}
           >
-            메인 페이지와 강사 소개 화면에 표시될 사진입니다.
+            메인 페이지와 강사 소개 화면에
+            표시될 사진입니다.
           </p>
         </div>
 
@@ -361,7 +528,8 @@ export default function TeacherForm() {
               width: "150px",
               height: "150px",
               borderRadius: "50%",
-              border: "1px solid #d6deea",
+              border:
+                "1px solid #d6deea",
               overflow: "hidden",
               display: "flex",
               alignItems: "center",
@@ -382,13 +550,22 @@ export default function TeacherForm() {
                 }}
               />
             ) : (
-              <span style={{ fontSize: "13px" }}>
+              <span
+                style={{
+                  fontSize: "13px",
+                }}
+              >
                 등록할 사진 없음
               </span>
             )}
           </div>
 
-          <div style={{ flex: 1, minWidth: "240px" }}>
+          <div
+            style={{
+              flex: 1,
+              minWidth: "240px",
+            }}
+          >
             <label
               htmlFor="profileImage"
               style={labelStyle}
@@ -400,7 +577,10 @@ export default function TeacherForm() {
               id="profileImage"
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              onChange={handleImageChange}
+              onChange={
+                handleImageChange
+              }
+              disabled={loading}
               style={{
                 ...fieldStyle,
                 padding: "7px",
@@ -416,27 +596,35 @@ export default function TeacherForm() {
                 lineHeight: 1.6,
               }}
             >
-              JPG, PNG, WEBP · 최대 5MB · 1:1 비율 권장
+              JPG, PNG, WEBP · 최대 5MB ·
+              1:1 비율 권장
             </p>
           </div>
         </div>
       </section>
 
-      {/* 로그인 정보 */}
+      {/* 로그인 / 초대 */}
       <section style={sectionStyle}>
         <div>
-          <h2 style={{ margin: 0 }}>
-            로그인 정보
+          <h2
+            style={{
+              margin: 0,
+            }}
+          >
+            로그인 / 초대 정보
           </h2>
 
           <p
             style={{
               marginBottom: 0,
-              opacity: 0.7,
+              color: "#667085",
+              lineHeight: 1.65,
             }}
           >
-            강사가 TALKLY에 로그인할 때 사용하는
-            계정입니다.
+            관리자는 강사의 비밀번호를
+            입력하지 않습니다. 아래 이메일로
+            계정 설정 링크를 보내며, 강사가
+            직접 비밀번호를 설정합니다.
           </p>
         </div>
 
@@ -453,64 +641,44 @@ export default function TeacherForm() {
             type="email"
             value={email}
             onChange={(event) =>
-              setEmail(event.target.value)
-            }
-            placeholder="teacher@example.com"
-            required
-            style={fieldStyle}
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="password"
-            style={labelStyle}
-          >
-            초기 비밀번호 *
-          </label>
-
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(event) =>
-              setPassword(event.target.value)
-            }
-            minLength={8}
-            required
-            autoComplete="new-password"
-            style={fieldStyle}
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="passwordConfirm"
-            style={labelStyle}
-          >
-            비밀번호 확인 *
-          </label>
-
-          <input
-            id="passwordConfirm"
-            type="password"
-            value={passwordConfirm}
-            onChange={(event) =>
-              setPasswordConfirm(
+              setEmail(
                 event.target.value
               )
             }
-            minLength={8}
+            placeholder="teacher@example.com"
+            autoComplete="email"
             required
-            autoComplete="new-password"
+            disabled={loading}
             style={fieldStyle}
           />
+        </div>
+
+        <div
+          style={{
+            padding: "14px 16px",
+            border:
+              "1px solid #dbe7ff",
+            borderRadius: "10px",
+            background: "#f7faff",
+            color: "#344054",
+            fontSize: "13px",
+            lineHeight: 1.65,
+          }}
+        >
+          등록 후 강사에게 TALKLY 초대
+          이메일이 발송됩니다. 초대 링크에서
+          계정 설정을 완료하기 전까지는 강사
+          페이지 접근을 제한합니다.
         </div>
       </section>
 
       {/* 기본 정보 */}
       <section style={sectionStyle}>
-        <h2 style={{ margin: 0 }}>
+        <h2
+          style={{
+            margin: 0,
+          }}
+        >
           기본 정보
         </h2>
 
@@ -526,10 +694,13 @@ export default function TeacherForm() {
             id="name"
             value={name}
             onChange={(event) =>
-              setName(event.target.value)
+              setName(
+                event.target.value
+              )
             }
             placeholder="예: Daniel Smith"
             required
+            disabled={loading}
             style={fieldStyle}
           />
         </div>
@@ -551,6 +722,7 @@ export default function TeacherForm() {
               )
             }
             placeholder="예: Daniel Teacher"
+            disabled={loading}
             style={fieldStyle}
           />
 
@@ -572,33 +744,42 @@ export default function TeacherForm() {
             id="nationality"
             value={nationality}
             onChange={(event) => {
-              const value = event.target.value;
+              const value =
+                event.target.value;
 
               setNationality(value);
 
-              if (value !== "기타") {
-                setCustomNationality("");
+              if (
+                value !== "기타"
+              ) {
+                setCustomNationality(
+                  ""
+                );
               }
             }}
             required
+            disabled={loading}
             style={fieldStyle}
           >
             <option value="">
               국적을 선택해주세요
             </option>
 
-            {NATIONALITIES.map((item) => (
-              <option
-                key={item}
-                value={item}
-              >
-                {item}
-              </option>
-            ))}
+            {NATIONALITIES.map(
+              (item) => (
+                <option
+                  key={item}
+                  value={item}
+                >
+                  {item}
+                </option>
+              )
+            )}
           </select>
         </div>
 
-        {nationality === "기타" && (
+        {nationality ===
+          "기타" && (
           <div>
             <label
               htmlFor="customNationality"
@@ -610,7 +791,9 @@ export default function TeacherForm() {
             <input
               id="customNationality"
               type="text"
-              value={customNationality}
+              value={
+                customNationality
+              }
               onChange={(event) =>
                 setCustomNationality(
                   event.target.value
@@ -618,11 +801,13 @@ export default function TeacherForm() {
               }
               placeholder="예: 필리핀"
               required
+              disabled={loading}
               style={fieldStyle}
             />
 
             <small>
-              실제 국적명을 직접 입력해주세요.
+              실제 국적명을 직접
+              입력해주세요.
             </small>
           </div>
         )}
@@ -639,9 +824,12 @@ export default function TeacherForm() {
             id="phone"
             value={phone}
             onChange={(event) =>
-              setPhone(event.target.value)
+              setPhone(
+                event.target.value
+              )
             }
             placeholder="010-0000-0000"
+            disabled={loading}
             style={fieldStyle}
           />
         </div>
@@ -649,7 +837,11 @@ export default function TeacherForm() {
 
       {/* 강사 프로필 */}
       <section style={sectionStyle}>
-        <h2 style={{ margin: 0 }}>
+        <h2
+          style={{
+            margin: 0,
+          }}
+        >
           강사 프로필
         </h2>
 
@@ -665,10 +857,13 @@ export default function TeacherForm() {
             id="bio"
             value={bio}
             onChange={(event) =>
-              setBio(event.target.value)
+              setBio(
+                event.target.value
+              )
             }
             rows={5}
             placeholder="강사의 수업 경력과 특징 등을 입력해주세요."
+            disabled={loading}
             style={{
               ...fieldStyle,
               resize: "vertical",
@@ -693,11 +888,13 @@ export default function TeacherForm() {
               )
             }
             placeholder="초등영어, 회화, 파닉스"
+            disabled={loading}
             style={fieldStyle}
           />
 
           <small>
-            여러 분야는 쉼표(,)로 구분해주세요.
+            여러 분야는 쉼표(,)로
+            구분해주세요.
           </small>
         </div>
 
@@ -720,6 +917,7 @@ export default function TeacherForm() {
               )
             }
             placeholder="예: 10"
+            disabled={loading}
             style={fieldStyle}
           />
         </div>
@@ -736,10 +934,13 @@ export default function TeacherForm() {
             id="education"
             value={education}
             onChange={(event) =>
-              setEducation(event.target.value)
+              setEducation(
+                event.target.value
+              )
             }
             rows={3}
             placeholder="예: University of California, English Education"
+            disabled={loading}
             style={{
               ...fieldStyle,
               resize: "vertical",
@@ -765,6 +966,7 @@ export default function TeacherForm() {
             }
             rows={3}
             placeholder="예: TESOL, TEFL"
+            disabled={loading}
             style={{
               ...fieldStyle,
               resize: "vertical",
@@ -792,6 +994,7 @@ export default function TeacherForm() {
               )
             }
             placeholder="예: 30000"
+            disabled={loading}
             style={fieldStyle}
           />
         </div>
@@ -799,14 +1002,34 @@ export default function TeacherForm() {
 
       {errorMessage && (
         <div
+          role="alert"
           style={{
             padding: "14px",
-            border: "1px solid #d93025",
+            border:
+              "1px solid #d93025",
             borderRadius: "8px",
-            color: "#d93025",
+            color: "#b42318",
+            background: "#fef3f2",
           }}
         >
           {errorMessage}
+        </div>
+      )}
+
+      {successMessage && (
+        <div
+          role="status"
+          style={{
+            padding: "14px",
+            border:
+              "1px solid #abefc6",
+            borderRadius: "8px",
+            color: "#067647",
+            background: "#ecfdf3",
+            lineHeight: 1.65,
+          }}
+        >
+          {successMessage}
         </div>
       )}
 
@@ -817,18 +1040,22 @@ export default function TeacherForm() {
           padding: "15px",
           border: "none",
           borderRadius: "10px",
-          background: loading ? "#98a2b3" : "#0a1f44",
+          background:
+            loading
+              ? "#98a2b3"
+              : "#0a1f44",
           color: "#ffffff",
           fontSize: "16px",
           fontWeight: 800,
-          cursor: loading
-            ? "default"
-            : "pointer",
+          cursor:
+            loading
+              ? "default"
+              : "pointer",
         }}
       >
         {loading
-          ? "강사 등록 중..."
-          : "강사 등록"}
+          ? "강사 초대 중..."
+          : "강사 초대 이메일 발송"}
       </button>
     </form>
   );
