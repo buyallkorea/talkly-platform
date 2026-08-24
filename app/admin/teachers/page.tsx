@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
+import { createAdminClient } from "@/lib/supabase-admin";
+import ResendTeacherRegistrationButton from "./ResendTeacherRegistrationButton";
 
 type PageProps = {
   searchParams: Promise<{
@@ -51,27 +53,115 @@ type ClassSession = {
   status: string;
 };
 
-function getEnrollmentStatusLabel(
-  status: string
+type AuthTeacherInfo = {
+  email: string | null;
+  teacherInvited: boolean;
+  accountReady: boolean;
+  authExists: boolean;
+};
+
+type RegistrationStatus =
+  | "pending"
+  | "active"
+  | "inactive";
+
+function getRegistrationStatus({
+  teacher,
+  authInfo,
+}: {
+  teacher: TeacherProfile;
+  authInfo:
+    | AuthTeacherInfo
+    | undefined;
+}): RegistrationStatus {
+  /*
+   * 관리자가 비활성화한 강사가 최우선
+   */
+  if (
+    !teacher.is_active
+  ) {
+    return "inactive";
+  }
+
+  /*
+   * Auth 계정이 비정상적으로 없는 경우도
+   * 관리자가 확인할 수 있도록 등록 대기로 분류
+   */
+  if (
+    !authInfo ||
+    !authInfo.authExists
+  ) {
+    return "pending";
+  }
+
+  /*
+   * 새 강사등록 방식:
+   * 계정설정 완료 전
+   */
+  if (
+    authInfo.teacherInvited &&
+    !authInfo.accountReady
+  ) {
+    return "pending";
+  }
+
+  /*
+   * 기존 강사 또는
+   * 신규 계정설정 완료 강사
+   */
+  return "active";
+}
+
+function getStatusLabel(
+  status:
+    RegistrationStatus
 ) {
   switch (status) {
     case "pending":
-      return "대기";
+      return "등록 대기";
 
     case "active":
-      return "수강중";
+      return "활동중";
 
-    case "paused":
-      return "일시중지";
+    case "inactive":
+      return "비활성";
+  }
+}
 
-    case "completed":
-      return "수강완료";
+function getStatusStyle(
+  status:
+    RegistrationStatus
+) {
+  switch (status) {
+    case "pending":
+      return {
+        color:
+          "#b54708",
+        background:
+          "#fffaeb",
+        border:
+          "1px solid #fedf89",
+      };
 
-    case "cancelled":
-      return "취소";
+    case "active":
+      return {
+        color:
+          "#067647",
+        background:
+          "#ecfdf3",
+        border:
+          "1px solid #abefc6",
+      };
 
-    default:
-      return status;
+    case "inactive":
+      return {
+        color:
+          "#475467",
+        background:
+          "#f2f4f7",
+        border:
+          "1px solid #d0d5dd",
+      };
   }
 }
 
@@ -106,15 +196,21 @@ export default async function AdminTeachersPage({
         "id",
         user.id
       )
-      .single();
+      .maybeSingle();
 
   if (
     !profile ||
-    profile.role !== "admin"
+    profile.role !==
+      "admin"
   ) {
     redirect("/");
   }
 
+  /*
+   * =======================================================
+   * 기본 데이터
+   * =======================================================
+   */
   const [
     teachersResult,
     enrollmentsResult,
@@ -122,7 +218,9 @@ export default async function AdminTeachersPage({
   ] =
     await Promise.all([
       supabase
-        .from("teacher_profiles")
+        .from(
+          "teacher_profiles"
+        )
         .select(`
           user_id,
           display_name,
@@ -136,7 +234,8 @@ export default async function AdminTeachersPage({
         .order(
           "created_at",
           {
-            ascending: false,
+            ascending:
+              false,
           }
         ),
 
@@ -199,6 +298,11 @@ export default async function AdminTeachersPage({
       )
     );
 
+  /*
+   * =======================================================
+   * 공통 profiles
+   * =======================================================
+   */
   const teacherIds =
     teachers.map(
       (teacher) =>
@@ -209,7 +313,8 @@ export default async function AdminTeachersPage({
     Profile[] = [];
 
   if (
-    teacherIds.length > 0
+    teacherIds.length >
+    0
   ) {
     const {
       data,
@@ -239,6 +344,105 @@ export default async function AdminTeachersPage({
         []) as Profile[];
   }
 
+  const profileMap =
+    new Map(
+      profiles.map(
+        (item) => [
+          item.id,
+          item,
+        ]
+      )
+    );
+
+  /*
+   * =======================================================
+   * Auth 계정 상태
+   *
+   * 관리자 서버페이지에서만 Service Role을 사용해
+   * 강사의 계정설정 완료 여부를 확인합니다.
+   * =======================================================
+   */
+  const adminClient =
+    createAdminClient();
+
+  const authEntries =
+    await Promise.all(
+      teacherIds.map(
+        async (
+          teacherUserId
+        ) => {
+          const {
+            data,
+            error,
+          } =
+            await adminClient.auth.admin
+              .getUserById(
+                teacherUserId
+              );
+
+          if (
+            error ||
+            !data.user
+          ) {
+            return [
+              teacherUserId,
+              {
+                email:
+                  null,
+
+                teacherInvited:
+                  false,
+
+                accountReady:
+                  false,
+
+                authExists:
+                  false,
+              } satisfies AuthTeacherInfo,
+            ] as const;
+          }
+
+          return [
+            teacherUserId,
+            {
+              email:
+                data.user
+                  .email ??
+                null,
+
+              teacherInvited:
+                data.user
+                  .user_metadata
+                  ?.teacher_invited ===
+                true,
+
+              accountReady:
+                data.user
+                  .user_metadata
+                  ?.teacher_account_ready ===
+                true,
+
+              authExists:
+                true,
+            } satisfies AuthTeacherInfo,
+          ] as const;
+        }
+      )
+    );
+
+  const authInfoMap =
+    new Map<
+      string,
+      AuthTeacherInfo
+    >(
+      authEntries
+    );
+
+  /*
+   * =======================================================
+   * 수업 데이터
+   * =======================================================
+   */
   const enrollmentIds =
     enrollments.map(
       (enrollment) =>
@@ -249,14 +453,17 @@ export default async function AdminTeachersPage({
     ClassSession[] = [];
 
   if (
-    enrollmentIds.length > 0
+    enrollmentIds.length >
+    0
   ) {
     const {
       data,
       error,
     } =
       await supabase
-        .from("class_sessions")
+        .from(
+          "class_sessions"
+        )
         .select(`
           id,
           enrollment_id,
@@ -279,25 +486,26 @@ export default async function AdminTeachersPage({
         []) as ClassSession[];
   }
 
-  const profileMap =
-    new Map(
-      profiles.map(
-        (item) => [
-          item.id,
-          item,
-        ]
-      )
-    );
-
+  /*
+   * =======================================================
+   * 오늘 날짜
+   * =======================================================
+   */
   const seoulDate =
     new Intl.DateTimeFormat(
       "en-CA",
       {
         timeZone:
           "Asia/Seoul",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
+
+        year:
+          "numeric",
+
+        month:
+          "2-digit",
+
+        day:
+          "2-digit",
       }
     ).format(
       new Date()
@@ -331,7 +539,7 @@ export default async function AdminTeachersPage({
   function getTeacherSessions(
     teacherUserId: string
   ) {
-    const teacherEnrollmentIds =
+    const ids =
       new Set(
         getTeacherEnrollments(
           teacherUserId
@@ -343,7 +551,7 @@ export default async function AdminTeachersPage({
 
     return sessions.filter(
       (session) =>
-        teacherEnrollmentIds.has(
+        ids.has(
           session.enrollment_id
         )
     );
@@ -354,17 +562,21 @@ export default async function AdminTeachersPage({
   ) {
     return getTeacherSessions(
       teacherUserId
-    ).filter((session) => {
-      const start =
-        new Date(
-          session.scheduled_start
-        );
+    ).filter(
+      (session) => {
+        const start =
+          new Date(
+            session.scheduled_start
+          );
 
-      return (
-        start >= todayStart &&
-        start < tomorrowStart
-      );
-    }).length;
+        return (
+          start >=
+            todayStart &&
+          start <
+            tomorrowStart
+        );
+      }
+    ).length;
   }
 
   function getAssignedStudentCount(
@@ -397,16 +609,26 @@ export default async function AdminTeachersPage({
     return uniqueStudentKeys.size;
   }
 
+  /*
+   * =======================================================
+   * 화면 행 구성
+   * =======================================================
+   */
   const normalizedQuery =
     q
       .trim()
       .toLowerCase();
 
-  const rows =
-    teachers
-      .map((teacher) => {
-        const teacherProfile =
+  const allRows =
+    teachers.map(
+      (teacher) => {
+        const commonProfile =
           profileMap.get(
+            teacher.user_id
+          );
+
+        const authInfo =
+          authInfoMap.get(
             teacher.user_id
           );
 
@@ -422,26 +644,36 @@ export default async function AdminTeachersPage({
               "active"
           ).length;
 
-        const teacherSessions =
-          getTeacherSessions(
-            teacher.user_id
-          );
+        const registrationStatus =
+          getRegistrationStatus({
+            teacher,
+            authInfo,
+          });
 
         return {
           ...teacher,
 
           realName:
-            teacherProfile?.name ||
+            commonProfile
+              ?.name ||
             "-",
 
           phone:
-            teacherProfile?.phone ||
+            commonProfile
+              ?.phone ||
             "-",
 
           profileImageUrl:
-            teacherProfile
+            commonProfile
               ?.profile_image_url ||
             null,
+
+          email:
+            authInfo
+              ?.email ||
+            null,
+
+          registrationStatus,
 
           assignedStudentCount:
             getAssignedStudentCount(
@@ -455,23 +687,26 @@ export default async function AdminTeachersPage({
               teacher.user_id
             ),
 
-          totalSessionCount:
-            teacherSessions.length,
-
           reviewCount:
             reviewSummaryMap.get(
               teacher.user_id
-            )?.review_count ??
+            )
+              ?.review_count ??
             0,
 
           reviewAverage:
             reviewSummaryMap.get(
               teacher.user_id
-            )?.overall_average ??
+            )
+              ?.overall_average ??
             null,
         };
-      })
-      .filter((teacher) => {
+      }
+    );
+
+  const rows =
+    allRows.filter(
+      (teacher) => {
         const matchesSearch =
           !normalizedQuery ||
           [
@@ -479,6 +714,9 @@ export default async function AdminTeachersPage({
               "",
 
             teacher.realName,
+
+            teacher.email ||
+              "",
 
             teacher.nationality ||
               "",
@@ -489,42 +727,53 @@ export default async function AdminTeachersPage({
               teacher.specialties ??
               []
             ),
-          ].some((value) =>
-            value
-              .toLowerCase()
-              .includes(
-                normalizedQuery
-              )
+          ].some(
+            (value) =>
+              value
+                .toLowerCase()
+                .includes(
+                  normalizedQuery
+                )
           );
 
         const matchesStatus =
-          status === "all" ||
-          (
-            status ===
-              "active" &&
-            teacher.is_active
-          ) ||
-          (
-            status ===
-              "inactive" &&
-            !teacher.is_active
-          );
+          status ===
+            "all" ||
+          teacher.registrationStatus ===
+            status;
 
         return (
           matchesSearch &&
           matchesStatus
         );
-      });
+      }
+    );
+
+  /*
+   * =======================================================
+   * 상단 통계
+   * =======================================================
+   */
+  const pendingTeacherCount =
+    allRows.filter(
+      (teacher) =>
+        teacher.registrationStatus ===
+        "pending"
+    ).length;
 
   const activeTeacherCount =
-    teachers.filter(
+    allRows.filter(
       (teacher) =>
-        teacher.is_active
+        teacher.registrationStatus ===
+        "active"
     ).length;
 
   const inactiveTeacherCount =
-    teachers.length -
-    activeTeacherCount;
+    allRows.filter(
+      (teacher) =>
+        teacher.registrationStatus ===
+        "inactive"
+    ).length;
 
   const totalAssignedStudents =
     teachers.reduce(
@@ -595,6 +844,10 @@ export default async function AdminTeachersPage({
 
   return (
     <div>
+      {/* ================================================= */}
+      {/* HEADER */}
+      {/* ================================================= */}
+
       <div
         style={{
           display: "flex",
@@ -603,14 +856,16 @@ export default async function AdminTeachersPage({
           alignItems:
             "flex-start",
           gap: "20px",
-          flexWrap: "wrap",
+          flexWrap:
+            "wrap",
         }}
       >
         <div>
           <h1
             style={{
               margin: 0,
-              fontSize: "32px",
+              fontSize:
+                "32px",
               letterSpacing:
                 "-0.03em",
             }}
@@ -620,14 +875,16 @@ export default async function AdminTeachersPage({
 
           <p
             style={{
-              marginTop: "9px",
-              marginBottom: 0,
+              marginTop:
+                "9px",
+              marginBottom:
+                0,
               opacity: 0.6,
             }}
           >
-            강사 계정, 담당 학생,
-            진행 중 수강 및 수업 현황을
-            확인합니다.
+            강사등록 상태와 담당 학생,
+            진행 중 수강, 수업 및 강사평가
+            현황을 확인합니다.
           </p>
         </div>
 
@@ -638,25 +895,33 @@ export default async function AdminTeachersPage({
               "11px 16px",
             border:
               "1px solid #d6deea",
-            borderRadius: "9px",
-            color: "#ffffff",
+            borderRadius:
+              "9px",
+            color:
+              "#ffffff",
             background:
               "#0a1f44",
             textDecoration:
               "none",
-            fontWeight: 800,
+            fontWeight:
+              800,
           }}
         >
-          + 강사 초대
+          + 강사등록
         </Link>
       </div>
 
+      {/* ================================================= */}
+      {/* STAT */}
+      {/* ================================================= */}
+
       <section
         style={{
-          marginTop: "28px",
+          marginTop:
+            "28px",
           display: "grid",
           gridTemplateColumns:
-            "repeat(auto-fit, minmax(180px, 1fr))",
+            "repeat(auto-fit, minmax(150px, 1fr))",
           gap: "12px",
         }}
       >
@@ -664,20 +929,31 @@ export default async function AdminTeachersPage({
           {
             label:
               "전체 강사",
+
             value:
               teachers.length,
           },
 
           {
             label:
-              "활성 강사",
+              "등록 대기",
+
+            value:
+              pendingTeacherCount,
+          },
+
+          {
+            label:
+              "활동중",
+
             value:
               activeTeacherCount,
           },
 
           {
             label:
-              "비활성 강사",
+              "비활성",
+
             value:
               inactiveTeacherCount,
           },
@@ -685,6 +961,7 @@ export default async function AdminTeachersPage({
           {
             label:
               "담당 학생",
+
             value:
               totalAssignedStudents,
           },
@@ -692,6 +969,7 @@ export default async function AdminTeachersPage({
           {
             label:
               "오늘 수업",
+
             value:
               totalTodaySessions,
           },
@@ -699,6 +977,7 @@ export default async function AdminTeachersPage({
           {
             label:
               "강사 평가",
+
             value:
               totalTeacherReviewCount,
           },
@@ -706,6 +985,7 @@ export default async function AdminTeachersPage({
           {
             label:
               "평균 평점",
+
             value:
               overallTeacherReviewAverage ??
               "-",
@@ -735,7 +1015,9 @@ export default async function AdminTeachersPage({
                     0.58,
                 }}
               >
-                {item.label}
+                {
+                  item.label
+                }
               </div>
 
               <div
@@ -743,26 +1025,35 @@ export default async function AdminTeachersPage({
                   marginTop:
                     "8px",
                   fontSize:
-                    "30px",
+                    "29px",
                   fontWeight:
                     800,
                 }}
               >
-                {item.value}
+                {
+                  item.value
+                }
               </div>
             </div>
           )
         )}
       </section>
 
+      {/* ================================================= */}
+      {/* FILTER */}
+      {/* ================================================= */}
+
       <form
         method="get"
         style={{
-          marginTop: "22px",
-          padding: "18px",
+          marginTop:
+            "22px",
+          padding:
+            "18px",
           border:
             "1px solid #e4e7ec",
-          borderRadius: "12px",
+          borderRadius:
+            "12px",
           display: "grid",
           gridTemplateColumns:
             "minmax(220px, 1fr) 170px auto",
@@ -774,8 +1065,10 @@ export default async function AdminTeachersPage({
         <input
           type="search"
           name="q"
-          defaultValue={q}
-          placeholder="강사명, 국적, 연락처, 전문분야 검색"
+          defaultValue={
+            q
+          }
+          placeholder="강사명, 이메일, 국적, 연락처, 전문분야 검색"
           style={{
             minWidth: 0,
             padding:
@@ -786,13 +1079,16 @@ export default async function AdminTeachersPage({
               "8px",
             background:
               "#ffffff",
-            color: "#101828",
+            color:
+              "#101828",
           }}
         />
 
         <select
           name="status"
-          defaultValue={status}
+          defaultValue={
+            status
+          }
           style={{
             padding:
               "11px 12px",
@@ -802,15 +1098,20 @@ export default async function AdminTeachersPage({
               "8px",
             background:
               "#ffffff",
-            color: "#101828",
+            color:
+              "#101828",
           }}
         >
           <option value="all">
             전체 상태
           </option>
 
+          <option value="pending">
+            등록 대기
+          </option>
+
           <option value="active">
-            활성
+            활동중
           </option>
 
           <option value="inactive">
@@ -829,310 +1130,541 @@ export default async function AdminTeachersPage({
               "8px",
             background:
               "#0a1f44",
-            color: "#ffffff",
-            fontWeight: 800,
-            cursor: "pointer",
+            color:
+              "#ffffff",
+            fontWeight:
+              800,
+            cursor:
+              "pointer",
           }}
         >
           검색
         </button>
       </form>
 
+      {/* ================================================= */}
+      {/* TABLE */}
+      {/* ================================================= */}
+
       <section
         style={{
-          marginTop: "18px",
+          marginTop:
+            "18px",
           border:
             "1px solid #e4e7ec",
-          borderRadius: "14px",
-          overflow: "hidden",
+          borderRadius:
+            "14px",
+          overflow:
+            "hidden",
           background:
             "#ffffff",
         }}
       >
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns:
-              "minmax(170px, 1.1fr) 90px 100px 100px 90px 90px 90px 80px",
-            gap: "12px",
-            padding:
-              "14px 18px",
-            borderBottom:
-              "1px solid #e7ebf0",
-            fontSize: "12px",
-            fontWeight: 700,
-            opacity: 0.55,
+            overflowX:
+              "auto",
           }}
         >
-          <div>강사</div>
-          <div>국적</div>
-          <div>담당 학생</div>
-          <div>진행 수강</div>
-          <div>오늘 수업</div>
-          <div>평가수</div>
-          <div>평균</div>
-          <div />
-        </div>
-
-        {rows.length === 0 ? (
           <div
             style={{
-              padding: "36px",
-              textAlign:
-                "center",
-              opacity: 0.62,
+              minWidth:
+                "1120px",
             }}
           >
-            조건에 맞는 강사가
-            없습니다.
-          </div>
-        ) : (
-          rows.map(
-            (teacher) => (
+            <div
+              style={{
+                display:
+                  "grid",
+
+                gridTemplateColumns:
+                  "minmax(220px, 1.3fr) 105px 80px 90px 90px 80px 80px 80px minmax(175px, auto)",
+
+                gap: "12px",
+
+                padding:
+                  "14px 18px",
+
+                borderBottom:
+                  "1px solid #e7ebf0",
+
+                fontSize:
+                  "12px",
+
+                fontWeight:
+                  700,
+
+                opacity:
+                  0.55,
+              }}
+            >
+              <div>
+                강사
+              </div>
+
+              <div>
+                상태
+              </div>
+
+              <div>
+                국적
+              </div>
+
+              <div>
+                담당 학생
+              </div>
+
+              <div>
+                진행 수강
+              </div>
+
+              <div>
+                오늘 수업
+              </div>
+
+              <div>
+                평가수
+              </div>
+
+              <div>
+                평균
+              </div>
+
+              <div>
+                관리
+              </div>
+            </div>
+
+            {rows.length ===
+            0 ? (
               <div
-                key={
-                  teacher.user_id
-                }
                 style={{
-                  display:
-                    "grid",
-                  gridTemplateColumns:
-                    "minmax(170px, 1.1fr) 90px 100px 100px 90px 90px 90px 80px",
-                  gap: "12px",
-                  alignItems:
-                    "center",
                   padding:
-                    "16px 18px",
-                  borderBottom:
-                    "1px solid #eef1f5",
+                    "36px",
+
+                  textAlign:
+                    "center",
+
+                  opacity:
+                    0.62,
                 }}
               >
-                <div
-                  style={{
-                    display:
-                      "flex",
-                    alignItems:
-                      "center",
-                    gap: "12px",
-                    minWidth:
-                      0,
-                  }}
-                >
-                  {teacher.profileImageUrl ? (
-                    <img
-                      src={
-                        teacher.profileImageUrl
-                      }
-                      alt={`${teacher.display_name ||
-                        teacher.realName ||
-                        "강사"} 프로필`}
-                      style={{
-                        width:
-                          "48px",
-                        height:
-                          "48px",
-                        borderRadius:
-                          "50%",
-                        objectFit:
-                          "cover",
-                        border:
-                          "1px solid #d6deea",
-                        background:
-                          "#f2f4f7",
-                        flexShrink:
-                          0,
-                      }}
-                    />
-                  ) : (
+                조건에 맞는 강사가 없습니다.
+              </div>
+            ) : (
+              rows.map(
+                (teacher) => {
+                  const statusStyle =
+                    getStatusStyle(
+                      teacher.registrationStatus
+                    );
+
+                  return (
                     <div
+                      key={
+                        teacher.user_id
+                      }
                       style={{
-                        width:
-                          "48px",
-                        height:
-                          "48px",
-                        borderRadius:
-                          "50%",
                         display:
-                          "flex",
+                          "grid",
+
+                        gridTemplateColumns:
+                          "minmax(220px, 1.3fr) 105px 80px 90px 90px 80px 80px 80px minmax(175px, auto)",
+
+                        gap:
+                          "12px",
+
                         alignItems:
                           "center",
-                        justifyContent:
-                          "center",
-                        background:
-                          "#eaf2ff",
-                        color:
-                          "#0a1f44",
-                        fontWeight:
-                          900,
-                        flexShrink:
-                          0,
-                      }}
-                    >
-                      {(teacher.display_name ||
-                        teacher.realName ||
-                        "T")
-                        .trim()
-                        .charAt(0)
-                        .toUpperCase()}
-                    </div>
-                  )}
 
-                  <div
-                    style={{
-                      minWidth:
-                        0,
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontWeight:
-                          800,
-                        color:
-                          "#101828",
-                      }}
-                    >
-                      {teacher.display_name ||
-                        teacher.realName ||
-                        "이름 미등록 강사"}
-                    </div>
+                        padding:
+                          "16px 18px",
 
-                    <div
-                      style={{
-                        marginTop:
-                          "4px",
-                        fontSize:
-                          "12px",
-                        color:
-                          "#667085",
+                        borderBottom:
+                          "1px solid #eef1f5",
                       }}
                     >
-                      실명:{" "}
-                      {
-                        teacher.realName
-                      }{" "}
-                      ·{" "}
-                      <span
+                      {/* 강사 */}
+                      <div
                         style={{
-                          color:
-                            teacher.is_active
-                              ? "#14804a"
-                              : "#667085",
+                          display:
+                            "flex",
 
-                          fontWeight:
-                            800,
+                          alignItems:
+                            "center",
+
+                          gap:
+                            "12px",
+
+                          minWidth:
+                            0,
                         }}
                       >
-                        {teacher.is_active
-                          ? "활성"
-                          : "비활성"}
-                      </span>
+                        {teacher.profileImageUrl ? (
+                          <img
+                            src={
+                              teacher.profileImageUrl
+                            }
+                            alt={`${teacher.display_name ||
+                              teacher.realName ||
+                              "강사"} 프로필`}
+                            style={{
+                              width:
+                                "48px",
+
+                              height:
+                                "48px",
+
+                              borderRadius:
+                                "50%",
+
+                              objectFit:
+                                "cover",
+
+                              border:
+                                "1px solid #d6deea",
+
+                              background:
+                                "#f2f4f7",
+
+                              flexShrink:
+                                0,
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width:
+                                "48px",
+
+                              height:
+                                "48px",
+
+                              borderRadius:
+                                "50%",
+
+                              display:
+                                "flex",
+
+                              alignItems:
+                                "center",
+
+                              justifyContent:
+                                "center",
+
+                              background:
+                                "#eaf2ff",
+
+                              color:
+                                "#0a1f44",
+
+                              fontWeight:
+                                900,
+
+                              flexShrink:
+                                0,
+                            }}
+                          >
+                            {(teacher.display_name ||
+                              teacher.realName ||
+                              "T")
+                              .trim()
+                              .charAt(
+                                0
+                              )
+                              .toUpperCase()}
+                          </div>
+                        )}
+
+                        <div
+                          style={{
+                            minWidth:
+                              0,
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontWeight:
+                                800,
+
+                              color:
+                                "#101828",
+                            }}
+                          >
+                            {teacher.display_name ||
+                              teacher.realName ||
+                              "이름 미등록 강사"}
+                          </div>
+
+                          <div
+                            style={{
+                              marginTop:
+                                "3px",
+
+                              color:
+                                "#667085",
+
+                              fontSize:
+                                "11px",
+
+                              overflow:
+                                "hidden",
+
+                              textOverflow:
+                                "ellipsis",
+
+                              whiteSpace:
+                                "nowrap",
+                            }}
+                            title={
+                              teacher.email ||
+                              ""
+                            }
+                          >
+                            {teacher.email ||
+                              "이메일 확인 필요"}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 상태 */}
+                      <div>
+                        <span
+                          style={{
+                            display:
+                              "inline-flex",
+
+                            alignItems:
+                              "center",
+
+                            minHeight:
+                              "28px",
+
+                            padding:
+                              "4px 9px",
+
+                            borderRadius:
+                              "999px",
+
+                            fontSize:
+                              "11px",
+
+                            fontWeight:
+                              800,
+
+                            whiteSpace:
+                              "nowrap",
+
+                            ...statusStyle,
+                          }}
+                        >
+                          {getStatusLabel(
+                            teacher.registrationStatus
+                          )}
+                        </span>
+                      </div>
+
+                      <div>
+                        {teacher.nationality ||
+                          "-"}
+                      </div>
+
+                      <div
+                        style={{
+                          fontWeight:
+                            700,
+                        }}
+                      >
+                        {
+                          teacher.assignedStudentCount
+                        }
+                        명
+                      </div>
+
+                      <div
+                        style={{
+                          fontWeight:
+                            700,
+                        }}
+                      >
+                        {
+                          teacher.activeEnrollmentCount
+                        }
+                        건
+                      </div>
+
+                      <div
+                        style={{
+                          fontWeight:
+                            700,
+                        }}
+                      >
+                        {
+                          teacher.todaySessionCount
+                        }
+                        건
+                      </div>
+
+                      <div
+                        style={{
+                          fontWeight:
+                            700,
+                        }}
+                      >
+                        {
+                          teacher.reviewCount
+                        }
+                        건
+                      </div>
+
+                      <div
+                        style={{
+                          fontWeight:
+                            800,
+
+                          color:
+                            teacher.reviewAverage
+                              ? "#175cd3"
+                              : "#667085",
+                        }}
+                      >
+                        {teacher.reviewAverage
+                          ? Number(
+                              teacher.reviewAverage
+                            ).toFixed(
+                              2
+                            )
+                          : "-"}
+                      </div>
+
+                      {/* 관리 */}
+                      <div
+                        style={{
+                          display:
+                            "flex",
+
+                          justifyContent:
+                            "flex-end",
+
+                          alignItems:
+                            "center",
+
+                          gap:
+                            "7px",
+                        }}
+                      >
+                        {teacher.registrationStatus ===
+                          "pending" &&
+                          teacher.email && (
+                            <ResendTeacherRegistrationButton
+                              teacherUserId={
+                                teacher.user_id
+                              }
+                            />
+                          )}
+
+                        <Link
+                          href={`/admin/teachers/${teacher.user_id}`}
+                          style={{
+                            minHeight:
+                              "36px",
+
+                            display:
+                              "inline-flex",
+
+                            alignItems:
+                              "center",
+
+                            justifyContent:
+                              "center",
+
+                            padding:
+                              "7px 11px",
+
+                            background:
+                              "#ffffff",
+
+                            border:
+                              "1px solid #d6deea",
+
+                            borderRadius:
+                              "8px",
+
+                            color:
+                              "inherit",
+
+                            textDecoration:
+                              "none",
+
+                            fontSize:
+                              "12px",
+
+                            fontWeight:
+                              700,
+
+                            whiteSpace:
+                              "nowrap",
+                          }}
+                        >
+                          상세
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                </div>
-
-                <div>
-                  {teacher.nationality ||
-                    "-"}
-                </div>
-
-                <div
-                  style={{
-                    fontWeight:
-                      700,
-                  }}
-                >
-                  {
-                    teacher.assignedStudentCount
-                  }
-                  명
-                </div>
-
-                <div
-                  style={{
-                    fontWeight:
-                      700,
-                  }}
-                >
-                  {
-                    teacher.activeEnrollmentCount
-                  }
-                  건
-                </div>
-
-                <div
-                  style={{
-                    fontWeight:
-                      700,
-                  }}
-                >
-                  {
-                    teacher.todaySessionCount
-                  }
-                  건
-                </div>
-
-                <div
-                  style={{
-                    fontWeight:
-                      700,
-                  }}
-                >
-                  {
-                    teacher.reviewCount
-                  }
-                  건
-                </div>
-
-                <div
-                  style={{
-                    fontWeight:
-                      800,
-
-                    color:
-                      teacher.reviewAverage
-                        ? "#175cd3"
-                        : "#667085",
-                  }}
-                >
-                  {teacher.reviewAverage
-                    ? Number(
-                        teacher.reviewAverage
-                      ).toFixed(
-                        2
-                      )
-                    : "-"}
-                </div>
-
-                <Link
-                  href={`/admin/teachers/${teacher.user_id}`}
-                  style={{
-                    textAlign:
-                      "center",
-                    padding:
-                      "9px 10px",
-                    background:
-                      "#ffffff",
-                    border:
-                      "1px solid #d6deea",
-                    borderRadius:
-                      "8px",
-                    color:
-                      "inherit",
-                    textDecoration:
-                      "none",
-                    fontSize:
-                      "13px",
-                    fontWeight:
-                      700,
-                  }}
-                >
-                  상세
-                </Link>
-              </div>
-            )
-          )
-        )}
+                  );
+                }
+              )
+            )}
+          </div>
+        </div>
       </section>
+
+      <div
+        style={{
+          marginTop:
+            "14px",
+
+          padding:
+            "14px 16px",
+
+          border:
+            "1px solid #e4e7ec",
+
+          borderRadius:
+            "10px",
+
+          background:
+            "#f8fafc",
+
+          color:
+            "#667085",
+
+          fontSize:
+            "12px",
+
+          lineHeight:
+            1.7,
+        }}
+      >
+        <strong
+          style={{
+            color:
+              "#344054",
+          }}
+        >
+          상태 기준
+        </strong>
+        <br />
+        등록 대기: 강사등록은 완료되었으나
+        강사가 아직 이메일에서 비밀번호
+        설정을 완료하지 않은 상태입니다.
+        <br />
+        활동중: 계정 설정이 완료되어 TALKLY
+        강사페이지를 사용할 수 있는 상태입니다.
+        <br />
+        비활성: 관리자가 강사 활동을 중지한
+        상태이며 모든 강사페이지 접근이
+        차단됩니다.
+      </div>
     </div>
   );
 }

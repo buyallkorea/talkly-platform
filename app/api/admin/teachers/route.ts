@@ -149,12 +149,6 @@ export async function POST(
         body.certifications
       );
 
-    /*
-     * TypeScript strict mode 대응:
-     * body.specialties는 런타임 입력값이므로
-     * unknown[]으로 명확하게 변환한 뒤
-     * string만 남깁니다.
-     */
     const specialties:
       string[] =
       Array.isArray(
@@ -197,7 +191,7 @@ export async function POST(
 
     /*
      * =====================================================
-     * 4. 기본 검증
+     * 4. 입력 검증
      * =====================================================
      */
     if (
@@ -261,7 +255,7 @@ export async function POST(
 
     /*
      * =====================================================
-     * 5. 관리자 Auth Client
+     * 5. Admin Client
      * =====================================================
      */
     const adminClient =
@@ -269,11 +263,7 @@ export async function POST(
 
     /*
      * =====================================================
-     * 6. 강사 초대 URL
-     *
-     * 관리자가 강사 비밀번호를 만들지 않습니다.
-     * 강사가 이메일 초대 링크를 통해
-     * 직접 비밀번호를 설정합니다.
+     * 6. 강사 계정 설정 복귀 URL
      * =====================================================
      */
     const configuredSiteUrl =
@@ -306,7 +296,10 @@ export async function POST(
 
     /*
      * =====================================================
-     * 7. Supabase Auth 강사 초대
+     * 7. Auth 강사 계정 생성 + 등록메일 발송
+     *
+     * 관리자 화면에서는 "강사등록"으로 표현하지만
+     * 내부적으로는 Supabase invitation 방식을 사용합니다.
      * =====================================================
      */
     const {
@@ -325,15 +318,9 @@ export async function POST(
               role:
                 "teacher",
 
-              /*
-               * 신규 초대 방식 강사 식별
-               */
               teacher_invited:
                 true,
 
-              /*
-               * 아직 본인 계정설정 전
-               */
               teacher_account_ready:
                 false,
             },
@@ -348,7 +335,7 @@ export async function POST(
         {
           error:
             inviteError?.message ||
-            "강사 초대 이메일 발송에 실패했습니다.",
+            "강사 계정 생성 또는 등록메일 발송에 실패했습니다.",
         },
         {
           status: 400,
@@ -361,7 +348,7 @@ export async function POST(
 
     /*
      * =====================================================
-     * 8. profiles 생성 / 보정
+     * 8. profiles 생성
      * =====================================================
      */
     const {
@@ -397,10 +384,6 @@ export async function POST(
     if (
       commonProfileError
     ) {
-      /*
-       * profiles 생성 실패 시
-       * Auth 계정 롤백
-       */
       await adminClient.auth.admin
         .deleteUser(
           teacherUserId
@@ -464,12 +447,12 @@ export async function POST(
             hourlyRate,
 
           /*
-           * 관리자 등록 시 기본 활성.
+           * 관리자에게 등록된 강사는
+           * 기본적으로 활성 대상입니다.
            *
-           * 다만 새 초대 강사는
-           * teacher_account_ready=false이므로
-           * 최초 비밀번호 설정 전까지
-           * /teacher 접근이 제한됩니다.
+           * 실제 강사페이지 접근은
+           * teacher_account_ready 여부까지
+           * app/teacher/layout.tsx가 검사합니다.
            */
           is_active:
             true,
@@ -478,9 +461,6 @@ export async function POST(
     if (
       teacherProfileError
     ) {
-      /*
-       * 중간 실패 시 생성 데이터 롤백
-       */
       await adminClient
         .from("profiles")
         .delete()
@@ -520,11 +500,11 @@ export async function POST(
         userId:
           teacherUserId,
 
-        invitedEmail:
+        registeredEmail:
           email,
 
         message:
-          "강사 계정이 생성되었고 초대 이메일이 발송되었습니다. 강사가 이메일 링크를 열어 직접 비밀번호를 설정하면 TALKLY Teacher 페이지를 사용할 수 있습니다.",
+          "강사등록이 완료되었습니다. 등록된 이메일로 계정 설정 안내메일을 발송했습니다.",
       },
       {
         status: 201,
@@ -532,14 +512,13 @@ export async function POST(
     );
   } catch (error) {
     console.error(
-      "INVITE TEACHER ERROR:",
+      "CREATE TEACHER REGISTRATION ERROR:",
       error
     );
 
     /*
-     * 예외가 발생한 경우
-     * Auth 계정만 남는 orphan 상태를
-     * 최대한 방지합니다.
+     * 중간 오류가 발생하면
+     * 불완전 계정이 남지 않도록 정리합니다.
      */
     if (teacherUserId) {
       try {
@@ -572,7 +551,7 @@ export async function POST(
         rollbackError
       ) {
         console.error(
-          "INVITE TEACHER ROLLBACK ERROR:",
+          "CREATE TEACHER REGISTRATION ROLLBACK ERROR:",
           rollbackError
         );
       }
@@ -583,7 +562,7 @@ export async function POST(
         error:
           error instanceof Error
             ? error.message
-            : "강사 초대 중 오류가 발생했습니다.",
+            : "강사등록 중 오류가 발생했습니다.",
       },
       {
         status: 500,

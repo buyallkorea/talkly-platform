@@ -140,7 +140,8 @@ export default function TeacherForm() {
         "프로필 사진은 JPG, PNG, WEBP 형식만 등록할 수 있습니다."
       );
 
-      event.target.value = "";
+      event.target.value =
+        "";
 
       return;
     }
@@ -153,7 +154,8 @@ export default function TeacherForm() {
         "프로필 사진은 5MB 이하만 등록할 수 있습니다."
       );
 
-      event.target.value = "";
+      event.target.value =
+        "";
 
       return;
     }
@@ -205,7 +207,8 @@ export default function TeacherForm() {
     }
 
     if (
-      nationality === "기타" &&
+      nationality ===
+        "기타" &&
       !customNationality.trim()
     ) {
       setErrorMessage(
@@ -253,14 +256,11 @@ export default function TeacherForm() {
           .filter(Boolean);
 
       const finalNationality =
-        nationality === "기타"
+        nationality ===
+        "기타"
           ? customNationality.trim()
           : nationality;
 
-      /*
-       * 관리자에게 강사의 비밀번호를
-       * 입력받지 않습니다.
-       */
       const response =
         await fetch(
           "/api/admin/teachers",
@@ -316,14 +316,15 @@ export default function TeacherForm() {
       if (!response.ok) {
         setErrorMessage(
           result.error ||
-            "강사 초대에 실패했습니다."
+            "강사등록에 실패했습니다."
         );
 
         return;
       }
 
       const teacherUserId =
-        typeof result.userId === "string"
+        typeof result.userId ===
+        "string"
           ? result.userId
           : "";
 
@@ -346,7 +347,8 @@ export default function TeacherForm() {
           `${teacherUserId}/profile-image`;
 
         const {
-          error: uploadError,
+          error:
+            uploadError,
         } =
           await supabase.storage
             .from(
@@ -356,7 +358,8 @@ export default function TeacherForm() {
               imagePath,
               imageFile,
               {
-                upsert: true,
+                upsert:
+                  true,
 
                 contentType:
                   imageFile.type,
@@ -366,16 +369,19 @@ export default function TeacherForm() {
               }
             );
 
-        if (uploadError) {
+        if (
+          uploadError
+        ) {
           setErrorMessage(
-            `강사 초대는 완료되었지만 프로필 사진 업로드에 실패했습니다: ${uploadError.message}`
+            `강사등록은 완료되었지만 프로필 사진 업로드에 실패했습니다: ${uploadError.message}`
           );
 
           return;
         }
 
         const {
-          data: publicUrlData,
+          data:
+            publicUrlData,
         } =
           supabase.storage
             .from(
@@ -389,7 +395,8 @@ export default function TeacherForm() {
           `${publicUrlData.publicUrl}?v=${Date.now()}`;
 
         const {
-          error: profileImageError,
+          error:
+            profileImageError,
         } =
           await supabase
             .from("profiles")
@@ -398,16 +405,19 @@ export default function TeacherForm() {
                 profileImageUrl,
 
               updated_at:
-                new Date().toISOString(),
+                new Date()
+                  .toISOString(),
             })
             .eq(
               "id",
               teacherUserId
             );
 
-        if (profileImageError) {
+        if (
+          profileImageError
+        ) {
           setErrorMessage(
-            `강사 초대는 완료되었지만 프로필 사진 정보 저장에 실패했습니다: ${profileImageError.message}`
+            `강사등록은 완료되었지만 프로필 사진 정보 저장에 실패했습니다: ${profileImageError.message}`
           );
 
           return;
@@ -415,9 +425,10 @@ export default function TeacherForm() {
       }
 
       setSuccessMessage(
-        typeof result.message === "string"
+        typeof result.message ===
+        "string"
           ? result.message
-          : "강사 초대 이메일을 발송했습니다."
+          : "강사등록이 완료되었습니다. 계정 설정 안내메일을 발송했습니다."
       );
 
       window.setTimeout(
@@ -432,14 +443,14 @@ export default function TeacherForm() {
       );
     } catch (error) {
       console.error(
-        "TEACHER INVITE ERROR:",
+        "TEACHER REGISTRATION ERROR:",
         error
       );
 
       setErrorMessage(
         error instanceof Error
-          ? `강사 초대 오류: ${error.message}`
-          : "강사 초대 중 오류가 발생했습니다."
+          ? `강사등록 오류: ${error.message}`
+          : "강사등록 중 오류가 발생했습니다."
       );
     } finally {
       setLoading(false);
@@ -456,22 +467,30 @@ export default function TeacherForm() {
     width: "100%",
     boxSizing:
       "border-box" as const,
-    padding: "12px 14px",
+    padding:
+      "12px 14px",
     border:
       "1px solid #d6deea",
-    borderRadius: "10px",
-    background: "#ffffff",
-    color: "#101828",
-    fontSize: "15px",
-    outline: "none",
+    borderRadius:
+      "10px",
+    background:
+      "#ffffff",
+    color:
+      "#101828",
+    fontSize:
+      "15px",
+    outline:
+      "none",
   };
 
   const sectionStyle = {
     padding: "24px",
     border:
       "1px solid #e4e7ec",
-    borderRadius: "14px",
-    background: "#ffffff",
+    borderRadius:
+      "14px",
+    background:
+      "#ffffff",
     boxShadow:
       "0 1px 2px rgba(16,24,40,0.03), 0 8px 24px rgba(16,24,40,0.04)",
     display: "flex",
@@ -482,17 +501,24 @@ export default function TeacherForm() {
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={
+        handleSubmit
+      }
       style={{
         width: "100%",
-        maxWidth: "650px",
+        maxWidth:
+          "650px",
         display: "flex",
-        flexDirection: "column",
+        flexDirection:
+          "column",
         gap: "24px",
       }}
     >
-      {/* 프로필 사진 */}
-      <section style={sectionStyle}>
+      <section
+        style={
+          sectionStyle
+        }
+      >
         <div>
           <h2
             style={{
@@ -504,10 +530,14 @@ export default function TeacherForm() {
 
           <p
             style={{
-              marginTop: "6px",
-              marginBottom: 0,
-              color: "#667085",
-              fontSize: "13px",
+              marginTop:
+                "6px",
+              marginBottom:
+                0,
+              color:
+                "#667085",
+              fontSize:
+                "13px",
             }}
           >
             메인 페이지와 강사 소개 화면에
@@ -517,42 +547,60 @@ export default function TeacherForm() {
 
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
+            display:
+              "flex",
+            alignItems:
+              "center",
             gap: "22px",
-            flexWrap: "wrap",
+            flexWrap:
+              "wrap",
           }}
         >
           <div
             style={{
-              width: "150px",
-              height: "150px",
-              borderRadius: "50%",
+              width:
+                "150px",
+              height:
+                "150px",
+              borderRadius:
+                "50%",
               border:
                 "1px solid #d6deea",
-              overflow: "hidden",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#f2f4f7",
-              color: "#667085",
+              overflow:
+                "hidden",
+              display:
+                "flex",
+              alignItems:
+                "center",
+              justifyContent:
+                "center",
+              background:
+                "#f2f4f7",
+              color:
+                "#667085",
               flexShrink: 0,
             }}
           >
             {imagePreview ? (
               <img
-                src={imagePreview}
+                src={
+                  imagePreview
+                }
                 alt="강사 프로필 사진 미리보기"
                 style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
+                  width:
+                    "100%",
+                  height:
+                    "100%",
+                  objectFit:
+                    "cover",
                 }}
               />
             ) : (
               <span
                 style={{
-                  fontSize: "13px",
+                  fontSize:
+                    "13px",
                 }}
               >
                 등록할 사진 없음
@@ -563,12 +611,15 @@ export default function TeacherForm() {
           <div
             style={{
               flex: 1,
-              minWidth: "240px",
+              minWidth:
+                "240px",
             }}
           >
             <label
               htmlFor="profileImage"
-              style={labelStyle}
+              style={
+                labelStyle
+              }
             >
               사진 선택
             </label>
@@ -580,20 +631,28 @@ export default function TeacherForm() {
               onChange={
                 handleImageChange
               }
-              disabled={loading}
+              disabled={
+                loading
+              }
               style={{
                 ...fieldStyle,
-                padding: "7px",
+                padding:
+                  "7px",
               }}
             />
 
             <p
               style={{
-                marginTop: "9px",
-                marginBottom: 0,
-                fontSize: "13px",
-                color: "#667085",
-                lineHeight: 1.6,
+                marginTop:
+                  "9px",
+                marginBottom:
+                  0,
+                fontSize:
+                  "13px",
+                color:
+                  "#667085",
+                lineHeight:
+                  1.6,
               }}
             >
               JPG, PNG, WEBP · 최대 5MB ·
@@ -603,35 +662,43 @@ export default function TeacherForm() {
         </div>
       </section>
 
-      {/* 로그인 / 초대 */}
-      <section style={sectionStyle}>
+      <section
+        style={
+          sectionStyle
+        }
+      >
         <div>
           <h2
             style={{
               margin: 0,
             }}
           >
-            로그인 / 초대 정보
+            로그인 정보
           </h2>
 
           <p
             style={{
-              marginBottom: 0,
-              color: "#667085",
-              lineHeight: 1.65,
+              marginBottom:
+                0,
+              color:
+                "#667085",
+              lineHeight:
+                1.65,
             }}
           >
-            관리자는 강사의 비밀번호를
-            입력하지 않습니다. 아래 이메일로
-            계정 설정 링크를 보내며, 강사가
-            직접 비밀번호를 설정합니다.
+            강사의 이메일을 입력하면
+            강사등록과 동시에 계정 설정
+            안내메일이 발송됩니다. 강사의
+            비밀번호는 관리자가 정하지 않습니다.
           </p>
         </div>
 
         <div>
           <label
             htmlFor="email"
-            style={labelStyle}
+            style={
+              labelStyle
+            }
           >
             이메일 *
           </label>
@@ -639,41 +706,60 @@ export default function TeacherForm() {
           <input
             id="email"
             type="email"
-            value={email}
-            onChange={(event) =>
+            value={
+              email
+            }
+            onChange={(
+              event
+            ) =>
               setEmail(
-                event.target.value
+                event.target
+                  .value
               )
             }
             placeholder="teacher@example.com"
             autoComplete="email"
             required
-            disabled={loading}
-            style={fieldStyle}
+            disabled={
+              loading
+            }
+            style={
+              fieldStyle
+            }
           />
         </div>
 
         <div
           style={{
-            padding: "14px 16px",
+            padding:
+              "14px 16px",
             border:
               "1px solid #dbe7ff",
-            borderRadius: "10px",
-            background: "#f7faff",
-            color: "#344054",
-            fontSize: "13px",
-            lineHeight: 1.65,
+            borderRadius:
+              "10px",
+            background:
+              "#f7faff",
+            color:
+              "#344054",
+            fontSize:
+              "13px",
+            lineHeight:
+              1.65,
           }}
         >
-          등록 후 강사에게 TALKLY 초대
-          이메일이 발송됩니다. 초대 링크에서
-          계정 설정을 완료하기 전까지는 강사
-          페이지 접근을 제한합니다.
+          등록 직후에는 관리자 강사관리에서
+          <strong> 등록 대기</strong>로 표시됩니다.
+          강사가 이메일에서 비밀번호 설정을
+          완료하면 자동으로
+          <strong> 활동중</strong>으로 변경됩니다.
         </div>
       </section>
 
-      {/* 기본 정보 */}
-      <section style={sectionStyle}>
+      <section
+        style={
+          sectionStyle
+        }
+      >
         <h2
           style={{
             margin: 0,
@@ -685,7 +771,9 @@ export default function TeacherForm() {
         <div>
           <label
             htmlFor="name"
-            style={labelStyle}
+            style={
+              labelStyle
+            }
           >
             강사 이름 *
           </label>
@@ -693,37 +781,55 @@ export default function TeacherForm() {
           <input
             id="name"
             value={name}
-            onChange={(event) =>
+            onChange={(
+              event
+            ) =>
               setName(
-                event.target.value
+                event.target
+                  .value
               )
             }
             placeholder="예: Daniel Smith"
             required
-            disabled={loading}
-            style={fieldStyle}
+            disabled={
+              loading
+            }
+            style={
+              fieldStyle
+            }
           />
         </div>
 
         <div>
           <label
             htmlFor="displayName"
-            style={labelStyle}
+            style={
+              labelStyle
+            }
           >
             표시 이름
           </label>
 
           <input
             id="displayName"
-            value={displayName}
-            onChange={(event) =>
+            value={
+              displayName
+            }
+            onChange={(
+              event
+            ) =>
               setDisplayName(
-                event.target.value
+                event.target
+                  .value
               )
             }
             placeholder="예: Daniel Teacher"
-            disabled={loading}
-            style={fieldStyle}
+            disabled={
+              loading
+            }
+            style={
+              fieldStyle
+            }
           />
 
           <small>
@@ -735,22 +841,32 @@ export default function TeacherForm() {
         <div>
           <label
             htmlFor="nationality"
-            style={labelStyle}
+            style={
+              labelStyle
+            }
           >
             국적 *
           </label>
 
           <select
             id="nationality"
-            value={nationality}
-            onChange={(event) => {
+            value={
+              nationality
+            }
+            onChange={(
+              event
+            ) => {
               const value =
-                event.target.value;
+                event.target
+                  .value;
 
-              setNationality(value);
+              setNationality(
+                value
+              );
 
               if (
-                value !== "기타"
+                value !==
+                "기타"
               ) {
                 setCustomNationality(
                   ""
@@ -758,8 +874,12 @@ export default function TeacherForm() {
               }
             }}
             required
-            disabled={loading}
-            style={fieldStyle}
+            disabled={
+              loading
+            }
+            style={
+              fieldStyle
+            }
           >
             <option value="">
               국적을 선택해주세요
@@ -768,8 +888,12 @@ export default function TeacherForm() {
             {NATIONALITIES.map(
               (item) => (
                 <option
-                  key={item}
-                  value={item}
+                  key={
+                    item
+                  }
+                  value={
+                    item
+                  }
                 >
                   {item}
                 </option>
@@ -783,7 +907,9 @@ export default function TeacherForm() {
           <div>
             <label
               htmlFor="customNationality"
-              style={labelStyle}
+              style={
+                labelStyle
+              }
             >
               기타 국적 *
             </label>
@@ -794,49 +920,65 @@ export default function TeacherForm() {
               value={
                 customNationality
               }
-              onChange={(event) =>
+              onChange={(
+                event
+              ) =>
                 setCustomNationality(
-                  event.target.value
+                  event.target
+                    .value
                 )
               }
               placeholder="예: 필리핀"
               required
-              disabled={loading}
-              style={fieldStyle}
+              disabled={
+                loading
+              }
+              style={
+                fieldStyle
+              }
             />
-
-            <small>
-              실제 국적명을 직접
-              입력해주세요.
-            </small>
           </div>
         )}
 
         <div>
           <label
             htmlFor="phone"
-            style={labelStyle}
+            style={
+              labelStyle
+            }
           >
             연락처
           </label>
 
           <input
             id="phone"
-            value={phone}
-            onChange={(event) =>
+            value={
+              phone
+            }
+            onChange={(
+              event
+            ) =>
               setPhone(
-                event.target.value
+                event.target
+                  .value
               )
             }
             placeholder="010-0000-0000"
-            disabled={loading}
-            style={fieldStyle}
+            disabled={
+              loading
+            }
+            style={
+              fieldStyle
+            }
           />
         </div>
       </section>
 
-      {/* 강사 프로필 */}
-      <section style={sectionStyle}>
+      <section
+        style={
+          sectionStyle
+        }
+      >
         <h2
           style={{
             margin: 0,
@@ -848,25 +990,35 @@ export default function TeacherForm() {
         <div>
           <label
             htmlFor="bio"
-            style={labelStyle}
+            style={
+              labelStyle
+            }
           >
             강사 소개
           </label>
 
           <textarea
             id="bio"
-            value={bio}
-            onChange={(event) =>
+            value={
+              bio
+            }
+            onChange={(
+              event
+            ) =>
               setBio(
-                event.target.value
+                event.target
+                  .value
               )
             }
             rows={5}
             placeholder="강사의 수업 경력과 특징 등을 입력해주세요."
-            disabled={loading}
+            disabled={
+              loading
+            }
             style={{
               ...fieldStyle,
-              resize: "vertical",
+              resize:
+                "vertical",
             }}
           />
         </div>
@@ -874,22 +1026,33 @@ export default function TeacherForm() {
         <div>
           <label
             htmlFor="specialties"
-            style={labelStyle}
+            style={
+              labelStyle
+            }
           >
             전문분야
           </label>
 
           <input
             id="specialties"
-            value={specialties}
-            onChange={(event) =>
+            value={
+              specialties
+            }
+            onChange={(
+              event
+            ) =>
               setSpecialties(
-                event.target.value
+                event.target
+                  .value
               )
             }
             placeholder="초등영어, 회화, 파닉스"
-            disabled={loading}
-            style={fieldStyle}
+            disabled={
+              loading
+            }
+            style={
+              fieldStyle
+            }
           />
 
           <small>
@@ -901,7 +1064,9 @@ export default function TeacherForm() {
         <div>
           <label
             htmlFor="yearsExperience"
-            style={labelStyle}
+            style={
+              labelStyle
+            }
           >
             경력(년)
           </label>
@@ -910,40 +1075,59 @@ export default function TeacherForm() {
             id="yearsExperience"
             type="number"
             min="0"
-            value={yearsExperience}
-            onChange={(event) =>
+            value={
+              yearsExperience
+            }
+            onChange={(
+              event
+            ) =>
               setYearsExperience(
-                event.target.value
+                event.target
+                  .value
               )
             }
             placeholder="예: 10"
-            disabled={loading}
-            style={fieldStyle}
+            disabled={
+              loading
+            }
+            style={
+              fieldStyle
+            }
           />
         </div>
 
         <div>
           <label
             htmlFor="education"
-            style={labelStyle}
+            style={
+              labelStyle
+            }
           >
             학력
           </label>
 
           <textarea
             id="education"
-            value={education}
-            onChange={(event) =>
+            value={
+              education
+            }
+            onChange={(
+              event
+            ) =>
               setEducation(
-                event.target.value
+                event.target
+                  .value
               )
             }
             rows={3}
             placeholder="예: University of California, English Education"
-            disabled={loading}
+            disabled={
+              loading
+            }
             style={{
               ...fieldStyle,
-              resize: "vertical",
+              resize:
+                "vertical",
             }}
           />
         </div>
@@ -951,25 +1135,35 @@ export default function TeacherForm() {
         <div>
           <label
             htmlFor="certifications"
-            style={labelStyle}
+            style={
+              labelStyle
+            }
           >
             자격 및 인증
           </label>
 
           <textarea
             id="certifications"
-            value={certifications}
-            onChange={(event) =>
+            value={
+              certifications
+            }
+            onChange={(
+              event
+            ) =>
               setCertifications(
-                event.target.value
+                event.target
+                  .value
               )
             }
             rows={3}
             placeholder="예: TESOL, TEFL"
-            disabled={loading}
+            disabled={
+              loading
+            }
             style={{
               ...fieldStyle,
-              resize: "vertical",
+              resize:
+                "vertical",
             }}
           />
         </div>
@@ -977,7 +1171,9 @@ export default function TeacherForm() {
         <div>
           <label
             htmlFor="hourlyRate"
-            style={labelStyle}
+            style={
+              labelStyle
+            }
           >
             시간당 수업료
           </label>
@@ -987,15 +1183,24 @@ export default function TeacherForm() {
             type="number"
             min="0"
             step="1000"
-            value={hourlyRate}
-            onChange={(event) =>
+            value={
+              hourlyRate
+            }
+            onChange={(
+              event
+            ) =>
               setHourlyRate(
-                event.target.value
+                event.target
+                  .value
               )
             }
             placeholder="예: 30000"
-            disabled={loading}
-            style={fieldStyle}
+            disabled={
+              loading
+            }
+            style={
+              fieldStyle
+            }
           />
         </div>
       </section>
@@ -1004,12 +1209,16 @@ export default function TeacherForm() {
         <div
           role="alert"
           style={{
-            padding: "14px",
+            padding:
+              "14px",
             border:
               "1px solid #d93025",
-            borderRadius: "8px",
-            color: "#b42318",
-            background: "#fef3f2",
+            borderRadius:
+              "8px",
+            color:
+              "#b42318",
+            background:
+              "#fef3f2",
           }}
         >
           {errorMessage}
@@ -1020,13 +1229,18 @@ export default function TeacherForm() {
         <div
           role="status"
           style={{
-            padding: "14px",
+            padding:
+              "14px",
             border:
               "1px solid #abefc6",
-            borderRadius: "8px",
-            color: "#067647",
-            background: "#ecfdf3",
-            lineHeight: 1.65,
+            borderRadius:
+              "8px",
+            color:
+              "#067647",
+            background:
+              "#ecfdf3",
+            lineHeight:
+              1.65,
           }}
         >
           {successMessage}
@@ -1035,18 +1249,25 @@ export default function TeacherForm() {
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={
+          loading
+        }
         style={{
-          padding: "15px",
+          padding:
+            "15px",
           border: "none",
-          borderRadius: "10px",
+          borderRadius:
+            "10px",
           background:
             loading
               ? "#98a2b3"
               : "#0a1f44",
-          color: "#ffffff",
-          fontSize: "16px",
-          fontWeight: 800,
+          color:
+            "#ffffff",
+          fontSize:
+            "16px",
+          fontWeight:
+            800,
           cursor:
             loading
               ? "default"
@@ -1054,8 +1275,8 @@ export default function TeacherForm() {
         }}
       >
         {loading
-          ? "강사 초대 중..."
-          : "강사 초대 이메일 발송"}
+          ? "강사등록 중..."
+          : "강사등록"}
       </button>
     </form>
   );
