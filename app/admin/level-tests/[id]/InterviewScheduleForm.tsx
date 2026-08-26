@@ -177,6 +177,54 @@ export default function InterviewScheduleForm({
       const supabase =
         await checkAdmin();
 
+      /*
+       * 중요:
+       * 화면의 interviewRequired prop만 믿지 않고
+       * 실제 DB에 관리자 판단이 저장되어 있는지 다시 확인합니다.
+       *
+       * 즉,
+       * 1) 관리자 판단에서 '원어민 추가 테스트 필요' 선택
+       * 2) '추가 테스트 대상으로 저장'
+       * 3) DB interview_required = true
+       * 4) 그 다음에만 일정 저장 가능
+       *
+       * 순서를 서버 데이터 기준으로 강제합니다.
+       */
+      const {
+        data: savedDecision,
+        error: savedDecisionError,
+      } = await supabase
+        .from("level_tests")
+        .select(`
+          id,
+          interview_required,
+          status
+        `)
+        .eq("id", levelTestId)
+        .maybeSingle();
+
+      if (savedDecisionError) {
+        setErrorMessage(
+          `원어민 추가 테스트 저장 상태 확인 실패: ${savedDecisionError.message} / code: ${savedDecisionError.code}`
+        );
+        return;
+      }
+
+      if (!savedDecision) {
+        setErrorMessage(
+          "레벨테스트 정보를 확인할 수 없습니다."
+        );
+        return;
+      }
+
+      if (!savedDecision.interview_required) {
+        setErrorMessage(
+          "먼저 위의 관리자 판단에서 '원어민 추가 테스트 필요'를 선택한 뒤 '추가 테스트 대상으로 저장' 버튼을 눌러주세요."
+        );
+        router.refresh();
+        return;
+      }
+
       const now =
         new Date().toISOString();
 
@@ -344,10 +392,10 @@ export default function InterviewScheduleForm({
             lineHeight: 1.7,
           }}
         >
-          현재 원어민 추가 테스트
-          대상이 아닙니다. 먼저 관리자
-          판단에서 추가 테스트 필요로
-          설정해주세요.
+          아직 원어민 추가 테스트 대상으로 저장되지 않았습니다.
+          먼저 위의 관리자 판단에서
+          &apos;원어민 추가 테스트 필요&apos;를 선택한 뒤
+          &apos;추가 테스트 대상으로 저장&apos; 버튼을 눌러주세요.
         </div>
       </section>
     );
