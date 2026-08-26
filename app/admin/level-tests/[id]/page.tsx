@@ -66,6 +66,31 @@ type InterviewRow = {
 type TeacherRow = {
   user_id: string;
   display_name: string | null;
+  nationality: string | null;
+};
+
+type ClassPreferenceRow = {
+  id: number;
+  level_test_id: number;
+  applicant_user_id: string;
+  child_id: number | null;
+  student_user_id: string | null;
+  student_name: string;
+  grade: string | null;
+  contact_phone: string | null;
+  student_personality: string | null;
+  preferred_teacher_nationality: string;
+  program_type: string;
+  intensive_type: string | null;
+  intensive_detail: string | null;
+  lessons_per_week: number;
+  preferred_days: string[];
+  lesson_duration_minutes: number;
+  preferred_time: string;
+  status: string;
+  admin_note: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export default async function AdminLevelTestDetailPage({
@@ -225,6 +250,59 @@ export default async function AdminLevelTestDetailPage({
   }
 
   /*
+   * 수업 희망 조건
+   *
+   * 레벨테스트 신청 과정에서 학부모/학생이 입력한
+   * 실제 수업 희망 조건을 관리자 상세 화면에서도
+   * 동일하게 확인하기 위한 조회입니다.
+   */
+  const {
+    data: classPreferenceData,
+    error: classPreferenceError,
+  } = await supabase
+    .from(
+      "level_test_class_preferences"
+    )
+    .select(`
+      id,
+      level_test_id,
+      applicant_user_id,
+      child_id,
+      student_user_id,
+      student_name,
+      grade,
+      contact_phone,
+      student_personality,
+      preferred_teacher_nationality,
+      program_type,
+      intensive_type,
+      intensive_detail,
+      lessons_per_week,
+      preferred_days,
+      lesson_duration_minutes,
+      preferred_time,
+      status,
+      admin_note,
+      created_at,
+      updated_at
+    `)
+    .eq(
+      "level_test_id",
+      levelTestId
+    )
+    .maybeSingle();
+
+  if (classPreferenceError) {
+    throw new Error(
+      `수업 희망 조건을 불러오지 못했습니다: ${classPreferenceError.message}`
+    );
+  }
+
+  const classPreference =
+    classPreferenceData as
+      ClassPreferenceRow | null;
+
+  /*
    * AI 테스트 응시 기록
    */
   const {
@@ -330,7 +408,8 @@ export default async function AdminLevelTestDetailPage({
     .from("teacher_profiles")
     .select(`
       user_id,
-      display_name
+      display_name,
+      nationality
     `)
     .eq("is_active", true)
     .order("display_name", {
@@ -344,11 +423,53 @@ export default async function AdminLevelTestDetailPage({
   }
 
   const teachers =
-    (teachersData ??
-      []) as TeacherRow[];
+    ((teachersData ??
+      []) as TeacherRow[])
+      .sort((a, b) => {
+        const aPriority =
+          isPhilippineNationality(
+            a.nationality
+          )
+            ? 0
+            : 1;
+
+        const bPriority =
+          isPhilippineNationality(
+            b.nationality
+          )
+            ? 0
+            : 1;
+
+        if (
+          aPriority !==
+          bPriority
+        ) {
+          return (
+            aPriority -
+            bPriority
+          );
+        }
+
+        return (
+          a.display_name ||
+          ""
+        ).localeCompare(
+          b.display_name ||
+            "",
+          "ko"
+        );
+      });
+
+  const hasClassPreference =
+    Boolean(classPreference);
 
   return (
     <main
+      data-has-class-preference={
+        hasClassPreference
+          ? "true"
+          : "false"
+      }
       style={{
         width: "100%",
         maxWidth: "1050px",
@@ -513,6 +634,166 @@ export default async function AdminLevelTestDetailPage({
               child.learning_goal
             }
           />
+        )}
+      </section>
+
+      <section
+        style={sectionStyle}
+      >
+        <SectionTitle
+          title="수업 및 화상레벨테스트 신청 정보"
+          description="학부모 또는 학생이 화상레벨테스트 신청 시 입력한 희망 정규수업 조건입니다."
+        />
+
+        {classPreference ? (
+          <>
+            <div
+              style={infoGridStyle}
+            >
+              <InfoItem
+                label="신청 상태"
+                value={getPreferenceStatusLabel(
+                  classPreference.status
+                )}
+              />
+
+              <InfoItem
+                label="연락처"
+                value={
+                  classPreference.contact_phone ||
+                  parent?.phone ||
+                  "-"
+                }
+              />
+
+              <InfoItem
+                label="희망 정규수업 강사 국적"
+                value={getTeacherNationalityLabel(
+                  classPreference.preferred_teacher_nationality
+                )}
+              />
+
+              <InfoItem
+                label="희망 수업과정"
+                value={getProgramTypeLabel(
+                  classPreference.program_type
+                )}
+              />
+
+              <InfoItem
+                label="단기집중 유형"
+                value={getIntensiveTypeLabel(
+                  classPreference.intensive_type
+                )}
+              />
+
+              <InfoItem
+                label="주당 수업 횟수"
+                value={`주 ${classPreference.lessons_per_week}회`}
+              />
+
+              <InfoItem
+                label="희망 수업요일"
+                value={getPreferredDaysLabel(
+                  classPreference.preferred_days
+                )}
+              />
+
+              <InfoItem
+                label="회당 수업시간"
+                value={`${classPreference.lesson_duration_minutes}분`}
+              />
+
+              <InfoItem
+                label="희망 시작시간"
+                value={formatPreferredTime(
+                  classPreference.preferred_time
+                )}
+              />
+
+              <InfoItem
+                label="신청일"
+                value={formatDateTime(
+                  classPreference.created_at
+                )}
+              />
+            </div>
+
+            <NoteBox
+              label="수강학생 성향"
+              value={
+                classPreference.student_personality ||
+                "등록된 학생 성향 정보가 없습니다."
+              }
+            />
+
+            {classPreference.intensive_detail && (
+              <NoteBox
+                label="단기집중 세부 목적"
+                value={
+                  classPreference.intensive_detail
+                }
+              />
+            )}
+
+            {classPreference.admin_note && (
+              <NoteBox
+                label="신청정보 관리자 메모"
+                value={
+                  classPreference.admin_note
+                }
+              />
+            )}
+
+            <div
+              style={{
+                marginTop: "22px",
+                padding: "18px",
+                border:
+                  "1px solid #dbe7ff",
+                borderRadius: "12px",
+                background: "#f5f8ff",
+                color: "#475467",
+                fontSize: "12px",
+                lineHeight: 1.75,
+              }}
+            >
+              <strong
+                style={{
+                  color: "#2f6fed",
+                }}
+              >
+                운영 참고
+              </strong>
+              <div
+                style={{
+                  marginTop: "7px",
+                }}
+              >
+                위의 희망 강사 국적은 향후 정규수업 담당강사에 대한
+                희망조건입니다. 무료 화상레벨테스트는 기본적으로
+                필리핀 원어민 강사가 진행하며, 실제 정규수업 담당강사는
+                수업시간과 강사 가능 일정에 따라 달라질 수 있습니다.
+              </div>
+            </div>
+          </>
+        ) : (
+          <div
+            style={{
+              marginTop: "20px",
+              padding: "22px",
+              border:
+                "1px solid #e4e7ec",
+              borderRadius: "12px",
+              background: "#f9fafb",
+              color: "#667085",
+              fontSize: "13px",
+              lineHeight: 1.7,
+            }}
+          >
+            아직 학부모 또는 학생이 제출한 화상레벨테스트 신청 및
+            희망 정규수업 정보가 없습니다.
+          </div>
         )}
       </section>
 
@@ -1227,6 +1508,9 @@ function getInterviewStatusLabel(
   }
 
   switch (status) {
+    case "requested":
+      return "신규 신청";
+
     case "scheduling":
       return "일정 협의 중";
 
@@ -1248,6 +1532,168 @@ function getInterviewStatusLabel(
     default:
       return status;
   }
+}
+
+function isPhilippineNationality(
+  value: string | null
+) {
+  if (!value) {
+    return false;
+  }
+
+  const normalized =
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]/g, "");
+
+  return [
+    "philippines",
+    "philippine",
+    "filipino",
+    "필리핀",
+  ].includes(normalized);
+}
+
+function getPreferenceStatusLabel(
+  status: string
+) {
+  switch (status) {
+    case "submitted":
+      return "신청 접수";
+
+    case "reviewing":
+      return "관리자 확인 중";
+
+    case "consulted":
+      return "상담 완료";
+
+    case "scheduled":
+      return "일정 확정";
+
+    case "cancelled":
+      return "취소";
+
+    default:
+      return status || "-";
+  }
+}
+
+function getTeacherNationalityLabel(
+  value: string
+) {
+  switch (value) {
+    case "philippines":
+      return "필리핀";
+
+    case "south_africa":
+      return "남아프리카공화국";
+
+    case "north_america":
+      return "북미";
+
+    default:
+      return value || "-";
+  }
+}
+
+function getProgramTypeLabel(
+  value: string
+) {
+  switch (value) {
+    case "general":
+      return "일반과정";
+
+    case "intensive":
+      return "단기집중과정";
+
+    default:
+      return value || "-";
+  }
+}
+
+function getIntensiveTypeLabel(
+  value: string | null
+) {
+  if (!value) {
+    return "-";
+  }
+
+  switch (value) {
+    case "debate":
+      return "영어토론대회";
+
+    case "english_test":
+      return "공인영어시험";
+
+    case "interview":
+      return "영어면접";
+
+    case "other":
+      return "기타 단기집중";
+
+    default:
+      return value;
+  }
+}
+
+function getPreferredDaysLabel(
+  days: string[]
+) {
+  if (!Array.isArray(days) || days.length === 0) {
+    return "-";
+  }
+
+  const labels: Record<string, string> = {
+    mon: "월",
+    tue: "화",
+    wed: "수",
+    thu: "목",
+    fri: "금",
+    sat: "토",
+    sun: "일",
+  };
+
+  return days
+    .map(
+      (day) =>
+        labels[day] || day
+    )
+    .join(" · ");
+}
+
+function formatPreferredTime(
+  value: string
+) {
+  if (!value) {
+    return "-";
+  }
+
+  const [
+    hourText,
+    minute = "00",
+  ] = value.split(":");
+
+  const hour =
+    Number(hourText);
+
+  if (Number.isNaN(hour)) {
+    return value;
+  }
+
+  const period =
+    hour < 12
+      ? "오전"
+      : "오후";
+
+  const displayHour =
+    hour === 0
+      ? 12
+      : hour > 12
+        ? hour - 12
+        : hour;
+
+  return `${period} ${displayHour}:${minute}`;
 }
 
 function formatLevelScore(

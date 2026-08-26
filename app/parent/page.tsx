@@ -59,6 +59,17 @@ type Teacher = {
   display_name: string | null;
 };
 
+type LevelTest = {
+  id: number;
+  child_id: number | null;
+  status: string;
+  ai_status: string;
+  interview_required: boolean;
+  interview_status: string | null;
+  final_level: string | null;
+  created_at: string;
+};
+
 export default async function ParentPage() {
   const supabase = await createClient();
 
@@ -97,6 +108,32 @@ export default async function ParentPage() {
 
   const children = (childData ?? []) as Child[];
   const childIds = children.map((child) => child.id);
+
+  let levelTests: LevelTest[] = [];
+
+  if (childIds.length > 0) {
+    const { data, error } = await supabase
+      .from("level_tests")
+      .select(`
+        id,
+        child_id,
+        status,
+        ai_status,
+        interview_required,
+        interview_status,
+        final_level,
+        created_at
+      `)
+      .in("child_id", childIds)
+      .eq("parent_user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    levelTests = (data ?? []) as LevelTest[];
+  }
 
   let enrollments: Enrollment[] = [];
 
@@ -371,6 +408,83 @@ export default async function ParentPage() {
     return (
       scores.reduce((sum, score) => sum + (score ?? 0), 0) / scores.length
     ).toFixed(1);
+  }
+
+  function getLatestLevelTest(childId: number) {
+    return (
+      levelTests.find((levelTest) => levelTest.child_id === childId) ?? null
+    );
+  }
+
+  function getLevelTestButtonLabel(levelTest: LevelTest | null) {
+    if (!levelTest) {
+      return "무료 레벨테스트";
+    }
+
+    if (
+      levelTest.final_level ||
+      levelTest.status === "completed"
+    ) {
+      return "최종 레벨 보기";
+    }
+
+    if (
+      levelTest.interview_status === "completed" ||
+      levelTest.status === "interview_completed"
+    ) {
+      return "화상테스트 결과";
+    }
+
+    if (
+      levelTest.interview_status === "in_progress"
+    ) {
+      return "화상테스트 진행 중";
+    }
+
+    if (
+      levelTest.interview_status === "scheduled" ||
+      levelTest.status === "interview_scheduled"
+    ) {
+      return "화상테스트 일정";
+    }
+
+    if (
+      levelTest.interview_status === "scheduling"
+    ) {
+      return "화상테스트 일정 협의";
+    }
+
+    if (
+      levelTest.interview_status === "requested" ||
+      levelTest.interview_required
+    ) {
+      return "화상테스트 신청완료";
+    }
+
+    if (levelTest.ai_status === "in_progress") {
+      return "레벨테스트 계속하기";
+    }
+
+    if (
+      levelTest.ai_status === "completed" ||
+      levelTest.status === "admin_review" ||
+      levelTest.status === "interview_required"
+    ) {
+      return "결과 · 화상테스트";
+    }
+
+    return "레벨테스트 확인";
+  }
+
+  function getLevelTestHref(
+    childId: number,
+    levelTest: LevelTest | null
+  ) {
+    if (levelTest) {
+      return `/parent/level-tests/${levelTest.id}`;
+    }
+
+    return `/parent/level-tests/new?studentMode=1&childId=${childId}`;
   }
 
   const nextSessionChild = getChildBySession(nextSession);
@@ -783,6 +897,9 @@ export default async function ParentPage() {
                   childSessionIds.has(evaluation.class_session_id)
                 );
 
+                const latestLevelTest =
+                  getLatestLevelTest(child.id);
+
                 return (
                   <div
                     key={child.id}
@@ -856,6 +973,16 @@ export default async function ParentPage() {
                         className="talkly-button talkly-button-primary"
                       >
                         학습평가
+                      </Link>
+
+                      <Link
+                        href={getLevelTestHref(
+                          child.id,
+                          latestLevelTest
+                        )}
+                        className="talkly-button talkly-button-secondary"
+                      >
+                        {getLevelTestButtonLabel(latestLevelTest)}
                       </Link>
                     </div>
                   </div>

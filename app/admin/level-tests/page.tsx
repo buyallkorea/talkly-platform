@@ -98,6 +98,9 @@ function getInterviewStatusLabel(
   }
 
   switch (status) {
+    case "requested":
+      return "신규 신청";
+
     case "scheduling":
       return "일정 협의 중";
 
@@ -232,12 +235,12 @@ export default async function AdminLevelTestsPage() {
       row.ai_status !== "completed"
   ).length;
 
-  const interviewRequiredCount =
+  const newInterviewRequestCount =
     rows.filter(
       (row) =>
         row.interview_required &&
-        row.interview_status !==
-          "completed"
+        row.interview_status ===
+          "requested"
     ).length;
 
   const completedCount = rows.filter(
@@ -315,9 +318,9 @@ export default async function AdminLevelTestsPage() {
         />
 
         <SummaryCard
-          label="원어민 테스트 필요"
-          value={interviewRequiredCount}
-          description="추가 확인 대상"
+          label="화상테스트 신규 신청"
+          value={newInterviewRequestCount}
+          description="관리자 확인이 필요한 신규 신청"
         />
 
         <SummaryCard
@@ -355,11 +358,12 @@ export default async function AdminLevelTestsPage() {
             lineHeight: 1.8,
           }}
         >
-          AI 레벨테스트를 기본으로 진행하고,
-          관리자가 결과를 검토하여 추가 확인이
-          필요한 학생에게만 원어민 강사의 화상
-          레벨테스트를 진행합니다. 최종 레벨은
-          관리자 검토 후 확정합니다.
+          AI 레벨테스트 결과를 확인한 뒤 학생 또는
+          학부모가 무료 원어민 화상레벨테스트를
+          신청할 수 있습니다. 신규 신청은 이 화면에서
+          확인하고, 상세 관리에서 신청 희망정보 확인,
+          일정 협의, 강사 배정과 결과 입력을 진행합니다.
+          최종 레벨은 관리자 검토 후 확정합니다.
         </p>
       </section>
 
@@ -495,12 +499,21 @@ export default async function AdminLevelTestsPage() {
                         )
                       : undefined;
 
+                  const isNewInterviewRequest =
+                    row.interview_required &&
+                    row.interview_status ===
+                      "requested";
+
                   return (
                     <tr
                       key={row.id}
                       style={{
                         borderTop:
                           "1px solid #f2f4f7",
+                        background:
+                          isNewInterviewRequest
+                            ? "#fffdf5"
+                            : "#ffffff",
                       }}
                     >
                       <TableCell>
@@ -513,6 +526,23 @@ export default async function AdminLevelTestsPage() {
                         >
                           {child?.name ??
                             "학생 정보 없음"}
+
+                          {isNewInterviewRequest && (
+                            <span
+                              style={{
+                                marginLeft: "7px",
+                                padding: "3px 7px",
+                                borderRadius: "999px",
+                                background: "#fff4cc",
+                                color: "#8a6100",
+                                fontSize: "9px",
+                                fontWeight: 900,
+                                verticalAlign: "middle",
+                              }}
+                            >
+                              화상테스트 신규
+                            </span>
+                          )}
                         </div>
 
                         <div

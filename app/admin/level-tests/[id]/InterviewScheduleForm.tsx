@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase-browser";
 type TeacherOption = {
   user_id: string;
   display_name: string | null;
+  nationality: string | null;
 };
 
 type InterviewData = {
@@ -433,12 +434,33 @@ export default function InterviewScheduleForm({
                     teacher.user_id
                   }
                 >
-                  {teacher.display_name ||
-                    teacher.user_id}
+                  {getTeacherOptionLabel(
+                    teacher
+                  )}
                 </option>
               )
             )}
           </select>
+
+          <div
+            style={{
+              marginTop: "10px",
+              padding: "12px 14px",
+              border:
+                "1px solid #dbe7ff",
+              borderRadius: "9px",
+              background: "#f5f8ff",
+              color: "#475467",
+              fontSize: "11px",
+              lineHeight: 1.7,
+            }}
+          >
+            무료 화상레벨테스트는 기본적으로
+            필리핀 원어민 강사가 진행합니다.
+            필리핀 강사를 목록 상단에 우선 표시하며,
+            강사 사정에 따라 다른 국적의 강사를
+            선택할 수도 있습니다.
+          </div>
         </div>
 
         <div
@@ -686,6 +708,97 @@ export default function InterviewScheduleForm({
       </form>
     </section>
   );
+}
+
+function getTeacherOptionLabel(
+  teacher: TeacherOption
+) {
+  const name =
+    teacher.display_name ||
+    teacher.user_id;
+
+  const nationality =
+    getNationalityLabel(
+      teacher.nationality
+    );
+
+  const preferred =
+    isPhilippineNationality(
+      teacher.nationality
+    )
+      ? " · 레벨테스트 우선"
+      : "";
+
+  return `${name} · ${nationality}${preferred}`;
+}
+
+function getNationalityLabel(
+  value: string | null
+) {
+  if (!value) {
+    return "국적 미등록";
+  }
+
+  const normalized =
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]/g, "");
+
+  if (
+    [
+      "philippines",
+      "philippine",
+      "filipino",
+      "필리핀",
+    ].includes(normalized)
+  ) {
+    return "필리핀";
+  }
+
+  if (
+    [
+      "southafrica",
+      "southafrican",
+      "남아공",
+      "남아프리카공화국",
+    ].includes(normalized)
+  ) {
+    return "남아공";
+  }
+
+  if (
+    [
+      "northamerica",
+      "northamerican",
+      "북미",
+    ].includes(normalized)
+  ) {
+    return "북미";
+  }
+
+  return value;
+}
+
+function isPhilippineNationality(
+  value: string | null
+) {
+  if (!value) {
+    return false;
+  }
+
+  const normalized =
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]/g, "");
+
+  return [
+    "philippines",
+    "philippine",
+    "filipino",
+    "필리핀",
+  ].includes(normalized);
 }
 
 function toLocalDateTimeInput(
