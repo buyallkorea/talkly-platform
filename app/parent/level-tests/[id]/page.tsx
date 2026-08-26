@@ -19,6 +19,20 @@ type ChildRow = {
   school_name: string | null;
 };
 
+type AttemptRow = {
+  id: number;
+  status: string;
+  grammar_score: number | null;
+  listening_score: number | null;
+  total_score: number | null;
+  grammar_level: number | null;
+  listening_level: number | null;
+  suggested_level: string | null;
+  confidence: number | null;
+  started_at: string | null;
+  completed_at: string | null;
+};
+
 export default async function ParentLevelTestDetailPage({
   params,
 }: PageProps) {
@@ -37,6 +51,11 @@ export default async function ParentLevelTestDetailPage({
   const supabase =
     await createClient();
 
+  /*
+   * =====================================================
+   * 1. 로그인 확인
+   * =====================================================
+   */
   const {
     data: { user },
   } =
@@ -46,6 +65,11 @@ export default async function ParentLevelTestDetailPage({
     redirect("/login");
   }
 
+  /*
+   * =====================================================
+   * 2. 학부모 / 학생 확인
+   * =====================================================
+   */
   const {
     data: profile,
     error: profileError,
@@ -58,8 +82,10 @@ export default async function ParentLevelTestDetailPage({
   if (
     profileError ||
     !profile ||
-    (profile.role !== "parent" &&
-      profile.role !== "student")
+    (
+      profile.role !== "parent" &&
+      profile.role !== "student"
+    )
   ) {
     redirect("/");
   }
@@ -67,6 +93,11 @@ export default async function ParentLevelTestDetailPage({
   const isStudent =
     profile.role === "student";
 
+  /*
+   * =====================================================
+   * 3. 레벨테스트 본체
+   * =====================================================
+   */
   const {
     data: levelTest,
     error: levelTestError,
@@ -90,6 +121,8 @@ export default async function ParentLevelTestDetailPage({
       test_type,
       target_group,
 
+      score,
+
       ai_status,
       ai_suggested_level,
       ai_confidence,
@@ -97,12 +130,16 @@ export default async function ParentLevelTestDetailPage({
       interview_required,
       interview_status,
 
+      teacher_suggested_level,
       final_level,
 
       created_at,
       updated_at
     `)
-    .eq("id", levelTestId)
+    .eq(
+      "id",
+      levelTestId
+    )
     .maybeSingle();
 
   if (levelTestError) {
@@ -116,15 +153,16 @@ export default async function ParentLevelTestDetailPage({
   }
 
   /*
-   * 접근 권한 확인
+   * =====================================================
+   * 4. 접근 권한 확인
    *
    * 학부모:
-   * 본인이 신청한 레벨테스트만 접근할 수 있습니다.
+   * 본인이 신청한 레벨테스트
    *
    * 학생:
-   * level_tests.student_user_id가 본인이거나,
-   * 연결된 child_id의 학생 계정이 본인인 경우에만
-   * 접근할 수 있습니다.
+   * 본인 student_user_id 또는
+   * child 연결 학생
+   * =====================================================
    */
   if (!isStudent) {
     if (
@@ -183,29 +221,27 @@ export default async function ParentLevelTestDetailPage({
   }
 
   /*
-   * 기존 TALKLY 자녀와 연결된
-   * 레벨테스트라면 children 정보도
-   * 보조적으로 불러옵니다.
-   *
-   * 직접 입력 신청인 경우
-   * child_id가 null이므로 조회하지 않습니다.
+   * =====================================================
+   * 5. 자녀 정보
+   * =====================================================
    */
-  let child: ChildRow | null =
-    null;
+  let child:
+    ChildRow | null = null;
 
   if (levelTest.child_id) {
-    let childQuery = supabase
-      .from("children")
-      .select(`
-        id,
-        name,
-        grade,
-        school_name
-      `)
-      .eq(
-        "id",
-        levelTest.child_id
-      );
+    let childQuery =
+      supabase
+        .from("children")
+        .select(`
+          id,
+          name,
+          grade,
+          school_name
+        `)
+        .eq(
+          "id",
+          levelTest.child_id
+        );
 
     if (!isStudent) {
       childQuery =
@@ -228,16 +264,13 @@ export default async function ParentLevelTestDetailPage({
     }
 
     child =
-      childData as ChildRow | null;
+      childData as
+        ChildRow | null;
   }
 
   /*
-   * 레벨테스트 신청 당시 저장된 정보를
-   * 우선 사용합니다.
-   *
-   * 과거 데이터처럼 student_name 등이
-   * 없는 경우에만 children 정보를
-   * fallback으로 사용합니다.
+   * 신청 당시 저장된 정보를 우선 사용하고,
+   * 과거 데이터는 children 정보를 fallback으로 사용
    */
   const studentName =
     levelTest.student_name ||
@@ -258,13 +291,17 @@ export default async function ParentLevelTestDetailPage({
     levelTest.student_age
       ? `${levelTest.student_age}세`
       : levelTest.student_birth_date
-      ? `${calculateAge(
-          levelTest.student_birth_date
-        )}세`
-      : "-";
+        ? `${calculateAge(
+            levelTest.student_birth_date
+          )}세`
+        : "-";
 
   /*
-   * 가장 최근 응시 기록을 확인합니다.
+   * =====================================================
+   * 6. 가장 최근 응시 기록
+   *
+   * 온라인 결과도 여기서 읽습니다.
+   * =====================================================
    */
   const {
     data: attemptsData,
@@ -274,16 +311,32 @@ export default async function ParentLevelTestDetailPage({
     .select(`
       id,
       status,
+
+      grammar_score,
+      listening_score,
+      total_score,
+
+      grammar_level,
+      listening_level,
+
+      suggested_level,
+      confidence,
+
       started_at,
-      completed_at
+      completed_at,
+
+      created_at
     `)
     .eq(
       "level_test_id",
       levelTestId
     )
-    .order("created_at", {
-      ascending: false,
-    });
+    .order(
+      "created_at",
+      {
+        ascending: false,
+      }
+    );
 
   if (attemptsError) {
     throw new Error(
@@ -291,14 +344,22 @@ export default async function ParentLevelTestDetailPage({
     );
   }
 
-  const latestAttempt =
+  const latestAttempt:
+    AttemptRow | null =
     attemptsData &&
     attemptsData.length > 0
       ? attemptsData[0]
       : null;
 
+  /*
+   * =====================================================
+   * 7. 온라인 테스트 완료 여부
+   * =====================================================
+   */
   const completed =
     levelTest.ai_status ===
+      "completed" ||
+    latestAttempt?.status ===
       "completed" ||
     levelTest.status ===
       "admin_review" ||
@@ -310,6 +371,96 @@ export default async function ParentLevelTestDetailPage({
       "interview_completed" ||
     levelTest.status ===
       "completed";
+
+  /*
+   * 실제 화면에 보여줄 온라인 결과
+   *
+   * attempt 결과를 우선 사용하고,
+   * 요약값은 level_tests를 fallback으로 사용
+   */
+  const grammarScore =
+    latestAttempt
+      ?.grammar_score ??
+    null;
+
+  const listeningScore =
+    latestAttempt
+      ?.listening_score ??
+    null;
+
+  const totalScore =
+    latestAttempt
+      ?.total_score ??
+    levelTest.score ??
+    null;
+
+  const grammarLevel =
+    latestAttempt
+      ?.grammar_level ??
+    null;
+
+  const listeningLevel =
+    latestAttempt
+      ?.listening_level ??
+    null;
+
+  const suggestedLevel =
+    latestAttempt
+      ?.suggested_level ||
+    levelTest.ai_suggested_level ||
+    null;
+
+  const confidence =
+    latestAttempt
+      ?.confidence ??
+    levelTest.ai_confidence ??
+    null;
+
+  const hasResult =
+    completed &&
+    (
+      totalScore !== null ||
+      grammarScore !== null ||
+      listeningScore !== null ||
+      suggestedLevel !== null
+    );
+
+  /*
+   * =====================================================
+   * 8. 화상레벨테스트 신청 여부 확인
+   *
+   * 우리가 새로 만든 희망 수업계획 테이블을
+   * 읽기만 합니다.
+   *
+   * 아직 신청 페이지는 다음 작업에서 만듭니다.
+   * =====================================================
+   */
+  const {
+    data: preference,
+    error: preferenceError,
+  } = await supabase
+    .from(
+      "level_test_class_preferences"
+    )
+    .select(`
+      id,
+      status,
+      created_at
+    `)
+    .eq(
+      "level_test_id",
+      levelTestId
+    )
+    .maybeSingle();
+
+  /*
+   * 아직 RLS를 다음 작업에서 정리할 예정이므로
+   * 권한 문제로 조회가 실패하더라도
+   * 기존 레벨테스트 페이지 전체를 깨뜨리지 않습니다.
+   */
+  const hasInterviewRequest =
+    !preferenceError &&
+    Boolean(preference);
 
   return (
     <main
@@ -336,9 +487,13 @@ export default async function ParentLevelTestDetailPage({
         }}
       >
         {isStudent
-          ? "← 학생 마이페이지"
-          : "← 대시보드"}
+          ? "← 내 강의실"
+          : "← 내 강의실"}
       </Link>
+
+      {/* ================================================= */}
+      {/* HEADER */}
+      {/* ================================================= */}
 
       <div
         style={{
@@ -376,7 +531,7 @@ export default async function ParentLevelTestDetailPage({
                 "-0.04em",
             }}
           >
-            AI 레벨테스트
+            온라인 레벨테스트
           </h1>
 
           <p
@@ -388,21 +543,25 @@ export default async function ParentLevelTestDetailPage({
               lineHeight: 1.8,
             }}
           >
-            문법과 리스닝을
-            중심으로 현재 영어
-            수준을 확인합니다.
+            Grammar와 Listening을
+            중심으로 현재 영어 수준을
+            확인합니다.
           </p>
         </div>
 
         <StatusBadge
           label={getParentStatusLabel(
             levelTest.status,
-            levelTest.ai_status
+            levelTest.ai_status,
+            hasInterviewRequest
           )}
         />
       </div>
 
+      {/* ================================================= */}
       {/* 학생 정보 */}
+      {/* ================================================= */}
+
       <section
         style={{
           marginTop: "28px",
@@ -457,7 +616,7 @@ export default async function ParentLevelTestDetailPage({
             marginTop: "20px",
             display: "grid",
             gridTemplateColumns:
-              "repeat(4, minmax(0, 1fr))",
+              "repeat(auto-fit, minmax(150px, 1fr))",
             gap: "16px",
           }}
         >
@@ -499,7 +658,10 @@ export default async function ParentLevelTestDetailPage({
         </div>
       </section>
 
-      {/* 선택 입력 정보 */}
+      {/* ================================================= */}
+      {/* 학습정보 */}
+      {/* ================================================= */}
+
       {(levelTest.learning_history ||
         levelTest.learning_goal) && (
         <section
@@ -544,129 +706,399 @@ export default async function ParentLevelTestDetailPage({
         </section>
       )}
 
-      {/* 응시 전 안내 */}
+      {/* ================================================= */}
+      {/* 응시 전 */}
+      {/* ================================================= */}
+
       {!completed && (
-        <section
-          style={{
-            marginTop: "22px",
-            padding: "22px",
-            border:
-              "1px solid #dbe7ff",
-            borderRadius:
-              "14px",
-            background:
-              "#f5f8ff",
-          }}
-        >
-          <div
+        <>
+          <section
             style={{
-              color: "#2f6fed",
-              fontSize: "13px",
-              fontWeight: 900,
+              marginTop: "22px",
+              padding: "22px",
+              border:
+                "1px solid #dbe7ff",
+              borderRadius:
+                "14px",
+              background:
+                "#f5f8ff",
             }}
           >
-            테스트 전 확인해주세요
-          </div>
-
-          <div
-            style={{
-              marginTop: "12px",
-              display: "flex",
-              flexDirection:
-                "column",
-              gap: "8px",
-              color: "#667085",
-              fontSize: "12px",
-              lineHeight: 1.7,
-            }}
-          >
-            <div>
-              • 실제 테스트를 받을
-              학생이 직접 문제를
-              풀어주세요.
+            <div
+              style={{
+                color: "#2f6fed",
+                fontSize: "13px",
+                fontWeight: 900,
+              }}
+            >
+              테스트 전 확인해주세요
             </div>
 
-            <div>
-              • 조용한 장소에서
-              테스트를 진행해주세요.
-            </div>
+            <div
+              style={{
+                marginTop: "12px",
+                display: "flex",
+                flexDirection:
+                  "column",
+                gap: "8px",
+                color: "#667085",
+                fontSize: "12px",
+                lineHeight: 1.7,
+              }}
+            >
+              <div>
+                • 실제 테스트를 받을 학생이
+                직접 문제를 풀어주세요.
+              </div>
 
-            <div>
-              • 리스닝 문제가 있으므로
-              스피커 또는 이어폰을
-              준비해주세요.
-            </div>
+              <div>
+                • 조용한 장소에서 테스트를
+                진행해주세요.
+              </div>
 
-            <div>
-              • 다른 사람의 도움이나
-              번역기를 사용하면 정확한
-              레벨 판단이 어렵습니다.
-            </div>
+              <div>
+                • Listening 문제가 있으므로
+                스피커 또는 이어폰을
+                준비해주세요.
+              </div>
 
-            <div>
-              • 테스트 결과는 TALKLY
-              내부 레벨 판단과 상담
-              자료로 사용합니다.
+              <div>
+                • 다른 사람의 도움이나
+                번역기를 사용하면 정확한
+                레벨 판단이 어렵습니다.
+              </div>
+
+              <div>
+                • 테스트 결과는 완료 즉시
+                내 강의실에서 확인할 수
+                있습니다.
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+
+          <LevelTestStartPanel
+            levelTestId={
+              levelTest.id
+            }
+            parentUserId={
+              levelTest.parent_user_id
+            }
+            childId={
+              levelTest.child_id
+            }
+            targetGroup={
+              levelTest.target_group
+            }
+            aiStatus={
+              levelTest.ai_status
+            }
+            status={
+              levelTest.status
+            }
+            latestAttempt={
+              latestAttempt
+                ? {
+                    id:
+                      latestAttempt.id,
+                    status:
+                      latestAttempt.status,
+                  }
+                : null
+            }
+          />
+        </>
       )}
 
-      {/* 테스트 시작 */}
-      <LevelTestStartPanel
-        levelTestId={
-          levelTest.id
-        }
-        parentUserId={
-          levelTest.parent_user_id
-        }
-        childId={
-          levelTest.child_id
-        }
-        targetGroup={
-          levelTest.target_group
-        }
-        aiStatus={
-          levelTest.ai_status
-        }
-        status={
-          levelTest.status
-        }
-        latestAttempt={
-          latestAttempt
-            ? {
-                id:
-                  latestAttempt.id,
-                status:
-                  latestAttempt.status,
-              }
-            : null
-        }
-      />
+      {/* ================================================= */}
+      {/* 온라인 테스트 결과 */}
+      {/* ================================================= */}
 
-      {/* 완료 후 안내 */}
       {completed && (
         <section
           style={{
             marginTop: "22px",
-            padding: "24px",
+            padding: "28px",
             border:
-              "1px solid #e4e7ec",
-            borderRadius:
-              "16px",
+              "1px solid #dbe7ff",
+            borderRadius: "18px",
             background:
-              "#ffffff",
+              "linear-gradient(135deg, #ffffff 0%, #f4f8ff 100%)",
+            boxShadow:
+              "0 12px 34px rgba(47,111,237,0.07)",
           }}
         >
-          <h2
+          <div
             style={{
-              margin: 0,
-              color: "#101828",
-              fontSize: "19px",
+              display: "flex",
+              justifyContent:
+                "space-between",
+              alignItems:
+                "flex-start",
+              gap: "18px",
+              flexWrap: "wrap",
             }}
           >
-            테스트가 완료되었습니다
-          </h2>
+            <div>
+              <div
+                style={{
+                  color: "#2f6fed",
+                  fontSize: "11px",
+                  fontWeight: 900,
+                  letterSpacing:
+                    "0.08em",
+                }}
+              >
+                ONLINE LEVEL TEST RESULT
+              </div>
+
+              <h2
+                style={{
+                  margin:
+                    "8px 0 0",
+                  color: "#101828",
+                  fontSize: "25px",
+                  letterSpacing:
+                    "-0.03em",
+                }}
+              >
+                {studentName}님의
+                온라인 레벨테스트 결과
+              </h2>
+
+              <p
+                style={{
+                  margin:
+                    "10px 0 0",
+                  color: "#667085",
+                  fontSize: "13px",
+                  lineHeight: 1.75,
+                }}
+              >
+                Grammar와 Listening의
+                적응형 테스트 결과를
+                종합한 TALKLY 온라인
+                추천 레벨입니다.
+              </p>
+            </div>
+
+            {suggestedLevel && (
+              <div
+                style={{
+                  minWidth: "120px",
+                  padding:
+                    "16px 18px",
+                  borderRadius:
+                    "14px",
+                  background:
+                    "#2f6fed",
+                  color: "#ffffff",
+                  textAlign:
+                    "center",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize:
+                      "10px",
+                    fontWeight: 800,
+                    opacity: 0.82,
+                  }}
+                >
+                  RECOMMENDED
+                </div>
+
+                <div
+                  style={{
+                    marginTop:
+                      "5px",
+                    fontSize:
+                      "24px",
+                    fontWeight: 900,
+                  }}
+                >
+                  {suggestedLevel}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {hasResult ? (
+            <>
+              <div
+                style={{
+                  marginTop: "24px",
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit, minmax(135px, 1fr))",
+                  gap: "12px",
+                }}
+              >
+                <ResultCard
+                  label="Grammar"
+                  score={
+                    grammarScore
+                  }
+                  level={
+                    grammarLevel
+                  }
+                />
+
+                <ResultCard
+                  label="Listening"
+                  score={
+                    listeningScore
+                  }
+                  level={
+                    listeningLevel
+                  }
+                />
+
+                <ResultCard
+                  label="Overall"
+                  score={
+                    totalScore
+                  }
+                  level={null}
+                />
+
+                <div
+                  style={{
+                    padding:
+                      "18px",
+                    border:
+                      "1px solid #e4e7ec",
+                    borderRadius:
+                      "13px",
+                    background:
+                      "#ffffff",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "#98a2b3",
+                      fontSize:
+                        "10px",
+                      fontWeight: 800,
+                    }}
+                  >
+                    RESULT CONFIDENCE
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop:
+                        "8px",
+                      color: "#101828",
+                      fontSize:
+                        "24px",
+                      fontWeight: 900,
+                    }}
+                  >
+                    {confidence !== null
+                      ? `${confidence}%`
+                      : "-"}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop:
+                        "5px",
+                      color: "#667085",
+                      fontSize:
+                        "11px",
+                      lineHeight:
+                        1.5,
+                    }}
+                  >
+                    온라인 테스트 결과의
+                    안정성을 나타냅니다.
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: "20px",
+                  padding:
+                    "15px 17px",
+                  borderRadius:
+                    "11px",
+                  background:
+                    "#ffffff",
+                  border:
+                    "1px solid #e4e7ec",
+                  color: "#667085",
+                  fontSize: "12px",
+                  lineHeight: 1.75,
+                }}
+              >
+                온라인 테스트 결과는
+                Grammar와 Listening을
+                중심으로 산출된
+                <strong
+                  style={{
+                    color: "#344054",
+                  }}
+                >
+                  {" "}
+                  1차 레벨 결과
+                </strong>
+                입니다. 실제 말하기,
+                발음, 의사소통 능력까지
+                확인하려면 무료 원어민
+                화상레벨테스트를 함께
+                진행하는 것을 권장합니다.
+              </div>
+            </>
+          ) : (
+            <div
+              style={{
+                marginTop: "22px",
+                padding: "18px",
+                borderRadius:
+                  "12px",
+                border:
+                  "1px solid #fedf89",
+                background:
+                  "#fffaeb",
+                color: "#93370d",
+                fontSize: "12px",
+                lineHeight: 1.7,
+              }}
+            >
+              온라인 테스트는 완료되었지만
+              결과 데이터가 아직 생성되지
+              않았습니다. 기존 테스트 기록일
+              경우 관리자에게 문의해주세요.
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ================================================= */}
+      {/* 다음 단계 */}
+      {/* ================================================= */}
+
+      {completed && (
+        <section
+          style={{
+            marginTop: "22px",
+            padding: "26px",
+            border:
+              "1px solid #e4e7ec",
+            borderRadius: "16px",
+            background: "#ffffff",
+          }}
+        >
+          <div
+            style={{
+              color: "#101828",
+              fontSize: "20px",
+              fontWeight: 900,
+            }}
+          >
+            다음 단계
+          </div>
 
           <p
             style={{
@@ -677,35 +1109,158 @@ export default async function ParentLevelTestDetailPage({
               lineHeight: 1.8,
             }}
           >
-            TALKLY에서 AI
-            레벨테스트 결과를
-            검토합니다. 추가 확인이
-            필요한 경우 보호자에게
-            전화 또는 SNS로 연락하여
-            원어민 화상 레벨테스트를
-            안내드립니다.
+            TALKLY는 보다 정확한
+            레벨 확인을 위해 무료 원어민
+            화상레벨테스트를 권장합니다.
+            화상레벨테스트 신청 시 앞으로
+            희망하는 정규수업 조건도 함께
+            알려주세요.
           </p>
+
+          {hasInterviewRequest ? (
+            <div
+              style={{
+                marginTop: "20px",
+                padding:
+                  "17px 18px",
+                border:
+                  "1px solid #abefc6",
+                borderRadius:
+                  "12px",
+                background:
+                  "#ecfdf3",
+                color: "#067647",
+                fontSize: "13px",
+                lineHeight: 1.7,
+                fontWeight: 800,
+              }}
+            >
+              원어민 화상레벨테스트 신청이
+              접수되었습니다. TALKLY
+              관리자가 신청 내용을 확인한
+              후 상담 및 테스트 일정을
+              안내합니다.
+            </div>
+          ) : (
+            <div
+              style={{
+                marginTop: "20px",
+                display: "flex",
+                gap: "10px",
+                flexWrap: "wrap",
+              }}
+            >
+              <Link
+                href={`/parent/level-tests/${levelTestId}/interview-request`}
+                style={{
+                  minHeight: "48px",
+                  padding:
+                    "0 20px",
+                  display:
+                    "inline-flex",
+                  alignItems:
+                    "center",
+                  justifyContent:
+                    "center",
+                  borderRadius:
+                    "10px",
+                  background:
+                    "#2f6fed",
+                  color: "#ffffff",
+                  textDecoration:
+                    "none",
+                  fontSize: "14px",
+                  fontWeight: 900,
+                  boxShadow:
+                    "0 8px 18px rgba(47,111,237,0.20)",
+                }}
+              >
+                무료 원어민 화상레벨테스트 신청 →
+              </Link>
+
+              <div
+                style={{
+                  padding:
+                    "10px 2px",
+                  color: "#667085",
+                  fontSize: "11px",
+                  lineHeight: 1.6,
+                }}
+              >
+                화상레벨테스트는 기본적으로
+                필리핀 원어민 강사가
+                진행합니다.
+              </div>
+            </div>
+          )}
 
           <div
             style={{
               marginTop: "18px",
-              padding: "18px",
-              border:
-                "1px solid #e4e7ec",
-              borderRadius:
-                "12px",
-              background:
-                "#f9fafb",
+              paddingTop: "18px",
+              borderTop:
+                "1px solid #eaecf0",
               color: "#667085",
               fontSize: "12px",
               lineHeight: 1.7,
             }}
           >
-            AI 점수, 추천 레벨,
-            신뢰도 및 내부 평가 내용은
-            TALKLY 운영진의 레벨 판단을
-            위한 자료이므로 화면에
-            표시되지 않습니다.
+            화상레벨테스트를 받지 않고
+            바로 수강을 원하는 경우에도
+            향후 내 강의실에서 수강신청을
+            진행할 수 있도록 연결할
+            예정입니다.
+          </div>
+        </section>
+      )}
+
+      {/* ================================================= */}
+      {/* 최종 레벨 */}
+      {/* ================================================= */}
+
+      {levelTest.final_level && (
+        <section
+          style={{
+            marginTop: "22px",
+            padding: "24px",
+            border:
+              "1px solid #abefc6",
+            borderRadius: "16px",
+            background: "#ecfdf3",
+          }}
+        >
+          <div
+            style={{
+              color: "#067647",
+              fontSize: "12px",
+              fontWeight: 900,
+            }}
+          >
+            TALKLY FINAL LEVEL
+          </div>
+
+          <div
+            style={{
+              marginTop: "7px",
+              color: "#065f46",
+              fontSize: "25px",
+              fontWeight: 900,
+            }}
+          >
+            {levelTest.final_level}
+          </div>
+
+          <div
+            style={{
+              marginTop: "7px",
+              color: "#047857",
+              fontSize: "12px",
+              lineHeight: 1.7,
+            }}
+          >
+            온라인 레벨테스트와 원어민
+            화상평가를 종합하여 확정된
+            TALKLY 최종 레벨입니다.
           </div>
         </section>
       )}
@@ -725,9 +1280,7 @@ export default async function ParentLevelTestDetailPage({
             secondaryButtonStyle
           }
         >
-          {isStudent
-            ? "← 학생 마이페이지"
-            : "← 대시보드로"}
+          ← 내 강의실
         </Link>
       </div>
     </main>
@@ -811,6 +1364,87 @@ function TextInfo({
   );
 }
 
+function ResultCard({
+  label,
+  score,
+  level,
+}: {
+  label: string;
+  score: number | null;
+  level: number | null;
+}) {
+  return (
+    <div
+      style={{
+        padding: "18px",
+        border:
+          "1px solid #e4e7ec",
+        borderRadius: "13px",
+        background: "#ffffff",
+      }}
+    >
+      <div
+        style={{
+          color: "#98a2b3",
+          fontSize: "10px",
+          fontWeight: 800,
+          textTransform:
+            "uppercase",
+        }}
+      >
+        {label}
+      </div>
+
+      <div
+        style={{
+          marginTop: "8px",
+          display: "flex",
+          alignItems:
+            "baseline",
+          gap: "6px",
+        }}
+      >
+        <span
+          style={{
+            color: "#101828",
+            fontSize: "26px",
+            fontWeight: 900,
+          }}
+        >
+          {score !== null
+            ? score
+            : "-"}
+        </span>
+
+        {score !== null && (
+          <span
+            style={{
+              color: "#98a2b3",
+              fontSize: "11px",
+              fontWeight: 700,
+            }}
+          >
+            / 100
+          </span>
+        )}
+      </div>
+
+      {level !== null && (
+        <div
+          style={{
+            marginTop: "6px",
+            color: "#2f6fed",
+            fontSize: "12px",
+            fontWeight: 900,
+          }}
+        >
+          Level {level}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StatusBadge({
   label,
 }: {
@@ -837,38 +1471,57 @@ function StatusBadge({
 
 function getParentStatusLabel(
   status: string,
-  aiStatus: string
+  aiStatus: string,
+  hasInterviewRequest: boolean
 ) {
-  if (aiStatus === "pending") {
+  if (
+    aiStatus === "pending"
+  ) {
     return "테스트 대기";
   }
 
   if (
-    aiStatus === "in_progress"
+    aiStatus ===
+    "in_progress"
   ) {
     return "테스트 진행 중";
   }
 
   if (
     status ===
-      "interview_required" ||
-    status ===
       "interview_scheduled"
   ) {
-    return "추가 확인 중";
+    return "화상테스트 일정 확정";
   }
 
   if (
-    aiStatus === "completed" ||
-    status === "admin_review"
+    status ===
+      "interview_completed"
   ) {
-    return "TALKLY 검토 중";
+    return "화상테스트 완료";
   }
 
   if (
     status === "completed"
   ) {
-    return "검토 완료";
+    return "레벨 확정";
+  }
+
+  if (
+    hasInterviewRequest
+  ) {
+    return "화상테스트 신청 완료";
+  }
+
+  if (
+    aiStatus ===
+      "completed" ||
+    status ===
+      "admin_review" ||
+    status ===
+      "interview_required"
+  ) {
+    return "온라인 테스트 완료";
   }
 
   return "신청 완료";
@@ -898,11 +1551,13 @@ function getTargetGroupLabel(
 function calculateAge(
   birthDate: string
 ) {
-  const today = new Date();
+  const today =
+    new Date();
 
-  const birth = new Date(
-    `${birthDate}T00:00:00`
-  );
+  const birth =
+    new Date(
+      `${birthDate}T00:00:00`
+    );
 
   let age =
     today.getFullYear() -
@@ -914,9 +1569,11 @@ function calculateAge(
 
   if (
     monthDifference < 0 ||
-    (monthDifference === 0 &&
+    (
+      monthDifference === 0 &&
       today.getDate() <
-        birth.getDate())
+        birth.getDate()
+    )
   ) {
     age -= 1;
   }

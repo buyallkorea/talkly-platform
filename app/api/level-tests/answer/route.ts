@@ -1,6 +1,3 @@
-
-
-
 import { NextResponse } from "next/server";
 import {
   createClient as createAdminClient,
@@ -21,6 +18,34 @@ type RequestBody = {
 type UserRole =
   | "parent"
   | "student";
+
+type QuestionCategory =
+  | "grammar"
+  | "listening";
+
+type ScoreAnswerRow = {
+  question_id: number;
+  difficulty: number;
+  is_correct: boolean;
+};
+
+type ScoreQuestionRow = {
+  id: number;
+  category: string;
+};
+
+type CategoryAnswer = {
+  difficulty: number;
+  isCorrect: boolean;
+};
+
+type CategoryResult = {
+  score: number;
+  level: number;
+  answeredCount: number;
+  correctCount: number;
+  averageDifficulty: number;
+};
 
 function createAdmin() {
   const url =
@@ -91,6 +116,41 @@ function normalizeNumber(
   return number;
 }
 
+function normalizeDifficulty(
+  value: unknown
+) {
+  const number =
+    Number(value);
+
+  if (
+    !Number.isFinite(number)
+  ) {
+    return 1;
+  }
+
+  return Math.max(
+    1,
+    Math.min(
+      5,
+      Math.round(number)
+    )
+  );
+}
+
+function clamp(
+  value: number,
+  minimum: number,
+  maximum: number
+) {
+  return Math.max(
+    minimum,
+    Math.min(
+      maximum,
+      value
+    )
+  );
+}
+
 function calculateNextDifficulty(
   currentDifficulty: number,
   isCorrect: boolean
@@ -99,12 +159,12 @@ function calculateNextDifficulty(
    * TALKLY 적응형 테스트
    *
    * 정답:
-   * 난이도 +1
+   * 해당 영역 난이도 +1
    *
    * 오답:
-   * 난이도 -1
+   * 해당 영역 난이도 -1
    *
-   * 현재 문제은행의 난이도 범위:
+   * 난이도 범위:
    * Level 1 ~ Level 5
    */
   if (isCorrect) {
@@ -117,6 +177,345 @@ function calculateNextDifficulty(
   return Math.max(
     1,
     currentDifficulty - 1
+  );
+}
+
+function isQuestionCategory(
+  value: string
+): value is QuestionCategory {
+  return (
+    value === "grammar" ||
+    value === "listening"
+  );
+}
+
+/*
+ * =========================================================
+ * TALKLY 온라인 레벨테스트 결과 산정
+ * =========================================================
+ *
+ * 단순 정답률만 사용하지 않습니다.
+ *
+ * 70%:
+ * 출제 난이도를 반영한 정답률
+ *
+ * 30%:
+ * 실제로 도달하여 응시한 평균 난이도
+ *
+ * 따라서 동일하게 7문제를 맞았더라도
+ * Level 4~5 문제를 주로 푼 학생이
+ * Level 1~2 문제를 주로 푼 학생보다
+ * 더 높은 점수를 받을 수 있습니다.
+ */
+function calculateCategoryResult(
+  answers: CategoryAnswer[]
+): CategoryResult {
+  if (
+    answers.length === 0
+  ) {
+    return {
+      score: 0,
+      level: 1,
+      answeredCount: 0,
+      correctCount: 0,
+      averageDifficulty: 1,
+    };
+  }
+
+  const normalized =
+    answers.map(
+      (answer) => ({
+        difficulty:
+          normalizeDifficulty(
+            answer.difficulty
+          ),
+
+        isCorrect:
+          answer.isCorrect,
+      })
+    );
+
+  const answeredCount =
+    normalized.length;
+
+  const correctCount =
+    normalized.filter(
+      (answer) =>
+        answer.isCorrect
+    ).length;
+
+  /*
+   * 난이도 가중 정답률
+   *
+   * Level 5 문제 정답은
+   * Level 1 문제 정답보다
+   * 더 높은 수행으로 평가합니다.
+   */
+  const weightedMaximum =
+    normalized.reduce(
+      (
+        total,
+        answer
+      ) =>
+        total +
+        answer.difficulty,
+      0
+    );
+
+  const weightedCorrect =
+    normalized.reduce(
+      (
+        total,
+        answer
+      ) =>
+        total +
+        (
+          answer.isCorrect
+            ? answer.difficulty
+            : 0
+        ),
+      0
+    );
+
+  const weightedAccuracy =
+    weightedMaximum > 0
+      ? weightedCorrect /
+        weightedMaximum
+      : 0;
+
+  /*
+   * 실제 출제 평균 난이도
+   *
+   * Level 1 = 0
+   * Level 5 = 1
+   * 로 정규화합니다.
+   */
+  const averageDifficulty =
+    normalized.reduce(
+      (
+        total,
+        answer
+      ) =>
+        total +
+        answer.difficulty,
+      0
+    ) /
+    answeredCount;
+
+  const difficultyIndex =
+    clamp(
+      (
+        averageDifficulty -
+        1
+      ) / 4,
+      0,
+      1
+    );
+
+  const rawScore =
+    (
+      weightedAccuracy *
+        0.7 +
+      difficultyIndex *
+        0.3
+    ) *
+    100;
+
+  const score =
+    clamp(
+      Math.round(
+        rawScore
+      ),
+      0,
+      100
+    );
+
+  return {
+    score,
+
+    level:
+      scoreToLevel(
+        score
+      ),
+
+    answeredCount,
+
+    correctCount,
+
+    averageDifficulty:
+      Number(
+        averageDifficulty.toFixed(
+          2
+        )
+      ),
+  };
+}
+
+/*
+ * TALKLY 온라인 테스트 Level
+ *
+ * 0 ~ 19   Level 1
+ * 20 ~ 39  Level 2
+ * 40 ~ 59  Level 3
+ * 60 ~ 79  Level 4
+ * 80 ~ 100 Level 5
+ *
+ * 추후 실제 운영데이터가 충분히 쌓이면
+ * 이 경계값만 조정할 수 있도록
+ * 함수로 분리해 둡니다.
+ */
+function scoreToLevel(
+  score: number
+) {
+  if (
+    score >= 80
+  ) {
+    return 5;
+  }
+
+  if (
+    score >= 60
+  ) {
+    return 4;
+  }
+
+  if (
+    score >= 40
+  ) {
+    return 3;
+  }
+
+  if (
+    score >= 20
+  ) {
+    return 2;
+  }
+
+  return 1;
+}
+
+function getSuggestedLevelLabel(
+  level: number
+) {
+  return `Level ${clamp(
+    Math.round(level),
+    1,
+    5
+  )}`;
+}
+
+/*
+ * 추천 레벨의 신뢰도
+ *
+ * 현재 온라인 테스트는
+ * Grammar 10 + Listening 10,
+ * 총 20문항 구조입니다.
+ *
+ * 기본 신뢰도:
+ * - 응답 완성도 50%
+ * - 두 영역의 문항 균형 20%
+ * - 레벨 경계값과의 거리 30%
+ *
+ * 점수가 Level 경계에 매우 가까우면
+ * 추천 레벨의 신뢰도를 조금 낮춥니다.
+ *
+ * 이 값은 "학생 실력이 얼마나 좋은가"가 아니라
+ * "온라인 테스트가 해당 Level을 얼마나
+ * 안정적으로 제안할 수 있는가"를 의미합니다.
+ */
+function calculateConfidence({
+  totalScore,
+  totalAnswered,
+  grammarAnswered,
+  listeningAnswered,
+}: {
+  totalScore: number;
+  totalAnswered: number;
+  grammarAnswered: number;
+  listeningAnswered: number;
+}) {
+  const completionRatio =
+    clamp(
+      totalAnswered /
+        MAX_QUESTIONS,
+      0,
+      1
+    );
+
+  const expectedPerCategory =
+    MAX_QUESTIONS / 2;
+
+  const grammarBalance =
+    clamp(
+      grammarAnswered /
+        expectedPerCategory,
+      0,
+      1
+    );
+
+  const listeningBalance =
+    clamp(
+      listeningAnswered /
+        expectedPerCategory,
+      0,
+      1
+    );
+
+  const categoryBalance =
+    (
+      grammarBalance +
+      listeningBalance
+    ) / 2;
+
+  const boundaries = [
+    20,
+    40,
+    60,
+    80,
+  ];
+
+  const distanceToBoundary =
+    Math.min(
+      ...boundaries.map(
+        (boundary) =>
+          Math.abs(
+            totalScore -
+              boundary
+          )
+      )
+    );
+
+  /*
+   * Level 경계에서 10점 이상 떨어지면
+   * 경계 안정성은 최대값으로 봅니다.
+   */
+  const boundaryStability =
+    clamp(
+      distanceToBoundary /
+        10,
+      0,
+      1
+    );
+
+  const rawConfidence =
+    completionRatio *
+      0.5 +
+    categoryBalance *
+      0.2 +
+    boundaryStability *
+      0.3;
+
+  /*
+   * 20문항 온라인 테스트라는 특성을 고려하여
+   * 100% 확신으로 표시하지 않고 최대 95%로 제한
+   */
+  return clamp(
+    Math.round(
+      rawConfidence *
+        100
+    ),
+    0,
+    95
   );
 }
 
@@ -198,7 +597,8 @@ export async function POST(
 
     try {
       body =
-        (await request.json()) as RequestBody;
+        (await request.json()) as
+          RequestBody;
     } catch {
       return jsonError(
         "잘못된 요청 형식입니다."
@@ -297,7 +697,7 @@ export async function POST(
      * ==========================================
      * 4. Service Role Client
      *
-     * 정답은 절대 브라우저에 보내지 않습니다.
+     * 정답은 브라우저로 보내지 않고
      * 서버에서만 조회합니다.
      * ==========================================
      */
@@ -372,12 +772,6 @@ export async function POST(
         levelTest.student_user_id ===
         user.id;
 
-      /*
-       * 과거 데이터 중
-       * level_tests.student_user_id가
-       * 비어 있을 가능성도 있으므로
-       * child 연결정보를 fallback으로 확인합니다.
-       */
       if (
         !studentHasAccess &&
         levelTest.child_id
@@ -445,6 +839,8 @@ export async function POST(
         target_group,
         status,
         current_difficulty,
+        current_grammar_difficulty,
+        current_listening_difficulty,
         started_at,
         completed_at
       `)
@@ -484,13 +880,6 @@ export async function POST(
       );
     }
 
-    /*
-     * 학생 로그인이라면
-     * attempt.student_user_id도 확인합니다.
-     *
-     * 단, 과거 attempt 중 null인 경우에는
-     * levelTest 소유권 확인 결과를 사용합니다.
-     */
     if (
       role === "student" &&
       attempt.student_user_id &&
@@ -557,10 +946,6 @@ export async function POST(
       );
     }
 
-    /*
-     * 다른 연령/대상 문제를
-     * 임의로 제출하지 못하도록 검증
-     */
     if (
       question.target_group !==
       attempt.target_group
@@ -570,6 +955,20 @@ export async function POST(
         400
       );
     }
+
+    if (
+      !isQuestionCategory(
+        question.category
+      )
+    ) {
+      return jsonError(
+        "지원하지 않는 레벨테스트 문항 영역입니다.",
+        400
+      );
+    }
+
+    const questionCategory =
+      question.category;
 
     const correctAnswer =
       normalizeAnswer(
@@ -644,19 +1043,39 @@ export async function POST(
 
     /*
      * ==========================================
-     * 10. 적응형 난이도 계산
+     * 10. 영역별 적응형 난이도 계산
      * ==========================================
      */
-    const currentDifficulty =
-      Number(
-        attempt.current_difficulty
-      ) || 1;
+    const currentGrammarDifficulty =
+      normalizeDifficulty(
+        attempt.current_grammar_difficulty
+      );
+
+    const currentListeningDifficulty =
+      normalizeDifficulty(
+        attempt.current_listening_difficulty
+      );
+
+    const currentCategoryDifficulty =
+      questionCategory === "grammar"
+        ? currentGrammarDifficulty
+        : currentListeningDifficulty;
 
     const nextDifficulty =
       calculateNextDifficulty(
-        currentDifficulty,
+        currentCategoryDifficulty,
         isCorrect
       );
+
+    const nextGrammarDifficulty =
+      questionCategory === "grammar"
+        ? nextDifficulty
+        : currentGrammarDifficulty;
+
+    const nextListeningDifficulty =
+      questionCategory === "listening"
+        ? nextDifficulty
+        : currentListeningDifficulty;
 
     const now =
       new Date().toISOString();
@@ -665,8 +1084,8 @@ export async function POST(
      * ==========================================
      * 11. 답안 저장
      *
-     * 정답 자체(correct_answer)는
-     * answers 테이블에 저장하지 않습니다.
+     * 실제 출제된 문항의 난이도와
+     * 정답 여부를 저장합니다.
      * ==========================================
      */
     const {
@@ -747,6 +1166,13 @@ export async function POST(
       answeredCount ?? 0;
 
     /*
+     * 기존 current_difficulty는
+     * 과거 코드 호환용으로 계속 기록합니다.
+     */
+    const legacyCurrentDifficulty =
+      nextDifficulty;
+
+    /*
      * ==========================================
      * 13. 20문항 완료
      * ==========================================
@@ -755,6 +1181,217 @@ export async function POST(
       totalAnswered >=
       MAX_QUESTIONS
     ) {
+      /*
+       * -------------------------------------------------
+       * 13-1. 전체 답안 조회
+       * -------------------------------------------------
+       *
+       * 방금 저장한 20번째 답안까지
+       * 포함하여 결과를 계산합니다.
+       */
+      const {
+        data: scoreAnswerData,
+        error:
+          scoreAnswerError,
+      } = await admin
+        .from(
+          "level_test_answers"
+        )
+        .select(`
+          question_id,
+          difficulty,
+          is_correct
+        `)
+        .eq(
+          "attempt_id",
+          attemptId
+        );
+
+      if (
+        scoreAnswerError
+      ) {
+        return jsonError(
+          `레벨테스트 결과 계산용 답안 조회 실패: ${scoreAnswerError.message}`,
+          500
+        );
+      }
+
+      const scoreAnswers =
+        (
+          scoreAnswerData ??
+          []
+        ) as ScoreAnswerRow[];
+
+      const questionIds =
+        Array.from(
+          new Set(
+            scoreAnswers.map(
+              (answer) =>
+                answer.question_id
+            )
+          )
+        );
+
+      /*
+       * -------------------------------------------------
+       * 13-2. 답안에 연결된 문제의 영역 확인
+       * -------------------------------------------------
+       */
+      let scoreQuestions:
+        ScoreQuestionRow[] =
+        [];
+
+      if (
+        questionIds.length >
+        0
+      ) {
+        const {
+          data:
+            scoreQuestionData,
+          error:
+            scoreQuestionError,
+        } = await admin
+          .from(
+            "level_test_questions"
+          )
+          .select(`
+            id,
+            category
+          `)
+          .in(
+            "id",
+            questionIds
+          );
+
+        if (
+          scoreQuestionError
+        ) {
+          return jsonError(
+            `레벨테스트 문제 영역 확인 실패: ${scoreQuestionError.message}`,
+            500
+          );
+        }
+
+        scoreQuestions =
+          (
+            scoreQuestionData ??
+            []
+          ) as ScoreQuestionRow[];
+      }
+
+      const categoryMap =
+        new Map<
+          number,
+          string
+        >(
+          scoreQuestions.map(
+            (item) => [
+              item.id,
+              item.category,
+            ]
+          )
+        );
+
+      const grammarAnswers:
+        CategoryAnswer[] =
+        [];
+
+      const listeningAnswers:
+        CategoryAnswer[] =
+        [];
+
+      for (
+        const answer of
+        scoreAnswers
+      ) {
+        const category =
+          categoryMap.get(
+            answer.question_id
+          );
+
+        if (
+          category ===
+          "grammar"
+        ) {
+          grammarAnswers.push({
+            difficulty:
+              answer.difficulty,
+
+            isCorrect:
+              answer.is_correct,
+          });
+        }
+
+        if (
+          category ===
+          "listening"
+        ) {
+          listeningAnswers.push({
+            difficulty:
+              answer.difficulty,
+
+            isCorrect:
+              answer.is_correct,
+          });
+        }
+      }
+
+      /*
+       * -------------------------------------------------
+       * 13-3. 영역별 결과
+       * -------------------------------------------------
+       */
+      const grammarResult =
+        calculateCategoryResult(
+          grammarAnswers
+        );
+
+      const listeningResult =
+        calculateCategoryResult(
+          listeningAnswers
+        );
+
+      /*
+       * Grammar / Listening은
+       * 온라인 테스트에서 동일 비중 50:50
+       */
+      const totalScore =
+        Math.round(
+          (
+            grammarResult.score +
+            listeningResult.score
+          ) / 2
+        );
+
+      const suggestedLevelNumber =
+        scoreToLevel(
+          totalScore
+        );
+
+      const suggestedLevel =
+        getSuggestedLevelLabel(
+          suggestedLevelNumber
+        );
+
+      const confidence =
+        calculateConfidence({
+          totalScore,
+
+          totalAnswered:
+            scoreAnswers.length,
+
+          grammarAnswered:
+            grammarResult.answeredCount,
+
+          listeningAnswered:
+            listeningResult.answeredCount,
+        });
+
+      /*
+       * -------------------------------------------------
+       * 13-4. 응시 결과 저장
+       * -------------------------------------------------
+       */
       const {
         error:
           attemptCompleteError,
@@ -767,7 +1404,33 @@ export async function POST(
             "completed",
 
           current_difficulty:
-            nextDifficulty,
+            legacyCurrentDifficulty,
+
+          current_grammar_difficulty:
+            nextGrammarDifficulty,
+
+          current_listening_difficulty:
+            nextListeningDifficulty,
+
+          grammar_score:
+            grammarResult.score,
+
+          listening_score:
+            listeningResult.score,
+
+          total_score:
+            totalScore,
+
+          grammar_level:
+            grammarResult.level,
+
+          listening_level:
+            listeningResult.level,
+
+          suggested_level:
+            suggestedLevel,
+
+          confidence,
 
           completed_at:
             now,
@@ -790,12 +1453,17 @@ export async function POST(
       }
 
       /*
-       * AI 시험은 끝났고,
-       * 다음 단계는 관리자 검토입니다.
+       * -------------------------------------------------
+       * 13-5. level_tests에도
+       * 학생/학부모 및 관리자 화면에서
+       * 바로 사용할 요약 결과 저장
+       * -------------------------------------------------
        *
-       * 기존 상세 페이지에서도
-       * admin_review 상태를 정상 상태로
-       * 사용하고 있습니다.
+       * final_level은 아직 저장하지 않습니다.
+       *
+       * 최종 Level은 향후
+       * 원어민 화상레벨테스트까지 완료된 후
+       * 확정할 값이기 때문입니다.
        */
       const {
         error:
@@ -811,6 +1479,15 @@ export async function POST(
           status:
             "admin_review",
 
+          score:
+            totalScore,
+
+          ai_suggested_level:
+            suggestedLevel,
+
+          ai_confidence:
+            confidence,
+
           updated_at:
             now,
         })
@@ -823,11 +1500,17 @@ export async function POST(
         levelTestCompleteError
       ) {
         return jsonError(
-          `레벨테스트 상태 완료 처리 실패: ${levelTestCompleteError.message}`,
+          `레벨테스트 결과 저장 실패: ${levelTestCompleteError.message}`,
           500
         );
       }
 
+      /*
+       * 정답/오답 여부는 학생에게
+       * 반환하지 않습니다.
+       *
+       * 결과 요약값만 반환합니다.
+       */
       return NextResponse.json({
         success: true,
 
@@ -838,10 +1521,26 @@ export async function POST(
 
         nextDifficulty,
 
-        /*
-         * 학생에게 정답/오답 여부를
-         * 반환하지 않습니다.
-         */
+        result: {
+          grammarScore:
+            grammarResult.score,
+
+          listeningScore:
+            listeningResult.score,
+
+          totalScore,
+
+          grammarLevel:
+            grammarResult.level,
+
+          listeningLevel:
+            listeningResult.level,
+
+          suggestedLevel,
+
+          confidence,
+        },
+
         message:
           "AI 레벨테스트가 완료되었습니다.",
       });
@@ -861,7 +1560,13 @@ export async function POST(
       )
       .update({
         current_difficulty:
-          nextDifficulty,
+          legacyCurrentDifficulty,
+
+        current_grammar_difficulty:
+          nextGrammarDifficulty,
+
+        current_listening_difficulty:
+          nextListeningDifficulty,
 
         updated_at:
           now,
@@ -881,11 +1586,7 @@ export async function POST(
     }
 
     /*
-     * level_tests.ai_status도
-     * 진행 중으로 유지합니다.
-     *
-     * status는 CHECK constraint 문제 때문에
-     * 중간 진행 단계에서는 변경하지 않습니다.
+     * 기존 상태 구조 유지
      */
     const {
       error:
@@ -916,7 +1617,8 @@ export async function POST(
     }
 
     /*
-     * 정답 여부는 학생 화면에 반환하지 않습니다.
+     * 정답 여부는 학생 화면에
+     * 반환하지 않습니다.
      */
     return NextResponse.json({
       success: true,

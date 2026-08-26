@@ -28,6 +28,27 @@ type QuestionRow = {
   listening_topic: string | null;
 };
 
+function normalizeDifficulty(
+  value: unknown
+) {
+  const number =
+    Number(value);
+
+  if (
+    !Number.isFinite(number)
+  ) {
+    return 1;
+  }
+
+  return Math.max(
+    1,
+    Math.min(
+      5,
+      Math.round(number)
+    )
+  );
+}
+
 export default async function ParentLevelTestAttemptPage({
   params,
 }: PageProps) {
@@ -190,6 +211,12 @@ export default async function ParentLevelTestAttemptPage({
 
   /*
    * 응시 기록 확인
+   *
+   * 기존 current_difficulty도
+   * 호환성을 위해 계속 조회합니다.
+   *
+   * 실제 문제 출제에는
+   * Grammar / Listening별 독립 난이도를 사용합니다.
    */
   const {
     data: attempt,
@@ -203,6 +230,8 @@ export default async function ParentLevelTestAttemptPage({
       target_group,
       status,
       current_difficulty,
+      current_grammar_difficulty,
+      current_listening_difficulty,
       started_at,
       completed_at
     `)
@@ -285,11 +314,41 @@ export default async function ParentLevelTestAttemptPage({
   /*
    * Grammar / Listening을
    * 번갈아 출제
+   *
+   * 1, 3, 5 ... = Grammar
+   * 2, 4, 6 ... = Listening
+   *
+   * 20문항 완료 시
+   * Grammar 10 + Listening 10
    */
   const nextCategory =
     answeredCount % 2 === 0
       ? "grammar"
       : "listening";
+
+  /*
+   * 영역별 현재 적응 난이도
+   *
+   * Grammar 문제:
+   * current_grammar_difficulty
+   *
+   * Listening 문제:
+   * current_listening_difficulty
+   */
+  const grammarDifficulty =
+    normalizeDifficulty(
+      attempt.current_grammar_difficulty
+    );
+
+  const listeningDifficulty =
+    normalizeDifficulty(
+      attempt.current_listening_difficulty
+    );
+
+  const currentCategoryDifficulty =
+    nextCategory === "grammar"
+      ? grammarDifficulty
+      : listeningDifficulty;
 
   /*
    * 현재 영역에서 아직 풀지 않은
@@ -362,8 +421,14 @@ export default async function ParentLevelTestAttemptPage({
       []) as QuestionRow[];
 
   /*
-   * 현재 난이도와 가장 가까운
-   * 문항 선택
+   * 현재 출제 영역의 독립 난이도와
+   * 가장 가까운 문항을 선택합니다.
+   *
+   * Grammar 문제 선택에는
+   * Listening 난이도가 영향을 주지 않고,
+   *
+   * Listening 문제 선택에는
+   * Grammar 난이도가 영향을 주지 않습니다.
    */
   const sortedCandidates =
     [...candidates].sort(
@@ -371,13 +436,13 @@ export default async function ParentLevelTestAttemptPage({
         const aDifference =
           Math.abs(
             a.difficulty -
-              attempt.current_difficulty
+              currentCategoryDifficulty
           );
 
         const bDifference =
           Math.abs(
             b.difficulty -
-              attempt.current_difficulty
+              currentCategoryDifficulty
           );
 
         if (
@@ -525,8 +590,13 @@ export default async function ParentLevelTestAttemptPage({
           }}
         >
           <InfoItem
-            label="현재 적응 난이도"
-            value={`Level ${attempt.current_difficulty}`}
+            label={
+              nextCategory ===
+              "grammar"
+                ? "Grammar 적응 난이도"
+                : "Listening 적응 난이도"
+            }
+            value={`Level ${currentCategoryDifficulty}`}
           />
 
           <InfoItem
@@ -562,7 +632,7 @@ export default async function ParentLevelTestAttemptPage({
           parsedAttemptId
         }
         currentDifficulty={
-          attempt.current_difficulty
+          currentCategoryDifficulty
         }
         answeredCount={
           answeredCount
