@@ -1238,7 +1238,7 @@ export default function InterviewRequestForm({
 
         <FormSection
           number="08"
-          title="희망 수업시간"
+          title="희망 수업 시작시간"
           description="한 번 정한 수업시간은 원칙적으로 모든 선택 요일과 전체 수강기간에 동일하게 적용됩니다."
         >
           <NoticeBox>
@@ -1504,34 +1504,193 @@ export default function InterviewRequestForm({
         )}
 
         {/* ============================================= */}
-        {/* 검증 완료 */}
+        {/* 신청 완료 안내 */}
         {/* ============================================= */}
 
         {previewReady && (
-          <div
+          <section
             style={{
-              marginTop: "16px",
-              padding: "16px",
-              border:
-                "1px solid #abefc6",
-              borderRadius:
-                "10px",
+              marginTop: "20px",
+              padding: "26px",
+              border: "1px solid #abefc6",
+              borderRadius: "16px",
               background:
-                "#ecfdf3",
-              color:
-                "#067647",
-              fontSize: "12px",
-              fontWeight: 800,
-              lineHeight: 1.7,
+                "linear-gradient(135deg, #ecfdf3 0%, #f7fffa 100%)",
+              boxShadow:
+                "0 10px 28px rgba(6, 118, 71, 0.08)",
             }}
           >
-            신청정보가 TALKLY에
-            정상적으로 저장되었습니다.
-            입력하신 희망 수업계획을
-            기준으로 화상레벨테스트와
-            정규수업 상담을
-            진행합니다.
-          </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "14px",
+              }}
+            >
+              <div
+                style={{
+                  flex: "0 0 auto",
+                  width: "42px",
+                  height: "42px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#067647",
+                  color: "#ffffff",
+                  fontSize: "22px",
+                  fontWeight: 900,
+                }}
+              >
+                ✓
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <h3
+                  style={{
+                    margin: 0,
+                    color: "#065f46",
+                    fontSize: "20px",
+                    fontWeight: 900,
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  화상레벨테스트 신청이 완료되었습니다
+                </h3>
+
+                <p
+                  style={{
+                    margin: "12px 0 0",
+                    color: "#344054",
+                    fontSize: "14px",
+                    lineHeight: 1.85,
+                  }}
+                >
+                  입력하신 희망 수업계획을 기준으로 추후{" "}
+                  <strong
+                    style={{
+                      color: "#101828",
+                    }}
+                  >
+                    화상레벨테스트 일정과 수강안내
+                  </strong>
+                  를 드릴 예정입니다.
+                </p>
+
+                <p
+                  style={{
+                    margin: "5px 0 0",
+                    color: "#344054",
+                    fontSize: "14px",
+                    lineHeight: 1.85,
+                  }}
+                >
+                  일정 및 진행 안내는{" "}
+                  <strong
+                    style={{
+                      color: "#2f6fed",
+                    }}
+                  >
+                    TALKLY 사이트 내 &apos;내 강의실&apos;
+                  </strong>
+                  과{" "}
+                  <strong
+                    style={{
+                      color: "#2f6fed",
+                    }}
+                  >
+                    SMS
+                  </strong>
+                  를 통해 안내해 드립니다.
+                </p>
+
+                <div
+                  style={{
+                    marginTop: "20px",
+                    padding: "14px 16px",
+                    borderRadius: "10px",
+                    background: "#ffffff",
+                    border: "1px solid #d1fadf",
+                    color: "#475467",
+                    fontSize: "12px",
+                    lineHeight: 1.7,
+                  }}
+                >
+                  TALKLY 관리자가 신청내용과 강사 일정을 확인한 후
+                  화상레벨테스트 일정을 안내합니다. 확정된 일정은
+                  내 강의실에서도 확인할 수 있습니다.
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "20px",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "10px",
+                  }}
+                >
+                  <a
+                    href="/parent"
+                    style={{
+                      minHeight: "46px",
+                      padding: "0 18px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "10px",
+                      background: "#0a1f44",
+                      color: "#ffffff",
+                      fontSize: "13px",
+                      fontWeight: 900,
+                      textDecoration: "none",
+                    }}
+                  >
+                    내 강의실 가기
+                  </a>
+
+                  <a
+                    href={`/parent/level-tests/${levelTestId}`}
+                    style={{
+                      minHeight: "46px",
+                      padding: "0 18px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "10px",
+                      border: "1px solid #2f6fed",
+                      background: "#ffffff",
+                      color: "#2f6fed",
+                      fontSize: "13px",
+                      fontWeight: 900,
+                      textDecoration: "none",
+                    }}
+                  >
+                    온라인 레벨테스트 결과 보기
+                  </a>
+
+                  <a
+                    href="/parent"
+                    style={{
+                      minHeight: "46px",
+                      padding: "0 18px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "10px",
+                      border: "1px solid #d0d5dd",
+                      background: "#ffffff",
+                      color: "#344054",
+                      fontSize: "13px",
+                      fontWeight: 900,
+                      textDecoration: "none",
+                    }}
+                  >
+                    학부모 대시보드
+                  </a>
+                </div>
+              </div>
+            </div>
+          </section>
         )}
 
         {/* ============================================= */}
@@ -1576,48 +1735,50 @@ export default function InterviewRequestForm({
         {/* 제출 */}
         {/* ============================================= */}
 
-        <div
-          style={{
-            marginTop: "22px",
-            display: "flex",
-            justifyContent:
-              "flex-end",
-          }}
-        >
-          <button
-            type="submit"
-            disabled={isSubmitting}
+        {!previewReady && (
+          <div
             style={{
-              minHeight: "52px",
-              padding:
-                "0 24px",
-              border: 0,
-              borderRadius:
-                "11px",
-              background:
-                "#2f6fed",
-              color: "#ffffff",
-              fontSize: "14px",
-              fontWeight: 900,
-              cursor:
-                isSubmitting
-                  ? "not-allowed"
-                  : "pointer",
-              opacity:
-                isSubmitting
-                  ? 0.65
-                  : 1,
-              boxShadow:
-                "0 8px 20px rgba(47,111,237,.20)",
+              marginTop: "22px",
+              display: "flex",
+              justifyContent:
+                "flex-end",
             }}
           >
-            {isSubmitting
-              ? "저장 중..."
-              : isExisting
-                ? "신청 내용 저장"
-                : "화상레벨테스트 신청"}
-          </button>
-        </div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              style={{
+                minHeight: "52px",
+                padding:
+                  "0 24px",
+                border: 0,
+                borderRadius:
+                  "11px",
+                background:
+                  "#2f6fed",
+                color: "#ffffff",
+                fontSize: "14px",
+                fontWeight: 900,
+                cursor:
+                  isSubmitting
+                    ? "not-allowed"
+                    : "pointer",
+                opacity:
+                  isSubmitting
+                    ? 0.65
+                    : 1,
+                boxShadow:
+                  "0 8px 20px rgba(47,111,237,.20)",
+              }}
+            >
+              {isSubmitting
+                ? "저장 중..."
+                : isExisting
+                  ? "신청 내용 저장"
+                  : "화상레벨테스트 신청"}
+            </button>
+          </div>
+        )}
 
         <input
           type="hidden"
