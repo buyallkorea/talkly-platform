@@ -27,6 +27,7 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
+
   {
     title: "회원 관리",
     items: [
@@ -48,6 +49,17 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
+
+  {
+    title: "레벨테스트",
+    items: [
+      {
+        label: "레벨테스트 관리",
+        href: "/admin/level-tests",
+      },
+    ],
+  },
+
   {
     title: "수강 관리",
     items: [
@@ -69,11 +81,12 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
+
   {
     title: "수업 운영",
     items: [
       {
-        label: "수업 연기 내역",
+        label: "결석 신청 관리",
         href: "/admin/class-holds",
       },
       {
@@ -90,6 +103,7 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
+
   {
     title: "교육 콘텐츠",
     items: [
@@ -103,6 +117,7 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
+
   {
     title: "AI 서비스",
     items: [
@@ -114,10 +129,7 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
-function isActivePath(
-  pathname: string,
-  href: string
-) {
+function isActivePath(pathname: string, href: string) {
   if (href === "/admin") {
     return pathname === "/admin";
   }
@@ -166,11 +178,10 @@ export default function AdminSidebar() {
 
             <div className="talkly-admin-nav-items">
               {group.items.map((item) => {
-                const active =
-                  isActivePath(
-                    pathname,
-                    item.href
-                  );
+                const active = isActivePath(
+                  pathname,
+                  item.href
+                );
 
                 return (
                   <Link
