@@ -6,6 +6,7 @@ import {
 import { createClient } from "@/lib/supabase-server";
 import TalklyUserHeader from "@/components/TalklyUserHeader";
 import DeactivateChildButton from "./DeactivateChildButton";
+import StudentAccountCard from "./StudentAccountCard";
 
 type PageProps = {
   params: Promise<{
@@ -63,6 +64,7 @@ export default async function ChildDetailPage({
       school_name,
       grade,
       learning_goal,
+      student_user_id,
       is_active,
       created_at
     `)
@@ -88,6 +90,35 @@ export default async function ChildDetailPage({
 
   if (!child) {
     notFound();
+  }
+
+  /*
+   * 자녀에 학생 로그인 계정이 연결되어 있으면
+   * profiles에서 학생 로그인 이메일을 조회합니다.
+   * 계정이 아직 없으면 null을 그대로 전달하여
+   * StudentAccountCard가 계정 생성 화면을 표시합니다.
+   */
+  let studentEmail: string | null = null;
+
+  if (child.student_user_id) {
+    const {
+      data: studentProfile,
+      error: studentProfileError,
+    } = await supabase
+      .from("profiles")
+      .select("email")
+      .eq("id", child.student_user_id)
+      .maybeSingle();
+
+    if (studentProfileError) {
+      console.error(
+        "[Child Detail] Student profile lookup failed:",
+        studentProfileError.message
+      );
+    } else {
+      studentEmail =
+        studentProfile?.email ?? null;
+    }
   }
 
   const menuCards = [
@@ -432,6 +463,15 @@ export default async function ChildDetailPage({
             </div>
           </div>
         </section>
+
+        <StudentAccountCard
+          childId={child.id}
+          childName={child.name}
+          studentUserId={
+            child.student_user_id ?? null
+          }
+          studentEmail={studentEmail}
+        />
 
         <section
           style={{
