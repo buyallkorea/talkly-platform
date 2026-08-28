@@ -177,12 +177,11 @@ export default function InterviewResultForm({
     }
 
     if (
-      interview.status !== "scheduled" &&
       interview.status !== "in_progress" &&
       interview.status !== "completed"
     ) {
       setErrorMessage(
-        "원어민 테스트 일정 상태를 확인해주세요."
+        "화상 레벨테스트가 시작된 이후에 평가를 저장할 수 있습니다."
       );
       return;
     }
@@ -331,19 +330,34 @@ export default function InterviewResultForm({
   }
 
   if (!interview?.id) {
+    return null;
+  }
+
+  if (interview.status === "scheduled") {
     return (
       <section style={sectionStyle}>
         <h2 style={titleStyle}>
           원어민 테스트 평가 입력
         </h2>
 
+        <p style={descriptionStyle}>
+          화상 레벨테스트가 완료된 후 평가를 입력할 수 있습니다.
+        </p>
+
         <div style={emptyStyle}>
-          아직 등록된 원어민 테스트
-          일정이 없습니다. 먼저 테스트
-          일정과 담당 강사를 등록해주세요.
+          현재 테스트 상태는 <strong>예정</strong>입니다.
+          실제 화상 레벨테스트가 시작되어 상태가
+          <strong> 진행 중</strong>으로 변경된 이후에 평가 입력이 활성화됩니다.
         </div>
       </section>
     );
+  }
+
+  if (
+    interview.status !== "in_progress" &&
+    interview.status !== "completed"
+  ) {
+    return null;
   }
 
   return (
