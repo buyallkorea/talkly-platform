@@ -966,115 +966,96 @@ export default async function AdminLevelTestDetailPage({
         }}
       />
 
-      <InterviewScheduleForm
-        levelTestId={
-          levelTest.id
-        }
-        interviewRequired={
-          levelTest.interview_required
-        }
-        interview={
-          latestInterview
-            ? {
+      {levelTest.interview_required ? (
+        <>
+          <InterviewScheduleForm
+            levelTestId={
+              levelTest.id
+            }
+            interviewRequired={
+              levelTest.interview_required
+            }
+            interview={
+              latestInterview
+                ? {
+                    id:
+                      latestInterview.id,
+
+                    status:
+                      latestInterview.status,
+
+                    tester_user_id:
+                      latestInterview.tester_user_id,
+
+                    scheduled_at:
+                      latestInterview.scheduled_at,
+
+                    duration_minutes:
+                      latestInterview.duration_minutes,
+
+                    meeting_provider:
+                      latestInterview.meeting_provider,
+
+                    meeting_url:
+                      latestInterview.meeting_url,
+                  }
+                : null
+            }
+            teachers={teachers}
+          />
+
+          {latestInterview &&
+          [
+            "scheduled",
+            "in_progress",
+            "completed",
+          ].includes(latestInterview.status) ? (
+            <InterviewResultForm
+              levelTestId={
+                levelTest.id
+              }
+              interview={{
                 id:
                   latestInterview.id,
 
                 status:
                   latestInterview.status,
 
-                tester_user_id:
-                  latestInterview.tester_user_id,
+                speaking_level:
+                  latestInterview.speaking_level,
 
-                scheduled_at:
-                  latestInterview.scheduled_at,
+                listening_level:
+                  latestInterview.listening_level,
 
-                duration_minutes:
-                  latestInterview.duration_minutes,
+                pronunciation_level:
+                  latestInterview.pronunciation_level,
 
-                meeting_provider:
-                  latestInterview.meeting_provider,
+                comprehension_level:
+                  latestInterview.comprehension_level,
 
-                meeting_url:
-                  latestInterview.meeting_url,
-              }
-            : null
-        }
-        teachers={teachers}
-      />
+                suggested_level:
+                  latestInterview.suggested_level,
 
-      {latestInterview &&
-      [
-        "scheduled",
-        "in_progress",
-        "completed",
-      ].includes(latestInterview.status) ? (
-        <InterviewResultForm
-          levelTestId={
-            levelTest.id
-          }
-          interview={{
-            id:
-              latestInterview.id,
+                strengths:
+                  latestInterview.strengths,
 
-            status:
-              latestInterview.status,
+                weaknesses:
+                  latestInterview.weaknesses,
 
-            speaking_level:
-              latestInterview.speaking_level,
+                teacher_comment:
+                  latestInterview.teacher_comment,
+              }}
+            />
+          ) : null}
 
-            listening_level:
-              latestInterview.listening_level,
-
-            pronunciation_level:
-              latestInterview.pronunciation_level,
-
-            comprehension_level:
-              latestInterview.comprehension_level,
-
-            suggested_level:
-              latestInterview.suggested_level,
-
-            strengths:
-              latestInterview.strengths,
-
-            weaknesses:
-              latestInterview.weaknesses,
-
-            teacher_comment:
-              latestInterview.teacher_comment,
-          }}
-        />
-      ) : null}
-
-      <section
-        style={sectionStyle}
-      >
-        <SectionTitle
-          title="원어민 화상 레벨테스트"
-          description="관리자가 추가 확인이 필요하다고 판단한 경우에만 진행합니다."
-        />
-
-        {!levelTest.interview_required &&
-        !latestInterview ? (
-          <div
-            style={{
-              marginTop: "20px",
-              padding: "22px",
-              border:
-                "1px solid #e4e7ec",
-              borderRadius: "12px",
-              background: "#f9fafb",
-              color: "#667085",
-              fontSize: "13px",
-              lineHeight: 1.7,
-            }}
+          <section
+            style={sectionStyle}
           >
-            현재 원어민 추가
-            테스트가 요청되지
-            않았습니다.
-          </div>
-        ) : (
-          <>
+            <SectionTitle
+              title="원어민 화상 레벨테스트"
+              description="관리자가 추가 확인이 필요하다고 판단한 경우에만 진행합니다."
+            />
+
             <div
               style={infoGridStyle}
             >
@@ -1164,9 +1145,70 @@ export default async function AdminLevelTestDetailPage({
                 "아직 강사 의견이 없습니다."
               }
             />
-          </>
-        )}
-      </section>
+          </section>
+        </>
+      ) : (
+        <section
+          style={sectionStyle}
+        >
+          <SectionTitle
+            title="다음 단계"
+            description="원어민 추가 테스트 없이 최종 레벨을 확정한 경우 수강신청 단계로 바로 이어집니다."
+          />
+
+          {levelTest.final_level ? (
+            <div
+              style={{
+                marginTop: "20px",
+                padding: "22px",
+                border: "1px solid #abefc6",
+                borderRadius: "14px",
+                background: "#ecfdf3",
+                color: "#067647",
+                lineHeight: 1.8,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "15px",
+                  fontWeight: 900,
+                }}
+              >
+                최종 레벨 확정 완료 · 수강신청/결제 안내 단계
+              </div>
+
+              <div
+                style={{
+                  marginTop: "8px",
+                  fontSize: "13px",
+                }}
+              >
+                최종 레벨은 <strong>{levelTest.final_level}</strong>입니다.
+                학부모 화면에서는 더 이상 원어민 테스트를 안내하지 않고
+                수강신청 페이지로 바로 연결하는 흐름을 사용합니다.
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                marginTop: "20px",
+                padding: "22px",
+                border: "1px solid #dbe7ff",
+                borderRadius: "14px",
+                background: "#f5f8ff",
+                color: "#475467",
+                fontSize: "13px",
+                lineHeight: 1.8,
+              }}
+            >
+              원어민 추가 테스트는 진행하지 않습니다.
+              위의 관리자 판단 영역에서 최종 레벨을 입력하고
+              <strong> 최종 레벨 확정</strong>을 완료하면
+              학부모에게 수강신청 및 결제 단계가 안내됩니다.
+            </div>
+          )}
+        </section>
+      )}
 
       <section
         style={sectionStyle}

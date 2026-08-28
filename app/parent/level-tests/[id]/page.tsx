@@ -1100,120 +1100,193 @@ export default async function ParentLevelTestDetailPage({
             다음 단계
           </div>
 
-          <p
-            style={{
-              margin:
-                "10px 0 0",
-              color: "#667085",
-              fontSize: "13px",
-              lineHeight: 1.8,
-            }}
-          >
-            TALKLY는 보다 정확한
-            레벨 확인을 위해 무료 원어민
-            화상레벨테스트를 권장합니다.
-            화상레벨테스트 신청 시 앞으로
-            희망하는 정규수업 조건도 함께
-            알려주세요.
-          </p>
+          {
+            !levelTest.interview_required &&
+            levelTest.final_level
+          ? (
+            <>
+              <div
+                style={{
+                  marginTop: "18px",
+                  padding: "20px",
+                  border: "1px solid #abefc6",
+                  borderRadius: "14px",
+                  background: "#ecfdf3",
+                  color: "#067647",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "15px",
+                    fontWeight: 900,
+                  }}
+                >
+                  레벨 확정이 완료되었습니다.
+                </div>
 
-          {hasInterviewRequest ? (
-            <div
-              style={{
-                marginTop: "20px",
-                padding:
-                  "17px 18px",
-                border:
-                  "1px solid #abefc6",
-                borderRadius:
-                  "12px",
-                background:
-                  "#ecfdf3",
-                color: "#067647",
-                fontSize: "13px",
-                lineHeight: 1.7,
-                fontWeight: 800,
-              }}
-            >
-              원어민 화상레벨테스트 신청이
-              접수되었습니다. TALKLY
-              관리자가 신청 내용을 확인한
-              후 상담 및 테스트 일정을
-              안내합니다.
-            </div>
+                <div
+                  style={{
+                    marginTop: "8px",
+                    fontSize: "13px",
+                    lineHeight: 1.8,
+                  }}
+                >
+                  최종 레벨은 <strong>{levelTest.final_level}</strong>입니다.
+                  추가 화상레벨테스트 없이 바로 정규수업 수강신청 단계로
+                  진행할 수 있습니다.
+                </div>
+              </div>
+
+              {!isStudent && levelTest.child_id ? (
+                <div
+                  style={{
+                    marginTop: "18px",
+                    display: "flex",
+                    gap: "10px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Link
+                    href={`/parent/children/${levelTest.child_id}/enrollment`}
+                    style={{
+                      minHeight: "50px",
+                      padding: "0 22px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "11px",
+                      background: "#0A1F44",
+                      color: "#ffffff",
+                      textDecoration: "none",
+                      fontSize: "14px",
+                      fontWeight: 900,
+                      boxShadow: "0 10px 24px rgba(10,31,68,0.16)",
+                    }}
+                  >
+                    수강신청 · 결제 진행 →
+                  </Link>
+
+                  <Link
+                    href={`/parent/children/${levelTest.child_id}/enrollment-requests`}
+                    style={{
+                      minHeight: "50px",
+                      padding: "0 18px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      border: "1px solid #d0d5dd",
+                      borderRadius: "11px",
+                      background: "#ffffff",
+                      color: "#344054",
+                      textDecoration: "none",
+                      fontSize: "13px",
+                      fontWeight: 800,
+                    }}
+                  >
+                    수강신청 현황
+                  </Link>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    marginTop: "18px",
+                    padding: "16px 18px",
+                    border: "1px solid #dbe7ff",
+                    borderRadius: "12px",
+                    background: "#f5f8ff",
+                    color: "#475467",
+                    fontSize: "12px",
+                    lineHeight: 1.75,
+                  }}
+                >
+                  정규수업 신청과 결제는 학부모 계정에서 진행합니다.
+                </div>
+              )}
+            </>
+          ) : levelTest.interview_required ? (
+            <>
+              <p
+                style={{
+                  margin: "10px 0 0",
+                  color: "#667085",
+                  fontSize: "13px",
+                  lineHeight: 1.8,
+                }}
+              >
+                관리자 판단에 따라 원어민 화상레벨테스트가 필요합니다.
+                테스트 일정과 진행 상태를 확인한 뒤 최종 레벨이 확정되면
+                수강신청 단계로 이어집니다.
+              </p>
+
+              {hasInterviewRequest ? (
+                <div
+                  style={{
+                    marginTop: "20px",
+                    padding: "17px 18px",
+                    border: "1px solid #abefc6",
+                    borderRadius: "12px",
+                    background: "#ecfdf3",
+                    color: "#067647",
+                    fontSize: "13px",
+                    lineHeight: 1.7,
+                    fontWeight: 800,
+                  }}
+                >
+                  원어민 화상레벨테스트 신청이 접수되었습니다.
+                  TALKLY 관리자가 신청 내용을 확인한 후 상담 및 테스트 일정을
+                  안내합니다.
+                </div>
+              ) : (
+                <div
+                  style={{
+                    marginTop: "20px",
+                    display: "flex",
+                    gap: "10px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Link
+                    href={`/parent/level-tests/${levelTestId}/interview-request`}
+                    style={{
+                      minHeight: "48px",
+                      padding: "0 20px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "10px",
+                      background: "#2f6fed",
+                      color: "#ffffff",
+                      textDecoration: "none",
+                      fontSize: "14px",
+                      fontWeight: 900,
+                      boxShadow: "0 8px 18px rgba(47,111,237,0.20)",
+                    }}
+                  >
+                    무료 원어민 화상레벨테스트 신청 →
+                  </Link>
+                </div>
+              )}
+            </>
           ) : (
             <div
               style={{
-                marginTop: "20px",
-                display: "flex",
-                gap: "10px",
-                flexWrap: "wrap",
+                marginTop: "18px",
+                padding: "18px",
+                border: "1px solid #dbe7ff",
+                borderRadius: "12px",
+                background: "#f5f8ff",
+                color: "#475467",
+                fontSize: "13px",
+                lineHeight: 1.8,
               }}
             >
-              <Link
-                href={`/parent/level-tests/${levelTestId}/interview-request`}
-                style={{
-                  minHeight: "48px",
-                  padding:
-                    "0 20px",
-                  display:
-                    "inline-flex",
-                  alignItems:
-                    "center",
-                  justifyContent:
-                    "center",
-                  borderRadius:
-                    "10px",
-                  background:
-                    "#2f6fed",
-                  color: "#ffffff",
-                  textDecoration:
-                    "none",
-                  fontSize: "14px",
-                  fontWeight: 900,
-                  boxShadow:
-                    "0 8px 18px rgba(47,111,237,0.20)",
-                }}
-              >
-                무료 원어민 화상레벨테스트 신청 →
-              </Link>
-
-              <div
-                style={{
-                  padding:
-                    "10px 2px",
-                  color: "#667085",
-                  fontSize: "11px",
-                  lineHeight: 1.6,
-                }}
-              >
-                화상레벨테스트는 기본적으로
-                필리핀 원어민 강사가
-                진행합니다.
-              </div>
+              현재 TALKLY 관리자가 온라인 레벨테스트 결과를 검토 중입니다.
+              최종 판단이 완료되면 원어민 추가 테스트 또는 수강신청 단계가
+              이 화면에 안내됩니다.
             </div>
           )}
-
-          <div
-            style={{
-              marginTop: "18px",
-              paddingTop: "18px",
-              borderTop:
-                "1px solid #eaecf0",
-              color: "#667085",
-              fontSize: "12px",
-              lineHeight: 1.7,
-            }}
-          >
-            화상레벨테스트를 받지 않고
-            바로 수강을 원하는 경우에도
-            향후 내 강의실에서 수강신청을
-            진행할 수 있도록 연결할
-            예정입니다.
-          </div>
         </section>
       )}
-
       {/* ================================================= */}
       {/* 최종 레벨 */}
       {/* ================================================= */}
