@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase-browser";
+import ClassroomWhiteboardOverlay from "./ClassroomWhiteboardOverlay";
 
 type AudioHotspot = {
   id: number;
@@ -863,6 +864,18 @@ export default function ClassroomTextbookPanelClient({
                   );
                 }
               )}
+
+              <ClassroomWhiteboardOverlay
+                sessionId={
+                  sessionId
+                }
+                pageId={
+                  currentPage.id
+                }
+                viewerRole={
+                  viewerRole
+                }
+              />
             </div>
           </div>
         </div>
