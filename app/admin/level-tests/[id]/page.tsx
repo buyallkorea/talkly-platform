@@ -1002,46 +1002,49 @@ export default async function AdminLevelTestDetailPage({
         teachers={teachers}
       />
 
-      <InterviewResultForm
-        levelTestId={
-          levelTest.id
-        }
-        interview={
-          latestInterview
-            ? {
-                id:
-                  latestInterview.id,
+      {latestInterview &&
+      [
+        "scheduled",
+        "in_progress",
+        "completed",
+      ].includes(latestInterview.status) ? (
+        <InterviewResultForm
+          levelTestId={
+            levelTest.id
+          }
+          interview={{
+            id:
+              latestInterview.id,
 
-                status:
-                  latestInterview.status,
+            status:
+              latestInterview.status,
 
-                speaking_level:
-                  latestInterview.speaking_level,
+            speaking_level:
+              latestInterview.speaking_level,
 
-                listening_level:
-                  latestInterview.listening_level,
+            listening_level:
+              latestInterview.listening_level,
 
-                pronunciation_level:
-                  latestInterview.pronunciation_level,
+            pronunciation_level:
+              latestInterview.pronunciation_level,
 
-                comprehension_level:
-                  latestInterview.comprehension_level,
+            comprehension_level:
+              latestInterview.comprehension_level,
 
-                suggested_level:
-                  latestInterview.suggested_level,
+            suggested_level:
+              latestInterview.suggested_level,
 
-                strengths:
-                  latestInterview.strengths,
+            strengths:
+              latestInterview.strengths,
 
-                weaknesses:
-                  latestInterview.weaknesses,
+            weaknesses:
+              latestInterview.weaknesses,
 
-                teacher_comment:
-                  latestInterview.teacher_comment,
-              }
-            : null
-        }
-      />
+            teacher_comment:
+              latestInterview.teacher_comment,
+          }}
+        />
+      ) : null}
 
       <section
         style={sectionStyle}
