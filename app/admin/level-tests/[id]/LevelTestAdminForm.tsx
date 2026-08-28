@@ -93,6 +93,175 @@ export default function LevelTestAdminForm({
     return supabase;
   }
 
+  async function handleInterviewChoice(
+    required: boolean
+  ) {
+    setErrorMessage("");
+    setSuccessMessage("");
+    setLoading(true);
+
+    try {
+      const supabase =
+        await checkAdmin();
+
+      const now =
+        new Date().toISOString();
+
+      const {
+        data: updated,
+        error: updateError,
+      } = await supabase
+        .from("level_tests")
+        .update({
+          interview_required:
+            required,
+
+          interview_status:
+            required
+              ? "scheduling"
+              : null,
+
+          status:
+            required
+              ? "interview_required"
+              : "admin_review",
+
+          final_level:
+            null,
+
+          finalized_at:
+            null,
+
+          updated_at:
+            now,
+        })
+        .eq("id", levelTest.id)
+        .select("id")
+        .maybeSingle();
+
+      if (updateError) {
+        throw new Error(
+          `관리자 판단 변경 실패: ${updateError.message} / code: ${updateError.code}`
+        );
+      }
+
+      if (!updated) {
+        throw new Error(
+          "관리자 판단 변경 결과를 확인할 수 없습니다."
+        );
+      }
+
+      if (required) {
+        const {
+          data:
+            existingInterview,
+          error:
+            interviewCheckError,
+        } = await supabase
+          .from(
+            "level_test_interviews"
+          )
+          .select("id")
+          .eq(
+            "level_test_id",
+            levelTest.id
+          )
+          .in("status", [
+            "scheduling",
+            "scheduled",
+            "in_progress",
+          ])
+          .limit(1)
+          .maybeSingle();
+
+        if (
+          interviewCheckError
+        ) {
+          throw new Error(
+            `원어민 테스트 확인 실패: ${interviewCheckError.message}`
+          );
+        }
+
+        if (
+          !existingInterview
+        ) {
+          const {
+            error: insertError,
+          } = await supabase
+            .from(
+              "level_test_interviews"
+            )
+            .insert({
+              level_test_id:
+                levelTest.id,
+
+              status:
+                "scheduling",
+
+              duration_minutes:
+                20,
+            });
+
+          if (insertError) {
+            throw new Error(
+              `원어민 테스트 생성 실패: ${insertError.message} / code: ${insertError.code}`
+            );
+          }
+        }
+      } else {
+        const {
+          error: cancelError,
+        } = await supabase
+          .from(
+            "level_test_interviews"
+          )
+          .update({
+            status:
+              "cancelled",
+          })
+          .eq(
+            "level_test_id",
+            levelTest.id
+          )
+          .in("status", [
+            "scheduling",
+            "scheduled",
+          ]);
+
+        if (cancelError) {
+          throw new Error(
+            `기존 원어민 테스트 취소 실패: ${cancelError.message}`
+          );
+        }
+      }
+
+      setInterviewRequired(
+        required
+      );
+
+      setSuccessMessage(
+        required
+          ? "원어민 추가 테스트 대상으로 변경되었습니다."
+          : "추가 테스트 없이 판단하도록 변경되었습니다."
+      );
+
+      router.refresh();
+    } catch (error) {
+      console.error(
+        "INTERVIEW CHOICE UPDATE ERROR:",
+        error
+      );
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "관리자 판단 변경 중 오류가 발생했습니다."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleReviewSubmit(
     event: FormEvent<HTMLFormElement>
   ) {
@@ -326,10 +495,9 @@ export default function LevelTestAdminForm({
               type="button"
               disabled={loading}
               onClick={() => {
-                setInterviewRequired(
+                void handleInterviewChoice(
                   false
                 );
-                setSuccessMessage("");
               }}
               style={{
                 ...choiceButtonStyle,
@@ -357,11 +525,11 @@ export default function LevelTestAdminForm({
               type="button"
               disabled={loading}
               onClick={() => {
-                setInterviewRequired(
+                setFinalLevel("");
+
+                void handleInterviewChoice(
                   true
                 );
-                setFinalLevel("");
-                setSuccessMessage("");
               }}
               style={{
                 ...choiceButtonStyle,
