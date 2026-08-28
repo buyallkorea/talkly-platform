@@ -8,6 +8,7 @@ import ClassSessionControls from "./ClassSessionControls";
 import ClassroomWaitingRoom from "./ClassroomWaitingRoom";
 import ClassSessionEndWatcher from "./ClassSessionEndWatcher";
 import StudentAttendanceRecorder from "./StudentAttendanceRecorder";
+import ClassroomChat from "./ClassroomChat";
 
 type PageProps = {
   params: Promise<{
@@ -1121,6 +1122,28 @@ export default async function ClassroomPage({
           />
         </section>
       </div>
+
+      <ClassroomChat
+        sessionId={
+          session.id
+        }
+        currentUserId={
+          user.id
+        }
+        currentUserRole={
+          profile.role
+        }
+        currentUserName={
+          profile.role ===
+          "teacher"
+            ? teacherName
+            : profile.role ===
+              "admin"
+              ? profile.name ||
+                "TALKLY Admin"
+              : studentName
+        }
+      />
     </main>
   );
 }
