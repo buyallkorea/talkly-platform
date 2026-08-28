@@ -44,6 +44,7 @@ type PageMessage = {
 const MIN_ZOOM = 60;
 const MAX_ZOOM = 180;
 const ZOOM_STEP = 10;
+const HEARTBEAT_MS = 2500;
 
 export default function ClassroomTextbookPanelClient({
   title,
@@ -328,6 +329,15 @@ export default function ClassroomTextbookPanelClient({
           connected
         );
 
+        if (
+          connected &&
+          isController
+        ) {
+          void sendPageState(
+            currentIndexRef.current,
+            "controller-connected"
+          );
+        }
       }
     );
 
@@ -354,6 +364,35 @@ export default function ClassroomTextbookPanelClient({
     isController,
     senderId,
     pages.length,
+  ]);
+
+  useEffect(() => {
+    if (
+      !isController ||
+      !realtimeConnected
+    ) {
+      return;
+    }
+
+    const timer =
+      window.setInterval(
+        () => {
+          void sendPageState(
+            currentIndexRef.current,
+            "heartbeat"
+          );
+        },
+        HEARTBEAT_MS
+      );
+
+    return () => {
+      window.clearInterval(
+        timer
+      );
+    };
+  }, [
+    isController,
+    realtimeConnected,
   ]);
 
   useEffect(() => {
