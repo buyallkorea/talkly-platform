@@ -30,6 +30,7 @@ type ViewerPage = {
 type Props = {
   title: string;
   pages: ViewerPage[];
+  textbookId: number;
   sessionId: number;
   viewerRole: string;
 };
@@ -50,6 +51,7 @@ const HEARTBEAT_MS = 2500;
 export default function ClassroomTextbookPanelClient({
   title,
   pages,
+  textbookId,
   sessionId,
   viewerRole,
 }: Props) {
@@ -869,8 +871,14 @@ export default function ClassroomTextbookPanelClient({
                 sessionId={
                   sessionId
                 }
+                textbookId={
+                  textbookId
+                }
                 pageId={
                   currentPage.id
+                }
+                pageNumber={
+                  currentPage.pageNumber
                 }
                 viewerRole={
                   viewerRole

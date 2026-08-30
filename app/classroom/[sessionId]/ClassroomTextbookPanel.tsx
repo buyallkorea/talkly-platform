@@ -221,6 +221,7 @@ export default async function ClassroomTextbookPanel({
     <ClassroomTextbookPanelClient
       title={textbook.title}
       pages={pages}
+      textbookId={textbookId}
       sessionId={sessionId}
       viewerRole={viewerRole}
     />
