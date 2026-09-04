@@ -459,7 +459,10 @@ export default function ClassroomWhiteboardOverlay({
 
     if (tool === "eraser") {
       drawingRef.current = true;
-      eraseAtPoint(point);
+      eraseAtPoint(
+        point,
+        event.pointerType || "mouse"
+      );
       return;
     }
 
@@ -491,7 +494,10 @@ export default function ClassroomWhiteboardOverlay({
       normalizePoint(event);
 
     if (tool === "eraser") {
-      eraseAtPoint(point);
+      eraseAtPoint(
+        point,
+        event.pointerType || "mouse"
+      );
       return;
     }
 
@@ -567,12 +573,20 @@ export default function ClassroomWhiteboardOverlay({
 
   function strokeHit(
     stroke: Stroke,
-    point: Point
+    point: Point,
+    pointerType: string
   ) {
+    const baseTolerance =
+      pointerType === "touch"
+        ? 5.8
+        : pointerType === "pen"
+          ? 4.2
+          : 3.4;
+
     const tolerance =
       stroke.kind === "highlighter"
-        ? 3.8
-        : 2.7;
+        ? baseTolerance + 1.2
+        : baseTolerance;
 
     if (stroke.points.length === 1) {
       return (
@@ -603,7 +617,8 @@ export default function ClassroomWhiteboardOverlay({
   }
 
   function eraseAtPoint(
-    point: Point
+    point: Point,
+    pointerType: string
   ) {
     const current =
       pagesRef.current[pageKey] ?? [];
@@ -612,7 +627,11 @@ export default function ClassroomWhiteboardOverlay({
       [...current]
         .reverse()
         .find((stroke) =>
-          strokeHit(stroke, point)
+          strokeHit(
+            stroke,
+            point,
+            pointerType
+          )
         );
 
     if (!target) {
@@ -1228,9 +1247,9 @@ export default function ClassroomWhiteboardOverlay({
           }
 
           .talkly-whiteboard-toolbar button {
-            min-width: 36px !important;
-            width: 36px !important;
-            height: 34px !important;
+            min-width: 40px !important;
+            width: 40px !important;
+            height: 38px !important;
             padding: 0 !important;
             border-radius: 8px !important;
           }

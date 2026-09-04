@@ -98,6 +98,9 @@ export default function ClassroomTextbookPanelClient({
   const currentIndexRef =
     useRef(0);
 
+  const compactInitializedRef =
+    useRef(false);
+
   const currentPage =
     pages[currentIndex];
 
@@ -411,6 +414,13 @@ export default function ClassroomTextbookPanelClient({
 
       if (compact) {
         setShowThumbnails(false);
+
+        if (!compactInitializedRef.current) {
+          compactInitializedRef.current = true;
+          setZoom((value) =>
+            value === 100 ? 120 : value
+          );
+        }
       }
     }
 
@@ -553,8 +563,8 @@ export default function ClassroomTextbookPanelClient({
           }
 
           .talkly-textbook-tools button {
-            min-height: 32px !important;
-            padding: 0 9px !important;
+            min-height: 34px !important;
+            padding: 0 10px !important;
             font-size: 10px !important;
           }
 
@@ -961,71 +971,57 @@ export default function ClassroomTextbookPanelClient({
                     playingHotspotId;
 
                   return (
-                    <button
-                      key={
-                        hotspot.id
-                      }
-                      type="button"
-                      onPointerDown={(event) => {
-                        event.stopPropagation();
-                      }}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void playHotspot(hotspot);
-                      }}
-                      aria-label={`${hotspot.label} 재생`}
-                      title={`${hotspot.label} 재생`}
+                    <div
+                      key={hotspot.id}
                       style={{
-                        position:
-                          "absolute",
+                        position: "absolute",
                         left: `${hotspot.xPercent}%`,
                         top: `${hotspot.yPercent}%`,
                         width: `${hotspot.widthPercent}%`,
                         height: `${hotspot.heightPercent}%`,
-                        border:
-                          "none",
-                        background:
-                          "transparent",
-                        padding: 0,
-                        cursor:
-                          "pointer",
-                        zIndex: 45,
+                        pointerEvents: "none",
+                        zIndex: 90,
                       }}
                     >
-                      <span
+                      <button
+                        type="button"
+                        onPointerDown={(event) => {
+                          event.stopPropagation();
+                        }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void playHotspot(hotspot);
+                        }}
+                        aria-label={`${hotspot.label} 재생`}
+                        title={`${hotspot.label} 재생`}
                         style={{
-                          position:
-                            "absolute",
+                          position: "absolute",
                           right: 3,
                           top: 3,
-                          width: 26,
-                          height: 26,
-                          borderRadius:
-                            999,
-                          display:
-                            "inline-flex",
-                          alignItems:
-                            "center",
-                          justifyContent:
-                            "center",
-                          background:
-                            playing
-                              ? "#2684ff"
-                              : "rgba(17,19,24,0.82)",
-                          color:
-                            "#fff",
-                          fontSize: 13,
+                          width: compactViewport ? 34 : 30,
+                          height: compactViewport ? 34 : 30,
+                          border: "none",
+                          borderRadius: 999,
+                          background: playing
+                            ? "#2684ff"
+                            : "rgba(17,19,24,0.88)",
+                          color: "#fff",
+                          padding: 0,
+                          cursor: "pointer",
+                          zIndex: 100,
+                          pointerEvents: "auto",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: compactViewport ? 15 : 13,
                           boxShadow:
-                            "0 2px 7px rgba(0,0,0,0.25)",
-                          pointerEvents:
-                            "none",
+                            "0 2px 7px rgba(0,0,0,0.28)",
+                          touchAction: "manipulation",
                         }}
                       >
-                        {playing
-                          ? "▶"
-                          : "🔊"}
-                      </span>
-                    </button>
+                        {playing ? "▶" : "🔊"}
+                      </button>
+                    </div>
                   );
                 }
               )}

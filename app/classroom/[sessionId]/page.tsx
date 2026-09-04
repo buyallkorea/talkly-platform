@@ -983,13 +983,13 @@ export default async function ClassroomPage({
           .talkly-classroom-video {
             position: absolute;
             z-index: 35;
-            top: 56px;
+            top: 54px;
             right: 10px;
             left: auto;
-            width: min(25vw, 180px);
-            height: min(18vh, 132px);
-            min-width: 138px;
-            min-height: 98px;
+            width: min(30vw, 220px);
+            height: min(23vh, 165px);
+            min-width: 176px;
+            min-height: 132px;
             border-radius: 12px;
             box-shadow:
               0 18px 48px rgba(0,0,0,.46),
@@ -1036,8 +1036,9 @@ export default async function ClassroomPage({
           }
 
           .talkly-classroom-control {
-            min-height: 42px;
-            margin-bottom: 5px;
+            min-height: 38px;
+            margin-bottom: 4px;
+            padding: 4px 7px;
           }
 
           .talkly-control-copy small {
@@ -1045,14 +1046,18 @@ export default async function ClassroomPage({
           }
 
           .talkly-classroom-video {
-            top: 48px;
+            top: 46px;
             right: 7px;
             left: auto;
-            width: 106px;
-            height: 78px;
-            min-width: 106px;
-            min-height: 78px;
+            width: 162px;
+            height: 122px;
+            min-width: 162px;
+            min-height: 122px;
             border-radius: 10px;
+          }
+
+          .talkly-classroom-stage {
+            padding-top: 0;
           }
         }
 
