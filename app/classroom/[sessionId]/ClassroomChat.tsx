@@ -142,7 +142,115 @@ export default function ClassroomChat({
         )
         .subscribe();
 
-    return (
+    return () => {
+      mounted = false;
+      void supabase.removeChannel(
+        channel
+      );
+    };
+  }, [sessionId]);
+
+  useEffect(() => {
+    const list =
+      listRef.current;
+
+    if (!list) {
+      return;
+    }
+
+    list.scrollTop =
+      list.scrollHeight;
+  }, [messages]);
+
+  async function sendMessage() {
+    const trimmed =
+      message.trim();
+
+    if (
+      !trimmed ||
+      loading
+    ) {
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage("");
+
+    try {
+      const supabase =
+        createClient();
+
+      const {
+        data: { user },
+        error: userError,
+      } =
+        await supabase.auth.getUser();
+
+      if (
+        userError ||
+        !user ||
+        user.id !== currentUserId
+      ) {
+        throw new Error(
+          "Your login session could not be verified."
+        );
+      }
+
+      const {
+        error,
+      } = await supabase
+        .from("classroom_messages")
+        .insert({
+          class_session_id:
+            sessionId,
+          sender_user_id:
+            currentUserId,
+          sender_role:
+            currentUserRole,
+          sender_name:
+            currentUserName,
+          message:
+            trimmed,
+        });
+
+      if (error) {
+        throw new Error(
+          error.message
+        );
+      }
+
+      setMessage("");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "The message could not be sent."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+    await sendMessage();
+  }
+
+  function handleKeyDown(
+    event: KeyboardEvent<HTMLInputElement>
+  ) {
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+      void sendMessage();
+    }
+  }
+
+  return (
     <>
       <style>{`
         .talkly-chat {
@@ -338,6 +446,7 @@ export default function ClassroomChat({
         <div className="talkly-chat-head">
           <div className="talkly-chat-title">
             <span className="talkly-chat-live" />
+
             <div className="talkly-chat-title-copy">
               <strong>CHAT</strong>
               <small>채팅</small>
