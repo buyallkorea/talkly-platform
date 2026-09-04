@@ -798,7 +798,7 @@ export default async function ClassroomPage({
         .talkly-classroom {
           height: 100vh;
           height: 100dvh;
-          padding: 12px 16px;
+          padding: 6px 10px;
           box-sizing: border-box;
           background:
             radial-gradient(circle at 72% -10%, rgba(37,99,235,.10), transparent 34%),
@@ -820,8 +820,8 @@ export default async function ClassroomPage({
         }
 
         .talkly-classroom-top {
-          min-height: 48px;
-          margin-bottom: 9px;
+          min-height: 38px;
+          margin-bottom: 6px;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -873,9 +873,9 @@ export default async function ClassroomPage({
         }
 
         .talkly-classroom-control {
-          margin-bottom: 9px;
+          margin-bottom: 6px;
           padding: 8px 12px;
-          min-height: 54px;
+          min-height: 48px;
           border: 1px solid rgba(255,255,255,.10);
           border-radius: 14px;
           background: linear-gradient(
@@ -910,8 +910,8 @@ export default async function ClassroomPage({
           position: relative;
           display: grid;
           grid-template-columns:
-            minmax(340px, .80fr)
-            minmax(560px, 1.70fr);
+            minmax(300px, .68fr)
+            minmax(620px, 1.82fr);
           gap: 14px;
           align-items: stretch;
           flex: 1 1 auto;
@@ -983,13 +983,14 @@ export default async function ClassroomPage({
           .talkly-classroom-video {
             position: absolute;
             z-index: 35;
-            top: 10px;
-            left: 10px;
-            width: min(34vw, 250px);
-            height: min(24vh, 180px);
-            min-width: 180px;
-            min-height: 128px;
-            border-radius: 13px;
+            top: 56px;
+            right: 10px;
+            left: auto;
+            width: min(25vw, 180px);
+            height: min(18vh, 132px);
+            min-width: 138px;
+            min-height: 98px;
+            border-radius: 12px;
             box-shadow:
               0 18px 48px rgba(0,0,0,.46),
               0 0 0 1px rgba(255,255,255,.10);
@@ -1007,7 +1008,7 @@ export default async function ClassroomPage({
           }
 
           .talkly-classroom-top {
-            min-height: 38px;
+            min-height: 34px;
             margin-bottom: 5px;
             gap: 10px;
           }
@@ -1018,7 +1019,7 @@ export default async function ClassroomPage({
 
           .talkly-classroom-title {
             margin-top: 2px;
-            font-size: 16px;
+            font-size: 15px;
           }
 
           .talkly-classroom-title small {
@@ -1044,12 +1045,14 @@ export default async function ClassroomPage({
           }
 
           .talkly-classroom-video {
-            top: 8px;
-            left: 8px;
-            width: 150px;
-            height: 112px;
-            min-width: 150px;
-            min-height: 112px;
+            top: 48px;
+            right: 7px;
+            left: auto;
+            width: 106px;
+            height: 78px;
+            min-width: 106px;
+            min-height: 78px;
+            border-radius: 10px;
           }
         }
 

@@ -446,10 +446,7 @@ export default function ClassroomWhiteboardOverlay({
   function handlePointerDown(
     event: ReactPointerEvent<SVGSVGElement>
   ) {
-    if (
-      tool === "select" ||
-      tool === "eraser"
-    ) {
+    if (tool === "select") {
       return;
     }
 
@@ -459,6 +456,12 @@ export default function ClassroomWhiteboardOverlay({
 
     const point =
       normalizePoint(event);
+
+    if (tool === "eraser") {
+      drawingRef.current = true;
+      eraseAtPoint(point);
+      return;
+    }
 
     drawingRef.current = true;
 
@@ -480,15 +483,21 @@ export default function ClassroomWhiteboardOverlay({
   function handlePointerMove(
     event: ReactPointerEvent<SVGSVGElement>
   ) {
-    if (
-      !drawingRef.current ||
-      !draft
-    ) {
+    if (!drawingRef.current) {
       return;
     }
 
     const point =
       normalizePoint(event);
+
+    if (tool === "eraser") {
+      eraseAtPoint(point);
+      return;
+    }
+
+    if (!draft) {
+      return;
+    }
 
     setDraft((current) => {
       if (!current) {
@@ -515,6 +524,102 @@ export default function ClassroomWhiteboardOverlay({
         ],
       };
     });
+  }
+
+  function distanceToSegment(
+    point: Point,
+    start: Point,
+    end: Point
+  ) {
+    const dx =
+      end.x - start.x;
+    const dy =
+      end.y - start.y;
+
+    if (dx === 0 && dy === 0) {
+      return Math.hypot(
+        point.x - start.x,
+        point.y - start.y
+      );
+    }
+
+    const t =
+      Math.max(
+        0,
+        Math.min(
+          1,
+          ((point.x - start.x) * dx +
+            (point.y - start.y) * dy) /
+            (dx * dx + dy * dy)
+        )
+      );
+
+    const px =
+      start.x + t * dx;
+    const py =
+      start.y + t * dy;
+
+    return Math.hypot(
+      point.x - px,
+      point.y - py
+    );
+  }
+
+  function strokeHit(
+    stroke: Stroke,
+    point: Point
+  ) {
+    const tolerance =
+      stroke.kind === "highlighter"
+        ? 3.8
+        : 2.7;
+
+    if (stroke.points.length === 1) {
+      return (
+        Math.hypot(
+          point.x - stroke.points[0].x,
+          point.y - stroke.points[0].y
+        ) <= tolerance
+      );
+    }
+
+    for (
+      let index = 0;
+      index < stroke.points.length - 1;
+      index += 1
+    ) {
+      if (
+        distanceToSegment(
+          point,
+          stroke.points[index],
+          stroke.points[index + 1]
+        ) <= tolerance
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function eraseAtPoint(
+    point: Point
+  ) {
+    const current =
+      pagesRef.current[pageKey] ?? [];
+
+    const target =
+      [...current]
+        .reverse()
+        .find((stroke) =>
+          strokeHit(stroke, point)
+        );
+
+    if (!target) {
+      return;
+    }
+
+    removeStroke(target.id);
   }
 
   function removeStroke(
@@ -911,11 +1016,7 @@ export default function ClassroomWhiteboardOverlay({
           strokeLinecap="round"
           vectorEffect="non-scaling-stroke"
           style={{
-            pointerEvents:
-              tool ===
-              "eraser"
-                ? "stroke"
-                : "none",
+            pointerEvents: "none",
             cursor:
               tool ===
               "eraser"
@@ -969,11 +1070,7 @@ export default function ClassroomWhiteboardOverlay({
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
         style={{
-          pointerEvents:
-            tool ===
-            "eraser"
-              ? "stroke"
-              : "none",
+          pointerEvents: "none",
           cursor:
             tool ===
             "eraser"
@@ -1029,7 +1126,7 @@ export default function ClassroomWhiteboardOverlay({
           position: absolute;
           top: 10px;
           right: 10px;
-          z-index: 20;
+          z-index: 60;
           display: flex;
           align-items: center;
           gap: 6px;
@@ -1118,11 +1215,32 @@ export default function ClassroomWhiteboardOverlay({
 
         @media (max-width: 560px) {
           .talkly-whiteboard-toolbar {
-            border-radius: 12px;
+            left: 6px;
+            right: 6px;
+            top: 6px;
+            border-radius: 11px;
+            padding: 5px 6px;
+            gap: 4px;
           }
 
           .talkly-whiteboard-divider {
             display: none;
+          }
+
+          .talkly-whiteboard-toolbar button {
+            min-width: 36px !important;
+            width: 36px !important;
+            height: 34px !important;
+            padding: 0 !important;
+            border-radius: 8px !important;
+          }
+
+          .talkly-whiteboard-toolbar button span:last-child {
+            display: none !important;
+          }
+
+          .talkly-whiteboard-status {
+            padding-right: 1px;
           }
         }
       `}</style>
@@ -1251,9 +1369,11 @@ export default function ClassroomWhiteboardOverlay({
           inset: 0,
           width: "100%",
           height: "100%",
-          zIndex: 10,
+          zIndex: 20,
           touchAction:
-            "none",
+            tool === "select"
+              ? "auto"
+              : "none",
           pointerEvents:
             tool === "select"
               ? "none"

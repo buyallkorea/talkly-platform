@@ -65,6 +65,8 @@ export default function ClassroomTextbookPanelClient({
     useState(100);
   const [showThumbnails, setShowThumbnails] =
     useState(true);
+  const [compactViewport, setCompactViewport] =
+    useState(false);
   const [
     playingHotspotId,
     setPlayingHotspotId,
@@ -399,6 +401,35 @@ export default function ClassroomTextbookPanelClient({
   ]);
 
   useEffect(() => {
+    const media =
+      window.matchMedia("(max-width: 900px)");
+
+    function applyResponsiveState() {
+      const compact = media.matches;
+
+      setCompactViewport(compact);
+
+      if (compact) {
+        setShowThumbnails(false);
+      }
+    }
+
+    applyResponsiveState();
+
+    media.addEventListener(
+      "change",
+      applyResponsiveState
+    );
+
+    return () => {
+      media.removeEventListener(
+        "change",
+        applyResponsiveState
+      );
+    };
+  }, []);
+
+  useEffect(() => {
     return () => {
       audioRef.current?.pause();
     };
@@ -434,6 +465,109 @@ export default function ClassroomTextbookPanelClient({
             font-size: 12px;
           }
         }
+
+        .talkly-textbook-header {
+          flex: 0 0 auto;
+        }
+
+        .talkly-textbook-tools {
+          min-width: 0;
+        }
+
+        .talkly-textbook-body {
+          flex: 1 1 auto;
+          min-height: 0;
+        }
+
+        .talkly-textbook-sidebar {
+          min-height: 0;
+        }
+
+        .talkly-textbook-viewport {
+          min-height: 0;
+        }
+
+        .talkly-textbook-footer {
+          flex: 0 0 auto;
+        }
+
+        @media (max-width: 900px) {
+          .talkly-textbook-header {
+            min-height: 46px !important;
+            padding: 7px 8px !important;
+            gap: 6px !important;
+            flex-wrap: nowrap !important;
+            overflow: hidden;
+          }
+
+          .talkly-textbook-title {
+            max-width: 145px !important;
+            font-size: 12px !important;
+          }
+
+          .talkly-textbook-tools {
+            flex: 1 1 auto;
+            flex-wrap: nowrap !important;
+            overflow-x: auto;
+            justify-content: flex-end;
+            scrollbar-width: none;
+          }
+
+          .talkly-textbook-tools::-webkit-scrollbar {
+            display: none;
+          }
+
+          .talkly-textbook-role {
+            display: none !important;
+          }
+
+          .talkly-textbook-viewport {
+            padding: 4px !important;
+          }
+
+          .talkly-textbook-footer {
+            min-height: 44px !important;
+            padding: 6px 8px !important;
+          }
+
+          .talkly-textbook-footer button {
+            min-height: 34px !important;
+            padding: 0 10px !important;
+            font-size: 11px !important;
+          }
+        }
+
+        @media (max-width: 600px) {
+          .talkly-textbook-header {
+            min-height: 42px !important;
+            padding: 5px 6px !important;
+          }
+
+          .talkly-textbook-header-title-wrap {
+            display: none !important;
+          }
+
+          .talkly-textbook-tools {
+            width: 100%;
+            justify-content: flex-start;
+          }
+
+          .talkly-textbook-tools button {
+            min-height: 32px !important;
+            padding: 0 9px !important;
+            font-size: 10px !important;
+          }
+
+          .talkly-textbook-zoom-value {
+            min-width: 40px !important;
+            font-size: 11px !important;
+          }
+
+          .talkly-textbook-footer {
+            min-height: 40px !important;
+            padding: 4px 6px !important;
+          }
+        }
       `}</style>
     <div
       className="talkly-textbook-shell"
@@ -448,6 +582,7 @@ export default function ClassroomTextbookPanelClient({
       }}
     >
       <div
+        className="talkly-textbook-header"
         style={{
           minHeight: "56px",
           padding: "10px 12px",
@@ -462,6 +597,7 @@ export default function ClassroomTextbookPanelClient({
         }}
       >
         <div
+          className="talkly-textbook-header-title-wrap"
           style={{
             minWidth: 0,
           }}
@@ -505,6 +641,7 @@ export default function ClassroomTextbookPanelClient({
           </div>
 
           <div
+            className="talkly-textbook-title"
             style={{
               marginTop: "3px",
               fontSize: "14px",
@@ -521,6 +658,7 @@ export default function ClassroomTextbookPanelClient({
         </div>
 
         <div
+          className="talkly-textbook-tools"
           style={{
             display: "flex",
             alignItems: "center",
@@ -547,7 +685,8 @@ export default function ClassroomTextbookPanelClient({
               fontSize: "10px",
               fontWeight: 800,
             }}
-          >
+          
+            className="talkly-textbook-role">
             {isController
               ? `TEACHER CONTROL · ${viewerRole}`
               : `FOLLOW TEACHER · ${viewerRole}`}
@@ -563,9 +702,13 @@ export default function ClassroomTextbookPanelClient({
             }
             style={toolButton}
           >
-            {showThumbnails
-              ? "Hide Pages"
-              : "Pages"}
+            {compactViewport
+              ? showThumbnails
+                ? "Hide"
+                : "Pages"
+              : showThumbnails
+                ? "Hide Pages"
+                : "Pages"}
           </button>
 
           <button
@@ -588,6 +731,7 @@ export default function ClassroomTextbookPanelClient({
           </button>
 
           <div
+            className="talkly-textbook-zoom-value"
             style={{
               minWidth: "48px",
               textAlign: "center",
@@ -630,6 +774,7 @@ export default function ClassroomTextbookPanelClient({
       </div>
 
       <div
+        className="talkly-textbook-body"
         style={{
           flex: 1,
           minHeight: 0,
@@ -642,6 +787,7 @@ export default function ClassroomTextbookPanelClient({
       >
         {showThumbnails && (
           <aside
+            className="talkly-textbook-sidebar"
             style={{
               minHeight: 0,
               overflowY: "auto",
@@ -752,6 +898,7 @@ export default function ClassroomTextbookPanelClient({
 
         <div
           ref={viewportRef}
+          className="talkly-textbook-viewport"
           style={{
             minWidth: 0,
             minHeight: 0,
@@ -819,11 +966,14 @@ export default function ClassroomTextbookPanelClient({
                         hotspot.id
                       }
                       type="button"
-                      onClick={() =>
-                        playHotspot(
-                          hotspot
-                        )
-                      }
+                      onPointerDown={(event) => {
+                        event.stopPropagation();
+                      }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void playHotspot(hotspot);
+                      }}
+                      aria-label={`${hotspot.label} 재생`}
                       title={`${hotspot.label} 재생`}
                       style={{
                         position:
@@ -839,7 +989,7 @@ export default function ClassroomTextbookPanelClient({
                         padding: 0,
                         cursor:
                           "pointer",
-                        zIndex: 5,
+                        zIndex: 45,
                       }}
                     >
                       <span
@@ -903,6 +1053,7 @@ export default function ClassroomTextbookPanelClient({
       </div>
 
       <div
+        className="talkly-textbook-footer"
         style={{
           minHeight: "54px",
           padding: "9px 12px",

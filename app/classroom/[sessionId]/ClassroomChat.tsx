@@ -256,8 +256,8 @@ export default function ClassroomChat({
         .talkly-chat {
           max-width: 1500px;
           width: 100%;
-          margin: 10px auto 0;
-          padding: 8px 10px 9px;
+          margin: 7px auto 0;
+          padding: 6px 9px 7px;
           border: 1px solid rgba(255,255,255,.11);
           border-radius: 14px;
           background:
@@ -272,7 +272,7 @@ export default function ClassroomChat({
           align-items: center;
           justify-content: space-between;
           gap: 12px;
-          margin-bottom: 6px;
+          margin-bottom: 4px;
         }
 
         .talkly-chat-title {
@@ -310,9 +310,9 @@ export default function ClassroomChat({
         }
 
         .talkly-chat-list {
-          height: 54px;
+          height: 38px;
           overflow-y: auto;
-          padding: 4px 7px;
+          padding: 3px 7px;
           border-radius: 9px;
           background: rgba(255,255,255,.025);
           border: 1px solid rgba(255,255,255,.04);
@@ -321,7 +321,7 @@ export default function ClassroomChat({
         }
 
         .talkly-chat-empty {
-          padding: 13px 4px 0;
+          padding: 7px 4px 0;
           font-size: 10px;
           color: rgba(255,255,255,.42);
         }
@@ -358,12 +358,12 @@ export default function ClassroomChat({
           display: grid;
           grid-template-columns: minmax(0,1fr) auto;
           gap: 8px;
-          margin-top: 7px;
+          margin-top: 5px;
         }
 
         .talkly-chat-input {
           width: 100%;
-          height: 34px;
+          height: 30px;
           box-sizing: border-box;
           padding: 0 11px;
           border: 1px solid rgba(255,255,255,.10);
@@ -380,7 +380,7 @@ export default function ClassroomChat({
         }
 
         .talkly-chat-send {
-          height: 34px;
+          height: 30px;
           min-width: 70px;
           padding: 0 14px;
           border: 1px solid rgba(96,165,250,.35);
@@ -417,7 +417,7 @@ export default function ClassroomChat({
           }
 
           .talkly-chat-list {
-            height: 44px;
+            height: 34px;
           }
 
           .talkly-chat-row {
