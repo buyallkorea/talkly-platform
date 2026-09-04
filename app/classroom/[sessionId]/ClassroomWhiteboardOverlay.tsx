@@ -1011,156 +1011,223 @@ export default function ClassroomWhiteboardOverlay({
             ? "Save error"
             : "";
 
+  const activeToolLabel =
+    tool === "select"
+      ? "Pointer"
+      : tool === "pen"
+        ? "Pen"
+        : tool === "highlighter"
+          ? "Highlight"
+          : tool === "line"
+            ? "Line"
+            : "Eraser";
+
   return (
     <>
+      <style jsx>{`
+        .talkly-whiteboard-toolbar {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          z-index: 20;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 8px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          border-radius: 14px;
+          background: rgba(12, 14, 18, 0.94);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          max-width: calc(100% - 20px);
+        }
+
+        .talkly-whiteboard-status {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          padding: 0 8px 0 2px;
+          min-width: 88px;
+        }
+
+        .talkly-whiteboard-status-copy {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+          line-height: 1.05;
+        }
+
+        .talkly-whiteboard-status-title {
+          font-size: 10px;
+          font-weight: 900;
+          letter-spacing: 0.06em;
+          color: rgba(255, 255, 255, 0.92);
+          white-space: nowrap;
+        }
+
+        .talkly-whiteboard-status-sub {
+          margin-top: 3px;
+          font-size: 9px;
+          color: rgba(255, 255, 255, 0.45);
+          white-space: nowrap;
+        }
+
+        .talkly-whiteboard-divider {
+          width: 1px;
+          height: 30px;
+          background: rgba(255, 255, 255, 0.10);
+          flex: 0 0 auto;
+        }
+
+        .talkly-whiteboard-group {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          min-width: 0;
+        }
+
+        @media (max-width: 900px) {
+          .talkly-whiteboard-toolbar {
+            left: 8px;
+            right: 8px;
+            top: 8px;
+            gap: 5px;
+            padding: 6px 7px;
+            overflow-x: auto;
+            scrollbar-width: none;
+          }
+
+          .talkly-whiteboard-toolbar::-webkit-scrollbar {
+            display: none;
+          }
+
+          .talkly-whiteboard-status {
+            min-width: auto;
+            padding-right: 4px;
+          }
+
+          .talkly-whiteboard-status-copy {
+            display: none;
+          }
+
+          .talkly-whiteboard-divider {
+            height: 28px;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .talkly-whiteboard-toolbar {
+            border-radius: 12px;
+          }
+
+          .talkly-whiteboard-divider {
+            display: none;
+          }
+        }
+      `}</style>
+
       <div
-        style={{
-          position:
-            "absolute",
-          top: 8,
-          right: 8,
-          zIndex: 20,
-          display: "flex",
-          alignItems:
-            "center",
-          gap: 5,
-          padding: "5px",
-          borderRadius: 10,
-          border:
-            "1px solid rgba(255,255,255,0.18)",
-          background:
-            "rgba(14,15,18,0.92)",
-          boxShadow:
-            "0 4px 14px rgba(0,0,0,0.25)",
-          backdropFilter:
-            "blur(8px)",
-        }}
+        className="talkly-whiteboard-toolbar"
+        aria-label="Whiteboard tools"
       >
-        <span
-          title={
-            connected
-              ? "Whiteboard connected"
-              : "Whiteboard connecting"
-          }
-          style={{
-            width: 7,
-            height: 7,
-            borderRadius: 999,
-            background:
-              connected
-                ? "#35d07f"
-                : "#8a8f98",
-            margin:
-              "0 3px",
-          }}
-        />
-
-        {saveLabel && (
+        <div className="talkly-whiteboard-status">
           <span
+            title={
+              connected
+                ? "Whiteboard connected"
+                : "Whiteboard connecting"
+            }
             style={{
-              marginRight:
-                3,
-              fontSize: 9,
-              opacity:
-                saveState ===
-                "error"
-                  ? 1
-                  : 0.55,
-              color:
-                saveState ===
-                "error"
-                  ? "#fca5a5"
-                  : "#ffffff",
-              whiteSpace:
-                "nowrap",
+              width: 8,
+              height: 8,
+              borderRadius: 999,
+              background:
+                connected
+                  ? "#35d07f"
+                  : "#8a8f98",
+              boxShadow:
+                connected
+                  ? "0 0 0 4px rgba(53,208,127,0.10)"
+                  : "none",
+              flex: "0 0 auto",
             }}
-          >
-            {saveLabel}
-          </span>
-        )}
+          />
 
-        <ToolButton
-          active={
-            tool === "select"
-          }
-          onClick={() =>
-            setTool("select")
-          }
-          title="Pointer / 포인터"
-        >
-          ↖
-        </ToolButton>
+          <div className="talkly-whiteboard-status-copy">
+            <span className="talkly-whiteboard-status-title">
+              WHITEBOARD
+            </span>
+            <span className="talkly-whiteboard-status-sub">
+              {saveLabel
+                ? `${activeToolLabel} · ${saveLabel}`
+                : activeToolLabel}
+            </span>
+          </div>
+        </div>
 
-        <ToolButton
-          active={
-            tool === "pen"
-          }
-          onClick={() =>
-            setTool("pen")
-          }
-          title="Pen / 펜"
-        >
-          ✎
-        </ToolButton>
+        <div className="talkly-whiteboard-divider" />
 
-        <ToolButton
-          active={
-            tool ===
-            "highlighter"
-          }
-          onClick={() =>
-            setTool(
-              "highlighter"
-            )
-          }
-          title="Highlighter / 형광펜"
-        >
-          ▰
-        </ToolButton>
+        <div className="talkly-whiteboard-group">
+          <ToolButton
+            active={tool === "select"}
+            onClick={() => setTool("select")}
+            title="Pointer / 포인터"
+            label="Pointer"
+            icon="↖"
+          />
 
-        <ToolButton
-          active={
-            tool === "line"
-          }
-          onClick={() =>
-            setTool("line")
-          }
-          title="Line / 선"
-        >
-          ╱
-        </ToolButton>
+          <ToolButton
+            active={tool === "pen"}
+            onClick={() => setTool("pen")}
+            title="Pen / 펜"
+            label="Pen"
+            icon="✎"
+          />
 
-        <ToolButton
-          active={
-            tool === "eraser"
-          }
-          onClick={() =>
-            setTool("eraser")
-          }
-          title="Eraser / 지우개"
-        >
-          ⌫
-        </ToolButton>
+          <ToolButton
+            active={tool === "highlighter"}
+            onClick={() => setTool("highlighter")}
+            title="Highlight / 형광펜"
+            label="Highlight"
+            icon="▰"
+          />
 
-        <ToolButton
-          active={false}
-          onClick={
-            undoLast
-          }
-          title="Undo / 실행 취소"
-        >
-          ↶
-        </ToolButton>
+          <ToolButton
+            active={tool === "line"}
+            onClick={() => setTool("line")}
+            title="Line / 선"
+            label="Line"
+            icon="╱"
+          />
 
-        <ToolButton
-          active={false}
-          onClick={
-            clearPage
-          }
-          title="Clear page / 전체 지우기"
-        >
-          ×
-        </ToolButton>
+          <ToolButton
+            active={tool === "eraser"}
+            onClick={() => setTool("eraser")}
+            title="Eraser / 지우개"
+            label="Eraser"
+            icon="⌫"
+          />
+        </div>
+
+        <div className="talkly-whiteboard-divider" />
+
+        <div className="talkly-whiteboard-group">
+          <ActionButton
+            onClick={undoLast}
+            title="Undo / 실행 취소"
+            label="Undo"
+            icon="↶"
+          />
+
+          <ActionButton
+            onClick={clearPage}
+            title="Clear page / 전체 지우기"
+            label="Clear"
+            icon="×"
+            danger
+          />
+        </div>
       </div>
 
       <svg
@@ -1217,12 +1284,90 @@ function ToolButton({
   active,
   onClick,
   title,
-  children,
+  label,
+  icon,
 }: {
   active: boolean;
   onClick: () => void;
   title: string;
-  children: React.ReactNode;
+  label: string;
+  icon: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-pressed={active}
+      style={{
+        minWidth: 48,
+        height: 38,
+        padding: "0 8px",
+        border:
+          active
+            ? "1px solid rgba(96,165,250,0.75)"
+            : "1px solid rgba(255,255,255,0.12)",
+        borderRadius: 9,
+        background:
+          active
+            ? "linear-gradient(180deg, rgba(37,99,235,0.32), rgba(37,99,235,0.18))"
+            : "rgba(255,255,255,0.035)",
+        color: "#fff",
+        cursor: "pointer",
+        display: "inline-flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 1,
+        boxShadow:
+          active
+            ? "inset 0 0 0 1px rgba(147,197,253,0.08)"
+            : "none",
+        transition:
+          "background 140ms ease, border-color 140ms ease, transform 140ms ease",
+        flex: "0 0 auto",
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          fontSize: 14,
+          lineHeight: 1,
+          fontWeight: 900,
+        }}
+      >
+        {icon}
+      </span>
+
+      <span
+        style={{
+          marginTop: 2,
+          fontSize: 8,
+          lineHeight: 1,
+          fontWeight: 800,
+          letterSpacing: "0.01em",
+          opacity: active ? 1 : 0.62,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+function ActionButton({
+  onClick,
+  title,
+  label,
+  icon,
+  danger = false,
+}: {
+  onClick: () => void;
+  title: string;
+  label: string;
+  icon: string;
+  danger?: boolean;
 }) {
   return (
     <button
@@ -1230,25 +1375,54 @@ function ToolButton({
       onClick={onClick}
       title={title}
       style={{
-        width: 30,
-        height: 30,
-        padding: 0,
+        minWidth: 44,
+        height: 38,
+        padding: "0 8px",
         border:
-          active
-            ? "1px solid #4f9cff"
-            : "1px solid rgba(255,255,255,0.14)",
-        borderRadius: 7,
+          danger
+            ? "1px solid rgba(248,113,113,0.26)"
+            : "1px solid rgba(255,255,255,0.12)",
+        borderRadius: 9,
         background:
-          active
-            ? "rgba(79,156,255,0.22)"
-            : "#202228",
-        color: "#fff",
+          danger
+            ? "rgba(127,29,29,0.14)"
+            : "rgba(255,255,255,0.035)",
+        color:
+          danger
+            ? "#fecaca"
+            : "#fff",
         cursor: "pointer",
-        fontSize: 14,
-        fontWeight: 800,
+        display: "inline-flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 1,
+        flex: "0 0 auto",
       }}
     >
-      {children}
+      <span
+        aria-hidden="true"
+        style={{
+          fontSize: 14,
+          lineHeight: 1,
+          fontWeight: 900,
+        }}
+      >
+        {icon}
+      </span>
+
+      <span
+        style={{
+          marginTop: 2,
+          fontSize: 8,
+          lineHeight: 1,
+          fontWeight: 800,
+          opacity: 0.66,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {label}
+      </span>
     </button>
   );
 }

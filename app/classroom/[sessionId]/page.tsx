@@ -514,17 +514,23 @@ export default async function ClassroomPage({
     profile.role ===
       "admin";
 
-  const headerIdentity =
-    profile.role ===
-    "teacher"
-      ? `${teacherName} 강사`
-      : profile.role ===
-          "student"
-        ? `${studentName} 학생`
-        : profile.role ===
-            "parent"
-          ? `${studentName} 학부모`
-          : `관리자 · ${studentName} / ${teacherName}`;
+  const identityPrimary =
+    profile.role === "teacher"
+      ? `${teacherName} · TEACHER`
+      : profile.role === "student"
+        ? `${studentName} · STUDENT`
+        : profile.role === "parent"
+          ? `${studentName} · PARENT`
+          : `TALKLY ADMIN`;
+
+  const identitySecondary =
+    profile.role === "teacher"
+      ? "강사"
+      : profile.role === "student"
+        ? "학생"
+        : profile.role === "parent"
+          ? "학부모"
+          : `${studentName} / ${teacherName}`;
 
   const isLearner =
     profile.role ===
@@ -787,363 +793,370 @@ export default async function ClassroomPage({
    * =====================================================
    */
   return (
-    <main
-      style={{
-        height:
-          "100vh",
-
-        padding:
-          "12px 16px",
-
-        boxSizing:
-          "border-box",
-
-        background:
-          "#0b0b0d",
-
-        color:
-          "#f7f7f8",
-
-        display:
-          "flex",
-
-        flexDirection:
-          "column",
-
-        overflow:
-          "hidden",
-      }}
-    >
-      <ClassSessionEndWatcher
-        sessionId={
-          session.id
-        }
-      />
-
-      {/*
-       * 학생 실제 Classroom 입장 시 자동출석.
-       *
-       * 강사/관리자는 기록하지 않습니다.
-       * 최초 출석시간은 attendance API에서 유지됩니다.
-       */}
-      <StudentAttendanceRecorder
-        sessionId={
-          session.id
-        }
-        enabled={
-          profile.role ===
-            "student" &&
-          Boolean(
-            session.started_at
-          ) &&
-          !session.ended_at
-        }
-      />
-
-      <header
-        style={{
-          maxWidth:
-            "1500px",
-
-          width:
-            "100%",
-
-          margin:
-            "0 auto 10px",
-
-          display:
-            "flex",
-
-          justifyContent:
-            "space-between",
-
-          alignItems:
-            "center",
-
-          gap:
-            "20px",
-
-          flexShrink:
-            0,
-        }}
-      >
-        <div>
-          <div
-            style={{
-              fontSize:
-                "12px",
-
-              opacity:
-                0.58,
-
-              marginBottom:
-                "3px",
-            }}
-          >
-            TALKLY CLASSROOM
-          </div>
-
-          <h1
-            style={{
-              margin:
-                0,
-
-              fontSize:
-                "22px",
-            }}
-          >
-            {course?.name ||
-              "Online English"}{" "}
-            ·{" "}
-            {
-              session.lesson_number
-            }
-            회차
-          </h1>
-        </div>
-
-        <div
-          style={{
-            fontSize:
-              "13px",
-
-            opacity:
-              0.7,
-
-            textAlign:
-              "right",
-
-            paddingRight:
-              "4px",
-          }}
-        >
-          {headerIdentity}
-        </div>
-      </header>
-
-      <section
-        style={{
-          maxWidth:
-            "1500px",
-
-          width:
-            "100%",
-
-          margin:
-            "0 auto 10px",
-
-          padding:
-            "8px 14px",
-
-          border:
-            "1px solid rgba(255,255,255,0.10)",
-
-          borderRadius:
-            "12px",
-
+    <>
+      <style>{`
+        .talkly-classroom {
+          height: 100vh;
+          height: 100dvh;
+          padding: 12px 16px;
+          box-sizing: border-box;
           background:
-            "rgba(255,255,255,0.035)",
+            radial-gradient(circle at 72% -10%, rgba(37,99,235,.10), transparent 34%),
+            #090b0f;
+          color: #f8fafc;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
 
-          display:
-            "flex",
+        .talkly-classroom-top,
+        .talkly-classroom-control,
+        .talkly-classroom-stage,
+        .talkly-classroom > .talkly-chat {
+          max-width: 1500px;
+          width: 100%;
+          margin-left: auto;
+          margin-right: auto;
+        }
 
-          alignItems:
-            "center",
+        .talkly-classroom-top {
+          min-height: 48px;
+          margin-bottom: 9px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+          flex: 0 0 auto;
+        }
 
-          justifyContent:
-            "space-between",
+        .talkly-brand-kicker {
+          font-size: 10px;
+          font-weight: 900;
+          letter-spacing: .11em;
+          color: rgba(255,255,255,.42);
+        }
 
-          gap:
-            "16px",
+        .talkly-classroom-title {
+          margin: 4px 0 0;
+          font-size: 21px;
+          line-height: 1.15;
+          letter-spacing: -.02em;
+        }
 
-          boxSizing:
-            "border-box",
+        .talkly-classroom-title small {
+          margin-left: 8px;
+          font-size: 10px;
+          font-weight: 700;
+          color: rgba(255,255,255,.40);
+          letter-spacing: 0;
+        }
 
-          flexShrink:
-            0,
-        }}
-      >
-        <div>
-          <div
-            style={{
-              fontSize:
-                "12px",
+        .talkly-identity {
+          text-align: right;
+          min-width: 0;
+        }
 
-              fontWeight:
-                800,
+        .talkly-identity strong {
+          display: block;
+          font-size: 11px;
+          letter-spacing: .02em;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
 
-              letterSpacing:
-                "0.04em",
-            }}
-          >
-            CLASS CONTROL
-          </div>
+        .talkly-identity small {
+          display: block;
+          margin-top: 3px;
+          font-size: 9px;
+          color: rgba(255,255,255,.42);
+        }
 
-          <div
-            style={{
-              marginTop:
-                "2px",
+        .talkly-classroom-control {
+          margin-bottom: 9px;
+          padding: 8px 12px;
+          min-height: 54px;
+          border: 1px solid rgba(255,255,255,.10);
+          border-radius: 14px;
+          background: linear-gradient(
+            180deg,
+            rgba(255,255,255,.045),
+            rgba(255,255,255,.025)
+          );
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          box-sizing: border-box;
+          flex: 0 0 auto;
+          box-shadow: 0 10px 26px rgba(0,0,0,.12);
+        }
 
-              fontSize:
-                "11px",
+        .talkly-control-copy strong {
+          display: block;
+          font-size: 11px;
+          font-weight: 900;
+          letter-spacing: .08em;
+        }
 
-              opacity:
-                0.5,
-            }}
-          >
-            수업 상태
-          </div>
-        </div>
+        .talkly-control-copy small {
+          display: block;
+          margin-top: 3px;
+          font-size: 9px;
+          color: rgba(255,255,255,.42);
+        }
 
-        <ClassSessionControls
-          sessionId={
-            session.id
+        .talkly-classroom-stage {
+          position: relative;
+          display: grid;
+          grid-template-columns:
+            minmax(340px, .80fr)
+            minmax(560px, 1.70fr);
+          gap: 14px;
+          align-items: stretch;
+          flex: 1 1 auto;
+          min-height: 0;
+          overflow: hidden;
+        }
+
+        .talkly-classroom-panel {
+          min-height: 0;
+          height: 100%;
+          border: 1px solid rgba(255,255,255,.11);
+          border-radius: 16px;
+          overflow: hidden;
+          background: #111318;
+          box-shadow: 0 14px 34px rgba(0,0,0,.18);
+        }
+
+        .talkly-classroom-textbook {
+          overflow: hidden;
+        }
+
+        @media (max-width: 1100px) {
+          .talkly-classroom {
+            padding: 10px 12px;
           }
-          viewerRole={
-            profile.role
+
+          .talkly-classroom-stage {
+            grid-template-columns:
+              minmax(280px, .72fr)
+              minmax(500px, 1.58fr);
+            gap: 10px;
           }
-          initialStartedAt={
-            session.started_at
+        }
+
+        /*
+         * 태블릿 세로/스마트폰:
+         * 교재를 메인 화면으로 두고 Zoom을 Picture-in-Picture 형태로 올립니다.
+         * 따라서 영상 + 교재 + 전자칠판 + 채팅을 한 화면에서 계속 확인할 수 있습니다.
+         */
+        @media (max-width: 900px) {
+          .talkly-classroom {
+            padding: 8px;
           }
-          initialEndedAt={
-            session.ended_at
+
+          .talkly-classroom-top {
+            min-height: 42px;
+            margin-bottom: 7px;
+          }
+
+          .talkly-classroom-title {
+            font-size: 18px;
+          }
+
+          .talkly-classroom-control {
+            min-height: 46px;
+            margin-bottom: 7px;
+            padding: 6px 9px;
+            border-radius: 12px;
+          }
+
+          .talkly-classroom-stage {
+            display: block;
+            position: relative;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
+          }
+
+          .talkly-classroom-video {
+            position: absolute;
+            z-index: 35;
+            top: 10px;
+            left: 10px;
+            width: min(34vw, 250px);
+            height: min(24vh, 180px);
+            min-width: 180px;
+            min-height: 128px;
+            border-radius: 13px;
+            box-shadow:
+              0 18px 48px rgba(0,0,0,.46),
+              0 0 0 1px rgba(255,255,255,.10);
+          }
+
+          .talkly-classroom-textbook {
+            width: 100%;
+            height: 100%;
+          }
+        }
+
+        @media (max-width: 620px) {
+          .talkly-classroom {
+            padding: 6px;
+          }
+
+          .talkly-classroom-top {
+            min-height: 38px;
+            margin-bottom: 5px;
+            gap: 10px;
+          }
+
+          .talkly-brand-kicker {
+            font-size: 8px;
+          }
+
+          .talkly-classroom-title {
+            margin-top: 2px;
+            font-size: 16px;
+          }
+
+          .talkly-classroom-title small {
+            display: none;
+          }
+
+          .talkly-identity strong {
+            max-width: 130px;
+            font-size: 9px;
+          }
+
+          .talkly-identity small {
+            display: none;
+          }
+
+          .talkly-classroom-control {
+            min-height: 42px;
+            margin-bottom: 5px;
+          }
+
+          .talkly-control-copy small {
+            display: none;
+          }
+
+          .talkly-classroom-video {
+            top: 8px;
+            left: 8px;
+            width: 150px;
+            height: 112px;
+            min-width: 150px;
+            min-height: 112px;
+          }
+        }
+
+        @media (orientation: landscape) and (max-height: 600px) {
+          .talkly-classroom-top {
+            min-height: 34px;
+            margin-bottom: 4px;
+          }
+
+          .talkly-brand-kicker,
+          .talkly-identity small,
+          .talkly-control-copy small {
+            display: none;
+          }
+
+          .talkly-classroom-title {
+            margin-top: 0;
+            font-size: 15px;
+          }
+
+          .talkly-classroom-control {
+            min-height: 38px;
+            margin-bottom: 4px;
+            padding-top: 4px;
+            padding-bottom: 4px;
+          }
+        }
+      `}</style>
+
+      <main className="talkly-classroom">
+        <ClassSessionEndWatcher sessionId={session.id} />
+
+        <StudentAttendanceRecorder
+          sessionId={session.id}
+          enabled={
+            profile.role === "student" &&
+            Boolean(session.started_at) &&
+            !session.ended_at
           }
         />
-      </section>
 
-      <div
-        style={{
-          maxWidth:
-            "1500px",
+        <header className="talkly-classroom-top">
+          <div>
+            <div className="talkly-brand-kicker">
+              TALKLY CLASSROOM
+            </div>
 
-          width:
-            "100%",
+            <h1 className="talkly-classroom-title">
+              {course?.name || "Online English"} · Lesson {session.lesson_number}
+              <small>{session.lesson_number}회차</small>
+            </h1>
+          </div>
 
-          margin:
-            "0 auto",
+          <div className="talkly-identity">
+            <strong>{identityPrimary}</strong>
+            <small>{identitySecondary}</small>
+          </div>
+        </header>
 
-          display:
-            "grid",
+        <section className="talkly-classroom-control">
+          <div className="talkly-control-copy">
+            <strong>CLASS CONTROL</strong>
+            <small>수업 제어 · 상태 확인</small>
+          </div>
 
-          gridTemplateColumns:
-            "minmax(340px, 0.78fr) minmax(560px, 1.72fr)",
-
-          gap:
-            "16px",
-
-          alignItems:
-            "stretch",
-
-          flex:
-            1,
-
-          minHeight:
-            0,
-
-          overflow:
-            "hidden",
-        }}
-      >
-        <section
-          style={{
-            minHeight:
-              0,
-
-            height:
-              "100%",
-
-            border:
-              "1px solid rgba(255,255,255,0.12)",
-
-            borderRadius:
-              "16px",
-
-            overflow:
-              "hidden",
-
-            background:
-              "#111216",
-          }}
-        >
-          <ClassroomZoomEmbed
-            key={`${user.id}-${profile.role}-${session.id}`}
-            sessionId={
-              session.id
-            }
-            meetingNumber={
-              session.meeting_id
-            }
-            password={
-              meetingPassword
-            }
-            userName={
-              zoomDisplayName
-            }
-            hostMode={
-              hostMode
-            }
+          <ClassSessionControls
+            sessionId={session.id}
+            viewerRole={profile.role}
+            initialStartedAt={session.started_at}
+            initialEndedAt={session.ended_at}
           />
         </section>
 
-        <section
-          style={{
-            minHeight:
-              0,
+        <div className="talkly-classroom-stage">
+          <section className="talkly-classroom-panel talkly-classroom-video">
+            <ClassroomZoomEmbed
+              key={`${user.id}-${profile.role}-${session.id}`}
+              sessionId={session.id}
+              meetingNumber={session.meeting_id}
+              password={meetingPassword}
+              userName={zoomDisplayName}
+              hostMode={hostMode}
+            />
+          </section>
 
-            height:
-              "100%",
+          <section className="talkly-classroom-panel talkly-classroom-textbook">
+            <ClassroomTextbookPanel
+              textbookId={4}
+              sessionId={session.id}
+              viewerRole={profile.role}
+            />
+          </section>
+        </div>
 
-            border:
-              "1px solid rgba(255,255,255,0.12)",
-
-            borderRadius:
-              "16px",
-
-            overflowX:
-              "hidden",
-
-            overflowY:
-              "auto",
-
-            background:
-              "#15161a",
-          }}
-        >
-          <ClassroomTextbookPanel
-            textbookId={
-              4
-            }
-            sessionId={
-              session.id
-            }
-            viewerRole={
-              profile.role
-            }
-          />
-        </section>
-      </div>
-
-      <ClassroomChat
-        sessionId={
-          session.id
-        }
-        currentUserId={
-          user.id
-        }
-        currentUserRole={
-          profile.role
-        }
-        currentUserName={
-          profile.role ===
-          "teacher"
-            ? teacherName
-            : profile.role ===
-              "admin"
-              ? profile.name ||
-                "TALKLY Admin"
-              : studentName
-        }
-      />
-    </main>
+        <ClassroomChat
+          sessionId={session.id}
+          currentUserId={user.id}
+          currentUserRole={profile.role}
+          currentUserName={
+            profile.role === "teacher"
+              ? teacherName
+              : profile.role === "admin"
+                ? profile.name || "TALKLY Admin"
+                : studentName
+          }
+        />
+      </main>
+    </>
   );
 }

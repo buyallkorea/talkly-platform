@@ -409,11 +409,11 @@ export default function ClassroomTextbookPanelClient({
       <div
         style={{
           width: "100%",
-          minHeight: "690px",
+          minHeight: 0,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#15161a",
+          background: "#111318",
           color: "#fff",
         }}
       >
@@ -423,14 +423,27 @@ export default function ClassroomTextbookPanelClient({
   }
 
   return (
+    <>
+      <style>{`
+        .talkly-textbook-shell {
+          container-type: inline-size;
+        }
+
+        @media (max-width: 900px) {
+          .talkly-textbook-shell {
+            font-size: 12px;
+          }
+        }
+      `}</style>
     <div
+      className="talkly-textbook-shell"
       style={{
         width: "100%",
         height: "100%",
-        minHeight: "690px",
+        minHeight: 0,
         display: "flex",
         flexDirection: "column",
-        background: "#15161a",
+        background: "#111318",
         color: "#f7f7f8",
       }}
     >
@@ -536,8 +549,8 @@ export default function ClassroomTextbookPanelClient({
             }}
           >
             {isController
-              ? `교재 제어 · ${viewerRole}`
-              : `강사 페이지 동기화 · ${viewerRole}`}
+              ? `TEACHER CONTROL · ${viewerRole}`
+              : `FOLLOW TEACHER · ${viewerRole}`}
           </span>
 
           <button
@@ -551,8 +564,8 @@ export default function ClassroomTextbookPanelClient({
             style={toolButton}
           >
             {showThumbnails
-              ? "목록 숨김"
-              : "페이지 목록"}
+              ? "Hide Pages"
+              : "Pages"}
           </button>
 
           <button
@@ -611,7 +624,7 @@ export default function ClassroomTextbookPanelClient({
             }
             style={toolButton}
           >
-            맞춤
+            Fit
           </button>
         </div>
       </div>
@@ -636,7 +649,7 @@ export default function ClassroomTextbookPanelClient({
                 "1px solid rgba(255,255,255,0.08)",
               padding: "8px",
               background:
-                "#111216",
+                "#0d0f13",
             }}
           >
             {pages.map(
@@ -745,7 +758,7 @@ export default function ClassroomTextbookPanelClient({
             overflow: "auto",
             padding: "12px",
             background:
-              "#202126",
+              "#181b21",
           }}
         >
           <div
@@ -917,7 +930,7 @@ export default function ClassroomTextbookPanelClient({
             }
             style={navButton}
           >
-            ← 이전
+            ← Prev
           </button>
         </div>
 
@@ -949,11 +962,12 @@ export default function ClassroomTextbookPanelClient({
             }
             style={navButton}
           >
-            다음 →
+            Next →
           </button>
         </div>
       </div>
     </div>
+    </>
   );
 }
 
