@@ -91,6 +91,52 @@ export default async function StudentClassesPage() {
     }
 
     sessions = (data ?? []) as ClassSession[];
+
+    /*
+     * 종료시간이 지났는데 한 번도 시작되지 않은 scheduled 수업은
+     * 학생의 내 수업 페이지에서도 미진행(not_held)으로 정리합니다.
+     *
+     * 이미 시작된 수업은 예정 종료시간이 지나도 자동마감하지 않습니다.
+     */
+    const nowIso = new Date().toISOString();
+
+    const expiredSessionIds = sessions
+      .filter(
+        (session) =>
+          session.status === "scheduled" &&
+          !session.started_at &&
+          !session.ended_at &&
+          new Date(session.scheduled_end).getTime() <= Date.now()
+      )
+      .map((session) => session.id);
+
+    if (expiredSessionIds.length > 0) {
+      const { error: closeExpiredError } = await supabase
+        .from("class_sessions")
+        .update({
+          status: "not_held",
+          updated_at: nowIso,
+        })
+        .in("id", expiredSessionIds)
+        .eq("status", "scheduled")
+        .is("started_at", null)
+        .lte("scheduled_end", nowIso);
+
+      if (closeExpiredError) {
+        throw new Error(closeExpiredError.message);
+      }
+
+      const expiredIdSet = new Set(expiredSessionIds);
+
+      sessions = sessions.map((session) =>
+        expiredIdSet.has(session.id)
+          ? {
+              ...session,
+              status: "not_held",
+            }
+          : session
+      );
+    }
   }
 
   const sessionIds = sessions.map((session) => session.id);
@@ -245,7 +291,11 @@ export default async function StudentClassesPage() {
   }
 
   function getEffectiveStatus(session: ClassSession) {
-    if (["held", "cancelled", "no_show"].includes(session.status)) {
+    if (
+      ["held", "cancelled", "no_show", "not_held"].includes(
+        session.status
+      )
+    ) {
       return session.status;
     }
 
@@ -274,6 +324,8 @@ export default async function StudentClassesPage() {
         return "결석";
       case "held":
         return "수업 연기";
+      case "not_held":
+        return "미진행";
       default:
         return status;
     }
@@ -298,7 +350,14 @@ export default async function StudentClassesPage() {
     const status = getEffectiveStatus(session);
 
     if (status === "completed") return false;
-    if (status === "cancelled" || status === "held") return false;
+    if (
+      status === "cancelled" ||
+      status === "held" ||
+      status === "no_show" ||
+      status === "not_held"
+    ) {
+      return false;
+    }
 
     return new Date(session.scheduled_end).getTime() >= now.getTime();
   }).length;
@@ -313,7 +372,14 @@ export default async function StudentClassesPage() {
         const status = getEffectiveStatus(session);
 
         if (status === "completed") return false;
-        if (status === "cancelled" || status === "held") return false;
+        if (
+          status === "cancelled" ||
+          status === "held" ||
+          status === "no_show" ||
+          status === "not_held"
+        ) {
+          return false;
+        }
 
         return new Date(session.scheduled_end).getTime() >= now.getTime();
       })

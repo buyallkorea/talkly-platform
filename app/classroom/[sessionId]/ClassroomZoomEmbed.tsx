@@ -380,6 +380,22 @@ export default function ClassroomZoomEmbed({
             : "Zoom 수업실을 여는 중..."
         );
 
+        const rootWidth =
+          Math.max(
+            160,
+            Math.floor(
+              rootRef.current.clientWidth || 420
+            )
+          );
+
+        const rootHeight =
+          Math.max(
+            120,
+            Math.floor(
+              rootRef.current.clientHeight || 430
+            )
+          );
+
         await client.init({
           zoomAppRoot:
             rootRef.current,
@@ -397,17 +413,21 @@ export default function ClassroomZoomEmbed({
 
               viewSizes: {
                 default: {
-                  width:
-                    420,
-                  height:
-                    430,
+                  width: rootWidth,
+                  height: rootHeight,
                 },
 
                 ribbon: {
-                  width:
-                    420,
-                  height:
-                    110,
+                  width: rootWidth,
+                  height: Math.max(
+                    80,
+                    Math.min(
+                      120,
+                      Math.round(
+                        rootHeight * 0.28
+                      )
+                    )
+                  ),
                 },
               },
             },

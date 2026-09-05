@@ -244,7 +244,7 @@ export default async function ParentChildClassesPage({
   }
 
   const {
-    data: classSessions,
+    data: loadedClassSessions,
     error: sessionsError,
   } =
     await supabase
@@ -256,6 +256,8 @@ export default async function ParentChildClassesPage({
         lesson_number,
         scheduled_start,
         scheduled_end,
+        started_at,
+        ended_at,
         status,
         meeting_provider,
         meeting_url
@@ -275,6 +277,87 @@ export default async function ParentChildClassesPage({
     throw new Error(
       sessionsError.message
     );
+  }
+
+  let classSessions =
+    loadedClassSessions ?? [];
+
+  /*
+   * 종료시간이 지났는데 한 번도 시작되지 않은 scheduled 수업은
+   * 학부모 수업 일정에서도 미진행(not_held)으로 정리합니다.
+   *
+   * 이미 시작된 수업은 예정 종료시간이 지나도 자동마감하지 않습니다.
+   */
+  const nowIso = new Date().toISOString();
+
+  const expiredSessionIds =
+    classSessions
+      .filter(
+        (session) =>
+          session.status === "scheduled" &&
+          !session.started_at &&
+          !session.ended_at &&
+          new Date(
+            session.scheduled_end
+          ).getTime() <= Date.now()
+      )
+      .map(
+        (session) => session.id
+      );
+
+  if (
+    expiredSessionIds.length > 0
+  ) {
+    const {
+      error: closeExpiredError,
+    } =
+      await supabase
+        .from("class_sessions")
+        .update({
+          status: "not_held",
+          updated_at: nowIso,
+        })
+        .in(
+          "id",
+          expiredSessionIds
+        )
+        .eq(
+          "status",
+          "scheduled"
+        )
+        .is(
+          "started_at",
+          null
+        )
+        .lte(
+          "scheduled_end",
+          nowIso
+        );
+
+    if (closeExpiredError) {
+      throw new Error(
+        closeExpiredError.message
+      );
+    }
+
+    const expiredIdSet =
+      new Set(
+        expiredSessionIds
+      );
+
+    classSessions =
+      classSessions.map(
+        (session) =>
+          expiredIdSet.has(
+            session.id
+          )
+            ? {
+                ...session,
+                status:
+                  "not_held",
+              }
+            : session
+      );
   }
 
   function getEnrollmentStatusLabel(
@@ -322,6 +405,9 @@ export default async function ParentChildClassesPage({
 
       case "held":
         return "수업 연기";
+
+      case "not_held":
+        return "미진행";
 
       default:
         return status;

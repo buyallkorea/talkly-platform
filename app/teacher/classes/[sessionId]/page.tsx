@@ -87,6 +87,40 @@ export default async function TeacherClassDetailPage({
     notFound();
   }
 
+  /*
+   * 종료시간이 지났는데 한 번도 시작되지 않은 scheduled 수업은
+   * 상세페이지에서도 미진행(not_held)으로 정리합니다.
+   *
+   * 대시보드를 거치지 않고 상세 URL로 직접 들어온 경우에도
+   * 과거 수업을 scheduled 상태로 보여주지 않기 위한 방어입니다.
+   * 이미 시작된 수업은 예정 종료시간이 지나도 자동마감하지 않습니다.
+   */
+  if (
+    session.status === "scheduled" &&
+    !session.started_at &&
+    !session.ended_at &&
+    new Date(session.scheduled_end).getTime() <= Date.now()
+  ) {
+    const nowIso = new Date().toISOString();
+
+    const { error: closeExpiredError } = await supabase
+      .from("class_sessions")
+      .update({
+        status: "not_held",
+        updated_at: nowIso,
+      })
+      .eq("id", session.id)
+      .eq("status", "scheduled")
+      .is("started_at", null)
+      .lte("scheduled_end", nowIso);
+
+    if (closeExpiredError) {
+      throw new Error(closeExpiredError.message);
+    }
+
+    session.status = "not_held";
+  }
+
   let studentName = "Student";
 
   if (enrollment.child_id) {
@@ -214,6 +248,12 @@ export default async function TeacherClassDetailPage({
         return {
           en: "Class Reschedule",
           ko: "수업 연기",
+        };
+
+      case "not_held":
+        return {
+          en: "Not Held",
+          ko: "미진행",
         };
 
       default:
@@ -374,7 +414,8 @@ export default async function TeacherClassDetailPage({
 
   const isAttendanceBlocked =
     session.status === "held" ||
-    session.status === "cancelled";
+    session.status === "cancelled" ||
+    session.status === "not_held";
 
   const canEditAttendance =
     Boolean(attendance) &&
@@ -403,6 +444,13 @@ export default async function TeacherClassDetailPage({
       return {
         en: "Attendance cannot be recorded for a cancelled class.",
         ko: "취소된 수업은 출석을 등록할 수 없습니다.",
+      };
+    }
+
+    if (status === "not_held") {
+      return {
+        en: "Attendance cannot be recorded for a class that was not held.",
+        ko: "미진행으로 마감된 수업은 출석을 등록할 수 없습니다.",
       };
     }
 
@@ -660,7 +708,24 @@ export default async function TeacherClassDetailPage({
             </p>
 
             <div style={{ marginTop: "20px" }}>
-              {session.meeting_provider === "zoom" ? (
+              {session.status === "not_held" ? (
+                <div
+                  style={{
+                    padding: "16px",
+                    border: "1px dashed var(--border)",
+                    borderRadius: "10px",
+                    color: "var(--text-muted)",
+                    lineHeight: 1.7,
+                  }}
+                >
+                  <strong style={{ color: "var(--talkly-navy)" }}>
+                    미진행으로 마감된 수업입니다.
+                  </strong>
+                  <div style={{ marginTop: "4px", fontSize: "12px" }}>
+                    This class was not held and the classroom can no longer be entered.
+                  </div>
+                </div>
+              ) : session.meeting_provider === "zoom" ? (
                 <Link
                   href={`/classroom/${session.id}`}
                   className="talkly-button talkly-button-primary"

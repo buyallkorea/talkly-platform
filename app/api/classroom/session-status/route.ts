@@ -157,7 +157,7 @@ async function endZoomMeeting(
  * 수업 상태의 화면 표시용 실제 상태
  *
  * 중요:
- * held / cancelled / no_show는
+ * held / cancelled / no_show / not_held는
  * started_at / ended_at만으로 덮어쓰면 안 됩니다.
  * =========================================================
  */
@@ -174,7 +174,8 @@ function getEffectiveStatus(
   if (
     session.status === "held" ||
     session.status === "cancelled" ||
-    session.status === "no_show"
+    session.status === "no_show" ||
+    session.status === "not_held"
   ) {
     return session.status;
   }
@@ -200,21 +201,178 @@ function getEffectiveStatus(
 
 /*
  * =========================================================
+ * 예정 종료시간 경과 수업 자동마감
+ *
+ * 규칙:
+ * - status = scheduled
+ * - started_at IS NULL
+ * - scheduled_end <= 현재시각
+ *   => status = not_held
+ *
+ * 이미 시작한 수업은 예정 종료시간이 지나도 자동 종료하지 않습니다.
+ * not_held는 귀책사유가 확정되지 않은 중립적인 "미진행" 상태입니다.
+ * =========================================================
+ */
+async function closeExpiredScheduledSession({
+  supabase,
+  session,
+}: {
+  supabase: SupabaseClient;
+  session: {
+    id: number;
+    enrollment_id: number;
+    status: string;
+    scheduled_end: string;
+    meeting_provider: string | null;
+    meeting_id: string | null;
+    started_at: string | null;
+    ended_at: string | null;
+  };
+}) {
+  if (
+    session.status !== "scheduled" ||
+    session.started_at ||
+    session.ended_at
+  ) {
+    return session;
+  }
+
+  const scheduledEndMs =
+    new Date(
+      session.scheduled_end
+    ).getTime();
+
+  if (
+    !Number.isFinite(
+      scheduledEndMs
+    ) ||
+    scheduledEndMs >
+      Date.now()
+  ) {
+    return session;
+  }
+
+  const now =
+    new Date().toISOString();
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from("class_sessions")
+      .update({
+        status: "not_held",
+        updated_at: now,
+      })
+      .eq(
+        "id",
+        session.id
+      )
+      .eq(
+        "status",
+        "scheduled"
+      )
+      .is(
+        "started_at",
+        null
+      )
+      .lte(
+        "scheduled_end",
+        now
+      )
+      .select(`
+        id,
+        enrollment_id,
+        status,
+        scheduled_end,
+        meeting_provider,
+        meeting_id,
+        started_at,
+        ended_at
+      `)
+      .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `미진행 수업 자동마감 실패: ${error.message}`
+    );
+  }
+
+  /*
+   * 동시에 다른 요청이 먼저 수업을 시작했거나
+   * 상태를 변경했다면 update 결과가 없을 수 있습니다.
+   * 그 경우 현재 DB 상태를 다시 읽습니다.
+   */
+  if (!data) {
+    const {
+      data: latest,
+      error: latestError,
+    } =
+      await supabase
+        .from(
+          "class_sessions"
+        )
+        .select(`
+          id,
+          enrollment_id,
+          status,
+          scheduled_end,
+          meeting_provider,
+          meeting_id,
+          started_at,
+          ended_at
+        `)
+        .eq(
+          "id",
+          session.id
+        )
+        .maybeSingle();
+
+    if (
+      latestError ||
+      !latest
+    ) {
+      throw new Error(
+        latestError?.message ||
+          "수업의 최신 상태를 확인할 수 없습니다."
+      );
+    }
+
+    return latest;
+  }
+
+  return data;
+}
+
+/*
+ * =========================================================
  * 수강 자동 완료 처리
  *
- * 모든 회차가 실제 최종 상태가 되면
- * enrollment.status = completed
+ * 중요:
+ * enrollment의 완료 여부는 "정규수업"만 기준으로 합니다.
+ *
+ * session_kind = regular
+ *   → 계약된 정규 수업 회차
+ *
+ * session_kind = makeup
+ *   → 원래 정규수업을 대체하기 위한 보강수업
+ *   → 추가 계약 회차로 계산하지 않음
+ *
+ * 따라서 정규 20회 + 보강 1회가 존재하더라도
+ * 수강 완료 판정의 기본 회차는 정규 20회입니다.
  *
  * 최종 종료로 인정:
  * - completed
  * - cancelled
  * - no_show
  *
- * 수업 연기 held는 최종 종료로 인정하지 않습니다.
+ * held는 최종 종료로 인정하지 않습니다.
+ * not_held도 귀책사유 미확정 상태이므로
+ * 최종 종료로 인정하지 않습니다.
  *
- * 이유:
- * held는 추후 보강/대체수업이 필요한 상태이므로
- * held가 하나라도 남아 있으면 수강을 자동 완료하면 안 됩니다.
+ * 보강수업 완료와 원본 held/not_held의 충족 관계는
+ * 보강수업 생성/완료 정책에서 별도로 처리합니다.
  * =========================================================
  */
 async function syncEnrollmentCompletion({
@@ -268,6 +426,14 @@ async function syncEnrollmentCompletion({
     };
   }
 
+  /*
+   * =========================================================
+   * 정규수업만 조회
+   *
+   * 보강수업(session_kind = makeup)은
+   * enrollment의 계약 회차에 추가하지 않습니다.
+   * =========================================================
+   */
   const {
     data: sessions,
     error: sessionsError,
@@ -278,11 +444,16 @@ async function syncEnrollmentCompletion({
         id,
         status,
         started_at,
-        ended_at
+        ended_at,
+        session_kind
       `)
       .eq(
         "enrollment_id",
         enrollmentId
+      )
+      .eq(
+        "session_kind",
+        "regular"
       );
 
   if (
@@ -297,7 +468,7 @@ async function syncEnrollmentCompletion({
     sessions ?? [];
 
   /*
-   * 수업이 한 건도 없는 수강은
+   * 정규수업이 한 건도 없는 수강은
    * 자동 완료하지 않습니다.
    */
   if (
@@ -313,7 +484,11 @@ async function syncEnrollmentCompletion({
    * completed / cancelled / no_show만
    * 최종 종료 상태로 인정합니다.
    *
-   * held는 의도적으로 포함하지 않습니다.
+   * held는 보강/대체수업이 필요한 상태이므로
+   * 여기서는 완료로 인정하지 않습니다.
+   *
+   * not_held는 귀책사유가 확정되지 않은
+   * 중립 상태이므로 완료로 인정하지 않습니다.
    */
   const allFinished =
     sessionRows.every(
@@ -353,7 +528,8 @@ async function syncEnrollmentCompletion({
     await supabase
       .from("enrollments")
       .update({
-        status: "completed",
+        status:
+          "completed",
         updated_at: now,
       })
       .eq(
@@ -481,11 +657,14 @@ async function getContext(
     error: sessionError,
   } =
     await supabase
-      .from("class_sessions")
+      .from(
+        "class_sessions"
+      )
       .select(`
         id,
         enrollment_id,
         status,
+        scheduled_end,
         meeting_provider,
         meeting_id,
         started_at,
@@ -776,9 +955,17 @@ export async function GET(
       return ctx.response;
     }
 
+    const currentSession =
+      await closeExpiredScheduledSession({
+        supabase:
+          ctx.supabase,
+        session:
+          ctx.session,
+      });
+
     const effectiveStatus =
       getEffectiveStatus(
-        ctx.session
+        currentSession
       );
 
     return NextResponse.json({
@@ -786,18 +973,21 @@ export async function GET(
 
       session: {
         id:
-          ctx.session.id,
+          currentSession.id,
 
         databaseStatus:
-          ctx.session.status,
+          currentSession.status,
 
         effectiveStatus,
 
+        scheduledEnd:
+          currentSession.scheduled_end,
+
         startedAt:
-          ctx.session.started_at,
+          currentSession.started_at,
 
         endedAt:
-          ctx.session.ended_at,
+          currentSession.ended_at,
       },
     });
   } catch (error) {
@@ -941,6 +1131,34 @@ export async function POST(
       "start"
     ) {
       /*
+       * 예정 종료시간이 지난 미시작 수업은
+       * 시작 직전에 서버에서 다시 확인하여 자동마감합니다.
+       */
+      const currentSession =
+        await closeExpiredScheduledSession({
+          supabase:
+            ctx.supabase,
+          session:
+            ctx.session,
+        });
+
+      if (
+        currentSession.status ===
+        "not_held"
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "예정된 수업 종료시간이 지나 미진행으로 마감된 수업입니다.",
+          },
+          {
+            status: 409,
+          }
+        );
+      }
+
+      /*
        * 완료된 전체 수강은
        * 새로운 수업을 시작할 수 없습니다.
        */
@@ -965,15 +1183,17 @@ export async function POST(
        * 시작할 수 없는 회차 상태
        */
       if (
-        ctx.session.status ===
+        currentSession.status ===
           "completed" ||
-        ctx.session.status ===
+        currentSession.status ===
           "cancelled" ||
-        ctx.session.status ===
+        currentSession.status ===
           "held" ||
-        ctx.session.status ===
+        currentSession.status ===
           "no_show" ||
-        ctx.session.ended_at
+        currentSession.status ===
+          "not_held" ||
+        currentSession.ended_at
       ) {
         return NextResponse.json(
           {
@@ -993,26 +1213,26 @@ export async function POST(
        * 중복 요청을 성공 처리
        */
       if (
-        ctx.session.started_at
+        currentSession.started_at
       ) {
         return NextResponse.json({
           success: true,
 
           session: {
             id:
-              ctx.session.id,
+              currentSession.id,
 
             databaseStatus:
-              ctx.session.status,
+              currentSession.status,
 
             effectiveStatus:
               "in_progress",
 
             startedAt:
-              ctx.session.started_at,
+              currentSession.started_at,
 
             endedAt:
-              ctx.session.ended_at,
+              currentSession.ended_at,
           },
         });
       }
@@ -1179,7 +1399,6 @@ export async function POST(
     /*
      * Zoom Meeting 종료
      *
-     * 중요:
      * Zoom API 오류 때문에 TALKLY DB의 수업 종료가
      * 영원히 막히면 안 됩니다.
      *

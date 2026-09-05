@@ -1,8 +1,11 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import {
+  FormEvent,
+  useMemo,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase-browser";
 
 type Session = {
   id: number;
@@ -21,40 +24,166 @@ type Props = {
   session: Session;
 };
 
+type UpdateResponse = {
+  success?: boolean;
+  error?: string;
+  status?: string;
+  session?: {
+    id: number;
+    status: string;
+  };
+};
+
+function getStatusLabel(status: string) {
+  switch (status) {
+    case "scheduled":
+      return "예정";
+
+    case "in_progress":
+      return "수업 진행 중";
+
+    case "completed":
+      return "수업 완료";
+
+    case "cancelled":
+      return "수업 취소";
+
+    case "no_show":
+      return "결석";
+
+    case "held":
+      return "수업 연기";
+
+    case "not_held":
+      return "미진행";
+
+    default:
+      return status;
+  }
+}
+
+function getLockedMessage(status: string) {
+  switch (status) {
+    case "in_progress":
+      return "현재 진행 중인 수업입니다. 수업 일정은 변경할 수 없습니다.";
+
+    case "completed":
+      return "이미 완료된 수업입니다. 원래 수업 일정은 변경할 수 없습니다.";
+
+    case "no_show":
+      return "결석 처리된 수업입니다. 원래 수업 일정은 변경할 수 없습니다.";
+
+    case "held":
+      return "수업 연기로 처리된 원래 수업입니다. 일정 자체를 변경하지 않고 필요한 경우 별도의 보강수업을 생성합니다.";
+
+    case "cancelled":
+      return "취소된 원래 수업입니다. 일정 자체를 변경하지 않고 필요한 경우 별도의 보강수업을 생성합니다.";
+
+    case "not_held":
+      return "미진행으로 마감된 원래 수업입니다. 이 기록은 변경하지 않으며 필요한 경우 별도의 보강수업을 생성합니다.";
+
+    default:
+      return "현재 상태에서는 원래 수업 일정을 변경할 수 없습니다.";
+  }
+}
+
 export default function EditLessonForm({
   enrollmentId,
   session,
 }: Props) {
   const router = useRouter();
 
-  const [lessonDate, setLessonDate] = useState(
-    session.lessonDate
+  const [lessonDate, setLessonDate] =
+    useState(session.lessonDate);
+
+  const [startTime, setStartTime] =
+    useState(session.startTime);
+
+  const [
+    durationMinutes,
+    setDurationMinutes,
+  ] = useState(
+    String(session.durationMinutes)
   );
 
-  const [startTime, setStartTime] = useState(
-    session.startTime
+  const [
+    meetingProvider,
+    setMeetingProvider,
+  ] = useState(
+    session.meetingProvider || "zoom"
   );
 
-  const [durationMinutes, setDurationMinutes] =
-    useState(String(session.durationMinutes));
+  const [meetingUrl, setMeetingUrl] =
+    useState(
+      session.meetingUrl || ""
+    );
 
-  const [status, setStatus] = useState(
-    session.status
+  const [
+    teacherNotes,
+    setTeacherNotes,
+  ] = useState(
+    session.teacherNotes || ""
   );
 
-  const [meetingProvider, setMeetingProvider] =
-    useState(session.meetingProvider || "zoom");
+  const [loading, setLoading] =
+    useState(false);
 
-  const [meetingUrl, setMeetingUrl] = useState(
-    session.meetingUrl || ""
-  );
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
 
-  const [teacherNotes, setTeacherNotes] =
-    useState(session.teacherNotes || "");
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] = useState("");
 
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  /*
+   * scheduled 상태만 원본 일정 수정 가능
+   *
+   * 실제 최종 권한 판단은 서버 API가 다시 수행합니다.
+   * 여기의 잠금은 관리자 UI를 명확하게 하기 위한 것입니다.
+   */
+  const canEditSchedule =
+    session.status === "scheduled";
+
+  /*
+   * 현재 값과 최초 값을 비교해서
+   * 일정 관련 정보가 실제로 바뀌었는지 확인합니다.
+   */
+  const scheduleChanged =
+    lessonDate !== session.lessonDate ||
+    startTime !== session.startTime ||
+    durationMinutes !==
+      String(session.durationMinutes) ||
+    meetingProvider !==
+      (session.meetingProvider || "zoom") ||
+    meetingUrl.trim() !==
+      (session.meetingUrl || "").trim();
+
+  const notesChanged =
+    teacherNotes.trim() !==
+    (session.teacherNotes || "").trim();
+
+  const hasChanges =
+    scheduleChanged || notesChanged;
+
+  /*
+   * 현재 상태 안내 문구
+   */
+  const statusDescription =
+    useMemo(() => {
+      if (canEditSchedule) {
+        return "아직 시작되지 않은 예정 수업입니다. 수업일, 시간 및 화상수업 정보를 수정할 수 있습니다.";
+      }
+
+      return getLockedMessage(
+        session.status
+      );
+    }, [
+      canEditSchedule,
+      session.status,
+    ]);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -62,128 +191,161 @@ export default function EditLessonForm({
     event.preventDefault();
 
     setErrorMessage("");
+    setSuccessMessage("");
 
-    if (!lessonDate) {
+    if (!hasChanges) {
       setErrorMessage(
-        "수업일을 입력해주세요."
+        "변경된 수업정보가 없습니다."
       );
+
       return;
     }
 
-    if (!startTime) {
-      setErrorMessage(
-        "수업 시작시간을 입력해주세요."
-      );
-      return;
-    }
+    /*
+     * 일정 수정이 가능한 경우에만
+     * 날짜/시간/수업시간 검증
+     */
+    if (
+      canEditSchedule &&
+      scheduleChanged
+    ) {
+      if (!lessonDate) {
+        setErrorMessage(
+          "수업일을 입력해주세요."
+        );
 
-    if (Number(durationMinutes) <= 0) {
-      setErrorMessage(
-        "수업시간을 확인해주세요."
-      );
-      return;
+        return;
+      }
+
+      if (!startTime) {
+        setErrorMessage(
+          "수업 시작시간을 입력해주세요."
+        );
+
+        return;
+      }
+
+      const parsedDuration =
+        Number(durationMinutes);
+
+      if (
+        !Number.isInteger(
+          parsedDuration
+        ) ||
+        parsedDuration <= 0
+      ) {
+        setErrorMessage(
+          "수업시간을 확인해주세요."
+        );
+
+        return;
+      }
     }
 
     setLoading(true);
 
     try {
-      const supabase = createClient();
+      /*
+       * =====================================================
+       * 서버 API를 통한 수정
+       *
+       * 더 이상 브라우저에서 class_sessions를
+       * 직접 UPDATE하지 않습니다.
+       * =====================================================
+       */
+      const requestBody: {
+        lessonDate?: string;
+        startTime?: string;
+        durationMinutes?: number;
+        meetingProvider?: string | null;
+        meetingUrl?: string | null;
+        teacherNotes?: string | null;
+      } = {};
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        setErrorMessage(
-          "로그인 정보를 확인할 수 없습니다."
-        );
-        setLoading(false);
-        return;
-      }
-
-      const {
-        data: profile,
-        error: profileError,
-      } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
+      /*
+       * scheduled이고 실제 일정 관련 변경이 있는 경우에만
+       * 일정 정보를 API에 보냅니다.
+       */
       if (
-        profileError ||
-        !profile ||
-        profile.role !== "admin"
+        canEditSchedule &&
+        scheduleChanged
       ) {
-        setErrorMessage(
-          "관리자 권한을 확인할 수 없습니다."
-        );
-        setLoading(false);
-        return;
+        requestBody.lessonDate =
+          lessonDate;
+
+        requestBody.startTime =
+          startTime;
+
+        requestBody.durationMinutes =
+          Number(durationMinutes);
+
+        requestBody.meetingProvider =
+          meetingProvider || null;
+
+        requestBody.meetingUrl =
+          meetingUrl.trim() || null;
       }
 
       /*
-        입력된 날짜/시간은 한국시간으로 해석해서
-        UTC timestamptz 형태로 저장합니다.
-      */
-      const startDateTime = new Date(
-        `${lessonDate}T${startTime}:00+09:00`
-      );
-
-      const endDateTime = new Date(
-        startDateTime.getTime() +
-          Number(durationMinutes) * 60 * 1000
-      );
-
-      const { data, error } = await supabase
-        .from("class_sessions")
-        .update({
-          scheduled_start:
-            startDateTime.toISOString(),
-
-          scheduled_end:
-            endDateTime.toISOString(),
-
-          status,
-
-          meeting_provider:
-            meetingProvider || null,
-
-          meeting_url:
-            meetingUrl.trim() || null,
-
-          teacher_notes:
-            teacherNotes.trim() || null,
-
-          updated_at:
-            new Date().toISOString(),
-        })
-        .eq("id", session.id)
-        .eq(
-          "enrollment_id",
-          enrollmentId
-        )
-        .select();
-
-      if (error) {
-        setErrorMessage(
-          `수업정보 수정 실패: ${error.message} / code: ${error.code}`
-        );
-
-        setLoading(false);
-        return;
+       * 메모는 모든 상태에서 수정 가능
+       */
+      if (notesChanged) {
+        requestBody.teacherNotes =
+          teacherNotes.trim() || null;
       }
 
-      if (!data || data.length === 0) {
-        setErrorMessage(
-          "수정된 수업정보를 확인할 수 없습니다."
-        );
+      const response = await fetch(
+        `/api/admin/class-sessions/${session.id}`,
+        {
+          method: "PATCH",
 
-        setLoading(false);
-        return;
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          credentials: "same-origin",
+
+          body: JSON.stringify(
+            requestBody
+          ),
+        }
+      );
+
+      let data: UpdateResponse = {};
+
+      try {
+        data =
+          (await response.json()) as
+            UpdateResponse;
+      } catch {
+        data = {};
       }
 
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data.error ||
+            "수업정보를 수정할 수 없습니다."
+        );
+      }
+
+      setSuccessMessage(
+        "수업정보가 수정되었습니다."
+      );
+
+      /*
+       * 서버에서 상태가 바뀌었을 수도 있습니다.
+       *
+       * 예:
+       * 편집 화면을 오래 열어둔 사이
+       * scheduled_end가 지나 not_held 처리된 경우.
+       *
+       * 상세화면으로 돌아가 서버의 최신 데이터를
+       * 다시 읽도록 합니다.
+       */
       router.push(
         `/admin/enrollments/${enrollmentId}/lessons/${session.id}`
       );
@@ -197,7 +359,7 @@ export default function EditLessonForm({
 
       setErrorMessage(
         error instanceof Error
-          ? `수업정보 수정 오류: ${error.message}`
+          ? error.message
           : "수업정보 수정 중 알 수 없는 오류가 발생했습니다."
       );
 
@@ -208,16 +370,24 @@ export default function EditLessonForm({
   const labelStyle = {
     display: "block",
     marginBottom: "8px",
-    fontWeight: 600,
+    fontWeight: 700,
   };
 
   const fieldStyle = {
     width: "100%",
-    boxSizing: "border-box" as const,
+    boxSizing:
+      "border-box" as const,
     padding: "12px 14px",
     border: "1px solid #d9d9d9",
     borderRadius: "8px",
     fontSize: "16px",
+  };
+
+  const disabledFieldStyle = {
+    ...fieldStyle,
+    background: "#f5f5f5",
+    color: "#666",
+    cursor: "not-allowed",
   };
 
   return (
@@ -231,21 +401,82 @@ export default function EditLessonForm({
         gap: "20px",
       }}
     >
+      {/* 현재 상태 */}
+      <div
+        style={{
+          padding: "18px",
+          border: "1px solid #ddd",
+          borderRadius: "10px",
+          background:
+            session.status ===
+            "scheduled"
+              ? "#fffaf0"
+              : "#f7f7f7",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            flexWrap: "wrap",
+          }}
+        >
+          <strong>
+            현재 상태
+          </strong>
+
+          <span
+            style={{
+              padding:
+                "5px 10px",
+              border:
+                "1px solid #ccc",
+              borderRadius:
+                "999px",
+              fontSize:
+                "14px",
+              fontWeight: 700,
+            }}
+          >
+            {getStatusLabel(
+              session.status
+            )}
+          </span>
+        </div>
+
+        <p
+          style={{
+            margin:
+              "10px 0 0",
+            lineHeight: 1.6,
+          }}
+        >
+          {statusDescription}
+        </p>
+      </div>
+
+      {/* 회차 */}
       <div>
-        <label style={labelStyle}>
+        <label
+          style={labelStyle}
+        >
           회차
         </label>
 
         <div
           style={{
             ...fieldStyle,
-            background: "#f5f5f5",
+            background:
+              "#f5f5f5",
           }}
         >
-          {session.lessonNumber}회차
+          {session.lessonNumber}
+          회차
         </div>
       </div>
 
+      {/* 수업일 */}
       <div>
         <label
           htmlFor="lessonDate"
@@ -258,16 +489,27 @@ export default function EditLessonForm({
           id="lessonDate"
           type="date"
           value={lessonDate}
+          disabled={
+            !canEditSchedule ||
+            loading
+          }
           onChange={(event) =>
             setLessonDate(
               event.target.value
             )
           }
-          required
-          style={fieldStyle}
+          required={
+            canEditSchedule
+          }
+          style={
+            canEditSchedule
+              ? fieldStyle
+              : disabledFieldStyle
+          }
         />
       </div>
 
+      {/* 시작시간 */}
       <div>
         <label
           htmlFor="startTime"
@@ -280,16 +522,27 @@ export default function EditLessonForm({
           id="startTime"
           type="time"
           value={startTime}
+          disabled={
+            !canEditSchedule ||
+            loading
+          }
           onChange={(event) =>
             setStartTime(
               event.target.value
             )
           }
-          required
-          style={fieldStyle}
+          required={
+            canEditSchedule
+          }
+          style={
+            canEditSchedule
+              ? fieldStyle
+              : disabledFieldStyle
+          }
         />
       </div>
 
+      {/* 수업시간 */}
       <div>
         <label
           htmlFor="durationMinutes"
@@ -301,12 +554,20 @@ export default function EditLessonForm({
         <select
           id="durationMinutes"
           value={durationMinutes}
+          disabled={
+            !canEditSchedule ||
+            loading
+          }
           onChange={(event) =>
             setDurationMinutes(
               event.target.value
             )
           }
-          style={fieldStyle}
+          style={
+            canEditSchedule
+              ? fieldStyle
+              : disabledFieldStyle
+          }
         >
           <option value="10">
             10분
@@ -338,46 +599,42 @@ export default function EditLessonForm({
         </select>
       </div>
 
+      {/* 수업 상태 */}
       <div>
         <label
-          htmlFor="status"
           style={labelStyle}
         >
           수업 상태
         </label>
 
-        <select
-          id="status"
-          value={status}
-          onChange={(event) =>
-            setStatus(
-              event.target.value
-            )
-          }
-          style={fieldStyle}
+        <div
+          style={{
+            ...fieldStyle,
+            background:
+              "#f5f5f5",
+          }}
         >
-          <option value="scheduled">
-            예정
-          </option>
+          {getStatusLabel(
+            session.status
+          )}
+        </div>
 
-          <option value="completed">
-            완료
-          </option>
-
-          <option value="absent">
-            결석
-          </option>
-
-          <option value="makeup">
-            보강
-          </option>
-
-          <option value="cancelled">
-            취소
-          </option>
-        </select>
+        <small
+          style={{
+            display: "block",
+            marginTop: "7px",
+            lineHeight: 1.5,
+            color: "#666",
+          }}
+        >
+          수업 상태는 이 화면에서
+          임의로 변경하지 않습니다.
+          출석·수업진행·미진행 처리
+          결과에 따라 관리됩니다.
+        </small>
       </div>
 
+      {/* 화상수업 플랫폼 */}
       <div>
         <label
           htmlFor="meetingProvider"
@@ -389,19 +646,23 @@ export default function EditLessonForm({
         <select
           id="meetingProvider"
           value={meetingProvider}
+          disabled={
+            !canEditSchedule ||
+            loading
+          }
           onChange={(event) =>
             setMeetingProvider(
               event.target.value
             )
           }
-          style={fieldStyle}
+          style={
+            canEditSchedule
+              ? fieldStyle
+              : disabledFieldStyle
+          }
         >
           <option value="zoom">
             Zoom
-          </option>
-
-          <option value="google_meet">
-            Google Meet
           </option>
 
           <option value="daily">
@@ -418,6 +679,7 @@ export default function EditLessonForm({
         </select>
       </div>
 
+      {/* 화상수업 링크 */}
       <div>
         <label
           htmlFor="meetingUrl"
@@ -430,20 +692,40 @@ export default function EditLessonForm({
           id="meetingUrl"
           type="url"
           value={meetingUrl}
+          disabled={
+            !canEditSchedule ||
+            loading
+          }
           onChange={(event) =>
             setMeetingUrl(
               event.target.value
             )
           }
           placeholder="예: https://zoom.us/j/..."
-          style={fieldStyle}
+          style={
+            canEditSchedule
+              ? fieldStyle
+              : disabledFieldStyle
+          }
         />
 
-        <small>
-          아직 링크가 없으면 비워두어도 됩니다.
-        </small>
+        {canEditSchedule && (
+          <small
+            style={{
+              display:
+                "block",
+              marginTop:
+                "7px",
+              color: "#666",
+            }}
+          >
+            아직 링크가 없으면
+            비워두어도 됩니다.
+          </small>
+        )}
       </div>
 
+      {/* 메모 */}
       <div>
         <label
           htmlFor="teacherNotes"
@@ -455,6 +737,7 @@ export default function EditLessonForm({
         <textarea
           id="teacherNotes"
           value={teacherNotes}
+          disabled={loading}
           onChange={(event) =>
             setTeacherNotes(
               event.target.value
@@ -464,18 +747,38 @@ export default function EditLessonForm({
           placeholder="수업 내용, 변경 사유, 특이사항 등을 입력해주세요."
           style={{
             ...fieldStyle,
-            resize: "vertical",
+            resize:
+              "vertical",
           }}
         />
+
+        {!canEditSchedule && (
+          <small
+            style={{
+              display:
+                "block",
+              marginTop:
+                "7px",
+              color: "#666",
+              lineHeight: 1.5,
+            }}
+          >
+            원래 수업 일정은
+            잠겨 있지만 관리 메모는
+            계속 수정할 수 있습니다.
+          </small>
+        )}
       </div>
 
+      {/* 에러 */}
       {errorMessage && (
         <div
           style={{
             padding: "14px",
             border:
               "1px solid #d93025",
-            borderRadius: "8px",
+            borderRadius:
+              "8px",
             color: "#d93025",
           }}
         >
@@ -483,23 +786,51 @@ export default function EditLessonForm({
         </div>
       )}
 
+      {/* 성공 */}
+      {successMessage && (
+        <div
+          style={{
+            padding: "14px",
+            border:
+              "1px solid #188038",
+            borderRadius:
+              "8px",
+            color: "#188038",
+          }}
+        >
+          {successMessage}
+        </div>
+      )}
+
       <button
         type="submit"
-        disabled={loading}
+        disabled={
+          loading ||
+          !hasChanges
+        }
         style={{
           padding: "15px",
           border: "none",
           borderRadius: "8px",
           fontSize: "16px",
           fontWeight: 700,
-          cursor: loading
-            ? "default"
-            : "pointer",
+          cursor:
+            loading ||
+            !hasChanges
+              ? "default"
+              : "pointer",
+          opacity:
+            loading ||
+            !hasChanges
+              ? 0.55
+              : 1,
         }}
       >
         {loading
           ? "수업정보 수정 중..."
-          : "수업정보 수정"}
+          : canEditSchedule
+            ? "수업정보 수정"
+            : "관리 메모 저장"}
       </button>
     </form>
   );

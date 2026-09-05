@@ -53,6 +53,8 @@ export default async function TeacherPage() {
     scheduled_start: string;
     scheduled_end: string;
     status: string;
+    started_at: string | null;
+    ended_at: string | null;
     meeting_provider: string | null;
     meeting_url: string | null;
   }[] = [];
@@ -67,6 +69,8 @@ export default async function TeacherPage() {
         scheduled_start,
         scheduled_end,
         status,
+        started_at,
+        ended_at,
         meeting_provider,
         meeting_url
       `)
@@ -80,6 +84,56 @@ export default async function TeacherPage() {
     }
 
     sessions = data ?? [];
+
+    /*
+     * 종료시간이 지났는데 한 번도 시작되지 않은 scheduled 수업은
+     * 강사 대시보드에서도 즉시 미진행(not_held)으로 정리합니다.
+     *
+     * 이미 started_at이 있는 수업은 예정 종료시간이 지나도
+     * 자동마감하지 않습니다.
+     */
+    const nowIso = new Date().toISOString();
+
+    const expiredSessionIds = sessions
+      .filter(
+        (session) =>
+          session.status === "scheduled" &&
+          !session.started_at &&
+          !session.ended_at &&
+          new Date(session.scheduled_end).getTime() <= Date.now()
+      )
+      .map((session) => session.id);
+
+    if (expiredSessionIds.length > 0) {
+      const { error: closeExpiredError } = await supabase
+        .from("class_sessions")
+        .update({
+          status: "not_held",
+          updated_at: nowIso,
+        })
+        .in("id", expiredSessionIds)
+        .eq("status", "scheduled")
+        .is("started_at", null)
+        .lte("scheduled_end", nowIso);
+
+      if (closeExpiredError) {
+        throw new Error(closeExpiredError.message);
+      }
+
+      /*
+       * 현재 렌더링에도 즉시 반영합니다.
+       */
+      const expiredIdSet = new Set(expiredSessionIds);
+
+      sessions = sessions.map((session) =>
+        expiredIdSet.has(session.id)
+          ? {
+              ...session,
+              status: "not_held",
+            }
+          : session
+      );
+    }
   }
 
   const childIds =
@@ -243,6 +297,12 @@ export default async function TeacherPage() {
         return {
           en: "Class Reschedule",
           ko: "수업 연기",
+        };
+
+      case "not_held":
+        return {
+          en: "Not Held",
+          ko: "미진행",
         };
 
       default:

@@ -9,6 +9,16 @@ type Props = {
   initialEndedAt: string | null;
 };
 
+type SessionStatus =
+  | "scheduled"
+  | "in_progress"
+  | "completed"
+  | "cancelled"
+  | "held"
+  | "no_show"
+  | "not_held"
+  | string;
+
 export default function ClassSessionControls({
   sessionId,
   viewerRole,
@@ -17,17 +27,35 @@ export default function ClassSessionControls({
 }: Props) {
   const [startedAt, setStartedAt] = useState(initialStartedAt);
   const [endedAt, setEndedAt] = useState(initialEndedAt);
+
+  const [effectiveStatus, setEffectiveStatus] =
+    useState<SessionStatus>(
+      initialEndedAt
+        ? "completed"
+        : initialStartedAt
+          ? "in_progress"
+          : "scheduled"
+    );
+
+  /*
+   * 최초 API 상태 확인 전에는 scheduled 수업의 Start 버튼을
+   * 잠시 숨깁니다.
+   *
+   * 이유:
+   * 과거 수업이 DB에서 아직 scheduled 상태로 남아 있어도
+   * session-status API가 scheduled_end를 확인하여
+   * not_held로 자동마감하기 전까지 Start 버튼이 순간적으로
+   * 노출되는 것을 방지합니다.
+   */
+  const [statusLoaded, setStatusLoaded] = useState(
+    Boolean(initialStartedAt || initialEndedAt)
+  );
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const canControl =
     viewerRole === "teacher" || viewerRole === "admin";
-
-  const effectiveStatus = endedAt
-    ? "completed"
-    : startedAt
-      ? "in_progress"
-      : "scheduled";
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -41,12 +69,36 @@ export default function ClassSessionControls({
       if (response.ok && data.success) {
         setStartedAt(data.session.startedAt ?? null);
         setEndedAt(data.session.endedAt ?? null);
+
+        if (
+          typeof data.session.effectiveStatus === "string" &&
+          data.session.effectiveStatus
+        ) {
+          setEffectiveStatus(data.session.effectiveStatus);
+        } else {
+          setEffectiveStatus(
+            data.session.endedAt
+              ? "completed"
+              : data.session.startedAt
+                ? "in_progress"
+                : "scheduled"
+          );
+        }
+
+        setStatusLoaded(true);
       }
     } catch {}
   }, [sessionId]);
 
   useEffect(() => {
+    /*
+     * 페이지 진입 즉시 한 번 확인합니다.
+     * 이후 2초마다 서버 상태를 동기화합니다.
+     */
+    void refreshStatus();
+
     const timer = window.setInterval(refreshStatus, 2000);
+
     return () => window.clearInterval(timer);
   }, [refreshStatus]);
 
@@ -66,6 +118,13 @@ export default function ClassSessionControls({
       const data = await response.json();
 
       if (!response.ok || !data.success) {
+        /*
+         * Start 요청 순간에 scheduled_end가 지났다면
+         * 서버가 not_held로 마감하고 409를 반환할 수 있습니다.
+         * 그 경우 즉시 최신 상태를 다시 받아 화면을 갱신합니다.
+         */
+        await refreshStatus();
+
         throw new Error(
           typeof data.error === "string"
             ? data.error
@@ -75,6 +134,23 @@ export default function ClassSessionControls({
 
       setStartedAt(data.session.startedAt ?? null);
       setEndedAt(data.session.endedAt ?? null);
+
+      if (
+        typeof data.session.effectiveStatus === "string" &&
+        data.session.effectiveStatus
+      ) {
+        setEffectiveStatus(data.session.effectiveStatus);
+      } else {
+        setEffectiveStatus(
+          data.session.endedAt
+            ? "completed"
+            : data.session.startedAt
+              ? "in_progress"
+              : "scheduled"
+        );
+      }
+
+      setStatusLoaded(true);
 
       if (action === "end") {
         window.location.reload();
@@ -90,19 +166,67 @@ export default function ClassSessionControls({
     }
   }
 
-  const statusPrimary =
-    effectiveStatus === "scheduled"
-      ? "READY"
-      : effectiveStatus === "in_progress"
-        ? "LIVE"
-        : "COMPLETED";
+  const statusText: Record<
+    string,
+    {
+      primary: string;
+      secondary: string;
+      dot: string;
+      glow?: string;
+    }
+  > = {
+    scheduled: {
+      primary: "READY",
+      secondary: "수업 시작 전",
+      dot: "#fbbf24",
+    },
 
-  const statusSecondary =
-    effectiveStatus === "scheduled"
-      ? "수업 시작 전"
-      : effectiveStatus === "in_progress"
-        ? "수업 진행 중"
-        : "수업 종료";
+    in_progress: {
+      primary: "LIVE",
+      secondary: "수업 진행 중",
+      dot: "#35d07f",
+      glow: "0 0 0 4px rgba(53,208,127,.10)",
+    },
+
+    completed: {
+      primary: "COMPLETED",
+      secondary: "수업 종료",
+      dot: "#94a3b8",
+    },
+
+    held: {
+      primary: "HELD",
+      secondary: "수업 연기",
+      dot: "#60a5fa",
+    },
+
+    cancelled: {
+      primary: "CANCELLED",
+      secondary: "수업 취소",
+      dot: "#f87171",
+    },
+
+    no_show: {
+      primary: "NO SHOW",
+      secondary: "결석",
+      dot: "#fb7185",
+    },
+
+    not_held: {
+      primary: "NOT HELD",
+      secondary: "미진행",
+      dot: "#94a3b8",
+    },
+  };
+
+  const currentStatus =
+    statusText[effectiveStatus] ?? {
+      primary: String(effectiveStatus || "STATUS")
+        .replaceAll("_", " ")
+        .toUpperCase(),
+      secondary: "수업 상태",
+      dot: "#94a3b8",
+    };
 
   return (
     <>
@@ -221,56 +345,58 @@ export default function ClassSessionControls({
           <span
             className="talkly-session-status-dot"
             style={{
-              background:
-                effectiveStatus === "in_progress"
-                  ? "#35d07f"
-                  : effectiveStatus === "completed"
-                    ? "#94a3b8"
-                    : "#fbbf24",
-              boxShadow:
-                effectiveStatus === "in_progress"
-                  ? "0 0 0 4px rgba(53,208,127,.10)"
-                  : "none",
+              background: currentStatus.dot,
+              boxShadow: currentStatus.glow ?? "none",
             }}
           />
 
           <span className="talkly-session-status-copy">
             <span className="talkly-session-status-primary">
-              {statusPrimary}
+              {currentStatus.primary}
             </span>
+
             <span className="talkly-session-status-secondary">
-              {statusSecondary}
+              {currentStatus.secondary}
             </span>
           </span>
         </div>
 
-        {canControl && effectiveStatus === "scheduled" && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => changeStatus("start")}
-            className="talkly-session-action"
-          >
-            <span className="talkly-session-action-main">
-              {busy ? "Starting..." : "Start Class"}
-            </span>
-            <span className="talkly-session-action-sub">수업 시작</span>
-          </button>
-        )}
+        {canControl &&
+          statusLoaded &&
+          effectiveStatus === "scheduled" && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => changeStatus("start")}
+              className="talkly-session-action"
+            >
+              <span className="talkly-session-action-main">
+                {busy ? "Starting..." : "Start Class"}
+              </span>
 
-        {canControl && effectiveStatus === "in_progress" && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => changeStatus("end")}
-            className="talkly-session-action end"
-          >
-            <span className="talkly-session-action-main">
-              {busy ? "Ending..." : "End Class"}
-            </span>
-            <span className="talkly-session-action-sub">수업 종료</span>
-          </button>
-        )}
+              <span className="talkly-session-action-sub">
+                수업 시작
+              </span>
+            </button>
+          )}
+
+        {canControl &&
+          effectiveStatus === "in_progress" && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => changeStatus("end")}
+              className="talkly-session-action end"
+            >
+              <span className="talkly-session-action-main">
+                {busy ? "Ending..." : "End Class"}
+              </span>
+
+              <span className="talkly-session-action-sub">
+                수업 종료
+              </span>
+            </button>
+          )}
 
         {error && (
           <div className="talkly-session-error">

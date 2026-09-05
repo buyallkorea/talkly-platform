@@ -100,6 +100,8 @@ export default async function ParentClassSessionPage({
         lesson_number,
         scheduled_start,
         scheduled_end,
+        started_at,
+        ended_at,
         status,
         meeting_provider,
         meeting_url,
@@ -155,6 +157,59 @@ export default async function ParentClassSessionPage({
 
   if (!enrollment) {
     notFound();
+  }
+
+  /*
+   * 종료시간이 지났는데 한 번도 시작되지 않은 scheduled 수업은
+   * 학부모 상세페이지에서도 미진행(not_held)으로 정리합니다.
+   *
+   * 이미 시작된 수업은 예정 종료시간이 지나도 자동마감하지 않습니다.
+   */
+  if (
+    session.status === "scheduled" &&
+    !session.started_at &&
+    !session.ended_at &&
+    new Date(
+      session.scheduled_end
+    ).getTime() <= Date.now()
+  ) {
+    const nowIso =
+      new Date().toISOString();
+
+    const {
+      error: closeExpiredError,
+    } =
+      await supabase
+        .from("class_sessions")
+        .update({
+          status: "not_held",
+          updated_at: nowIso,
+        })
+        .eq(
+          "id",
+          session.id
+        )
+        .eq(
+          "status",
+          "scheduled"
+        )
+        .is(
+          "started_at",
+          null
+        )
+        .lte(
+          "scheduled_end",
+          nowIso
+        );
+
+    if (closeExpiredError) {
+      throw new Error(
+        closeExpiredError.message
+      );
+    }
+
+    session.status =
+      "not_held";
   }
 
   const {
@@ -284,6 +339,9 @@ export default async function ParentClassSessionPage({
 
       case "held":
         return "수업 연기";
+
+      case "not_held":
+        return "미진행";
 
       default:
         return status;
