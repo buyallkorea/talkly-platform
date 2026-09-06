@@ -33,6 +33,11 @@ type AttemptRow = {
   completed_at: string | null;
 };
 
+type CourseRow = {
+  id: number;
+  name: string;
+};
+
 export default async function ParentLevelTestDetailPage({
   params,
 }: PageProps) {
@@ -131,7 +136,9 @@ export default async function ParentLevelTestDetailPage({
       interview_status,
 
       teacher_suggested_level,
+
       final_level,
+      final_course_id,
 
       created_at,
       updated_at
@@ -155,13 +162,6 @@ export default async function ParentLevelTestDetailPage({
   /*
    * =====================================================
    * 4. 접근 권한 확인
-   *
-   * 학부모:
-   * 본인이 신청한 레벨테스트
-   *
-   * 학생:
-   * 본인 student_user_id 또는
-   * child 연결 학생
    * =====================================================
    */
   if (!isStudent) {
@@ -268,10 +268,6 @@ export default async function ParentLevelTestDetailPage({
         ChildRow | null;
   }
 
-  /*
-   * 신청 당시 저장된 정보를 우선 사용하고,
-   * 과거 데이터는 children 정보를 fallback으로 사용
-   */
   const studentName =
     levelTest.student_name ||
     child?.name ||
@@ -298,9 +294,45 @@ export default async function ParentLevelTestDetailPage({
 
   /*
    * =====================================================
-   * 6. 가장 최근 응시 기록
+   * 6. 추천 프로그램 조회
    *
-   * 온라인 결과도 여기서 읽습니다.
+   * final_course_id는 실제 교육과정 courses.id만
+   * 참조합니다.
+   * =====================================================
+   */
+  let finalCourse:
+    CourseRow | null = null;
+
+  if (levelTest.final_course_id) {
+    const {
+      data: courseData,
+      error: courseError,
+    } = await supabase
+      .from("courses")
+      .select(`
+        id,
+        name
+      `)
+      .eq(
+        "id",
+        levelTest.final_course_id
+      )
+      .maybeSingle();
+
+    if (courseError) {
+      throw new Error(
+        `추천 프로그램을 불러오지 못했습니다: ${courseError.message}`
+      );
+    }
+
+    finalCourse =
+      courseData as
+        CourseRow | null;
+  }
+
+  /*
+   * =====================================================
+   * 7. 가장 최근 응시 기록
    * =====================================================
    */
   const {
@@ -353,7 +385,7 @@ export default async function ParentLevelTestDetailPage({
 
   /*
    * =====================================================
-   * 7. 온라인 테스트 완료 여부
+   * 8. 온라인 테스트 완료 여부
    * =====================================================
    */
   const completed =
@@ -372,12 +404,6 @@ export default async function ParentLevelTestDetailPage({
     levelTest.status ===
       "completed";
 
-  /*
-   * 실제 화면에 보여줄 온라인 결과
-   *
-   * attempt 결과를 우선 사용하고,
-   * 요약값은 level_tests를 fallback으로 사용
-   */
   const grammarScore =
     latestAttempt
       ?.grammar_score ??
@@ -427,12 +453,7 @@ export default async function ParentLevelTestDetailPage({
 
   /*
    * =====================================================
-   * 8. 화상레벨테스트 신청 여부 확인
-   *
-   * 우리가 새로 만든 희망 수업계획 테이블을
-   * 읽기만 합니다.
-   *
-   * 아직 신청 페이지는 다음 작업에서 만듭니다.
+   * 9. 원어민 화상테스트 신청 여부
    * =====================================================
    */
   const {
@@ -453,14 +474,47 @@ export default async function ParentLevelTestDetailPage({
     )
     .maybeSingle();
 
-  /*
-   * 아직 RLS를 다음 작업에서 정리할 예정이므로
-   * 권한 문제로 조회가 실패하더라도
-   * 기존 레벨테스트 페이지 전체를 깨뜨리지 않습니다.
-   */
   const hasInterviewRequest =
     !preferenceError &&
     Boolean(preference);
+
+  /*
+   * =====================================================
+   * 10. 최종 확정 여부
+   *
+   * 핵심:
+   * interview_required 여부가 아니라
+   *
+   * status = completed
+   * + final_level
+   * + final_course_id
+   *
+   * 세 가지로 판단합니다.
+   * =====================================================
+   */
+  const isFinalized =
+    levelTest.status ===
+      "completed" &&
+    Boolean(
+      levelTest.final_level
+    ) &&
+    Boolean(
+      levelTest.final_course_id
+    );
+
+  /*
+   * 원어민 테스트를 완료했지만
+   * 관리자가 아직 최종 레벨/과정을 확정하지 않은 상태
+   */
+  const waitingFinalReview =
+    levelTest.status ===
+      "interview_completed" ||
+    (
+      levelTest.interview_required &&
+      levelTest.interview_status ===
+        "completed" &&
+      !isFinalized
+    );
 
   return (
     <main
@@ -486,14 +540,10 @@ export default async function ParentLevelTestDetailPage({
           fontWeight: 800,
         }}
       >
-        {isStudent
-          ? "← 내 강의실"
-          : "← 내 강의실"}
+        ← 내 강의실
       </Link>
 
-      {/* ================================================= */}
       {/* HEADER */}
-      {/* ================================================= */}
 
       <div
         style={{
@@ -553,14 +603,13 @@ export default async function ParentLevelTestDetailPage({
           label={getParentStatusLabel(
             levelTest.status,
             levelTest.ai_status,
-            hasInterviewRequest
+            hasInterviewRequest,
+            isFinalized
           )}
         />
       </div>
 
-      {/* ================================================= */}
       {/* 학생 정보 */}
-      {/* ================================================= */}
 
       <section
         style={{
@@ -658,9 +707,7 @@ export default async function ParentLevelTestDetailPage({
         </div>
       </section>
 
-      {/* ================================================= */}
       {/* 학습정보 */}
-      {/* ================================================= */}
 
       {(levelTest.learning_history ||
         levelTest.learning_goal) && (
@@ -706,9 +753,7 @@ export default async function ParentLevelTestDetailPage({
         </section>
       )}
 
-      {/* ================================================= */}
       {/* 응시 전 */}
-      {/* ================================================= */}
 
       {!completed && (
         <>
@@ -809,9 +854,7 @@ export default async function ParentLevelTestDetailPage({
         </>
       )}
 
-      {/* ================================================= */}
       {/* 온라인 테스트 결과 */}
-      {/* ================================================= */}
 
       {completed && (
         <section
@@ -904,7 +947,7 @@ export default async function ParentLevelTestDetailPage({
                     opacity: 0.82,
                   }}
                 >
-                  RECOMMENDED
+                  AI RECOMMENDED
                 </div>
 
                 <div
@@ -1034,20 +1077,18 @@ export default async function ParentLevelTestDetailPage({
               >
                 온라인 테스트 결과는
                 Grammar와 Listening을
-                중심으로 산출된
+                중심으로 산출된{" "}
                 <strong
                   style={{
                     color: "#344054",
                   }}
                 >
-                  {" "}
                   1차 레벨 결과
                 </strong>
-                입니다. 실제 말하기,
-                발음, 의사소통 능력까지
-                확인하려면 무료 원어민
-                화상레벨테스트를 함께
-                진행하는 것을 권장합니다.
+                입니다. TALKLY 관리자는
+                테스트 결과와 학습 정보를
+                검토하여 최종 레벨과 추천
+                프로그램을 확정합니다.
               </div>
             </>
           ) : (
@@ -1075,9 +1116,93 @@ export default async function ParentLevelTestDetailPage({
         </section>
       )}
 
-      {/* ================================================= */}
+      {/* 최종 결과 */}
+
+      {isFinalized && (
+        <section
+          style={{
+            marginTop: "22px",
+            padding: "28px",
+            border:
+              "1px solid #abefc6",
+            borderRadius: "18px",
+            background:
+              "linear-gradient(135deg, #ecfdf3 0%, #ffffff 100%)",
+            boxShadow:
+              "0 12px 30px rgba(6,118,71,0.07)",
+          }}
+        >
+          <div
+            style={{
+              color: "#067647",
+              fontSize: "11px",
+              fontWeight: 900,
+              letterSpacing:
+                "0.08em",
+            }}
+          >
+            TALKLY FINAL RESULT
+          </div>
+
+          <h2
+            style={{
+              margin:
+                "8px 0 0",
+              color: "#065f46",
+              fontSize: "24px",
+              letterSpacing:
+                "-0.03em",
+            }}
+          >
+            최종 레벨 및 추천 프로그램
+          </h2>
+
+          <p
+            style={{
+              margin:
+                "10px 0 0",
+              color: "#047857",
+              fontSize: "13px",
+              lineHeight: 1.75,
+            }}
+          >
+            온라인 레벨테스트와 필요한
+            경우 원어민 화상평가까지
+            종합하여 TALKLY가 최종
+            확정한 결과입니다.
+          </p>
+
+          <div
+            style={{
+              marginTop: "22px",
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "14px",
+            }}
+          >
+            <FinalResultCard
+              label="FINAL LEVEL"
+              title={
+                levelTest.final_level ||
+                "-"
+              }
+              description="TALKLY 최종 확정 레벨"
+            />
+
+            <FinalResultCard
+              label="RECOMMENDED PROGRAM"
+              title={
+                finalCourse?.name ||
+                "추천 프로그램"
+              }
+              description="현재 레벨에 맞는 TALKLY 추천 교육과정"
+            />
+          </div>
+        </section>
+      )}
+
       {/* 다음 단계 */}
-      {/* ================================================= */}
 
       {completed && (
         <section
@@ -1100,16 +1225,14 @@ export default async function ParentLevelTestDetailPage({
             다음 단계
           </div>
 
-          {
-            !levelTest.interview_required &&
-            levelTest.final_level
-          ? (
+          {isFinalized ? (
             <>
               <div
                 style={{
                   marginTop: "18px",
                   padding: "20px",
-                  border: "1px solid #abefc6",
+                  border:
+                    "1px solid #abefc6",
                   borderRadius: "14px",
                   background: "#ecfdf3",
                   color: "#067647",
@@ -1121,7 +1244,8 @@ export default async function ParentLevelTestDetailPage({
                     fontWeight: 900,
                   }}
                 >
-                  레벨 확정이 완료되었습니다.
+                  최종 레벨과 추천
+                  프로그램이 확정되었습니다.
                 </div>
 
                 <div
@@ -1131,13 +1255,23 @@ export default async function ParentLevelTestDetailPage({
                     lineHeight: 1.8,
                   }}
                 >
-                  최종 레벨은 <strong>{levelTest.final_level}</strong>입니다.
-                  추가 화상레벨테스트 없이 바로 정규수업 수강신청 단계로
-                  진행할 수 있습니다.
+                  최종 레벨은{" "}
+                  <strong>
+                    {levelTest.final_level}
+                  </strong>
+                  이며, 추천 프로그램은{" "}
+                  <strong>
+                    {finalCourse?.name ||
+                      "확정된 추천 과정"}
+                  </strong>
+                  입니다. 추천 프로그램을
+                  기준으로 가능한 수업 일정을
+                  확인할 수 있습니다.
                 </div>
               </div>
 
-              {!isStudent && levelTest.child_id ? (
+              {!isStudent &&
+              levelTest.child_id ? (
                 <div
                   style={{
                     marginTop: "18px",
@@ -1147,23 +1281,31 @@ export default async function ParentLevelTestDetailPage({
                   }}
                 >
                   <Link
-                    href={`/parent/children/${levelTest.child_id}/enrollment`}
+                    href={`/parent/children/${levelTest.child_id}/enrollment?levelTestId=${levelTest.id}`}
                     style={{
                       minHeight: "50px",
                       padding: "0 22px",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderRadius: "11px",
-                      background: "#0A1F44",
+                      display:
+                        "inline-flex",
+                      alignItems:
+                        "center",
+                      justifyContent:
+                        "center",
+                      borderRadius:
+                        "11px",
+                      background:
+                        "#0A1F44",
                       color: "#ffffff",
-                      textDecoration: "none",
+                      textDecoration:
+                        "none",
                       fontSize: "14px",
                       fontWeight: 900,
-                      boxShadow: "0 10px 24px rgba(10,31,68,0.16)",
+                      boxShadow:
+                        "0 10px 24px rgba(10,31,68,0.16)",
                     }}
                   >
-                    수강신청 · 결제 진행 →
+                    추천 프로그램
+                    수강신청 →
                   </Link>
 
                   <Link
@@ -1171,14 +1313,21 @@ export default async function ParentLevelTestDetailPage({
                     style={{
                       minHeight: "50px",
                       padding: "0 18px",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      border: "1px solid #d0d5dd",
-                      borderRadius: "11px",
-                      background: "#ffffff",
+                      display:
+                        "inline-flex",
+                      alignItems:
+                        "center",
+                      justifyContent:
+                        "center",
+                      border:
+                        "1px solid #d0d5dd",
+                      borderRadius:
+                        "11px",
+                      background:
+                        "#ffffff",
                       color: "#344054",
-                      textDecoration: "none",
+                      textDecoration:
+                        "none",
                       fontSize: "13px",
                       fontWeight: 800,
                     }}
@@ -1190,51 +1339,103 @@ export default async function ParentLevelTestDetailPage({
                 <div
                   style={{
                     marginTop: "18px",
-                    padding: "16px 18px",
-                    border: "1px solid #dbe7ff",
-                    borderRadius: "12px",
-                    background: "#f5f8ff",
+                    padding:
+                      "16px 18px",
+                    border:
+                      "1px solid #dbe7ff",
+                    borderRadius:
+                      "12px",
+                    background:
+                      "#f5f8ff",
                     color: "#475467",
                     fontSize: "12px",
                     lineHeight: 1.75,
                   }}
                 >
-                  정규수업 신청과 결제는 학부모 계정에서 진행합니다.
+                  정규수업 신청과 결제는
+                  학부모 계정에서
+                  진행합니다.
                 </div>
               )}
             </>
+          ) : waitingFinalReview ? (
+            <div
+              style={{
+                marginTop: "18px",
+                padding: "20px",
+                border:
+                  "1px solid #b2ddff",
+                borderRadius: "14px",
+                background: "#eff8ff",
+                color: "#175cd3",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "15px",
+                  fontWeight: 900,
+                }}
+              >
+                관리자 최종 검토 중입니다.
+              </div>
+
+              <div
+                style={{
+                  marginTop: "8px",
+                  fontSize: "13px",
+                  lineHeight: 1.8,
+                }}
+              >
+                원어민 화상레벨테스트가
+                완료되었습니다. TALKLY
+                관리자가 온라인 테스트와
+                화상평가 결과를 종합하여
+                최종 레벨과 추천 프로그램을
+                확정하고 있습니다.
+              </div>
+            </div>
           ) : levelTest.interview_required ? (
             <>
               <p
                 style={{
-                  margin: "10px 0 0",
+                  margin:
+                    "10px 0 0",
                   color: "#667085",
                   fontSize: "13px",
                   lineHeight: 1.8,
                 }}
               >
-                관리자 판단에 따라 원어민 화상레벨테스트가 필요합니다.
-                테스트 일정과 진행 상태를 확인한 뒤 최종 레벨이 확정되면
-                수강신청 단계로 이어집니다.
+                관리자 판단에 따라 원어민
+                화상레벨테스트가 필요합니다.
+                테스트 일정과 진행 상태를
+                확인한 뒤 관리자가 최종
+                레벨과 추천 프로그램을
+                확정합니다.
               </p>
 
               {hasInterviewRequest ? (
                 <div
                   style={{
                     marginTop: "20px",
-                    padding: "17px 18px",
-                    border: "1px solid #abefc6",
-                    borderRadius: "12px",
-                    background: "#ecfdf3",
+                    padding:
+                      "17px 18px",
+                    border:
+                      "1px solid #abefc6",
+                    borderRadius:
+                      "12px",
+                    background:
+                      "#ecfdf3",
                     color: "#067647",
                     fontSize: "13px",
                     lineHeight: 1.7,
                     fontWeight: 800,
                   }}
                 >
-                  원어민 화상레벨테스트 신청이 접수되었습니다.
-                  TALKLY 관리자가 신청 내용을 확인한 후 상담 및 테스트 일정을
-                  안내합니다.
+                  원어민 화상레벨테스트
+                  신청이 접수되었습니다.
+                  TALKLY 관리자가 신청
+                  내용을 확인한 후 상담 및
+                  테스트 일정을 안내합니다.
                 </div>
               ) : (
                 <div
@@ -1250,19 +1451,27 @@ export default async function ParentLevelTestDetailPage({
                     style={{
                       minHeight: "48px",
                       padding: "0 20px",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderRadius: "10px",
-                      background: "#2f6fed",
+                      display:
+                        "inline-flex",
+                      alignItems:
+                        "center",
+                      justifyContent:
+                        "center",
+                      borderRadius:
+                        "10px",
+                      background:
+                        "#2f6fed",
                       color: "#ffffff",
-                      textDecoration: "none",
+                      textDecoration:
+                        "none",
                       fontSize: "14px",
                       fontWeight: 900,
-                      boxShadow: "0 8px 18px rgba(47,111,237,0.20)",
+                      boxShadow:
+                        "0 8px 18px rgba(47,111,237,0.20)",
                     }}
                   >
-                    무료 원어민 화상레벨테스트 신청 →
+                    무료 원어민
+                    화상레벨테스트 신청 →
                   </Link>
                 </div>
               )}
@@ -1272,7 +1481,8 @@ export default async function ParentLevelTestDetailPage({
               style={{
                 marginTop: "18px",
                 padding: "18px",
-                border: "1px solid #dbe7ff",
+                border:
+                  "1px solid #dbe7ff",
                 borderRadius: "12px",
                 background: "#f5f8ff",
                 color: "#475467",
@@ -1280,61 +1490,14 @@ export default async function ParentLevelTestDetailPage({
                 lineHeight: 1.8,
               }}
             >
-              현재 TALKLY 관리자가 온라인 레벨테스트 결과를 검토 중입니다.
-              최종 판단이 완료되면 원어민 추가 테스트 또는 수강신청 단계가
-              이 화면에 안내됩니다.
+              현재 TALKLY 관리자가 온라인
+              레벨테스트 결과를 검토
+              중입니다. 최종 판단이 완료되면
+              원어민 추가 테스트 또는 최종
+              레벨·추천 프로그램이 이 화면에
+              안내됩니다.
             </div>
           )}
-        </section>
-      )}
-      {/* ================================================= */}
-      {/* 최종 레벨 */}
-      {/* ================================================= */}
-
-      {levelTest.final_level && (
-        <section
-          style={{
-            marginTop: "22px",
-            padding: "24px",
-            border:
-              "1px solid #abefc6",
-            borderRadius: "16px",
-            background: "#ecfdf3",
-          }}
-        >
-          <div
-            style={{
-              color: "#067647",
-              fontSize: "12px",
-              fontWeight: 900,
-            }}
-          >
-            TALKLY FINAL LEVEL
-          </div>
-
-          <div
-            style={{
-              marginTop: "7px",
-              color: "#065f46",
-              fontSize: "25px",
-              fontWeight: 900,
-            }}
-          >
-            {levelTest.final_level}
-          </div>
-
-          <div
-            style={{
-              marginTop: "7px",
-              color: "#047857",
-              fontSize: "12px",
-              lineHeight: 1.7,
-            }}
-          >
-            온라인 레벨테스트와 원어민
-            화상평가를 종합하여 확정된
-            TALKLY 최종 레벨입니다.
-          </div>
         </section>
       )}
 
@@ -1518,6 +1681,64 @@ function ResultCard({
   );
 }
 
+function FinalResultCard({
+  label,
+  title,
+  description,
+}: {
+  label: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div
+      style={{
+        padding: "20px",
+        border:
+          "1px solid #a6f4c5",
+        borderRadius: "14px",
+        background:
+          "rgba(255,255,255,0.84)",
+      }}
+    >
+      <div
+        style={{
+          color: "#047857",
+          fontSize: "10px",
+          fontWeight: 900,
+          letterSpacing:
+            "0.06em",
+        }}
+      >
+        {label}
+      </div>
+
+      <div
+        style={{
+          marginTop: "8px",
+          color: "#065f46",
+          fontSize: "22px",
+          fontWeight: 900,
+          lineHeight: 1.35,
+        }}
+      >
+        {title}
+      </div>
+
+      <div
+        style={{
+          marginTop: "7px",
+          color: "#047857",
+          fontSize: "11px",
+          lineHeight: 1.65,
+        }}
+      >
+        {description}
+      </div>
+    </div>
+  );
+}
+
 function StatusBadge({
   label,
 }: {
@@ -1545,8 +1766,13 @@ function StatusBadge({
 function getParentStatusLabel(
   status: string,
   aiStatus: string,
-  hasInterviewRequest: boolean
+  hasInterviewRequest: boolean,
+  isFinalized: boolean
 ) {
+  if (isFinalized) {
+    return "최종 결과 확정";
+  }
+
   if (
     aiStatus === "pending"
   ) {
@@ -1571,13 +1797,7 @@ function getParentStatusLabel(
     status ===
       "interview_completed"
   ) {
-    return "화상테스트 완료";
-  }
-
-  if (
-    status === "completed"
-  ) {
-    return "레벨 확정";
+    return "최종 검토 중";
   }
 
   if (
@@ -1595,6 +1815,12 @@ function getParentStatusLabel(
       "interview_required"
   ) {
     return "온라인 테스트 완료";
+  }
+
+  if (
+    status === "completed"
+  ) {
+    return "최종 검토 중";
   }
 
   return "신청 완료";

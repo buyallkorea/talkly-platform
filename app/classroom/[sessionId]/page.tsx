@@ -203,6 +203,180 @@ export default async function ClassroomPage({
 
   /*
    * =====================================================
+   * 만료된 미시작 수업 직접 진입 차단
+   *
+   * pg_cron이 DB 상태를 not_held로 변경하기 전의
+   * 최대 약 1분 사이에도 강의실 URL 직접 접근으로
+   * 수업을 시작할 수 없도록 서버 렌더링 단계에서
+   * 종료시각을 기준으로 한 번 더 차단합니다.
+   *
+   * 이미 started_at이 있는 수업(in_progress 포함)은
+   * scheduled_end가 지나도 여기서 차단하지 않습니다.
+   * =====================================================
+   */
+  const isExpiredUnstartedSession =
+    !session.started_at &&
+    new Date(
+      session.scheduled_end
+    ).getTime() <=
+      Date.now();
+
+  const isUnavailableSession =
+    session.status ===
+      "not_held" ||
+    session.status ===
+      "held" ||
+    session.status ===
+      "no_show" ||
+    session.status ===
+      "cancelled" ||
+    session.status ===
+      "completed";
+
+  if (
+    isExpiredUnstartedSession ||
+    isUnavailableSession
+  ) {
+    const returnHref =
+      profile.role ===
+      "teacher"
+        ? `/teacher/classes/${session.id}`
+        : profile.role ===
+            "parent"
+          ? "/parent"
+          : profile.role ===
+              "student"
+            ? "/student"
+            : "/admin";
+
+    const statusMessage =
+      session.status ===
+        "held"
+        ? "수업 연기 처리된 회차입니다."
+        : session.status ===
+            "no_show"
+          ? "결석 처리된 회차입니다."
+          : session.status ===
+              "cancelled"
+            ? "수업 취소 처리된 회차입니다."
+            : session.status ===
+                "completed"
+              ? "이미 완료된 회차입니다."
+              : "종료시간이 지나 미진행 처리된 회차입니다.";
+
+    return (
+      <main
+        style={{
+          minHeight:
+            "100vh",
+          padding:
+            "40px 20px",
+          boxSizing:
+            "border-box",
+          background:
+            "#0b0b0d",
+          color:
+            "#f7f7f8",
+          display:
+            "flex",
+          alignItems:
+            "center",
+          justifyContent:
+            "center",
+        }}
+      >
+        <div
+          style={{
+            width:
+              "100%",
+            maxWidth:
+              "560px",
+            padding:
+              "34px",
+            borderRadius:
+              "16px",
+            border:
+              "1px solid rgba(255,255,255,0.12)",
+            background:
+              "#15161a",
+            textAlign:
+              "center",
+          }}
+        >
+          <div
+            style={{
+              fontSize:
+                "12px",
+              opacity:
+                0.5,
+              letterSpacing:
+                "0.08em",
+            }}
+          >
+            TALKLY CLASSROOM
+          </div>
+
+          <h1
+            style={{
+              margin:
+                "12px 0 10px",
+              fontSize:
+                "28px",
+            }}
+          >
+            입장할 수 없는 수업입니다
+          </h1>
+
+          <p
+            style={{
+              margin:
+                0,
+              lineHeight:
+                1.7,
+              opacity:
+                0.68,
+            }}
+          >
+            {statusMessage}
+            <br />
+            과거 수업은 다시 시작하거나
+            재입장할 수 없습니다.
+          </p>
+
+          <Link
+            href={
+              returnHref
+            }
+            style={{
+              display:
+                "inline-flex",
+              marginTop:
+                "24px",
+              padding:
+                "11px 18px",
+              borderRadius:
+                "9px",
+              border:
+                "1px solid rgba(255,255,255,0.18)",
+              color:
+                "#f7f7f8",
+              textDecoration:
+                "none",
+              fontSize:
+                "13px",
+              fontWeight:
+                800,
+            }}
+          >
+            돌아가기
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  /*
+   * =====================================================
    * 수강정보
    * =====================================================
    */

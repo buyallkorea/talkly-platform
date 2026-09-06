@@ -5,20 +5,32 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase-browser";
+
+type CourseOption = {
+  id: number;
+  name: string;
+  target_group: string | null;
+  subject_category: string | null;
+  level: string | null;
+};
 
 type Props = {
   levelTest: {
     id: number;
     status: string;
     interview_required: boolean;
+    interview_status: string | null;
     final_level: string | null;
+    final_course_id: number | null;
     admin_note: string | null;
   };
+
+  courses: CourseOption[];
 };
 
 export default function LevelTestAdminForm({
   levelTest,
+  courses,
 }: Props) {
   const router = useRouter();
 
@@ -34,6 +46,17 @@ export default function LevelTestAdminForm({
     setFinalLevel,
   ] = useState(
     levelTest.final_level || ""
+  );
+
+  const [
+    finalCourseId,
+    setFinalCourseId,
+  ] = useState(
+    levelTest.final_course_id
+      ? String(
+          levelTest.final_course_id
+        )
+      : ""
   );
 
   const [
@@ -56,193 +79,98 @@ export default function LevelTestAdminForm({
     setSuccessMessage,
   ] = useState("");
 
-  async function checkAdmin() {
-    const supabase =
-      createClient();
+  /*
+   * 원어민 테스트가 필요한 경우에는
+   * 실제 평가 완료 이후에만 최종확정 UI를 엽니다.
+   *
+   * level_tests.interview_status는
+   * InterviewResultForm 저장 시 completed가 됩니다.
+   */
+  const interviewCompleted =
+    interviewRequired &&
+    levelTest.interview_status ===
+      "completed";
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+  const canFinalize =
+    !interviewRequired ||
+    interviewCompleted;
 
-    if (userError || !user) {
+  async function postReview(
+    body: Record<string, unknown>
+  ) {
+    const response = await fetch(
+      `/api/admin/level-tests/${levelTest.id}/review`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify(body),
+      }
+    );
+
+    let data: {
+      error?: string;
+      detail?: string;
+    } = {};
+
+    try {
+      data = await response.json();
+    } catch {
+      // JSON 응답이 아닌 예외 상황
+    }
+
+    if (!response.ok) {
       throw new Error(
-        "로그인 정보를 확인할 수 없습니다."
+        data.error ||
+          data.detail ||
+          "요청을 처리하지 못했습니다."
       );
     }
 
-    const {
-      data: profile,
-      error: profileError,
-    } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (
-      profileError ||
-      !profile ||
-      profile.role !== "admin"
-    ) {
-      throw new Error(
-        "관리자 권한을 확인할 수 없습니다."
-      );
-    }
-
-    return supabase;
+    return data;
   }
 
   async function handleInterviewChoice(
     required: boolean
   ) {
+    if (
+      required === interviewRequired
+    ) {
+      return;
+    }
+
     setErrorMessage("");
     setSuccessMessage("");
     setLoading(true);
 
     try {
-      const supabase =
-        await checkAdmin();
+      await postReview({
+        action:
+          "set_interview_requirement",
 
-      const now =
-        new Date().toISOString();
-
-      const {
-        data: updated,
-        error: updateError,
-      } = await supabase
-        .from("level_tests")
-        .update({
-          interview_required:
-            required,
-
-          interview_status:
-            required
-              ? "scheduling"
-              : null,
-
-          status:
-            required
-              ? "interview_required"
-              : "admin_review",
-
-          final_level:
-            null,
-
-          finalized_at:
-            null,
-
-          updated_at:
-            now,
-        })
-        .eq("id", levelTest.id)
-        .select("id")
-        .maybeSingle();
-
-      if (updateError) {
-        throw new Error(
-          `관리자 판단 변경 실패: ${updateError.message} / code: ${updateError.code}`
-        );
-      }
-
-      if (!updated) {
-        throw new Error(
-          "관리자 판단 변경 결과를 확인할 수 없습니다."
-        );
-      }
-
-      if (required) {
-        const {
-          data:
-            existingInterview,
-          error:
-            interviewCheckError,
-        } = await supabase
-          .from(
-            "level_test_interviews"
-          )
-          .select("id")
-          .eq(
-            "level_test_id",
-            levelTest.id
-          )
-          .in("status", [
-            "scheduling",
-            "scheduled",
-            "in_progress",
-          ])
-          .limit(1)
-          .maybeSingle();
-
-        if (
-          interviewCheckError
-        ) {
-          throw new Error(
-            `원어민 테스트 확인 실패: ${interviewCheckError.message}`
-          );
-        }
-
-        if (
-          !existingInterview
-        ) {
-          const {
-            error: insertError,
-          } = await supabase
-            .from(
-              "level_test_interviews"
-            )
-            .insert({
-              level_test_id:
-                levelTest.id,
-
-              status:
-                "scheduling",
-
-              duration_minutes:
-                20,
-            });
-
-          if (insertError) {
-            throw new Error(
-              `원어민 테스트 생성 실패: ${insertError.message} / code: ${insertError.code}`
-            );
-          }
-        }
-      } else {
-        const {
-          error: cancelError,
-        } = await supabase
-          .from(
-            "level_test_interviews"
-          )
-          .update({
-            status:
-              "cancelled",
-          })
-          .eq(
-            "level_test_id",
-            levelTest.id
-          )
-          .in("status", [
-            "scheduling",
-            "scheduled",
-          ]);
-
-        if (cancelError) {
-          throw new Error(
-            `기존 원어민 테스트 취소 실패: ${cancelError.message}`
-          );
-        }
-      }
+        interviewRequired:
+          required,
+      });
 
       setInterviewRequired(
         required
       );
 
+      /*
+       * 판단방식이 변경되면 기존 최종확정은
+       * 서버에서도 해제되므로 화면 상태도 맞춥니다.
+       */
+      setFinalLevel("");
+      setFinalCourseId("");
+
       setSuccessMessage(
         required
           ? "원어민 추가 테스트 대상으로 변경되었습니다."
-          : "추가 테스트 없이 판단하도록 변경되었습니다."
+          : "추가 테스트 없이 관리자가 최종 판단하도록 변경되었습니다."
       );
 
       router.refresh();
@@ -269,142 +197,69 @@ export default function LevelTestAdminForm({
 
     setErrorMessage("");
     setSuccessMessage("");
+
+    /*
+     * 원어민 테스트가 필요한데 아직 완료되지 않았다면
+     * 이 폼에서는 최종확정하지 않습니다.
+     * 관리자 메모만 저장할 수 있습니다.
+     */
+    if (
+      canFinalize &&
+      finalLevel.trim() &&
+      !finalCourseId
+    ) {
+      setErrorMessage(
+        "최종 레벨을 확정하려면 추천 프로그램도 선택해주세요."
+      );
+      return;
+    }
+
+    if (
+      canFinalize &&
+      finalCourseId &&
+      !finalLevel.trim()
+    ) {
+      setErrorMessage(
+        "추천 프로그램을 확정하려면 최종 레벨도 입력해주세요."
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const supabase =
-        await checkAdmin();
+      await postReview({
+        action: "save_review",
 
-      const now =
-        new Date().toISOString();
+        interviewRequired,
 
-      const nextStatus =
-        interviewRequired
-          ? "interview_required"
-          : finalLevel.trim()
-          ? "completed"
-          : "admin_review";
+        finalLevel:
+          canFinalize
+            ? finalLevel.trim() ||
+              null
+            : null,
 
-      const {
-        data: updated,
-        error: updateError,
-      } = await supabase
-        .from("level_tests")
-        .update({
-          interview_required:
-            interviewRequired,
+        finalCourseId:
+          canFinalize &&
+          finalCourseId
+            ? Number(finalCourseId)
+            : null,
 
-          interview_status:
-            interviewRequired
-              ? "scheduling"
-              : null,
+        adminNote:
+          adminNote.trim() ||
+          null,
+      });
 
-          status: nextStatus,
-
-          final_level:
-            interviewRequired
-              ? null
-              : finalLevel.trim() ||
-                null,
-
-          finalized_at:
-            !interviewRequired &&
-            finalLevel.trim()
-              ? now
-              : null,
-
-          admin_note:
-            adminNote.trim() ||
-            null,
-
-          updated_at: now,
-        })
-        .eq("id", levelTest.id)
-        .select("id")
-        .maybeSingle();
-
-      if (updateError) {
-        setErrorMessage(
-          `관리자 검토 저장 실패: ${updateError.message} / code: ${updateError.code}`
-        );
-        return;
-      }
-
-      if (!updated) {
-        setErrorMessage(
-          "변경 요청은 처리되었지만 저장된 정보를 확인할 수 없습니다."
-        );
-        return;
-      }
-
-      /*
-       * 원어민 추가 테스트가 필요한 경우
-       * interview 레코드가 이미 있는지 확인합니다.
-       */
-      if (interviewRequired) {
-        const {
-          data: existingInterview,
-          error: interviewCheckError,
-        } = await supabase
-          .from(
-            "level_test_interviews"
-          )
-          .select("id")
-          .eq(
-            "level_test_id",
-            levelTest.id
-          )
-          .in("status", [
-            "scheduling",
-            "scheduled",
-            "in_progress",
-          ])
-          .limit(1)
-          .maybeSingle();
-
-        if (interviewCheckError) {
-          setErrorMessage(
-            `원어민 테스트 확인 실패: ${interviewCheckError.message}`
-          );
-          return;
-        }
-
-        /*
-         * 진행 중인 원어민 테스트가 없을 때만
-         * 새 일정협의 레코드를 만듭니다.
-         */
-        if (!existingInterview) {
-          const {
-            error: insertError,
-          } = await supabase
-            .from(
-              "level_test_interviews"
-            )
-            .insert({
-              level_test_id:
-                levelTest.id,
-
-              status:
-                "scheduling",
-
-              duration_minutes:
-                20,
-            });
-
-          if (insertError) {
-            setErrorMessage(
-              `원어민 테스트 생성 실패: ${insertError.message} / code: ${insertError.code}`
-            );
-            return;
-          }
-        }
-      }
+      const finalized =
+        canFinalize &&
+        !!finalLevel.trim() &&
+        !!finalCourseId;
 
       setSuccessMessage(
-        interviewRequired
-          ? "원어민 추가 테스트 대상으로 저장되었습니다."
-          : finalLevel.trim()
-          ? "최종 레벨이 확정되었습니다."
+        finalized
+          ? "최종 레벨과 추천 프로그램이 확정되었습니다."
+          : interviewRequired
+          ? "관리자 검토 내용이 저장되었습니다. 원어민 테스트 완료 후 최종확정할 수 있습니다."
           : "관리자 검토 내용이 저장되었습니다."
       );
 
@@ -426,41 +281,17 @@ export default function LevelTestAdminForm({
   }
 
   return (
-    <section
-      style={{
-        marginTop: "22px",
-        padding: "26px",
-        border:
-          "1px solid #e4e7ec",
-        borderRadius: "16px",
-        background: "#ffffff",
-      }}
-    >
+    <section style={sectionStyle}>
       <div>
-        <h2
-          style={{
-            margin: 0,
-            color: "#101828",
-            fontSize: "20px",
-            letterSpacing:
-              "-0.02em",
-          }}
-        >
+        <h2 style={titleStyle}>
           관리자 판단 및 최종 확정
         </h2>
 
-        <p
-          style={{
-            margin: "8px 0 0",
-            color: "#667085",
-            fontSize: "13px",
-            lineHeight: 1.7,
-          }}
-        >
-          AI 테스트 결과를 검토한 뒤
-          바로 최종 레벨을 확정하거나
-          원어민 화상 테스트를 추가로
-          요청할 수 있습니다.
+        <p style={descriptionStyle}>
+          AI 테스트 결과와 필요한 경우
+          원어민 화상 테스트 평가를 함께
+          검토하여 최종 레벨과 추천
+          프로그램을 확정합니다.
         </p>
       </div>
 
@@ -477,9 +308,7 @@ export default function LevelTestAdminForm({
       >
         {/* 원어민 추가 테스트 */}
         <div>
-          <div
-            style={labelStyle}
-          >
+          <div style={labelStyle}>
             원어민 추가 테스트
           </div>
 
@@ -516,6 +345,10 @@ export default function LevelTestAdminForm({
                   !interviewRequired
                     ? "#2f6fed"
                     : "#344054",
+
+                cursor: loading
+                  ? "default"
+                  : "pointer",
               }}
             >
               추가 테스트 없이 판단
@@ -525,8 +358,6 @@ export default function LevelTestAdminForm({
               type="button"
               disabled={loading}
               onClick={() => {
-                setFinalLevel("");
-
                 void handleInterviewChoice(
                   true
                 );
@@ -548,96 +379,169 @@ export default function LevelTestAdminForm({
                   interviewRequired
                     ? "#b54708"
                     : "#344054",
+
+                cursor: loading
+                  ? "default"
+                  : "pointer",
               }}
             >
               원어민 추가 테스트 필요
             </button>
           </div>
 
-          <div
-            style={helpStyle}
-          >
-            AI 결과만으로 판단하기
-            어려운 경우에만 원어민 추가
-            테스트를 선택합니다.
+          <div style={helpStyle}>
+            AI 결과만으로 판단하기 어려운
+            경우에만 원어민 추가 테스트를
+            진행합니다. 판단방식을 변경하면
+            기존 최종확정은 해제됩니다.
           </div>
         </div>
 
-        {/* 최종 레벨 */}
-        {!interviewRequired && (
-          <div>
-            <label
-              htmlFor="finalLevel"
-              style={labelStyle}
-            >
-              최종 레벨
-            </label>
+        {/* 원어민 테스트 대기 */}
+        {interviewRequired &&
+          !interviewCompleted && (
+            <div style={waitingStyle}>
+              <div
+                style={{
+                  color: "#b54708",
+                  fontSize: "12px",
+                  fontWeight: 900,
+                }}
+              >
+                원어민 화상 테스트 진행
+                필요
+              </div>
 
-            <input
-              id="finalLevel"
-              type="text"
-              value={finalLevel}
-              onChange={(event) => {
-                setFinalLevel(
-                  event.target.value
-                );
-                setSuccessMessage("");
-              }}
-              placeholder="예: Elementary 3, TALKLY Level 4"
-              disabled={loading}
-              style={fieldStyle}
-            />
-
-            <div
-              style={helpStyle}
-            >
-              최종 레벨을 입력하고
-              저장하면 해당 레벨테스트는
-              최종 완료 상태가 됩니다.
-              아직 확정하지 않으려면
-              비워두세요.
+              <p
+                style={{
+                  margin: "7px 0 0",
+                  color: "#667085",
+                  fontSize: "11px",
+                  lineHeight: 1.7,
+                }}
+              >
+                원어민 화상 테스트의 평가가
+                완료되기 전에는 최종 레벨과
+                추천 프로그램을 확정할 수
+                없습니다. 아래 일정 및 평가
+                영역에서 테스트를 먼저
+                완료해주세요.
+              </p>
             </div>
-          </div>
-        )}
+          )}
 
-        {interviewRequired && (
-          <div
-            style={{
-              padding: "17px 18px",
-              border:
-                "1px solid #fedf89",
-              borderRadius: "11px",
-              background: "#fffaeb",
-            }}
-          >
-            <div
-              style={{
-                color: "#b54708",
-                fontSize: "12px",
-                fontWeight: 900,
-              }}
-            >
-              원어민 화상 테스트
-              추가 진행
+        {/* 원어민 테스트 완료 */}
+        {interviewRequired &&
+          interviewCompleted && (
+            <div style={completedStyle}>
+              <div
+                style={{
+                  color: "#067647",
+                  fontSize: "12px",
+                  fontWeight: 900,
+                }}
+              >
+                원어민 화상 테스트 평가
+                완료
+              </div>
+
+              <p
+                style={{
+                  margin: "7px 0 0",
+                  color: "#667085",
+                  fontSize: "11px",
+                  lineHeight: 1.7,
+                }}
+              >
+                강사의 평가와 제안 레벨을
+                참고하여 아래에서 TALKLY
+                최종 레벨과 추천 프로그램을
+                확정해주세요.
+              </p>
+            </div>
+          )}
+
+        {/* 최종 확정 */}
+        {canFinalize && (
+          <>
+            <div>
+              <label
+                htmlFor="finalLevel"
+                style={labelStyle}
+              >
+                최종 레벨
+              </label>
+
+              <input
+                id="finalLevel"
+                type="text"
+                value={finalLevel}
+                onChange={(event) => {
+                  setFinalLevel(
+                    event.target.value
+                  );
+
+                  setSuccessMessage("");
+                }}
+                placeholder="예: Elementary 3, TALKLY Level 4"
+                disabled={loading}
+                style={fieldStyle}
+              />
+
+              <div style={helpStyle}>
+                AI 결과와 원어민 테스트가
+                진행된 경우 강사 제안 레벨을
+                참고하여 TALKLY가 최종
+                확정하는 레벨입니다.
+              </div>
             </div>
 
-            <p
-              style={{
-                margin: "7px 0 0",
-                color: "#667085",
-                fontSize: "11px",
-                lineHeight: 1.7,
-              }}
-            >
-              저장하면 해당 학생을
-              원어민 추가 테스트 대상으로
-              등록합니다. 학부모와 전화
-              또는 SNS로 일정을 협의한
-              다음 관리자가 강사와
-              테스트 시간을 지정하게
-              됩니다.
-            </p>
-          </div>
+            <div>
+              <label
+                htmlFor="finalCourseId"
+                style={labelStyle}
+              >
+                추천 프로그램
+              </label>
+
+              <select
+                id="finalCourseId"
+                value={finalCourseId}
+                onChange={(event) => {
+                  setFinalCourseId(
+                    event.target.value
+                  );
+
+                  setSuccessMessage("");
+                }}
+                disabled={loading}
+                style={fieldStyle}
+              >
+                <option value="">
+                  추천 프로그램 선택
+                </option>
+
+                {courses.map(
+                  (course) => (
+                    <option
+                      key={course.id}
+                      value={course.id}
+                    >
+                      {course.name}
+                    </option>
+                  )
+                )}
+              </select>
+
+              <div style={helpStyle}>
+                교육과정 자체를 선택합니다.
+                강사 국적, 25/50분, 주당
+                횟수, 수강기간 등은 이후
+                수강신청 단계에서 별도로
+                결정합니다.
+              </div>
+            </div>
+          </>
         )}
 
         {/* 관리자 메모 */}
@@ -656,6 +560,7 @@ export default function LevelTestAdminForm({
               setAdminNote(
                 event.target.value
               );
+
               setSuccessMessage("");
             }}
             rows={5}
@@ -671,39 +576,14 @@ export default function LevelTestAdminForm({
           />
         </div>
 
-        {/* 오류 */}
         {errorMessage && (
-          <div
-            style={{
-              padding: "14px 16px",
-              border:
-                "1px solid #fda29b",
-              borderRadius: "10px",
-              background: "#fffbfa",
-              color: "#b42318",
-              fontSize: "12px",
-              fontWeight: 700,
-              lineHeight: 1.6,
-            }}
-          >
+          <div style={errorStyle}>
             {errorMessage}
           </div>
         )}
 
-        {/* 성공 */}
         {successMessage && (
-          <div
-            style={{
-              padding: "14px 16px",
-              border:
-                "1px solid #abefc6",
-              borderRadius: "10px",
-              background: "#ecfdf3",
-              color: "#027a48",
-              fontSize: "12px",
-              fontWeight: 800,
-            }}
-          >
+          <div style={successStyle}>
             {successMessage}
           </div>
         )}
@@ -724,13 +604,16 @@ export default function LevelTestAdminForm({
               padding: "0 22px",
               border: "none",
               borderRadius: "10px",
+
               background: loading
                 ? "#98a2b3"
                 : "#0A1F44",
+
               color: "#ffffff",
               fontFamily: "inherit",
               fontSize: "13px",
               fontWeight: 900,
+
               cursor: loading
                 ? "default"
                 : "pointer",
@@ -738,10 +621,10 @@ export default function LevelTestAdminForm({
           >
             {loading
               ? "저장 중..."
-              : interviewRequired
-              ? "추가 테스트 대상으로 저장"
-              : finalLevel.trim()
-              ? "최종 레벨 확정"
+              : canFinalize &&
+                finalLevel.trim() &&
+                finalCourseId
+              ? "최종 레벨 · 추천 프로그램 확정"
               : "검토 내용 저장"}
           </button>
         </div>
@@ -749,6 +632,28 @@ export default function LevelTestAdminForm({
     </section>
   );
 }
+
+const sectionStyle = {
+  marginTop: "22px",
+  padding: "26px",
+  border: "1px solid #e4e7ec",
+  borderRadius: "16px",
+  background: "#ffffff",
+};
+
+const titleStyle = {
+  margin: 0,
+  color: "#101828",
+  fontSize: "20px",
+  letterSpacing: "-0.02em",
+};
+
+const descriptionStyle = {
+  margin: "8px 0 0",
+  color: "#667085",
+  fontSize: "13px",
+  lineHeight: 1.7,
+};
 
 const labelStyle = {
   display: "block",
@@ -761,7 +666,8 @@ const labelStyle = {
 const fieldStyle = {
   width: "100%",
   minHeight: "46px",
-  boxSizing: "border-box" as const,
+  boxSizing:
+    "border-box" as const,
   padding: "0 14px",
   border: "1px solid #d0d5dd",
   borderRadius: "9px",
@@ -779,7 +685,6 @@ const choiceButtonStyle = {
   fontFamily: "inherit",
   fontSize: "13px",
   fontWeight: 900,
-  cursor: "pointer",
 };
 
 const helpStyle = {
@@ -787,4 +692,39 @@ const helpStyle = {
   color: "#98a2b3",
   fontSize: "11px",
   lineHeight: 1.6,
+};
+
+const waitingStyle = {
+  padding: "17px 18px",
+  border: "1px solid #fedf89",
+  borderRadius: "11px",
+  background: "#fffaeb",
+};
+
+const completedStyle = {
+  padding: "17px 18px",
+  border: "1px solid #abefc6",
+  borderRadius: "11px",
+  background: "#ecfdf3",
+};
+
+const errorStyle = {
+  padding: "14px 16px",
+  border: "1px solid #fda29b",
+  borderRadius: "10px",
+  background: "#fffbfa",
+  color: "#b42318",
+  fontSize: "12px",
+  fontWeight: 700,
+  lineHeight: 1.6,
+};
+
+const successStyle = {
+  padding: "14px 16px",
+  border: "1px solid #abefc6",
+  borderRadius: "10px",
+  background: "#ecfdf3",
+  color: "#027a48",
+  fontSize: "12px",
+  fontWeight: 800,
 };

@@ -19,6 +19,8 @@ type ClassSession = {
   scheduled_start: string;
   scheduled_end: string;
   status: string;
+  session_kind: string;
+  makeup_for_session_id: number | null;
 };
 
 type Enrollment = {
@@ -132,6 +134,8 @@ function getSessionStatusLabel(status: string) {
   switch (status) {
     case "scheduled":
       return "예정";
+    case "in_progress":
+      return "수업 진행 중";
     case "completed":
       return "완료";
     case "cancelled":
@@ -140,6 +144,8 @@ function getSessionStatusLabel(status: string) {
       return "수업 연기";
     case "no_show":
       return "결석";
+    case "not_held":
+      return "미진행";
     default:
       return status;
   }
@@ -166,6 +172,8 @@ function getStatusAccent(status: string) {
   switch (status) {
     case "scheduled":
       return "rgba(96,165,250,0.9)";
+    case "in_progress":
+      return "rgba(56,189,248,0.95)";
     case "completed":
       return "rgba(74,222,128,0.9)";
     case "held":
@@ -174,6 +182,8 @@ function getStatusAccent(status: string) {
       return "rgba(248,113,113,0.9)";
     case "cancelled":
       return "rgba(156,163,175,0.9)";
+    case "not_held":
+      return "rgba(148,163,184,0.9)";
     default:
       return "rgba(255,255,255,0.45)";
   }
@@ -239,7 +249,9 @@ export default async function AdminMonthCalendarPage({
         lesson_number,
         scheduled_start,
         scheduled_end,
-        status
+        status,
+        session_kind,
+        makeup_for_session_id
       `)
       .gte("scheduled_start", calendarStart.toISOString())
       .lt("scheduled_start", calendarEnd.toISOString())
@@ -711,6 +723,27 @@ export default async function AdminMonthCalendarPage({
         "cancelled"
     ).length;
 
+  const inProgressCount =
+    monthSessions.filter(
+      (session) =>
+        session.status ===
+        "in_progress"
+    ).length;
+
+  const notHeldCount =
+    monthSessions.filter(
+      (session) =>
+        session.status ===
+        "not_held"
+    ).length;
+
+  const makeupCount =
+    monthSessions.filter(
+      (session) =>
+        session.session_kind ===
+        "makeup"
+    ).length;
+
   function buildMonthUrl(
     targetMonth: string,
     targetDate?: string
@@ -900,10 +933,13 @@ export default async function AdminMonthCalendarPage({
             monthSessions.length,
           ],
           ["예정", scheduledCount],
+          ["수업 진행 중", inProgressCount],
           ["완료", completedCount],
           ["수업 연기", heldCount],
           ["결석", absentCount],
           ["수업 취소", cancelledCount],
+          ["미진행", notHeldCount],
+          ["보강수업", makeupCount],
         ].map(([label, value]) => (
           <div
             key={String(label)}
@@ -1029,6 +1065,9 @@ export default async function AdminMonthCalendarPage({
           <option value="scheduled">
             예정
           </option>
+          <option value="in_progress">
+            수업 진행 중
+          </option>
           <option value="completed">
             완료
           </option>
@@ -1040,6 +1079,9 @@ export default async function AdminMonthCalendarPage({
           </option>
           <option value="cancelled">
             수업 취소
+          </option>
+          <option value="not_held">
+            미진행
           </option>
         </select>
 
@@ -1266,6 +1308,9 @@ export default async function AdminMonthCalendarPage({
                               {formatTime(
                                 session.scheduled_start
                               )}{" "}
+                              {session.session_kind === "makeup"
+                                ? "[보강] "
+                                : ""}
                               {getStudentName(
                                 session.enrollment_id
                               )}
@@ -1412,16 +1457,41 @@ export default async function AdminMonthCalendarPage({
                           )}
                         </strong>
 
-                        <span
+                        <div
                           style={{
-                            opacity:
-                              0.62,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            flexWrap: "wrap",
+                            justifyContent: "flex-end",
                           }}
                         >
-                          {getSessionStatusLabel(
-                            session.status
+                          {session.session_kind === "makeup" && (
+                            <span
+                              style={{
+                                padding: "2px 7px",
+                                borderRadius: "999px",
+                                background: "rgba(96,165,250,0.14)",
+                                border: "1px solid rgba(96,165,250,0.45)",
+                                color: "#93c5fd",
+                                fontSize: "10px",
+                                fontWeight: 900,
+                              }}
+                            >
+                              보강
+                            </span>
                           )}
-                        </span>
+
+                          <span
+                            style={{
+                              opacity: 0.62,
+                            }}
+                          >
+                            {getSessionStatusLabel(
+                              session.status
+                            )}
+                          </span>
+                        </div>
                       </div>
 
                       <div
@@ -1435,6 +1505,11 @@ export default async function AdminMonthCalendarPage({
                         {getStudentName(
                           session.enrollment_id
                         )}
+                        {" · "}
+                        {session.lesson_number}회차
+                        {session.session_kind === "makeup"
+                          ? " 보강"
+                          : ""}
                       </div>
 
                       <div

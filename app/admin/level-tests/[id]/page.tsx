@@ -69,6 +69,14 @@ type TeacherRow = {
   nationality: string | null;
 };
 
+type CourseRow = {
+  id: number;
+  name: string;
+  target_group: string | null;
+  subject_category: string | null;
+  level: string | null;
+};
+
 type ClassPreferenceRow = {
   id: number;
   level_test_id: number;
@@ -159,6 +167,7 @@ export default async function AdminLevelTestDetailPage({
       interview_status,
       teacher_suggested_level,
       final_level,
+      final_course_id,
       result_level,
       score,
       strengths,
@@ -183,6 +192,45 @@ export default async function AdminLevelTestDetailPage({
   if (!levelTest) {
     notFound();
   }
+
+  /*
+   * 최종 추천 프로그램으로 사용할
+   * 활성 교육과정 목록
+   */
+  const {
+    data: coursesData,
+    error: coursesError,
+  } = await supabase
+    .from("courses")
+    .select(`
+      id,
+      name,
+      target_group,
+      subject_category,
+      level
+    `)
+    .eq("is_active", true)
+    .order("id", {
+      ascending: true,
+    });
+
+  if (coursesError) {
+    throw new Error(
+      `교육과정 목록을 불러오지 못했습니다: ${coursesError.message}`
+    );
+  }
+
+  const courses =
+    (coursesData ?? []) as CourseRow[];
+
+  const finalCourse =
+    levelTest.final_course_id
+      ? courses.find(
+          (course) =>
+            course.id ===
+            levelTest.final_course_id
+        ) ?? null
+      : null;
 
   /*
    * 학생 정보
@@ -911,7 +959,7 @@ export default async function AdminLevelTestDetailPage({
             marginTop: "20px",
             display: "grid",
             gridTemplateColumns:
-              "repeat(2, minmax(0, 1fr))",
+              "repeat(3, minmax(0, 1fr))",
             gap: "14px",
           }}
         >
@@ -937,6 +985,17 @@ export default async function AdminLevelTestDetailPage({
               !!levelTest.final_level
             }
           />
+
+          <DecisionCard
+            label="추천 프로그램"
+            value={
+              finalCourse?.name ??
+              "미확정"
+            }
+            active={
+              !!finalCourse
+            }
+          />
         </div>
 
         <NoteBox
@@ -958,12 +1017,19 @@ export default async function AdminLevelTestDetailPage({
           interview_required:
             levelTest.interview_required,
 
+          interview_status:
+            levelTest.interview_status,
+
           final_level:
             levelTest.final_level,
+
+          final_course_id:
+            levelTest.final_course_id,
 
           admin_note:
             levelTest.admin_note,
         }}
+        courses={courses}
       />
 
       {levelTest.interview_required ? (
@@ -1156,7 +1222,8 @@ export default async function AdminLevelTestDetailPage({
             description="원어민 추가 테스트 없이 최종 레벨을 확정한 경우 수강신청 단계로 바로 이어집니다."
           />
 
-          {levelTest.final_level ? (
+          {levelTest.final_level &&
+          levelTest.final_course_id ? (
             <div
               style={{
                 marginTop: "20px",
@@ -1183,9 +1250,18 @@ export default async function AdminLevelTestDetailPage({
                   fontSize: "13px",
                 }}
               >
-                최종 레벨은 <strong>{levelTest.final_level}</strong>입니다.
-                학부모 화면에서는 더 이상 원어민 테스트를 안내하지 않고
-                수강신청 페이지로 바로 연결하는 흐름을 사용합니다.
+                최종 레벨은{" "}
+                <strong>
+                  {levelTest.final_level}
+                </strong>
+                이며 추천 프로그램은{" "}
+                <strong>
+                  {finalCourse?.name ??
+                    "확인 필요"}
+                </strong>
+                입니다. 학부모 화면에서는 최종 결과를 확인한 뒤
+                추천 프로그램을 기준으로 수강신청 단계로
+                이어지게 됩니다.
               </div>
             </div>
           ) : (
@@ -1277,6 +1353,44 @@ export default async function AdminLevelTestDetailPage({
               )}
             </div>
           )}
+        </div>
+
+        <div
+          style={{
+            marginTop: "14px",
+            padding: "20px 24px",
+            border: finalCourse
+              ? "1px solid #abefc6"
+              : "1px solid #e4e7ec",
+            borderRadius: "14px",
+            background: finalCourse
+              ? "#ecfdf3"
+              : "#f9fafb",
+          }}
+        >
+          <div
+            style={{
+              color: "#667085",
+              fontSize: "11px",
+              fontWeight: 900,
+            }}
+          >
+            RECOMMENDED PROGRAM
+          </div>
+
+          <div
+            style={{
+              marginTop: "8px",
+              color: finalCourse
+                ? "#027a48"
+                : "#98a2b3",
+              fontSize: "22px",
+              fontWeight: 900,
+            }}
+          >
+            {finalCourse?.name ??
+              "아직 추천 프로그램이 확정되지 않았습니다."}
+          </div>
         </div>
 
         <NoteBox

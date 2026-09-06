@@ -19,6 +19,8 @@ type ClassSession = {
   status: string;
   meeting_provider: string | null;
   meeting_url: string | null;
+  session_kind: string;
+  makeup_for_session_id: number | null;
 };
 
 type Enrollment = {
@@ -62,6 +64,8 @@ function getSessionStatusLabel(status: string) {
   switch (status) {
     case "scheduled":
       return "예정";
+    case "in_progress":
+      return "수업 진행 중";
     case "completed":
       return "완료";
     case "cancelled":
@@ -70,6 +74,8 @@ function getSessionStatusLabel(status: string) {
       return "결석";
     case "held":
       return "수업 연기";
+    case "not_held":
+      return "미진행";
     default:
       return status;
   }
@@ -174,7 +180,9 @@ export default async function AdminCalendarPage({
         scheduled_end,
         status,
         meeting_provider,
-        meeting_url
+        meeting_url,
+        session_kind,
+        makeup_for_session_id
       `)
       .gte("scheduled_start", todayStart)
       .lt("scheduled_start", tomorrowStart)
@@ -429,6 +437,14 @@ export default async function AdminCalendarPage({
     (session) => session.status === "cancelled"
   ).length;
 
+  const notHeldCount = sessions.filter(
+    (session) => session.status === "not_held"
+  ).length;
+
+  const makeupCount = sessions.filter(
+    (session) => session.session_kind === "makeup"
+  ).length;
+
   const missingAttendanceCount = sessions.filter(
     (session) =>
       session.status === "completed" &&
@@ -502,6 +518,8 @@ export default async function AdminCalendarPage({
           ["완료", completedCount],
           ["수업 연기", heldCount],
           ["수업 취소", cancelledCount],
+          ["미진행", notHeldCount],
+          ["보강수업", makeupCount],
           ["출결 미처리", missingAttendanceCount],
           ["평가 미작성", missingEvaluationCount],
         ].map(([label, value]) => (
@@ -645,10 +663,12 @@ export default async function AdminCalendarPage({
         >
           <option value="all">전체 상태</option>
           <option value="scheduled">예정</option>
+          <option value="in_progress">수업 진행 중</option>
           <option value="completed">완료</option>
           <option value="held">수업 연기</option>
           <option value="cancelled">수업 취소</option>
           <option value="no_show">결석</option>
+          <option value="not_held">미진행</option>
         </select>
 
         <button
@@ -749,7 +769,26 @@ export default async function AdminCalendarPage({
                 </div>
 
                 <div>
-                  {session.lesson_number}회차
+                  <div style={{ fontWeight: 700 }}>
+                    {session.lesson_number}회차
+                  </div>
+
+                  {session.session_kind === "makeup" && (
+                    <div
+                      style={{
+                        marginTop: "4px",
+                        display: "inline-block",
+                        padding: "2px 6px",
+                        border: "1px solid rgba(96,165,250,0.65)",
+                        borderRadius: "999px",
+                        fontSize: "10px",
+                        fontWeight: 800,
+                        color: "#93c5fd",
+                      }}
+                    >
+                      보강
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ fontWeight: 800 }}>

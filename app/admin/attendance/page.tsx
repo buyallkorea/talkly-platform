@@ -15,6 +15,8 @@ type SessionRow = {
   scheduled_start: string;
   scheduled_end: string;
   status: string;
+  session_kind: string;
+  makeup_for_session_id: number | null;
 };
 
 type EnrollmentRow = {
@@ -181,10 +183,13 @@ function getSessionStatusLabel(
       return "결석";
 
     case "held":
-      return "인정결석";
+      return "수업 연기";
 
     case "cancelled":
-      return "취소";
+      return "수업 취소";
+
+    case "not_held":
+      return "미진행";
 
     default:
       return status;
@@ -298,7 +303,9 @@ export default async function AdminAttendancePage({
         lesson_number,
         scheduled_start,
         scheduled_end,
-        status
+        status,
+        session_kind,
+        makeup_for_session_id
       `)
       .gte(
         "scheduled_start",
@@ -822,6 +829,20 @@ export default async function AdminAttendancePage({
         )
       : 0;
 
+  const notHeldCount =
+    sessions.filter(
+      (session) =>
+        session.status ===
+        "not_held"
+    ).length;
+
+  const makeupCount =
+    sessions.filter(
+      (session) =>
+        session.session_kind ===
+        "makeup"
+    ).length;
+
   const nowTime =
     new Date().getTime();
 
@@ -839,11 +860,20 @@ export default async function AdminAttendancePage({
           return false;
         }
 
+        /*
+         * 출결 입력 대상이 아닌 수업 상태는
+         * "출결 미처리"에 포함하지 않습니다.
+         *
+         * not_held는 수업 자체가 진행되지 않은
+         * 중립 상태이므로 학생 결석으로 취급하지 않습니다.
+         */
         if (
           session.status ===
             "cancelled" ||
           session.status ===
-            "held"
+            "held" ||
+          session.status ===
+            "not_held"
         ) {
           return false;
         }
@@ -1145,6 +1175,20 @@ export default async function AdminAttendancePage({
 
           {
             label:
+              "미진행",
+            value:
+              notHeldCount,
+          },
+
+          {
+            label:
+              "보강수업",
+            value:
+              makeupCount,
+          },
+
+          {
+            label:
               "출결 미처리",
             value:
               unprocessedCount,
@@ -1250,6 +1294,9 @@ export default async function AdminAttendancePage({
         출석으로 인정하여 계산합니다.
         인정결석과 강사결석은 학생의
         출석률 계산에서 제외합니다.
+        미진행 수업은 수업 자체가 진행되지 않은
+        상태이므로 출결 미처리 및 학생 결석으로
+        계산하지 않습니다.
       </div>
 
       {/* LIST */}
@@ -1424,6 +1471,31 @@ export default async function AdminAttendancePage({
                         session.lesson_number
                       }
                       회차
+                      {session.session_kind ===
+                        "makeup" && (
+                        <span
+                          style={{
+                            marginLeft:
+                              "6px",
+                            padding:
+                              "2px 6px",
+                            border:
+                              "1px solid #b2ddff",
+                            borderRadius:
+                              "999px",
+                            color:
+                              "#175cd3",
+                            background:
+                              "#eff8ff",
+                            fontSize:
+                              "10px",
+                            fontWeight:
+                              900,
+                          }}
+                        >
+                          보강
+                        </span>
+                      )}
                     </div>
                   </div>
 

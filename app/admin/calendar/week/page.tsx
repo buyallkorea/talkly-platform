@@ -18,6 +18,8 @@ type ClassSession = {
   scheduled_start: string;
   scheduled_end: string;
   status: string;
+  session_kind: string;
+  makeup_for_session_id: number | null;
 };
 
 type Enrollment = {
@@ -88,6 +90,8 @@ function getSessionStatusLabel(status: string) {
   switch (status) {
     case "scheduled":
       return "예정";
+    case "in_progress":
+      return "수업 진행 중";
     case "completed":
       return "완료";
     case "cancelled":
@@ -96,6 +100,8 @@ function getSessionStatusLabel(status: string) {
       return "수업 연기";
     case "no_show":
       return "결석";
+    case "not_held":
+      return "미진행";
     default:
       return status;
   }
@@ -167,7 +173,9 @@ export default async function AdminWeekCalendarPage({
         lesson_number,
         scheduled_start,
         scheduled_end,
-        status
+        status,
+        session_kind,
+        makeup_for_session_id
       `)
       .gte("scheduled_start", weekStart.toISOString())
       .lt("scheduled_start", weekEnd.toISOString())
@@ -436,6 +444,14 @@ export default async function AdminWeekCalendarPage({
     (item) => item.status === "no_show"
   ).length;
 
+  const totalNotHeld = sessions.filter(
+    (item) => item.status === "not_held"
+  ).length;
+
+  const totalMakeup = sessions.filter(
+    (item) => item.session_kind === "makeup"
+  ).length;
+
   const missingAttendanceCount = sessions.filter(
     (item) =>
       item.status === "completed" &&
@@ -593,7 +609,7 @@ export default async function AdminWeekCalendarPage({
         style={{
           marginTop: "24px",
           display: "grid",
-          gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
           gap: "12px",
         }}
       >
@@ -621,6 +637,16 @@ export default async function AdminWeekCalendarPage({
           label="수업 취소·결석"
           value={totalCancelled + totalNoShow}
           description={`수업 취소 ${totalCancelled} · 결석 ${totalNoShow}`}
+        />
+        <SummaryCard
+          label="미진행"
+          value={totalNotHeld}
+          description="예정 종료 시각까지 시작되지 않은 수업"
+        />
+        <SummaryCard
+          label="보강수업"
+          value={totalMakeup}
+          description="원본 수업과 연결된 별도 보강 일정"
         />
       </section>
 
@@ -693,10 +719,12 @@ export default async function AdminWeekCalendarPage({
         >
           <option value="all">전체 상태</option>
           <option value="scheduled">예정</option>
+          <option value="in_progress">수업 진행 중</option>
           <option value="completed">완료</option>
           <option value="held">수업 연기</option>
           <option value="cancelled">수업 취소</option>
           <option value="no_show">결석</option>
+          <option value="not_held">미진행</option>
         </select>
 
         <button
@@ -869,14 +897,42 @@ export default async function AdminWeekCalendarPage({
                               gap: "8px",
                             }}
                           >
-                            <strong
+                            <div
                               style={{
-                                color: "#101828",
-                                fontSize: "13px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                minWidth: 0,
                               }}
                             >
-                              {formatTime(session.scheduled_start)}
-                            </strong>
+                              <strong
+                                style={{
+                                  color: "#101828",
+                                  fontSize: "13px",
+                                }}
+                              >
+                                {formatTime(session.scheduled_start)}
+                              </strong>
+
+                              {session.session_kind === "makeup" && (
+                                <span
+                                  style={{
+                                    minHeight: "22px",
+                                    padding: "0 6px",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    borderRadius: "999px",
+                                    background: "#eff8ff",
+                                    color: "#175cd3",
+                                    fontSize: "9px",
+                                    fontWeight: 900,
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  보강
+                                </span>
+                              )}
+                            </div>
 
                             <SessionStatusBadge status={session.status} />
                           </div>
@@ -1100,6 +1156,9 @@ function SessionStatusBadge({
   if (status === "scheduled") {
     background = "#eef4ff";
     color = "#2f6fed";
+  } else if (status === "in_progress") {
+    background = "#eff8ff";
+    color = "#175cd3";
   } else if (status === "completed") {
     background = "#ecfdf3";
     color = "#027a48";
@@ -1109,6 +1168,9 @@ function SessionStatusBadge({
   } else if (status === "cancelled" || status === "no_show") {
     background = "#fef3f2";
     color = "#b42318";
+  } else if (status === "not_held") {
+    background = "#f2f4f7";
+    color = "#475467";
   }
 
   return (

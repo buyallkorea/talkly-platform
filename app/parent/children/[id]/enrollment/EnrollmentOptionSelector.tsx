@@ -23,6 +23,11 @@ type CourseRelation =
     }[]
   | null;
 
+type RecommendedCourse = {
+  id: number;
+  name: string;
+} | null;
+
 type EnrollmentOption = {
   id: number;
   title: string;
@@ -34,7 +39,10 @@ type EnrollmentOption = {
   lessons_per_week: number;
 
   preferred_days: string[];
-  preferred_times: Record<string, string>;
+  preferred_times: Record<
+    string,
+    string
+  >;
 
   course_weeks: number;
 
@@ -46,7 +54,8 @@ type EnrollmentOption = {
   price_per_lesson: number;
 
   weekend_multiplier:
-    number | string;
+    | number
+    | string;
 
   weekday_lesson_count: number;
   weekend_lesson_count: number;
@@ -54,12 +63,14 @@ type EnrollmentOption = {
   estimated_price: number;
 
   capacity:
-    number | null;
+    | number
+    | null;
 
   enrolled_count: number;
 
   curriculum_name:
-    string | null;
+    | string
+    | null;
 
   courses:
     CourseRelation;
@@ -209,8 +220,7 @@ function getAllowedTargets(
 
   /*
    * 고등
-   * 현재는 중등 ~ 대학생 범위로
-   * 조금 넓게 보여줌
+   * → 중등 ~ 대학생
    */
   if (
     HIGH.includes(
@@ -294,11 +304,6 @@ function guessTargetFromGrade(
   const text =
     grade.trim();
 
-  /*
-   * 예:
-   * 초등 3학년
-   * 초등3학년
-   */
   if (
     text.includes("초")
   ) {
@@ -332,12 +337,6 @@ function guessTargetFromGrade(
     }
   }
 
-  /*
-   * 기존 children.grade가
-   * 단순히 "1학년"처럼 저장된 경우
-   * 초/중/고를 판단할 수 없으므로
-   * 자동 선택하지 않음
-   */
   return "";
 }
 
@@ -377,6 +376,9 @@ export default function EnrollmentOptionSelector({
   allowedTimeSlots,
   allowedLessonsPerWeek,
   showEstimatedPrice,
+  recommendedCourse,
+  recommendedLevel,
+  levelTestId,
 }: {
   child: Child;
 
@@ -394,9 +396,35 @@ export default function EnrollmentOptionSelector({
 
   showEstimatedPrice:
     boolean;
+
+  recommendedCourse:
+    RecommendedCourse;
+
+  recommendedLevel:
+    string | null;
+
+  levelTestId:
+    number | null;
 }) {
   const router =
     useRouter();
+
+  /*
+   * -------------------------------------------------------
+   * 레벨테스트 추천과정 모드
+   *
+   * 추천과정이 있으면 최초 진입 시 true.
+   * 학부모가 "다른 과정도 보기"를 누르면 false.
+   * -------------------------------------------------------
+   */
+  const [
+    useRecommendedCourse,
+    setUseRecommendedCourse,
+  ] = useState(
+    Boolean(
+      recommendedCourse
+    )
+  );
 
   const [
     targetGroup,
@@ -422,10 +450,6 @@ export default function EnrollmentOptionSelector({
     setSelectedTime,
   ] = useState("");
 
-  /*
-   * 어느 일정이 신청 처리 중인지
-   * ID로 관리
-   */
   const [
     submittingOptionId,
     setSubmittingOptionId,
@@ -455,26 +479,55 @@ export default function EnrollmentOptionSelector({
     }, [targetGroup]);
 
   /*
-   * 학부모가 선택한 조건에 맞는
-   * 공개 일정 필터
+   * -------------------------------------------------------
+   * 실제 일정 필터
+   *
+   * 1. 추천과정 모드
+   *    → final_course_id와 같은 course_id만
+   *
+   * 2. 일반 모드
+   *    → 기존 학년/대상 확장범위 사용
+   *
+   * 그 뒤
+   * 주당횟수 → 요일 → 시간 → 정원
+   * 순서로 필터합니다.
+   * -------------------------------------------------------
    */
   const filteredOptions =
     useMemo(() => {
-      if (!targetGroup) {
+      if (
+        !useRecommendedCourse &&
+        !targetGroup
+      ) {
         return [];
       }
 
       return options.filter(
         (option) => {
           /*
-           * 학년 / 대상 허용 범위
+           * 추천 프로그램 모드
            */
           if (
-            !allowedTargets.includes(
-              option.target_group
-            )
+            useRecommendedCourse &&
+            recommendedCourse
           ) {
-            return false;
+            if (
+              option.course_id !==
+              recommendedCourse.id
+            ) {
+              return false;
+            }
+          } else {
+            /*
+             * 일반 수강신청 모드
+             */
+            if (
+              !allowedTargets.includes(
+                option.target_group
+              )
+            ) {
+              return false;
+            }
           }
 
           /*
@@ -514,8 +567,8 @@ export default function EnrollmentOptionSelector({
           /*
            * 희망 시간
            *
-           * 현재는 해당 일정 안에
-           * 이 시간이 하나라도 있으면 표시
+           * 일정의 요일별 시간 중
+           * 하나라도 선택시간과 같으면 표시
            */
           if (selectedTime) {
             const times =
@@ -555,7 +608,21 @@ export default function EnrollmentOptionSelector({
       lessonsPerWeek,
       selectedDays,
       selectedTime,
+      useRecommendedCourse,
+      recommendedCourse,
     ]);
+
+  function clearMessages() {
+    setErrorMessage("");
+    setSuccessMessage("");
+  }
+
+  function resetScheduleFilters() {
+    setLessonsPerWeek("");
+    setSelectedDays([]);
+    setSelectedTime("");
+    clearMessages();
+  }
 
   function toggleDay(
     day: string
@@ -573,13 +640,38 @@ export default function EnrollmentOptionSelector({
             ]
     );
 
-    setErrorMessage("");
-    setSuccessMessage("");
+    clearMessages();
+  }
+
+  function showOtherCourses() {
+    setUseRecommendedCourse(
+      false
+    );
+
+    /*
+     * 추천과정에서 선택했던
+     * 일정 조건은 유지합니다.
+     *
+     * 학부모가 같은 요일/시간 조건으로
+     * 다른 과정을 비교할 수 있습니다.
+     */
+    clearMessages();
+  }
+
+  function returnToRecommendedCourse() {
+    if (!recommendedCourse) {
+      return;
+    }
+
+    setUseRecommendedCourse(
+      true
+    );
+
+    clearMessages();
   }
 
   /*
-   * 일정 카드의 신청 버튼에서
-   * 바로 호출
+   * 일정 카드의 신청 버튼
    */
   async function submitRequest(
     option: EnrollmentOption
@@ -587,9 +679,6 @@ export default function EnrollmentOptionSelector({
     setErrorMessage("");
     setSuccessMessage("");
 
-    /*
-     * 한번 더 확인창
-     */
     const confirmed =
       window.confirm(
         `${option.title}\n\n이 일정으로 ${child.name} 학생의 수강신청을 진행하시겠습니까?`
@@ -650,11 +739,6 @@ export default function EnrollmentOptionSelector({
         null
       );
 
-      /*
-       * 바로 자녀 상세로 이동하지 않고
-       * 성공 메시지를 잠깐 보여줌.
-       * 이후 신청현황 UI를 추가할 예정.
-       */
       router.refresh();
     } catch (error) {
       setErrorMessage(
@@ -673,15 +757,176 @@ export default function EnrollmentOptionSelector({
     <div
       style={{
         marginTop: "28px",
-
         display: "flex",
-
         flexDirection:
           "column",
-
         gap: "22px",
       }}
     >
+      {/* ===================================================
+          레벨테스트 추천 프로그램
+      =================================================== */}
+
+      {recommendedCourse && (
+        <section
+          style={{
+            padding: "24px",
+            border:
+              useRecommendedCourse
+                ? "1px solid #abefc6"
+                : "1px solid #dce4ee",
+            borderRadius: "16px",
+            background:
+              useRecommendedCourse
+                ? "linear-gradient(135deg, #ecfdf3 0%, #ffffff 100%)"
+                : "#ffffff",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent:
+                "space-between",
+              alignItems:
+                "flex-start",
+              gap: "18px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  color:
+                    useRecommendedCourse
+                      ? "#067647"
+                      : "#667085",
+                  fontSize: "11px",
+                  fontWeight: 900,
+                  letterSpacing:
+                    "0.06em",
+                }}
+              >
+                LEVEL TEST RECOMMENDATION
+              </div>
+
+              <h2
+                style={{
+                  margin:
+                    "7px 0 0",
+                  color:
+                    useRecommendedCourse
+                      ? "#065f46"
+                      : "#0a1f44",
+                  fontSize: "22px",
+                  letterSpacing:
+                    "-0.02em",
+                }}
+              >
+                {recommendedCourse.name}
+              </h2>
+
+              <div
+                style={{
+                  marginTop: "9px",
+                  display: "flex",
+                  gap: "8px",
+                  flexWrap: "wrap",
+                }}
+              >
+                {recommendedLevel && (
+                  <SmallBadge>
+                    최종 레벨{" "}
+                    {recommendedLevel}
+                  </SmallBadge>
+                )}
+
+                <SmallBadge>
+                  TALKLY 추천 프로그램
+                </SmallBadge>
+              </div>
+
+              <p
+                style={{
+                  margin:
+                    "12px 0 0",
+                  color: "#667085",
+                  fontSize: "12px",
+                  lineHeight: 1.7,
+                }}
+              >
+                {useRecommendedCourse
+                  ? "현재 레벨테스트에서 확정된 추천 프로그램의 신청 가능한 일정만 표시하고 있습니다."
+                  : "현재 다른 과정까지 함께 확인하고 있습니다. 언제든 추천 프로그램 일정으로 돌아갈 수 있습니다."}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={
+                useRecommendedCourse
+                  ? showOtherCourses
+                  : returnToRecommendedCourse
+              }
+              style={{
+                minHeight:
+                  "42px",
+                padding:
+                  "0 16px",
+                border:
+                  useRecommendedCourse
+                    ? "1px solid #a6f4c5"
+                    : "1px solid #b2ccff",
+                borderRadius:
+                  "9px",
+                background:
+                  "#ffffff",
+                color:
+                  useRecommendedCourse
+                    ? "#067647"
+                    : "#2f6fed",
+                fontFamily:
+                  "inherit",
+                fontSize:
+                  "12px",
+                fontWeight:
+                  900,
+                cursor:
+                  "pointer",
+              }}
+            >
+              {useRecommendedCourse
+                ? "다른 과정도 보기"
+                : "추천 프로그램으로 돌아가기"}
+            </button>
+          </div>
+
+          {levelTestId && (
+            <div
+              style={{
+                marginTop:
+                  "16px",
+                paddingTop:
+                  "14px",
+                borderTop:
+                  "1px solid rgba(6,118,71,0.12)",
+                color:
+                  "#667085",
+                fontSize:
+                  "11px",
+                lineHeight:
+                  1.6,
+              }}
+            >
+              레벨테스트 최종 결과를
+              기준으로 추천된 과정입니다.
+              추천 과정은 강제 선택이 아니며,
+              다른 과정도 비교하여 신청할 수
+              있습니다.
+            </div>
+          )}
+        </section>
+      )}
+
       {/* ===================================================
           조건 선택
       =================================================== */}
@@ -720,61 +965,81 @@ export default function EnrollmentOptionSelector({
             lineHeight: 1.7,
           }}
         >
-          학년, 주당 횟수,
-          요일과 시간을 선택하면
-          조건에 맞는 공개 수업
-          일정만 표시됩니다.
+          {useRecommendedCourse &&
+          recommendedCourse
+            ? "추천 프로그램 안에서 주당 수업 횟수, 요일과 시간을 선택하면 조건에 맞는 공개 수업 일정만 표시됩니다."
+            : "학년, 주당 횟수, 요일과 시간을 선택하면 조건에 맞는 공개 수업 일정만 표시됩니다."}
         </p>
 
         <div
           className="filter-grid"
         >
-          {/* 학년 */}
+          {/* 학년 / 추천과정 */}
 
           <div>
             <label
               style={labelStyle}
             >
-              학년 / 대상
+              {useRecommendedCourse &&
+              recommendedCourse
+                ? "추천 프로그램"
+                : "학년 / 대상"}
             </label>
 
-            <select
-              value={
-                targetGroup
-              }
-              onChange={(e) => {
-                setTargetGroup(
-                  e.target.value
-                );
+            {useRecommendedCourse &&
+            recommendedCourse ? (
+              <div
+                style={{
+                  ...fieldStyle,
+                  display:
+                    "flex",
+                  alignItems:
+                    "center",
+                  background:
+                    "#f0fdf4",
+                  border:
+                    "1px solid #abefc6",
+                  color:
+                    "#067647",
+                  fontWeight:
+                    900,
+                }}
+              >
+                {recommendedCourse.name}
+              </div>
+            ) : (
+              <select
+                value={
+                  targetGroup
+                }
+                onChange={(e) => {
+                  setTargetGroup(
+                    e.target.value
+                  );
 
-                setErrorMessage(
-                  ""
-                );
+                  clearMessages();
+                }}
+                style={fieldStyle}
+              >
+                <option value="">
+                  학년 선택
+                </option>
 
-                setSuccessMessage(
-                  ""
-                );
-              }}
-              style={fieldStyle}
-            >
-              <option value="">
-                학년 선택
-              </option>
-
-              {TARGET_OPTIONS.map(
-                ([
-                  value,
-                  label,
-                ]) => (
-                  <option
-                    key={value}
-                    value={value}
-                  >
-                    {label}
-                  </option>
-                )
-              )}
-            </select>
+                {TARGET_OPTIONS.map(
+                  ([
+                    value,
+                    label,
+                  ]) => (
+                    <option
+                      key={value}
+                      value={value}
+                    >
+                      {label}
+                    </option>
+                  )
+                )}
+              </select>
+            )}
           </div>
 
           {/* 주당 횟수 */}
@@ -795,13 +1060,7 @@ export default function EnrollmentOptionSelector({
                   e.target.value
                 );
 
-                setErrorMessage(
-                  ""
-                );
-
-                setSuccessMessage(
-                  ""
-                );
+                clearMessages();
               }}
               style={fieldStyle}
             >
@@ -840,13 +1099,7 @@ export default function EnrollmentOptionSelector({
                   e.target.value
                 );
 
-                setErrorMessage(
-                  ""
-                );
-
-                setSuccessMessage(
-                  ""
-                );
+                clearMessages();
               }}
               style={fieldStyle}
             >
@@ -939,27 +1192,9 @@ export default function EnrollmentOptionSelector({
 
         <button
           type="button"
-          onClick={() => {
-            setLessonsPerWeek(
-              ""
-            );
-
-            setSelectedDays(
-              []
-            );
-
-            setSelectedTime(
-              ""
-            );
-
-            setErrorMessage(
-              ""
-            );
-
-            setSuccessMessage(
-              ""
-            );
-          }}
+          onClick={
+            resetScheduleFilters
+          }
           style={{
             marginTop: "18px",
 
@@ -977,7 +1212,7 @@ export default function EnrollmentOptionSelector({
               "pointer",
           }}
         >
-          선택 조건 초기화
+          수업 조건 초기화
         </button>
       </section>
 
@@ -1094,7 +1329,51 @@ export default function EnrollmentOptionSelector({
           </strong>
         </div>
 
-        {!targetGroup ? (
+        {useRecommendedCourse &&
+        recommendedCourse &&
+        filteredOptions.length ===
+          0 ? (
+          <div
+            style={emptyStyle}
+          >
+            현재{" "}
+            <strong>
+              {recommendedCourse.name}
+            </strong>
+            에 등록된 신청 가능 일정이
+            없습니다.
+            <br />
+            <br />
+            다른 과정의 일정을
+            확인하시려면{" "}
+            <button
+              type="button"
+              onClick={
+                showOtherCourses
+              }
+              style={{
+                border: 0,
+                padding: 0,
+                background:
+                  "transparent",
+                color:
+                  "#2f6fed",
+                fontFamily:
+                  "inherit",
+                fontSize:
+                  "inherit",
+                fontWeight:
+                  900,
+                cursor:
+                  "pointer",
+              }}
+            >
+              다른 과정도 보기
+            </button>
+            를 선택해주세요.
+          </div>
+        ) : !useRecommendedCourse &&
+          !targetGroup ? (
           <div
             style={emptyStyle}
           >
@@ -1132,6 +1411,13 @@ export default function EnrollmentOptionSelector({
                   submittingOptionId ===
                   option.id;
 
+                const isRecommendedOption =
+                  Boolean(
+                    recommendedCourse &&
+                      option.course_id ===
+                        recommendedCourse.id
+                  );
+
                 return (
                   <article
                     key={
@@ -1145,13 +1431,19 @@ export default function EnrollmentOptionSelector({
                         "14px",
 
                       border:
-                        "1px solid #dce4ee",
+                        isRecommendedOption &&
+                        useRecommendedCourse
+                          ? "1px solid #abefc6"
+                          : "1px solid #dce4ee",
 
                       background:
                         "#ffffff",
 
                       boxShadow:
-                        "0 8px 22px rgba(10,31,68,0.04)",
+                        isRecommendedOption &&
+                        useRecommendedCourse
+                          ? "0 8px 24px rgba(6,118,71,0.07)"
+                          : "0 8px 22px rgba(10,31,68,0.04)",
                     }}
                   >
                     {/* 상단 */}
@@ -1177,18 +1469,52 @@ export default function EnrollmentOptionSelector({
                       <div>
                         <div
                           style={{
-                            color:
-                              "#3978ef",
-
-                            fontSize:
-                              "12px",
-
-                            fontWeight:
-                              900,
+                            display:
+                              "flex",
+                            alignItems:
+                              "center",
+                            gap:
+                              "7px",
+                            flexWrap:
+                              "wrap",
                           }}
                         >
-                          {getCourseName(
-                            option.courses
+                          <div
+                            style={{
+                              color:
+                                "#3978ef",
+
+                              fontSize:
+                                "12px",
+
+                              fontWeight:
+                                900,
+                            }}
+                          >
+                            {getCourseName(
+                              option.courses
+                            )}
+                          </div>
+
+                          {isRecommendedOption && (
+                            <span
+                              style={{
+                                padding:
+                                  "4px 7px",
+                                borderRadius:
+                                  "999px",
+                                background:
+                                  "#ecfdf3",
+                                color:
+                                  "#067647",
+                                fontSize:
+                                  "9px",
+                                fontWeight:
+                                  900,
+                              }}
+                            >
+                              추천 과정
+                            </span>
                           )}
                         </div>
 
@@ -1254,27 +1580,29 @@ export default function EnrollmentOptionSelector({
 
                       <OptionInfo
                         label="요일 / 시간"
-                        value={option.preferred_days
-                          .map(
-                            (
-                              day
-                            ) =>
-                              `${
-                                DAY_LABELS[
-                                  day
-                                ] ??
+                        value={
+                          option.preferred_days
+                            .map(
+                              (
                                 day
-                              } ${
-                                option
-                                  .preferred_times?.[
+                              ) =>
+                                `${
+                                  DAY_LABELS[
+                                    day
+                                  ] ??
                                   day
-                                ] ??
-                                ""
-                              }`
-                          )
-                          .join(
-                            " · "
-                          )}
+                                } ${
+                                  option
+                                    .preferred_times?.[
+                                    day
+                                  ] ??
+                                  ""
+                                }`
+                            )
+                            .join(
+                              " · "
+                            )
+                        }
                       />
 
                       <OptionInfo
@@ -1442,7 +1770,9 @@ export default function EnrollmentOptionSelector({
                             "10px",
 
                           background:
-                            "#3978ef",
+                            isRecommendedOption
+                              ? "#0A1F44"
+                              : "#3978ef",
 
                           color:
                             "#ffffff",
@@ -1462,7 +1792,9 @@ export default function EnrollmentOptionSelector({
                               : "pointer",
 
                           boxShadow:
-                            "0 8px 18px rgba(57,120,239,0.2)",
+                            isRecommendedOption
+                              ? "0 8px 18px rgba(10,31,68,0.20)"
+                              : "0 8px 18px rgba(57,120,239,0.2)",
 
                           opacity:
                             submittingOptionId !==
@@ -1488,37 +1820,29 @@ export default function EnrollmentOptionSelector({
       <style>{`
         .filter-grid {
           margin-top: 22px;
-
           display: grid;
-
           grid-template-columns:
             repeat(
               3,
               minmax(0, 1fr)
             );
-
           gap: 14px;
         }
 
         .weekday-grid {
           margin-top: 8px;
-
           display: grid;
-
           grid-template-columns:
             repeat(
               7,
               minmax(0, 1fr)
             );
-
           gap: 8px;
         }
 
         .option-info-grid {
           margin-top: 20px;
-
           display: grid;
-
           grid-template-columns:
             repeat(
               auto-fit,
@@ -1527,7 +1851,6 @@ export default function EnrollmentOptionSelector({
                 1fr
               )
             );
-
           gap: 14px;
         }
 
@@ -1577,6 +1900,36 @@ function Badge({
         fontSize:
           "11px",
 
+        fontWeight:
+          900,
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function SmallBadge({
+  children,
+}: {
+  children:
+    React.ReactNode;
+}) {
+  return (
+    <span
+      style={{
+        padding:
+          "5px 8px",
+        borderRadius:
+          "999px",
+        background:
+          "#ffffff",
+        border:
+          "1px solid #a6f4c5",
+        color:
+          "#067647",
+        fontSize:
+          "10px",
         fontWeight:
           900,
       }}
@@ -1653,6 +2006,9 @@ const labelStyle = {
 const fieldStyle = {
   width:
     "100%",
+
+  minHeight:
+    "46px",
 
   boxSizing:
     "border-box" as const,
