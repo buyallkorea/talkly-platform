@@ -643,6 +643,7 @@ export default async function TeacherDetailPage({
             display: "flex",
             gap: "10px",
             alignItems: "center",
+            flexWrap: "wrap",
           }}
         >
           <div
@@ -656,6 +657,22 @@ export default async function TeacherDetailPage({
           >
             {teacher.is_active ? "활성 강사" : "비활성 강사"}
           </div>
+
+          <Link
+            href={`/admin/teachers/${teacher.user_id}/availability`}
+            style={{
+              padding: "10px 14px",
+              border: "1px solid #b2ccff",
+              borderRadius: "9px",
+              color: "#175cd3",
+              background: "#eff8ff",
+              textDecoration: "none",
+              fontWeight: 800,
+              whiteSpace: "nowrap",
+            }}
+          >
+            근무시간 관리
+          </Link>
 
           <Link
             href={`/admin/teachers/${teacher.user_id}/edit`}
