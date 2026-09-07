@@ -31,42 +31,23 @@ type AvailabilityTeacher = {
 };
 
 type AvailabilityResponse = {
-  success?: boolean;
-  date?: string;
-  dayOfWeek?: number;
-  weekdayName?: string;
-  durationMinutes?: number;
   availableTeachers?: AvailabilityTeacher[];
-  totalAvailableSlots?: number;
-  message?: string;
   error?: string;
 };
 
-type DaySearchResult = {
-  day: string;
-  date: string;
-  teachers: AvailabilityTeacher[];
-};
-
-type TeacherCombination = {
+type MatchingTeacher = {
   teacherUserId: string;
   displayName: string;
   nationality: string | null;
   specialties: string[];
   yearsExperience: number | null;
-  slotsByDay: Record<
-    string,
-    {
-      date: string;
-      times: string[];
-    }
-  >;
 };
 
 type Props = {
   childId: number;
   childName: string;
   allowedWeekdays: string[];
+  allowedTimeSlots: string[];
   allowedLessonsPerWeek: number[];
   allowedDurationMinutes?: number[];
   courses: CourseSummary[];
@@ -77,10 +58,7 @@ type Props = {
   levelTestId?: number | null;
 };
 
-const DAY_LABELS: Record<
-  string,
-  string
-> = {
+const DAY_LABELS: Record<string, string> = {
   Sunday: "일",
   Monday: "월",
   Tuesday: "화",
@@ -90,10 +68,7 @@ const DAY_LABELS: Record<
   Saturday: "토",
 };
 
-const DAY_INDEX: Record<
-  string,
-  number
-> = {
+const DAY_INDEX: Record<string, number> = {
   Sunday: 0,
   Monday: 1,
   Tuesday: 2,
@@ -122,18 +97,12 @@ function formatDateOnly(
   const month =
     String(
       date.getMonth() + 1
-    ).padStart(
-      2,
-      "0"
-    );
+    ).padStart(2, "0");
 
   const day =
     String(
       date.getDate()
-    ).padStart(
-      2,
-      "0"
-    );
+    ).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
@@ -193,88 +162,13 @@ function getNextDateForWeekday({
   );
 }
 
-function getTeacherCombinations(
-  dayResults: DaySearchResult[]
-) {
-  if (
-    dayResults.length === 0
-  ) {
-    return [];
-  }
-
-  const firstDay =
-    dayResults[0];
-
-  return firstDay.teachers
-    .map(
-      (
-        teacher
-      ): TeacherCombination | null => {
-        const slotsByDay:
-          TeacherCombination["slotsByDay"] =
-          {};
-
-        for (
-          const dayResult of
-          dayResults
-        ) {
-          const sameTeacher =
-            dayResult.teachers.find(
-              (item) =>
-                item.teacherUserId ===
-                teacher.teacherUserId
-            );
-
-          if (
-            !sameTeacher ||
-            sameTeacher.availableTimes
-              .length === 0
-          ) {
-            return null;
-          }
-
-          slotsByDay[
-            dayResult.day
-          ] = {
-            date:
-              dayResult.date,
-            times:
-              sameTeacher.availableTimes,
-          };
-        }
-
-        return {
-          teacherUserId:
-            teacher.teacherUserId,
-          displayName:
-            teacher.displayName,
-          nationality:
-            teacher.nationality,
-          specialties:
-            teacher.specialties,
-          yearsExperience:
-            teacher.yearsExperience,
-          slotsByDay,
-        };
-      }
-    )
-    .filter(
-      (
-        value
-      ): value is TeacherCombination =>
-        value !== null
-    );
-}
-
 export default function CustomEnrollmentScheduler({
   childId,
   childName,
   allowedWeekdays,
+  allowedTimeSlots,
   allowedLessonsPerWeek,
-  allowedDurationMinutes = [
-    25,
-    50,
-  ],
+  allowedDurationMinutes = [25, 50],
   courses,
   teachers,
   allowTeacherChoice = true,
@@ -282,6 +176,9 @@ export default function CustomEnrollmentScheduler({
   recommendedLevel = null,
   levelTestId = null,
 }: Props) {
+  const router =
+    useRouter();
+
   const usableDurations =
     allowedDurationMinutes.filter(
       (value) =>
@@ -293,9 +190,7 @@ export default function CustomEnrollmentScheduler({
     allowedLessonsPerWeek
       .filter(
         (value) =>
-          Number.isInteger(
-            value
-          ) &&
+          Number.isInteger(value) &&
           value > 0
       )
       .sort(
@@ -351,6 +246,13 @@ export default function CustomEnrollmentScheduler({
   );
 
   const [
+    preferredTimes,
+    setPreferredTimes,
+  ] = useState<
+    Record<string, string>
+  >({});
+
+  const [
     teacherMode,
     setTeacherMode,
   ] =
@@ -369,60 +271,31 @@ export default function CustomEnrollmentScheduler({
   ] = useState(false);
 
   const [
-    errorMessage,
-    setErrorMessage,
-  ] = useState("");
-
-  const [
-    dayResults,
-    setDayResults,
-  ] = useState<
-    DaySearchResult[]
-  >([]);
-
-  const [
-    selectedCombinationTeacherId,
-    setSelectedCombinationTeacherId,
-  ] = useState("");
-
-  const [
-    selectedTimes,
-    setSelectedTimes,
-  ] = useState<
-    Record<
-      string,
-      string
-    >
-  >({});
-
-  const [
     submitting,
     setSubmitting,
   ] = useState(false);
 
   const [
+    matchingTeachers,
+    setMatchingTeachers,
+  ] = useState<
+    MatchingTeacher[]
+  >([]);
+
+  const [
+    hasSearched,
+    setHasSearched,
+  ] = useState(false);
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
+
+  const [
     successMessage,
     setSuccessMessage,
   ] = useState("");
-
-  const router =
-    useRouter();
-
-  const combinations =
-    useMemo(
-      () =>
-        getTeacherCombinations(
-          dayResults
-        ),
-      [dayResults]
-    );
-
-  const selectedCombination =
-    combinations.find(
-      (item) =>
-        item.teacherUserId ===
-        selectedCombinationTeacherId
-    ) ?? null;
 
   const selectedCourse =
     courses.find(
@@ -433,38 +306,74 @@ export default function CustomEnrollmentScheduler({
         )
     ) ?? null;
 
+  const selectedTeacher =
+    teachers.find(
+      (teacher) =>
+        teacher.user_id ===
+        selectedTeacherId
+    ) ?? null;
+
   const hasWeekend =
     selectedDays.some(
       (day) =>
-        day ===
-          "Saturday" ||
+        day === "Saturday" ||
         day === "Sunday"
     );
 
-  const allTimesSelected =
-    selectedDays.length >
-      0 &&
+  const timeOptions =
+    useMemo(() => {
+      const source =
+        allowedTimeSlots
+          .filter(
+            (time) =>
+              /^([01]\d|2[0-3]):[0-5]\d$/.test(
+                time
+              )
+          )
+          .sort();
+
+      if (
+        durationMinutes === 50
+      ) {
+        return source.filter(
+          (time) =>
+            time.endsWith(
+              ":00"
+            )
+        );
+      }
+
+      return source;
+    }, [
+      allowedTimeSlots,
+      durationMinutes,
+    ]);
+
+  const allPreferredTimesSelected =
+    selectedDays.length ===
+      lessonsPerWeek &&
     selectedDays.every(
       (day) =>
         Boolean(
-          selectedTimes[
-            day
-          ]
+          preferredTimes[day]
         )
     );
 
-  function resetResults() {
-    setDayResults([]);
-    setSelectedCombinationTeacherId(
-      ""
-    );
-    setSelectedTimes(
-      {}
-    );
-  }
+  const canSubmit =
+    hasSearched &&
+    matchingTeachers.length >
+      0 &&
+    allPreferredTimesSelected &&
+    !submitting &&
+    !successMessage;
 
-  function resetWithMessageClear() {
-    resetResults();
+  function resetSearchResult() {
+    setMatchingTeachers(
+      []
+    );
+    setHasSearched(
+      false
+    );
     setErrorMessage(
       ""
     );
@@ -473,10 +382,27 @@ export default function CustomEnrollmentScheduler({
     );
   }
 
+  function updatePreferredTime(
+    day: string,
+    time: string
+  ) {
+    setPreferredTimes(
+      (current) => ({
+        ...current,
+        [day]: time,
+      })
+    );
+
+    resetSearchResult();
+  }
+
   function toggleDay(
     day: string
   ) {
     setErrorMessage(
+      ""
+    );
+    setSuccessMessage(
       ""
     );
 
@@ -493,7 +419,22 @@ export default function CustomEnrollmentScheduler({
           )
       );
 
-      resetResults();
+      setPreferredTimes(
+        (current) => {
+          const next = {
+            ...current,
+          };
+          delete next[day];
+          return next;
+        }
+      );
+
+      setMatchingTeachers(
+        []
+      );
+      setHasSearched(
+        false
+      );
       return;
     }
 
@@ -509,15 +450,13 @@ export default function CustomEnrollmentScheduler({
 
     if (
       (
-        day ===
-          "Saturday" &&
+        day === "Saturday" &&
         selectedDays.includes(
           "Sunday"
         )
       ) ||
       (
-        day ===
-          "Sunday" &&
+        day === "Sunday" &&
         selectedDays.includes(
           "Saturday"
         )
@@ -536,14 +475,22 @@ export default function CustomEnrollmentScheduler({
       ]
     );
 
-    resetResults();
+    resetSearchResult();
   }
 
   async function searchAvailability() {
     setErrorMessage(
       ""
     );
-    resetResults();
+    setSuccessMessage(
+      ""
+    );
+    setMatchingTeachers(
+      []
+    );
+    setHasSearched(
+      false
+    );
 
     if (
       !selectedCourseId
@@ -572,6 +519,15 @@ export default function CustomEnrollmentScheduler({
     }
 
     if (
+      !allPreferredTimesSelected
+    ) {
+      setErrorMessage(
+        "선택한 각 요일의 희망시간을 먼저 선택해주세요."
+      );
+      return;
+    }
+
+    if (
       teacherMode ===
         "specific" &&
       !selectedTeacherId
@@ -587,8 +543,8 @@ export default function CustomEnrollmentScheduler({
     );
 
     try {
-      const results:
-        DaySearchResult[] =
+      const matchedByDay:
+        MatchingTeacher[][] =
           [];
 
       for (
@@ -596,13 +552,11 @@ export default function CustomEnrollmentScheduler({
         selectedDays
       ) {
         const date =
-          getNextDateForWeekday(
-            {
-              baseDateText:
-                startDate,
-              weekday: day,
-            }
-          );
+          getNextDateForWeekday({
+            baseDateText:
+              startDate,
+            weekday: day,
+          });
 
         if (!date) {
           throw new Error(
@@ -621,17 +575,15 @@ export default function CustomEnrollmentScheduler({
                   "application/json",
               },
               body:
-                JSON.stringify(
-                  {
-                    date,
-                    durationMinutes,
-                    teacherUserId:
-                      teacherMode ===
-                        "specific"
-                        ? selectedTeacherId
-                        : undefined,
-                  }
-                ),
+                JSON.stringify({
+                  date,
+                  durationMinutes,
+                  teacherUserId:
+                    teacherMode ===
+                      "specific"
+                      ? selectedTeacherId
+                      : undefined,
+                }),
             }
           );
 
@@ -648,41 +600,79 @@ export default function CustomEnrollmentScheduler({
           );
         }
 
-        results.push(
-          {
-            day,
-            date,
-            teachers:
-              data.availableTeachers ??
-              [],
-          }
+        const requestedTime =
+          preferredTimes[day];
+
+        const matches =
+          (
+            data.availableTeachers ??
+            []
+          )
+            .filter(
+              (teacher) =>
+                teacher.availableTimes.includes(
+                  requestedTime
+                )
+            )
+            .map(
+              (teacher) => ({
+                teacherUserId:
+                  teacher.teacherUserId,
+                displayName:
+                  teacher.displayName,
+                nationality:
+                  teacher.nationality,
+                specialties:
+                  teacher.specialties,
+                yearsExperience:
+                  teacher.yearsExperience,
+              })
+            );
+
+        matchedByDay.push(
+          matches
         );
       }
 
-      setDayResults(
-        results
+      const first =
+        matchedByDay[0] ??
+        [];
+
+      const common =
+        first.filter(
+          (teacher) =>
+            matchedByDay.every(
+              (dayTeachers) =>
+                dayTeachers.some(
+                  (item) =>
+                    item.teacherUserId ===
+                    teacher.teacherUserId
+                )
+            )
+        );
+
+      setMatchingTeachers(
+        common
+      );
+      setHasSearched(
+        true
       );
 
-      const next =
-        getTeacherCombinations(
-          results
-        );
-
       if (
-        next.length === 0
+        common.length === 0
       ) {
+        const scheduleText =
+          selectedDays
+            .map(
+              (day) =>
+                `${DAY_LABELS[day] ?? day} ${preferredTimes[day]}`
+            )
+            .join(
+              " / "
+            );
+
         setErrorMessage(
-          "선택한 모든 요일에 수업 가능한 동일 강사를 찾지 못했습니다. 요일·시간·강사 조건을 바꿔 다시 조회해주세요."
-        );
-        return;
-      }
-
-      if (
-        next.length === 1
-      ) {
-        setSelectedCombinationTeacherId(
-          next[0]
-            .teacherUserId
+          `${scheduleText} 조건을 모두 만족하는 강사를 찾지 못했습니다. 희망시간, 요일 또는 강사 조건을 변경해주세요.`
         );
       }
     } catch (error) {
@@ -700,26 +690,38 @@ export default function CustomEnrollmentScheduler({
   }
 
   async function submitCustomRequest() {
-    setErrorMessage("");
-    setSuccessMessage("");
+    setErrorMessage(
+      ""
+    );
+    setSuccessMessage(
+      ""
+    );
 
     if (
       !selectedCourse ||
-      !selectedCombination ||
-      !allTimesSelected
+      !canSubmit
     ) {
       setErrorMessage(
-        "교육과정, 강사, 희망시간을 모두 선택해주세요."
+        "신청 조건을 다시 확인해주세요."
       );
       return;
     }
 
+    const teacherText =
+      teacherMode ===
+        "specific"
+        ? (
+            selectedTeacher?.display_name ??
+            "선택 강사"
+          )
+        : `가능한 강사 ${matchingTeachers.length}명 중 배정`;
+
     const confirmed =
       window.confirm(
-        `${childName} 학생의 맞춤 수강신청을 접수하시겠습니까?\n\n과정: ${selectedCourse.name}\n수업: ${durationMinutes}분 · 주 ${lessonsPerWeek}회\n강사: ${selectedCombination.displayName}\n요일: ${selectedDays
+        `${childName} 학생의 맞춤 수강신청을 접수하시겠습니까?\n\n과정: ${selectedCourse.name}\n수업: ${durationMinutes}분 · 주 ${lessonsPerWeek}회\n강사: ${teacherText}\n희망일정: ${selectedDays
           .map(
             (day) =>
-              `${DAY_LABELS[day] ?? day} ${selectedTimes[day]}`
+              `${DAY_LABELS[day] ?? day} ${preferredTimes[day]}`
           )
           .join(" / ")}`
       );
@@ -728,7 +730,9 @@ export default function CustomEnrollmentScheduler({
       return;
     }
 
-    setSubmitting(true);
+    setSubmitting(
+      true
+    );
 
     try {
       const response =
@@ -755,14 +759,13 @@ export default function CustomEnrollmentScheduler({
                 lessonsPerWeek,
                 preferredDays:
                   selectedDays,
-                preferredTimes:
-                  selectedTimes,
+                preferredTimes,
                 teacherPreferenceType:
                   teacherMode,
                 preferredTeacherUserId:
                   teacherMode ===
                     "specific"
-                    ? selectedCombination.teacherUserId
+                    ? selectedTeacherId
                     : null,
                 startDate,
               }),
@@ -772,7 +775,9 @@ export default function CustomEnrollmentScheduler({
       const result =
         await response.json();
 
-      if (!response.ok) {
+      if (
+        !response.ok
+      ) {
         setErrorMessage(
           result.error ||
             "맞춤 수강신청 접수에 실패했습니다."
@@ -781,18 +786,21 @@ export default function CustomEnrollmentScheduler({
       }
 
       setSuccessMessage(
-        "맞춤 수강신청이 접수되었습니다. TALKLY에서 실제 강사와 수업 일정을 확인한 뒤 배정 내용을 안내합니다."
+        "맞춤 수강신청이 접수되었습니다. TALKLY에서 희망일정의 가용성을 다시 확인한 뒤 실제 강사와 수업 일정을 배정합니다."
       );
 
       router.refresh();
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
+        error instanceof
+          Error
           ? error.message
           : "맞춤 수강신청 접수 중 오류가 발생했습니다."
       );
     } finally {
-      setSubmitting(false);
+      setSubmitting(
+        false
+      );
     }
   }
 
@@ -800,8 +808,8 @@ export default function CustomEnrollmentScheduler({
     <section
       className="talkly-card"
       style={{
-        marginTop: "28px",
-        padding: "28px",
+        marginTop: "24px",
+        padding: "30px",
       }}
     >
       <div className="talkly-section-label">
@@ -817,8 +825,8 @@ export default function CustomEnrollmentScheduler({
           fontSize: "27px",
         }}
       >
-        원하는 조건으로
-        맞춤 수업 찾기
+        원하는 수업 조건을
+        선택해주세요.
       </h2>
 
       <p
@@ -830,12 +838,10 @@ export default function CustomEnrollmentScheduler({
           lineHeight: 1.75,
         }}
       >
-        수업시간, 주당 횟수,
-        요일과 강사를 선택하면
-        실제 강사 근무시간과
-        예외일정, 이미 배정된
-        수업을 반영하여 가능한
-        시간을 조회합니다.
+        과정, 수업시간, 주당
+        횟수, 요일과 희망시간까지
+        먼저 선택한 다음 실제로
+        가능한 강사를 조회합니다.
       </p>
 
       {recommendedCourse && (
@@ -882,24 +888,6 @@ export default function CustomEnrollmentScheduler({
               ? ` · ${recommendedLevel}`
               : ""}
           </div>
-
-          {levelTestId && (
-            <div
-              style={{
-                marginTop:
-                  "5px",
-                color:
-                  "#667085",
-                fontSize:
-                  "11px",
-              }}
-            >
-              추천 결과를
-              기준으로 시작하되
-              과정은 변경할 수
-              있습니다.
-            </div>
-          )}
         </div>
       )}
 
@@ -925,18 +913,15 @@ export default function CustomEnrollmentScheduler({
               event
             ) => {
               const next =
-                event.target
-                  .value;
+                event.target.value;
 
               setSelectedCourseId(
                 next
-                  ? Number(
-                      next
-                    )
+                  ? Number(next)
                   : ""
               );
 
-              resetWithMessageClear();
+              resetSearchResult();
             }}
             style={
               fieldStyle
@@ -986,10 +971,9 @@ export default function CustomEnrollmentScheduler({
               event
             ) => {
               setStartDate(
-                event.target
-                  .value
+                event.target.value
               );
-              resetWithMessageClear();
+              resetSearchResult();
             }}
             style={
               fieldStyle
@@ -1011,11 +995,15 @@ export default function CustomEnrollmentScheduler({
             ) => {
               setDurationMinutes(
                 Number(
-                  event.target
-                    .value
+                  event.target.value
                 )
               );
-              resetWithMessageClear();
+
+              setPreferredTimes(
+                {}
+              );
+
+              resetSearchResult();
             }}
             style={
               fieldStyle
@@ -1050,21 +1038,18 @@ export default function CustomEnrollmentScheduler({
             onChange={(
               event
             ) => {
-              const next =
-                Number(
-                  event.target
-                    .value
-                );
-
               setLessonsPerWeek(
-                next
+                Number(
+                  event.target.value
+                )
               );
-
               setSelectedDays(
                 []
               );
-
-              resetWithMessageClear();
+              setPreferredTimes(
+                {}
+              );
+              resetSearchResult();
             }}
             style={
               fieldStyle
@@ -1090,7 +1075,7 @@ export default function CustomEnrollmentScheduler({
 
       <div
         style={{
-          marginTop: "22px",
+          marginTop: "24px",
         }}
       >
         <FieldLabel>
@@ -1116,9 +1101,7 @@ export default function CustomEnrollmentScheduler({
                   )
                 }
                 onClick={() =>
-                  toggleDay(
-                    day
-                  )
+                  toggleDay(day)
                 }
               >
                 {
@@ -1149,9 +1132,102 @@ export default function CustomEnrollmentScheduler({
         </div>
       </div>
 
+      {selectedDays.length >
+        0 && (
+        <div
+          style={{
+            marginTop: "24px",
+          }}
+        >
+          <FieldLabel>
+            희망시간
+          </FieldLabel>
+
+          <div
+            style={{
+              display:
+                "grid",
+              gap: "14px",
+            }}
+          >
+            {selectedDays.map(
+              (day) => (
+                <div
+                  key={day}
+                  style={{
+                    padding:
+                      "16px",
+                    border:
+                      "1px solid #e4e7ec",
+                    borderRadius:
+                      "12px",
+                    background:
+                      "#fcfcfd",
+                  }}
+                >
+                  <div
+                    style={{
+                      marginBottom:
+                        "10px",
+                      color:
+                        "#344054",
+                      fontSize:
+                        "13px",
+                      fontWeight:
+                        900,
+                    }}
+                  >
+                    {
+                      DAY_LABELS[
+                        day
+                      ]
+                    }
+                    요일 희망시간
+                  </div>
+
+                  <div
+                    style={{
+                      display:
+                        "flex",
+                      flexWrap:
+                        "wrap",
+                      gap: "7px",
+                    }}
+                  >
+                    {timeOptions.map(
+                      (time) => (
+                        <ChoiceButton
+                          key={
+                            `${day}-${time}`
+                          }
+                          active={
+                            preferredTimes[
+                              day
+                            ] ===
+                            time
+                          }
+                          onClick={() =>
+                            updatePreferredTime(
+                              day,
+                              time
+                            )
+                          }
+                        >
+                          {time}
+                        </ChoiceButton>
+                      )
+                    )}
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      )}
+
       <div
         style={{
-          marginTop: "22px",
+          marginTop: "24px",
         }}
       >
         <FieldLabel>
@@ -1177,7 +1253,7 @@ export default function CustomEnrollmentScheduler({
               setSelectedTeacherId(
                 ""
               );
-              resetWithMessageClear();
+              resetSearchResult();
             }}
           >
             가능한 강사 모두
@@ -1194,7 +1270,7 @@ export default function CustomEnrollmentScheduler({
                 setTeacherMode(
                   "specific"
                 );
-                resetWithMessageClear();
+                resetSearchResult();
               }}
             >
               특정 강사 선택
@@ -1219,10 +1295,9 @@ export default function CustomEnrollmentScheduler({
                   event
                 ) => {
                   setSelectedTeacherId(
-                    event.target
-                      .value
+                    event.target.value
                   );
-                  resetWithMessageClear();
+                  resetSearchResult();
                 }}
                 style={
                   fieldStyle
@@ -1337,42 +1412,58 @@ export default function CustomEnrollmentScheduler({
           searchAvailability
         }
         disabled={
-          searching
+          searching ||
+          !allPreferredTimesSelected
         }
         style={{
           marginTop: "22px",
-          minHeight: "50px",
+          minHeight: "52px",
           padding:
             "0 22px",
           border: 0,
           borderRadius:
             "11px",
           background:
-            searching
-              ? "#98a2b3"
+            searching ||
+            !allPreferredTimesSelected
+              ? "#d0d5dd"
               : "#0a1f44",
-          color: "#ffffff",
+          color:
+            searching ||
+            !allPreferredTimesSelected
+              ? "#667085"
+              : "#ffffff",
           fontFamily:
             "inherit",
           fontSize:
             "14px",
           fontWeight: 900,
           cursor:
-            searching
-              ? "wait"
+            searching ||
+            !allPreferredTimesSelected
+              ? "not-allowed"
               : "pointer",
         }}
       >
         {searching
-          ? "가능 시간 조회 중..."
-          : "실제 가능한 강사 · 시간 찾기"}
+          ? "가능 강사 조회 중..."
+          : "선택한 시간에 가능한 강사 찾기"}
       </button>
 
-      {dayResults.length >
-        0 && (
+      {hasSearched &&
+        matchingTeachers.length >
+          0 && (
         <div
           style={{
             marginTop: "28px",
+            padding:
+              "22px",
+            border:
+              "1px solid #b2ccff",
+            borderRadius:
+              "14px",
+            background:
+              "#f8fbff",
           }}
         >
           <div className="talkly-section-label">
@@ -1387,284 +1478,112 @@ export default function CustomEnrollmentScheduler({
               color:
                 "#101828",
               fontSize:
-                "20px",
+                "21px",
             }}
           >
-            선택한 모든 요일에
-            가능한 강사
+            선택한 희망시간에
+            가능한 강사{" "}
+            {
+              matchingTeachers.length
+            }
+            명
           </h3>
 
-          {combinations.length ===
-          0 ? (
+          <div
+            style={{
+              marginTop:
+                "12px",
+              color:
+                "#667085",
+              fontSize:
+                "12px",
+              lineHeight:
+                1.7,
+            }}
+          >
+            {selectedDays
+              .map(
+                (day) =>
+                  `${DAY_LABELS[day] ?? day} ${preferredTimes[day]}`
+              )
+              .join(
+                " · "
+              )}
+          </div>
+
+          <div
+            style={{
+              marginTop:
+                "16px",
+              display:
+                "grid",
+              gap: "10px",
+            }}
+          >
+            {matchingTeachers.map(
+              (teacher) => (
+                <div
+                  key={
+                    teacher.teacherUserId
+                  }
+                  style={{
+                    padding:
+                      "15px 16px",
+                    border:
+                      "1px solid #dbe7ff",
+                    borderRadius:
+                      "11px",
+                    background:
+                      "#ffffff",
+                  }}
+                >
+                  <div
+                    style={{
+                      color:
+                        "#101828",
+                      fontWeight:
+                        900,
+                    }}
+                  >
+                    {
+                      teacher.displayName
+                    }
+                    {teacher.nationality
+                      ? ` · ${teacher.nationality}`
+                      : ""}
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+
+          {teacherMode ===
+            "any" && (
             <div
               style={{
                 marginTop:
-                  "14px",
-                padding:
-                  "18px",
-                border:
-                  "1px dashed #d0d5dd",
-                borderRadius:
                   "12px",
                 color:
                   "#667085",
+                fontSize:
+                  "11px",
                 lineHeight:
                   1.7,
               }}
             >
-              조건에 맞는
-              동일 강사가
-              없습니다.
-            </div>
-          ) : (
-            <div
-              style={{
-                marginTop:
-                  "14px",
-                display:
-                  "grid",
-                gap: "12px",
-              }}
-            >
-              {combinations.map(
-                (
-                  teacher
-                ) => {
-                  const active =
-                    selectedCombinationTeacherId ===
-                    teacher.teacherUserId;
-
-                  return (
-                    <button
-                      type="button"
-                      key={
-                        teacher.teacherUserId
-                      }
-                      onClick={() => {
-                        setSelectedCombinationTeacherId(
-                          teacher.teacherUserId
-                        );
-                        setSelectedTimes(
-                          {}
-                        );
-                        setErrorMessage(
-                          ""
-                        );
-                      }}
-                      style={{
-                        padding:
-                          "17px",
-                        border: active
-                          ? "2px solid #2f6fed"
-                          : "1px solid #e4e7ec",
-                        borderRadius:
-                          "12px",
-                        background:
-                          active
-                            ? "#f5f8ff"
-                            : "#ffffff",
-                        textAlign:
-                          "left",
-                        fontFamily:
-                          "inherit",
-                        cursor:
-                          "pointer",
-                      }}
-                    >
-                      <div
-                        style={{
-                          color:
-                            "#101828",
-                          fontWeight:
-                            900,
-                        }}
-                      >
-                        {
-                          teacher.displayName
-                        }
-                        {teacher.nationality
-                          ? ` · ${teacher.nationality}`
-                          : ""}
-                      </div>
-
-                      <div
-                        style={{
-                          marginTop:
-                            "8px",
-                          color:
-                            "#667085",
-                          fontSize:
-                            "12px",
-                          lineHeight:
-                            1.7,
-                        }}
-                      >
-                        {selectedDays
-                          .map(
-                            (
-                              day
-                            ) => {
-                              const slot =
-                                teacher.slotsByDay[
-                                  day
-                                ];
-
-                              return `${
-                                DAY_LABELS[
-                                  day
-                                ] ??
-                                day
-                              } ${
-                                slot?.date ??
-                                ""
-                              } · ${
-                                slot?.times.length ??
-                                0
-                              }개 가능`;
-                            }
-                          )
-                          .join(
-                            " / "
-                          )}
-                      </div>
-                    </button>
-                  );
-                }
-              )}
+              ‘가능한 강사 모두
+              찾기’로 신청하면
+              위 강사들 중 실제
+              배정 시점에 가능한
+              강사를 TALKLY에서
+              최종 배정합니다.
             </div>
           )}
-        </div>
-      )}
 
-      {selectedCombination && (
-        <div
-          style={{
-            marginTop: "26px",
-            padding:
-              "20px",
-            border:
-              "1px solid #dbe7ff",
-            borderRadius:
-              "14px",
-            background:
-              "#f8fbff",
-          }}
-        >
           <div
             style={{
-              color:
-                "#0a1f44",
-              fontSize:
+              marginTop:
                 "18px",
-              fontWeight:
-                900,
-            }}
-          >
-            {
-              selectedCombination.displayName
-            }
-            강사의 희망 시간
-            선택
-          </div>
-
-          <div
-            style={{
-              marginTop:
-                "15px",
-              display:
-                "grid",
-              gap: "14px",
-            }}
-          >
-            {selectedDays.map(
-              (day) => {
-                const slot =
-                  selectedCombination.slotsByDay[
-                    day
-                  ];
-
-                return (
-                  <div
-                    key={day}
-                  >
-                    <div
-                      style={{
-                        marginBottom:
-                          "7px",
-                        color:
-                          "#475467",
-                        fontSize:
-                          "12px",
-                        fontWeight:
-                          900,
-                      }}
-                    >
-                      {
-                        DAY_LABELS[
-                          day
-                        ]
-                      }
-                      요일 ·{" "}
-                      {
-                        slot.date
-                      }
-                    </div>
-
-                    <div
-                      style={{
-                        display:
-                          "flex",
-                        flexWrap:
-                          "wrap",
-                        gap: "7px",
-                      }}
-                    >
-                      {slot.times.map(
-                        (
-                          time
-                        ) => (
-                          <ChoiceButton
-                            key={
-                              `${day}-${time}`
-                            }
-                            active={
-                              selectedTimes[
-                                day
-                              ] ===
-                              time
-                            }
-                            onClick={() => {
-                              setSelectedTimes(
-                                (
-                                  current
-                                ) => ({
-                                  ...current,
-                                  [day]:
-                                    time,
-                                })
-                              );
-                              setErrorMessage(
-                                ""
-                              );
-                            }}
-                          >
-                            {
-                              time
-                            }
-                          </ChoiceButton>
-                        )
-                      )}
-                    </div>
-                  </div>
-                );
-              }
-            )}
-          </div>
-
-          <div
-            style={{
-              marginTop:
-                "20px",
               padding:
                 "15px",
               borderRadius:
@@ -1675,15 +1594,14 @@ export default function CustomEnrollmentScheduler({
                 "#475467",
               fontSize:
                 "12px",
-              lineHeight: 1.8,
+              lineHeight: 1.85,
             }}
           >
             <strong>
-              현재 선택 요약
+              신청 조건
             </strong>
             <br />
-            학생:{" "}
-            {childName}
+            학생: {childName}
             <br />
             과정:{" "}
             {selectedCourse?.name ??
@@ -1691,31 +1609,20 @@ export default function CustomEnrollmentScheduler({
             <br />
             수업:{" "}
             {durationMinutes}분 ·
-            주{" "}
-            {lessonsPerWeek}회
+            주 {lessonsPerWeek}회
             <br />
             강사:{" "}
-            {
-              selectedCombination.displayName
-            }
+            {teacherMode ===
+            "specific"
+              ? selectedTeacher?.display_name ??
+                "특정 강사"
+              : "가능한 강사 중 배정"}
             <br />
-            희망 일정:{" "}
+            희망일정:{" "}
             {selectedDays
               .map(
-                (
-                  day
-                ) =>
-                  `${
-                    DAY_LABELS[
-                      day
-                    ] ??
-                    day
-                  } ${
-                    selectedTimes[
-                      day
-                    ] ??
-                    "미선택"
-                  }`
+                (day) =>
+                  `${DAY_LABELS[day] ?? day} ${preferredTimes[day]}`
               )
               .join(
                 " · "
@@ -1728,37 +1635,25 @@ export default function CustomEnrollmentScheduler({
               submitCustomRequest
             }
             disabled={
-              !allTimesSelected ||
-              submitting ||
-              Boolean(
-                successMessage
-              )
+              !canSubmit
             }
             style={{
               marginTop:
                 "16px",
               width: "100%",
               minHeight:
-                "50px",
+                "52px",
               border: 0,
               borderRadius:
                 "11px",
               background:
-                !allTimesSelected ||
-                submitting ||
-                Boolean(
-                  successMessage
-                )
-                  ? "#d0d5dd"
-                  : "#0a1f44",
+                canSubmit
+                  ? "#0a1f44"
+                  : "#d0d5dd",
               color:
-                !allTimesSelected ||
-                submitting ||
-                Boolean(
-                  successMessage
-                )
-                  ? "#667085"
-                  : "#ffffff",
+                canSubmit
+                  ? "#ffffff"
+                  : "#667085",
               fontFamily:
                 "inherit",
               fontSize:
@@ -1766,66 +1661,19 @@ export default function CustomEnrollmentScheduler({
               fontWeight:
                 900,
               cursor:
-                !allTimesSelected ||
-                submitting ||
-                Boolean(
-                  successMessage
-                )
-                  ? "not-allowed"
-                  : "pointer",
+                canSubmit
+                  ? "pointer"
+                  : "not-allowed",
             }}
           >
             {submitting
               ? "수강신청 접수 중..."
               : successMessage
                 ? "수강신청 접수 완료"
-                : "희망일정으로 수강신청 접수"}
+                : "이 조건으로 수강신청 접수"}
           </button>
-
-          <div
-            style={{
-              marginTop:
-                "8px",
-              color:
-                "#98a2b3",
-              fontSize:
-                "11px",
-              lineHeight: 1.6,
-            }}
-          >
-            이 단계에서는
-            희망 일정만
-            접수합니다. 실제
-            강사와 정규 일정은
-            TALKLY 관리자가
-            가용시간을 다시
-            확인하여 배정하며,
-            수강기간과 최종
-            결제금액은 이후
-            확정됩니다.
-          </div>
         </div>
       )}
-
-      <div
-        style={{
-          marginTop: "20px",
-          paddingTop:
-            "17px",
-          borderTop:
-            "1px solid #eaecf0",
-          color:
-            "#98a2b3",
-          fontSize: "11px",
-          lineHeight: 1.7,
-        }}
-      >
-        내부 연결값 · childId{" "}
-        {childId}
-        {levelTestId
-          ? ` · levelTestId ${levelTestId}`
-          : ""}
-      </div>
     </section>
   );
 }
@@ -1861,9 +1709,7 @@ function ChoiceButton({
   return (
     <button
       type="button"
-      onClick={
-        onClick
-      }
+      onClick={onClick}
       style={{
         minHeight: "38px",
         padding:

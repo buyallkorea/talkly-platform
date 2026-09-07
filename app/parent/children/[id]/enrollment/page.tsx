@@ -7,7 +7,6 @@ import {
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
 
-import EnrollmentOptionSelector from "./EnrollmentOptionSelector";
 import CustomEnrollmentScheduler from "./CustomEnrollmentScheduler";
 
 type PageProps = {
@@ -53,56 +52,7 @@ type EnrollmentSettingsRow = {
   allowed_time_slots: string[] | null;
   allowed_lessons_per_week: number[] | null;
   allowed_duration_minutes: number[] | null;
-  show_estimated_price: boolean | null;
   allow_student_choose_teacher: boolean | null;
-};
-
-type CourseRelation =
-  | {
-      id: number;
-      name: string;
-    }
-  | {
-      id: number;
-      name: string;
-    }[]
-  | null;
-
-type EnrollmentOptionRow = {
-  id: number;
-  title: string;
-
-  course_id: number;
-  target_group: string;
-
-  lesson_duration_minutes: number;
-  lessons_per_week: number;
-
-  preferred_days: string[];
-  preferred_times: Record<string, string>;
-
-  course_weeks: number;
-
-  start_date: string;
-  end_date: string;
-
-  total_lessons: number;
-
-  price_per_lesson: number;
-
-  weekend_multiplier: number | string;
-
-  weekday_lesson_count: number;
-  weekend_lesson_count: number;
-
-  estimated_price: number;
-
-  capacity: number | null;
-  enrolled_count: number;
-
-  curriculum_name: string | null;
-
-  courses: CourseRelation;
 };
 
 function parsePositiveInteger(
@@ -123,6 +73,30 @@ function parsePositiveInteger(
   }
 
   return parsed;
+}
+
+function InfoBadge({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      style={{
+        minHeight: "30px",
+        padding: "0 10px",
+        display: "inline-flex",
+        alignItems: "center",
+        borderRadius: "999px",
+        background: "#f2f4f7",
+        color: "#475467",
+        fontSize: "12px",
+        fontWeight: 800,
+      }}
+    >
+      {children}
+    </span>
+  );
 }
 
 export default async function ParentChildEnrollmentPage({
@@ -148,11 +122,6 @@ export default async function ParentChildEnrollmentPage({
   const supabase =
     await createClient();
 
-  /*
-   * =====================================================
-   * 1. 로그인 확인
-   * =====================================================
-   */
   const {
     data: { user },
   } =
@@ -162,11 +131,6 @@ export default async function ParentChildEnrollmentPage({
     redirect("/login");
   }
 
-  /*
-   * =====================================================
-   * 2. 학부모 권한 확인
-   * =====================================================
-   */
   const {
     data: profile,
     error: profileError,
@@ -185,11 +149,6 @@ export default async function ParentChildEnrollmentPage({
     redirect("/");
   }
 
-  /*
-   * =====================================================
-   * 3. 자녀 확인
-   * =====================================================
-   */
   const {
     data: childData,
     error: childError,
@@ -223,11 +182,6 @@ export default async function ParentChildEnrollmentPage({
   const child =
     childData as ChildRow;
 
-  /*
-   * =====================================================
-   * 4. 수강 운영 설정
-   * =====================================================
-   */
   const {
     data: settingsData,
     error: settingsError,
@@ -242,7 +196,6 @@ export default async function ParentChildEnrollmentPage({
         allowed_time_slots,
         allowed_lessons_per_week,
         allowed_duration_minutes,
-        show_estimated_price,
         allow_student_choose_teacher
       `)
       .eq(
@@ -376,16 +329,6 @@ export default async function ParentChildEnrollmentPage({
           value === 50
       );
 
-  /*
-   * =====================================================
-   * 5. 맞춤 신청용 과정 / 강사 목록
-   *
-   * 과정은 학부모가 선택할 수 있는 활성 교육과정입니다.
-   * 강사 목록은 서버에서 필요한 공개 정보만 전달합니다.
-   * 근무시간/예외/기존 수업 등 내부 스케줄 정보는
-   * 여기서 노출하지 않고 availability API가 계산합니다.
-   * =====================================================
-   */
   const {
     data: coursesData,
     error: coursesError,
@@ -437,15 +380,6 @@ export default async function ParentChildEnrollmentPage({
   const teachers =
     (teachersData ?? []) as TeacherSummary[];
 
-  /*
-   * =====================================================
-   * 6. 레벨테스트 추천 연결
-   *
-   * URL의 levelTestId는 신뢰하지 않고,
-   * 현재 학부모 + 현재 자녀 + completed 상태를
-   * 서버에서 다시 검증합니다.
-   * =====================================================
-   */
   const requestedLevelTestId =
     parsePositiveInteger(
       query.levelTestId
@@ -546,98 +480,6 @@ export default async function ParentChildEnrollmentPage({
     }
   }
 
-  /*
-   * =====================================================
-   * 7. 기존 표준 수강 가능 일정
-   *
-   * 기존 EnrollmentOptionSelector를 그대로 유지합니다.
-   * 맞춤수업 기능 추가 때문에 표준 일정 기능을
-   * 제거하지 않습니다.
-   * =====================================================
-   */
-  const {
-    data: optionsData,
-    error: optionsError,
-  } =
-    await supabase
-      .from(
-        "enrollment_options"
-      )
-      .select(`
-        id,
-        title,
-
-        course_id,
-        target_group,
-
-        lesson_duration_minutes,
-        lessons_per_week,
-
-        preferred_days,
-        preferred_times,
-
-        course_weeks,
-
-        start_date,
-        end_date,
-
-        total_lessons,
-
-        price_per_lesson,
-
-        weekend_multiplier,
-
-        weekday_lesson_count,
-        weekend_lesson_count,
-
-        estimated_price,
-
-        capacity,
-        enrolled_count,
-
-        curriculum_name,
-
-        courses (
-          id,
-          name
-        )
-      `)
-      .eq("is_published", true)
-      .eq("is_open", true)
-      .order(
-        "start_date",
-        {
-          ascending: true,
-        }
-      )
-      .order("id", {
-        ascending: true,
-      });
-
-  if (optionsError) {
-    throw new Error(
-      `수강 가능 일정을 불러오지 못했습니다: ${optionsError.message}`
-    );
-  }
-
-  const options =
-    (optionsData ??
-      []) as unknown as
-      EnrollmentOptionRow[];
-
-  /*
-   * 레벨테스트 추천 과정이 있을 때는
-   * 표준 일정도 우선 추천 과정만 전달합니다.
-   *
-   * EnrollmentOptionSelector 내부의
-   * "다른 과정도 보기" 기능이 이미 있다면
-   * 해당 컴포넌트가 전체 options가 필요할 수 있으므로,
-   * 현재는 전체 options를 유지해 전달하고
-   * recommendedCourse prop으로 추천과정을 알려줍니다.
-   */
-  const selectorOptions =
-    options;
-
   const validLevelTestId =
     validLevelTest?.id ??
     null;
@@ -673,10 +515,6 @@ export default async function ParentChildEnrollmentPage({
         {backLabel}
       </Link>
 
-      {/* ================================================= */}
-      {/* 페이지 헤더 */}
-      {/* ================================================= */}
-
       <section
         className="talkly-card"
         style={{
@@ -711,11 +549,12 @@ export default async function ParentChildEnrollmentPage({
             lineHeight: 1.75,
           }}
         >
-          표준 수강 일정에서
-          선택하거나, 강사의 실제
-          가용시간을 확인하여 맞춤
-          수업을 신청할 수
-          있습니다.
+          원하는 수업 조건과
+          희망시간을 먼저 선택하면,
+          실제 강사 근무시간과
+          예외일정 및 이미 배정된
+          수업을 반영하여 가능한
+          강사를 찾아드립니다.
         </p>
 
         <div
@@ -738,10 +577,6 @@ export default async function ParentChildEnrollmentPage({
           )}
         </div>
       </section>
-
-      {/* ================================================= */}
-      {/* 레벨테스트 추천 */}
-      {/* ================================================= */}
 
       {recommendedCourse && (
         <section
@@ -806,24 +641,22 @@ export default async function ParentChildEnrollmentPage({
               lineHeight: 1.7,
             }}
           >
-            추천 프로그램은
-            교육과정 추천이며,
-            수업시간·요일·강사·기간은
-            아래에서 별도로
-            선택합니다.
+            추천 프로그램을
+            기본으로 선택해두었습니다.
+            필요하면 다른 교육과정으로
+            변경할 수 있습니다.
           </div>
         </section>
       )}
-
-      {/* ================================================= */}
-      {/* 맞춤 수업 */}
-      {/* ================================================= */}
 
       <CustomEnrollmentScheduler
         childId={child.id}
         childName={child.name}
         allowedWeekdays={
           allowedWeekdays
+        }
+        allowedTimeSlots={
+          allowedTimeSlots
         }
         allowedLessonsPerWeek={
           allowedLessonsPerWeek
@@ -847,89 +680,6 @@ export default async function ParentChildEnrollmentPage({
           validLevelTestId
         }
       />
-
-      {/* ================================================= */}
-      {/* 기존 표준 일정 */}
-      {/* ================================================= */}
-
-      <section
-        style={{
-          marginTop: "28px",
-        }}
-      >
-        <div
-          style={{
-            padding:
-              "0 2px 4px",
-          }}
-        >
-          <div className="talkly-section-label">
-            STANDARD SCHEDULE
-          </div>
-
-          <h2
-            style={{
-              margin:
-                "7px 0 0",
-              color:
-                "var(--talkly-navy)",
-              fontSize: "25px",
-            }}
-          >
-            미리 등록된 표준
-            수업 일정
-          </h2>
-
-          <p
-            style={{
-              margin:
-                "8px 0 0",
-              color:
-                "var(--text-muted)",
-              lineHeight: 1.7,
-            }}
-          >
-            TALKLY가 미리 등록한
-            수강 가능 일정 중에서
-            바로 선택하는 기존
-            방식도 계속 이용할 수
-            있습니다.
-          </p>
-        </div>
-
-        <EnrollmentOptionSelector
-          child={{
-            id: child.id,
-            name: child.name,
-            grade: child.grade,
-          }}
-          options={
-            selectorOptions as any
-          }
-          allowedWeekdays={
-            allowedWeekdays
-          }
-          allowedTimeSlots={
-            allowedTimeSlots
-          }
-          allowedLessonsPerWeek={
-            allowedLessonsPerWeek
-          }
-          showEstimatedPrice={
-            settings.show_estimated_price !==
-            false
-          }
-          recommendedCourse={
-            recommendedCourse
-          }
-          recommendedLevel={
-            recommendedLevel
-          }
-          levelTestId={
-            validLevelTestId
-          }
-        />
-      </section>
 
       <div
         style={{
@@ -978,12 +728,12 @@ export default async function ParentChildEnrollmentPage({
             justifyContent:
               "center",
             border:
-              "1px solid #dbe7ff",
+              "1px solid #b2ccff",
             borderRadius:
               "10px",
             background:
-              "#f5f8ff",
-            color: "#2f6fed",
+              "#eff8ff",
+            color: "#175cd3",
             textDecoration:
               "none",
             fontSize: "13px",
@@ -994,29 +744,5 @@ export default async function ParentChildEnrollmentPage({
         </Link>
       </div>
     </main>
-  );
-}
-
-function InfoBadge({
-  children,
-}: {
-  children:
-    React.ReactNode;
-}) {
-  return (
-    <span
-      style={{
-        padding: "6px 10px",
-        borderRadius:
-          "999px",
-        background:
-          "#f2f4f7",
-        color: "#475467",
-        fontSize: "11px",
-        fontWeight: 800,
-      }}
-    >
-      {children}
-    </span>
   );
 }
