@@ -610,16 +610,28 @@ export async function POST(
       new Date().toISOString();
 
     const {
-      data: existingInterview,
-      error: existingError,
-    } = await admin
-      .from("level_test_interviews")
-      .select("id")
-      .eq(
-        "level_test_id",
-        levelTestId
-      )
-      .maybeSingle();
+  data: existingInterview,
+  error: existingError,
+} = await admin
+  .from("level_test_interviews")
+  .select(`
+    id,
+    status,
+    scheduled_at,
+    created_at
+  `)
+  .eq(
+    "level_test_id",
+    levelTestId
+  )
+  .order(
+    "created_at",
+    {
+      ascending: false,
+    }
+  )
+  .limit(1)
+  .maybeSingle();
 
     if (existingError) {
       return NextResponse.json(
