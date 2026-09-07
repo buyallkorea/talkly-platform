@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
+import { createAdminClient } from "@/lib/supabase-admin";
 
 type RequestBody = {
   date: string;
@@ -253,12 +254,20 @@ export async function POST(
   }
 
   /*
+   * 내부 가용시간 계산용 Service Role 클라이언트
+   * - 학부모 인증/권한 확인은 위의 supabase 사용
+   * - 강사 근무시간/예외/운영차단/수업정보는 서버에서만 조회
+   */
+  const adminClient =
+    createAdminClient();
+
+  /*
    * 수강 운영 설정
    */
   const {
     data: settings,
     error: settingsError,
-  } = await supabase
+  } = await adminClient
     .from(
       "enrollment_settings"
     )
@@ -367,7 +376,7 @@ export async function POST(
   const {
     data: operationBlocksData,
     error: blockError,
-  } = await supabase
+  } = await adminClient
     .from(
       "class_operation_blocks"
     )
@@ -428,7 +437,7 @@ export async function POST(
    * 활성 강사 조회
    */
   let teacherQuery =
-    supabase
+    adminClient
       .from(
         "teacher_profiles"
       )
@@ -503,7 +512,7 @@ export async function POST(
   const {
     data: regularAvailabilityData,
     error: availabilityError,
-  } = await supabase
+  } = await adminClient
     .from(
       "teacher_availability"
     )
@@ -551,7 +560,7 @@ export async function POST(
   const {
     data: exceptionsData,
     error: exceptionError,
-  } = await supabase
+  } = await adminClient
     .from(
       "teacher_availability_exceptions"
     )
@@ -604,7 +613,7 @@ export async function POST(
   const {
     data: bookedSessionsData,
     error: bookedError,
-  } = await supabase
+  } = await adminClient
     .from(
       "class_sessions"
     )
