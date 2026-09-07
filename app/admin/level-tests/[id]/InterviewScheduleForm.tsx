@@ -5,7 +5,6 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase-browser";
 
 type TeacherOption = {
   user_id: string;
@@ -55,16 +54,6 @@ export default function InterviewScheduleForm({
   );
 
   const [
-    durationMinutes,
-    setDurationMinutes,
-  ] = useState(
-    String(
-      interview?.duration_minutes ??
-        20
-    )
-  );
-
-  const [
     meetingProvider,
     setMeetingProvider,
   ] = useState(
@@ -91,43 +80,6 @@ export default function InterviewScheduleForm({
     successMessage,
     setSuccessMessage,
   ] = useState("");
-
-  async function checkAdmin() {
-    const supabase =
-      createClient();
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      throw new Error(
-        "로그인 정보를 확인할 수 없습니다."
-      );
-    }
-
-    const {
-      data: profile,
-      error: profileError,
-    } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (
-      profileError ||
-      !profile ||
-      profile.role !== "admin"
-    ) {
-      throw new Error(
-        "관리자 권한을 확인할 수 없습니다."
-      );
-    }
-
-    return supabase;
-  }
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -158,15 +110,16 @@ export default function InterviewScheduleForm({
       return;
     }
 
-    const duration =
-      Number(durationMinutes);
+    const localDate =
+      new Date(scheduledAt);
 
     if (
-      !Number.isInteger(duration) ||
-      duration <= 0
+      Number.isNaN(
+        localDate.getTime()
+      )
     ) {
       setErrorMessage(
-        "테스트 시간을 올바르게 입력해주세요."
+        "테스트 날짜와 시간을 올바르게 입력해주세요."
       );
       return;
     }
@@ -174,170 +127,65 @@ export default function InterviewScheduleForm({
     setLoading(true);
 
     try {
-      const supabase =
-        await checkAdmin();
-
       /*
-       * 중요:
-       * 화면의 interviewRequired prop만 믿지 않고
-       * 실제 DB에 관리자 판단이 저장되어 있는지 다시 확인합니다.
+       * datetime-local은 timezone 정보가 없으므로
+       * 브라우저가 해석한 실제 시간을 ISO 형식으로
+       * 변환하여 서버에 전달합니다.
        *
-       * 즉,
-       * 1) 관리자 판단에서 '원어민 추가 테스트 필요' 선택
-       * 2) '추가 테스트 대상으로 저장'
-       * 3) DB interview_required = true
-       * 4) 그 다음에만 일정 저장 가능
-       *
-       * 순서를 서버 데이터 기준으로 강제합니다.
+       * 서버에서는 다시 강사 근무시간,
+       * 예외일정, 운영차단, 정규수업,
+       * 다른 레벨테스트와의 충돌을 확인합니다.
        */
-      const {
-        data: savedDecision,
-        error: savedDecisionError,
-      } = await supabase
-        .from("level_tests")
-        .select(`
-          id,
-          interview_required,
-          status
-        `)
-        .eq("id", levelTestId)
-        .maybeSingle();
-
-      if (savedDecisionError) {
-        setErrorMessage(
-          `원어민 추가 테스트 저장 상태 확인 실패: ${savedDecisionError.message} / code: ${savedDecisionError.code}`
-        );
-        return;
-      }
-
-      if (!savedDecision) {
-        setErrorMessage(
-          "레벨테스트 정보를 확인할 수 없습니다."
-        );
-        return;
-      }
-
-      if (!savedDecision.interview_required) {
-        setErrorMessage(
-          "먼저 위의 관리자 판단에서 '원어민 추가 테스트 필요'를 선택한 뒤 '추가 테스트 대상으로 저장' 버튼을 눌러주세요."
-        );
-        router.refresh();
-        return;
-      }
-
-      const now =
-        new Date().toISOString();
-
       const scheduledIso =
-        new Date(
-          scheduledAt
-        ).toISOString();
+        localDate.toISOString();
 
-      const payload = {
-        level_test_id:
-          levelTestId,
-
-        tester_user_id:
-          testerUserId,
-
-        status:
-          "scheduled",
-
-        scheduled_at:
-          scheduledIso,
-
-        duration_minutes:
-          duration,
-
-        meeting_provider:
-          meetingProvider.trim() ||
-          null,
-
-        meeting_url:
-          meetingUrl.trim() ||
-          null,
-
-        updated_at:
-          now,
-      };
-
-      let saveError:
-        | {
-            message: string;
-            code?: string;
-          }
-        | null = null;
-
-      if (interview?.id) {
-        const { error } =
-          await supabase
-            .from(
-              "level_test_interviews"
-            )
-            .update(payload)
-            .eq(
-              "id",
-              interview.id
-            );
-
-        saveError = error;
-      } else {
-        const { error } =
-          await supabase
-            .from(
-              "level_test_interviews"
-            )
-            .insert({
-              ...payload,
-              created_at:
-                now,
-            });
-
-        saveError = error;
-      }
-
-      if (saveError) {
-        setErrorMessage(
-          `원어민 테스트 일정 저장 실패: ${saveError.message}${
-            saveError.code
-              ? ` / code: ${saveError.code}`
-              : ""
-          }`
-        );
-        return;
-      }
-
-      const {
-        error: levelTestUpdateError,
-      } = await supabase
-        .from("level_tests")
-        .update({
-          tester_user_id:
+      const response = await fetch(
+        `/api/admin/level-tests/${levelTestId}/interview-schedule`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
             testerUserId,
+            scheduledAt:
+              scheduledIso,
+            meetingProvider:
+              meetingProvider.trim() ||
+              null,
+            meetingUrl:
+              meetingUrl.trim() ||
+              null,
+          }),
+        }
+      );
 
-          scheduled_at:
-            scheduledIso,
+      let result: {
+        ok?: boolean;
+        error?: string;
+        message?: string;
+      } = {};
 
-          interview_status:
-            "scheduled",
-
-          status:
-            "interview_scheduled",
-
-          updated_at:
-            now,
-        })
-        .eq("id", levelTestId);
-
-      if (levelTestUpdateError) {
-        setErrorMessage(
-          `레벨테스트 상태 저장 실패: ${levelTestUpdateError.message} / code: ${levelTestUpdateError.code}`
+      try {
+        result =
+          await response.json();
+      } catch {
+        throw new Error(
+          "서버 응답을 확인할 수 없습니다."
         );
-        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            "원어민 테스트 일정을 저장할 수 없습니다."
+        );
       }
 
       setSuccessMessage(
-        "원어민 화상 레벨테스트 일정과 담당 강사가 저장되었습니다."
+        result.message ||
+          "원어민 화상 레벨테스트 일정과 담당 강사가 저장되었습니다."
       );
 
       router.refresh();
@@ -433,9 +281,10 @@ export default function InterviewScheduleForm({
             lineHeight: 1.7,
           }}
         >
-          학부모와 전화 또는 SNS로
-          협의한 날짜·시간을 입력하고
+          학부모와 전화 또는 SNS로 협의한 날짜·시간을 입력하고
           담당 원어민 강사를 지정합니다.
+          저장할 때 강사의 실제 근무 가능시간과 기존 수업 일정을
+          다시 확인합니다.
         </p>
       </div>
 
@@ -463,6 +312,8 @@ export default function InterviewScheduleForm({
               setTesterUserId(
                 event.target.value
               );
+
+              setErrorMessage("");
               setSuccessMessage("");
             }}
             disabled={loading}
@@ -506,7 +357,7 @@ export default function InterviewScheduleForm({
             무료 화상레벨테스트는 기본적으로
             필리핀 원어민 강사가 진행합니다.
             필리핀 강사를 목록 상단에 우선 표시하며,
-            강사 사정에 따라 다른 국적의 강사를
+            강사 사정과 실제 가능 일정에 따라 다른 국적의 강사를
             선택할 수도 있습니다.
           </div>
         </div>
@@ -535,11 +386,18 @@ export default function InterviewScheduleForm({
                 setScheduledAt(
                   event.target.value
                 );
+
+                setErrorMessage("");
                 setSuccessMessage("");
               }}
               disabled={loading}
               style={fieldStyle}
             />
+
+            <div style={helpStyle}>
+              저장 시 해당 날짜와 시간에 강사가 실제 배정 가능한지
+              서버에서 다시 확인합니다.
+            </div>
           </div>
 
           <div>
@@ -552,32 +410,23 @@ export default function InterviewScheduleForm({
 
             <select
               id="durationMinutes"
-              value={durationMinutes}
-              onChange={(event) => {
-                setDurationMinutes(
-                  event.target.value
-                );
-                setSuccessMessage("");
+              value="20"
+              disabled
+              style={{
+                ...fieldStyle,
+                background: "#f9fafb",
+                color: "#475467",
+                cursor: "not-allowed",
               }}
-              disabled={loading}
-              style={fieldStyle}
             >
-              <option value="15">
-                15분
-              </option>
-
               <option value="20">
                 20분
               </option>
-
-              <option value="25">
-                25분
-              </option>
-
-              <option value="30">
-                30분
-              </option>
             </select>
+
+            <div style={helpStyle}>
+              TALKLY 원어민 레벨테스트는 20분 기준으로 운영합니다.
+            </div>
           </div>
         </div>
 
@@ -596,6 +445,8 @@ export default function InterviewScheduleForm({
               setMeetingProvider(
                 event.target.value
               );
+
+              setErrorMessage("");
               setSuccessMessage("");
             }}
             disabled={loading}
@@ -635,6 +486,8 @@ export default function InterviewScheduleForm({
               setMeetingUrl(
                 event.target.value
               );
+
+              setErrorMessage("");
               setSuccessMessage("");
             }}
             placeholder="https://..."
@@ -642,12 +495,9 @@ export default function InterviewScheduleForm({
             style={fieldStyle}
           />
 
-          <div
-            style={helpStyle}
-          >
-            아직 링크가 정해지지 않았다면
-            비워둔 뒤 나중에 다시
-            저장해도 됩니다.
+          <div style={helpStyle}>
+            아직 링크가 정해지지 않았다면 비워둔 뒤
+            나중에 다시 저장해도 됩니다.
           </div>
         </div>
 
@@ -678,11 +528,23 @@ export default function InterviewScheduleForm({
               lineHeight: 1.7,
             }}
           >
-            TALKLY 시스템에서 학부모와
-            자동으로 시간을 예약하는
-            방식이 아니라, 관리자가 전화
-            또는 SNS로 일정을 협의한 뒤
+            TALKLY 시스템에서 학부모가 직접 강사 시간을 예약하는
+            방식이 아니라, 관리자가 전화 또는 SNS로 일정을 협의한 뒤
             이곳에 확정 일정을 등록합니다.
+          </p>
+
+          <p
+            style={{
+              margin: "7px 0 0",
+              color: "#667085",
+              fontSize: "11px",
+              lineHeight: 1.7,
+            }}
+          >
+            테스트 일정 저장 시 강사의 정규 근무시간,
+            특정일 예외 근무정보, 전체 운영 차단시간,
+            기존 정규수업 및 다른 원어민 레벨테스트와의
+            시간 충돌을 확인합니다.
           </p>
         </div>
 
@@ -749,7 +611,7 @@ export default function InterviewScheduleForm({
             }}
           >
             {loading
-              ? "저장 중..."
+              ? "가용시간 확인 및 저장 중..."
               : "테스트 일정 저장"}
           </button>
         </div>
