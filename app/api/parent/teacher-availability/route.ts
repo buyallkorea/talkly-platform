@@ -267,7 +267,7 @@ export async function POST(
   const {
     data: settings,
     error: settingsError,
-  } = await adminClient
+  } = await supabase
     .from(
       "enrollment_settings"
     )
