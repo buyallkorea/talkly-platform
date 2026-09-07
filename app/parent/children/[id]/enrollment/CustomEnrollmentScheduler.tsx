@@ -246,11 +246,9 @@ export default function CustomEnrollmentScheduler({
   );
 
   const [
-    preferredTimes,
-    setPreferredTimes,
-  ] = useState<
-    Record<string, string>
-  >({});
+    preferredTime,
+    setPreferredTime,
+  ] = useState("");
 
   const [
     teacherMode,
@@ -352,12 +350,7 @@ export default function CustomEnrollmentScheduler({
   const allPreferredTimesSelected =
     selectedDays.length ===
       lessonsPerWeek &&
-    selectedDays.every(
-      (day) =>
-        Boolean(
-          preferredTimes[day]
-        )
-    );
+    Boolean(preferredTime);
 
   const canSubmit =
     hasSearched &&
@@ -382,20 +375,6 @@ export default function CustomEnrollmentScheduler({
     );
   }
 
-  function updatePreferredTime(
-    day: string,
-    time: string
-  ) {
-    setPreferredTimes(
-      (current) => ({
-        ...current,
-        [day]: time,
-      })
-    );
-
-    resetSearchResult();
-  }
-
   function toggleDay(
     day: string
   ) {
@@ -417,16 +396,6 @@ export default function CustomEnrollmentScheduler({
             (item) =>
               item !== day
           )
-      );
-
-      setPreferredTimes(
-        (current) => {
-          const next = {
-            ...current,
-          };
-          delete next[day];
-          return next;
-        }
       );
 
       setMatchingTeachers(
@@ -522,7 +491,7 @@ export default function CustomEnrollmentScheduler({
       !allPreferredTimesSelected
     ) {
       setErrorMessage(
-        "선택한 각 요일의 희망시간을 먼저 선택해주세요."
+        "선택한 모든 요일에 적용할 희망 수업시간을 선택해주세요."
       );
       return;
     }
@@ -601,7 +570,7 @@ export default function CustomEnrollmentScheduler({
         }
 
         const requestedTime =
-          preferredTimes[day];
+          preferredTime;
 
         const matches =
           (
@@ -665,7 +634,7 @@ export default function CustomEnrollmentScheduler({
           selectedDays
             .map(
               (day) =>
-                `${DAY_LABELS[day] ?? day} ${preferredTimes[day]}`
+                `${DAY_LABELS[day] ?? day} ${preferredTime}`
             )
             .join(
               " / "
@@ -721,7 +690,7 @@ export default function CustomEnrollmentScheduler({
         `${childName} 학생의 맞춤 수강신청을 접수하시겠습니까?\n\n과정: ${selectedCourse.name}\n수업: ${durationMinutes}분 · 주 ${lessonsPerWeek}회\n강사: ${teacherText}\n희망일정: ${selectedDays
           .map(
             (day) =>
-              `${DAY_LABELS[day] ?? day} ${preferredTimes[day]}`
+              `${DAY_LABELS[day] ?? day} ${preferredTime}`
           )
           .join(" / ")}`
       );
@@ -759,7 +728,15 @@ export default function CustomEnrollmentScheduler({
                 lessonsPerWeek,
                 preferredDays:
                   selectedDays,
-                preferredTimes,
+                preferredTimes:
+                  Object.fromEntries(
+                    selectedDays.map(
+                      (day) => [
+                        day,
+                        preferredTime,
+                      ]
+                    )
+                  ),
                 teacherPreferenceType:
                   teacherMode,
                 preferredTeacherUserId:
@@ -999,8 +976,8 @@ export default function CustomEnrollmentScheduler({
                 )
               );
 
-              setPreferredTimes(
-                {}
+              setPreferredTime(
+                ""
               );
 
               resetSearchResult();
@@ -1046,8 +1023,8 @@ export default function CustomEnrollmentScheduler({
               setSelectedDays(
                 []
               );
-              setPreferredTimes(
-                {}
+              setPreferredTime(
+                ""
               );
               resetSearchResult();
             }}
@@ -1140,87 +1117,67 @@ export default function CustomEnrollmentScheduler({
           }}
         >
           <FieldLabel>
-            희망시간
+            희망 수업시간
           </FieldLabel>
 
           <div
             style={{
-              display:
-                "grid",
-              gap: "14px",
+              padding: "16px",
+              border:
+                "1px solid #e4e7ec",
+              borderRadius:
+                "12px",
+              background:
+                "#fcfcfd",
             }}
           >
-            {selectedDays.map(
-              (day) => (
-                <div
-                  key={day}
-                  style={{
-                    padding:
-                      "16px",
-                    border:
-                      "1px solid #e4e7ec",
-                    borderRadius:
-                      "12px",
-                    background:
-                      "#fcfcfd",
-                  }}
-                >
-                  <div
-                    style={{
-                      marginBottom:
-                        "10px",
-                      color:
-                        "#344054",
-                      fontSize:
-                        "13px",
-                      fontWeight:
-                        900,
-                    }}
-                  >
-                    {
-                      DAY_LABELS[
-                        day
-                      ]
-                    }
-                    요일 희망시간
-                  </div>
+            <div
+              style={{
+                marginBottom:
+                  "10px",
+                color:
+                  "#667085",
+                fontSize:
+                  "12px",
+                lineHeight:
+                  1.7,
+              }}
+            >
+              선택한 모든 요일에
+              동일한 시간으로
+              수업합니다.
+              예: 월·화 선택 +
+              15:00 선택 → 월요일과
+              화요일 모두 15:00 수업
+            </div>
 
-                  <div
-                    style={{
-                      display:
-                        "flex",
-                      flexWrap:
-                        "wrap",
-                      gap: "7px",
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "7px",
+              }}
+            >
+              {timeOptions.map(
+                (time) => (
+                  <ChoiceButton
+                    key={time}
+                    active={
+                      preferredTime ===
+                      time
+                    }
+                    onClick={() => {
+                      setPreferredTime(
+                        time
+                      );
+                      resetSearchResult();
                     }}
                   >
-                    {timeOptions.map(
-                      (time) => (
-                        <ChoiceButton
-                          key={
-                            `${day}-${time}`
-                          }
-                          active={
-                            preferredTimes[
-                              day
-                            ] ===
-                            time
-                          }
-                          onClick={() =>
-                            updatePreferredTime(
-                              day,
-                              time
-                            )
-                          }
-                        >
-                          {time}
-                        </ChoiceButton>
-                      )
-                    )}
-                  </div>
-                </div>
-              )
-            )}
+                    {time}
+                  </ChoiceButton>
+                )
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1504,11 +1461,11 @@ export default function CustomEnrollmentScheduler({
             {selectedDays
               .map(
                 (day) =>
-                  `${DAY_LABELS[day] ?? day} ${preferredTimes[day]}`
+                  DAY_LABELS[day] ?? day
               )
-              .join(
-                " · "
-              )}
+              .join(" · ")}
+            {" · "}
+            매 수업 {preferredTime}
           </div>
 
           <div
@@ -1622,11 +1579,11 @@ export default function CustomEnrollmentScheduler({
             {selectedDays
               .map(
                 (day) =>
-                  `${DAY_LABELS[day] ?? day} ${preferredTimes[day]}`
+                  DAY_LABELS[day] ?? day
               )
-              .join(
-                " · "
-              )}
+              .join(" · ")}
+            {" · "}
+            매 수업 {preferredTime}
           </div>
 
           <button
