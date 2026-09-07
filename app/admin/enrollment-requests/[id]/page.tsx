@@ -3,8 +3,11 @@ import {
   notFound,
   redirect,
 } from "next/navigation";
+
 import { createClient } from "@/lib/supabase-server";
-import EnrollmentRequestActions from "./EnrollmentRequestActions";
+import { createAdminClient } from "@/lib/supabase-admin";
+
+import AssignmentManager from "./AssignmentManager";
 
 type PageProps = {
   params: Promise<{
@@ -12,25 +15,102 @@ type PageProps = {
   }>;
 };
 
-export default async function EnrollmentRequestDetailPage({
+type EnrollmentRequestRow = {
+  id: number;
+  applicant_user_id: string;
+  child_id: number;
+  course_id: number;
+  level_test_id: number | null;
+  recommended_course_id: number | null;
+  final_level_snapshot: string | null;
+  request_type: string;
+  status: string;
+  lesson_duration_minutes: number | null;
+  lessons_per_week: number | null;
+  preferred_days: string[] | null;
+  preferred_times:
+    | Record<string, string>
+    | null;
+  teacher_preference_type: string | null;
+  preferred_teacher_user_id: string | null;
+  start_date: string | null;
+  assigned_teacher_user_id: string | null;
+  assigned_days: string[] | null;
+  assigned_times:
+    | Record<string, string>
+    | null;
+  assigned_lesson_duration_minutes: number | null;
+  assigned_lessons_per_week: number | null;
+  assigned_at: string | null;
+  assignment_confirmed_at: string | null;
+  admin_note: string | null;
+  created_at: string;
+};
+
+type TeacherSummary = {
+  user_id: string;
+  display_name: string | null;
+  nationality: string | null;
+};
+
+const DAY_LABELS: Record<string, string> = {
+  Sunday: "일",
+  Monday: "월",
+  Tuesday: "화",
+  Wednesday: "수",
+  Thursday: "목",
+  Friday: "금",
+  Saturday: "토",
+};
+
+function scheduleText(
+  days: string[] | null,
+  times:
+    | Record<string, string>
+    | null
+) {
+  return (
+    days ??
+    []
+  )
+    .map(
+      (day) =>
+        `${
+          DAY_LABELS[day] ??
+          day
+        } ${
+          times?.[day] ??
+          "-"
+        }`
+    )
+    .join(" · ");
+}
+
+export default async function AdminEnrollmentRequestDetailPage({
   params,
 }: PageProps) {
-  const { id } = await params;
+  const { id } =
+    await params;
 
-  const requestId = Number(id);
+  const requestId =
+    Number(id);
 
   if (
-    !Number.isInteger(requestId) ||
+    !Number.isInteger(
+      requestId
+    ) ||
     requestId <= 0
   ) {
     notFound();
   }
 
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } =
+    await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");
@@ -38,7 +118,6 @@ export default async function EnrollmentRequestDetailPage({
 
   const {
     data: profile,
-    error: profileError,
   } = await supabase
     .from("profiles")
     .select("role")
@@ -46,332 +125,423 @@ export default async function EnrollmentRequestDetailPage({
     .maybeSingle();
 
   if (
-    profileError ||
     !profile ||
     profile.role !== "admin"
   ) {
     redirect("/");
   }
 
-  const [
-    requestResult,
-    teachersResult,
-  ] = await Promise.all([
-    supabase
-      .from("enrollment_requests")
-      .select(`
-        id,
-        status,
-        child_id,
-        course_id,
-        lesson_duration_minutes,
-        lessons_per_week,
-        preferred_days,
-        preferred_times,
-        start_date,
-        end_date,
-        total_lessons,
-        estimated_price,
-        assigned_teacher_user_id,
-        assigned_curriculum,
-        admin_note,
-        children (
-          id,
-          name,
-          grade,
-          school_name
-        ),
-        courses (
-          id,
-          name
-        ),
-        enrollment_options (
-          id,
-          title
-        )
-      `)
-      .eq("id", requestId)
-      .maybeSingle(),
+  const adminClient =
+    createAdminClient();
 
-    supabase
-      .from("teacher_profiles")
-      .select(`
-        user_id,
-        display_name
-      `)
-      .eq("is_active", true)
-      .order("display_name"),
-  ]);
+  const {
+    data: requestData,
+    error: requestError,
+  } = await adminClient
+    .from(
+      "enrollment_requests"
+    )
+    .select(`
+      id,
+      applicant_user_id,
+      child_id,
+      course_id,
+      level_test_id,
+      recommended_course_id,
+      final_level_snapshot,
+      request_type,
+      status,
+      lesson_duration_minutes,
+      lessons_per_week,
+      preferred_days,
+      preferred_times,
+      teacher_preference_type,
+      preferred_teacher_user_id,
+      start_date,
+      assigned_teacher_user_id,
+      assigned_days,
+      assigned_times,
+      assigned_lesson_duration_minutes,
+      assigned_lessons_per_week,
+      assigned_at,
+      assignment_confirmed_at,
+      admin_note,
+      created_at
+    `)
+    .eq(
+      "id",
+      requestId
+    )
+    .maybeSingle();
 
   if (
-    requestResult.error ||
-    !requestResult.data
+    requestError ||
+    !requestData
   ) {
     notFound();
   }
 
-  if (teachersResult.error) {
-    throw new Error(
-      teachersResult.error.message
-    );
-  }
-
-  const requestData =
-    requestResult.data;
-
-  const child = Array.isArray(
-    requestData.children
-  )
-    ? requestData.children[0]
-    : requestData.children;
-
-  const course = Array.isArray(
-    requestData.courses
-  )
-    ? requestData.courses[0]
-    : requestData.courses;
-
-  const option = Array.isArray(
-    requestData.enrollment_options
-  )
-    ? requestData.enrollment_options[0]
-    : requestData.enrollment_options;
-
-  /*
-   * 승인된 신청이라면 이 신청으로 생성된
-   * 실제 수강정보를 찾습니다.
-   */
-  let enrollmentId: number | null = null;
+  const enrollmentRequest =
+    requestData as EnrollmentRequestRow;
 
   if (
-    requestData.status === "approved" &&
-    requestData.child_id &&
-    requestData.course_id &&
-    requestData.start_date &&
-    requestData.end_date
+    enrollmentRequest.request_type !==
+    "custom"
   ) {
-    const {
-      data: enrollment,
-      error: enrollmentError,
-    } = await supabase
-      .from("enrollments")
-      .select("id")
-      .eq(
-        "child_id",
-        requestData.child_id
-      )
-      .eq(
-        "course_id",
-        requestData.course_id
-      )
-      .eq(
-        "start_date",
-        requestData.start_date
-      )
-      .eq(
-        "end_date",
-        requestData.end_date
-      )
-      .in("status", [
-        "active",
-        "pending",
-        "completed",
-        "paused",
-      ])
-      .order("id", {
-        ascending: false,
-      })
-      .limit(1)
-      .maybeSingle();
-
-    if (!enrollmentError && enrollment) {
-      enrollmentId = enrollment.id;
-    }
+    notFound();
   }
 
-  const statusLabel =
-    requestData.status === "approved"
-      ? "승인 완료"
-      : requestData.status === "rejected"
-        ? "반려"
-        : "승인 대기";
+  const [
+    childResult,
+    courseResult,
+    teachersResult,
+  ] =
+    await Promise.all([
+      adminClient
+        .from("children")
+        .select(`
+          id,
+          name,
+          grade,
+          school_name
+        `)
+        .eq(
+          "id",
+          enrollmentRequest.child_id
+        )
+        .maybeSingle(),
 
-  const statusColor =
-    requestData.status === "approved"
-      ? "#138a4b"
-      : requestData.status === "rejected"
-        ? "#c0392b"
-        : "#2f6fed";
+      adminClient
+        .from("courses")
+        .select(`
+          id,
+          name
+        `)
+        .eq(
+          "id",
+          enrollmentRequest.course_id
+        )
+        .maybeSingle(),
+
+      adminClient
+        .from(
+          "teacher_profiles"
+        )
+        .select(`
+          user_id,
+          display_name,
+          nationality
+        `)
+        .eq(
+          "is_active",
+          true
+        )
+        .order(
+          "display_name",
+          {
+            ascending:
+              true,
+            nullsFirst:
+              false,
+          }
+        ),
+    ]);
+
+  const child =
+    childResult.data;
+
+  const course =
+    courseResult.data;
+
+  const teachers =
+    (
+      teachersResult.data ??
+      []
+    ) as TeacherSummary[];
+
+  const preferredTeacher =
+    enrollmentRequest.preferred_teacher_user_id
+      ? teachers.find(
+          (teacher) =>
+            teacher.user_id ===
+            enrollmentRequest.preferred_teacher_user_id
+        ) ??
+        null
+      : null;
+
+  const assignedTeacher =
+    enrollmentRequest.assigned_teacher_user_id
+      ? teachers.find(
+          (teacher) =>
+            teacher.user_id ===
+            enrollmentRequest.assigned_teacher_user_id
+        ) ??
+        null
+      : null;
 
   return (
     <main
       style={{
-        maxWidth: "1100px",
+        maxWidth: "1120px",
         margin: "0 auto",
-        padding: "40px",
+        padding:
+          "36px 20px 70px",
       }}
     >
       <Link
         href="/admin/enrollment-requests"
         style={{
-          color: "inherit",
-          textDecoration: "none",
-          fontSize: "14px",
-          opacity: 0.65,
+          color:
+            "var(--talkly-blue)",
+          textDecoration:
+            "none",
+          fontWeight: 800,
         }}
       >
-        ← 수강신청 관리
+        ← 맞춤 수강신청 목록
       </Link>
 
       <div
         style={{
           marginTop: "18px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: "20px",
-          flexWrap: "wrap",
         }}
       >
-        <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: "34px",
-              letterSpacing: "-0.03em",
-            }}
-          >
-            수강신청 상세
-          </h1>
-
-          <p
-            style={{
-              margin: "10px 0 0",
-              opacity: 0.6,
-              lineHeight: 1.7,
-            }}
-          >
-            신청 내용과 승인 처리 결과를
-            확인합니다.
-          </p>
+        <div className="talkly-section-label">
+          REQUEST #
+          {enrollmentRequest.id}
         </div>
 
-        <div
+        <h1
           style={{
-            padding: "9px 14px",
-            borderRadius: "999px",
-            background: `${statusColor}18`,
-            color: statusColor,
-            fontSize: "13px",
-            fontWeight: 900,
+            margin:
+              "7px 0 0",
+            color:
+              "var(--talkly-navy)",
+            fontSize: "32px",
           }}
         >
-          {statusLabel}
-        </div>
+          수강신청 배정
+        </h1>
+
+        <p
+          style={{
+            margin:
+              "10px 0 0",
+            color:
+              "var(--text-muted)",
+            lineHeight: 1.7,
+          }}
+        >
+          학부모 희망조건과 현재
+          강사 가용성을 다시
+          확인한 뒤 실제 수업
+          강사를 확정합니다.
+        </p>
       </div>
 
       <section
+        className="talkly-card"
         style={{
-          marginTop: "30px",
-          padding: "28px",
-          background: "#ffffff",
-          border:
-            "1px solid rgba(15,35,65,.10)",
-          borderRadius: "16px",
+          marginTop: "24px",
+          padding: "26px",
         }}
       >
+        <div className="talkly-section-label">
+          REQUESTED
+          CONDITIONS
+        </div>
+
         <h2
           style={{
-            margin: 0,
-            fontSize: "22px",
+            margin:
+              "7px 0 0",
+            color: "#101828",
+            fontSize: "23px",
           }}
         >
-          {child?.name ?? "학생"}
+          {child?.name ??
+            `자녀 ${enrollmentRequest.child_id}`}
+          {" · "}
+          {course?.name ??
+            `과정 ${enrollmentRequest.course_id}`}
         </h2>
 
         <div
           style={{
-            marginTop: "24px",
+            marginTop: "18px",
             display: "grid",
             gridTemplateColumns:
-              "repeat(auto-fit,minmax(180px,1fr))",
-            gap: "24px",
+              "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: "12px",
           }}
         >
-          <Info
-            label="학년"
-            value={child?.grade ?? "-"}
-          />
-
-          <Info
-            label="학교"
+          <InfoBox
+            label="최종 레벨"
             value={
-              child?.school_name ?? "-"
+              enrollmentRequest.final_level_snapshot ??
+              "-"
             }
           />
 
-          <Info
-            label="신청 일정"
-            value={option?.title ?? "-"}
-          />
-
-          <Info
-            label="과정"
-            value={course?.name ?? "-"}
-          />
-
-          <Info
+          <InfoBox
             label="수업"
-            value={`${requestData.lesson_duration_minutes}분 · 주 ${requestData.lessons_per_week}회`}
+            value={`${enrollmentRequest.lesson_duration_minutes ?? "-"}분 · 주 ${enrollmentRequest.lessons_per_week ?? "-"}회`}
           />
 
-          <Info
-            label="기간"
-            value={`${requestData.start_date} ~ ${
-              requestData.end_date ?? "-"
-            }`}
+          <InfoBox
+            label="희망일정"
+            value={
+              scheduleText(
+                enrollmentRequest.preferred_days,
+                enrollmentRequest.preferred_times
+              ) ||
+              "-"
+            }
           />
 
-          <Info
-            label="총 회차"
-            value={`${requestData.total_lessons}회`}
+          <InfoBox
+            label="시작 기준일"
+            value={
+              enrollmentRequest.start_date ??
+              "-"
+            }
           />
 
-          <Info
-            label="예상 수강료"
-            value={`${Number(
-              requestData.estimated_price ?? 0
-            ).toLocaleString(
-              "ko-KR"
-            )}원`}
+          <InfoBox
+            label="강사 선호"
+            value={
+              enrollmentRequest.teacher_preference_type ===
+              "specific"
+                ? preferredTeacher?.display_name ??
+                  "특정 강사"
+                : "가능한 강사 중 배정"
+            }
+          />
+
+          <InfoBox
+            label="현재 상태"
+            value={
+              enrollmentRequest.assigned_teacher_user_id
+                ? "배정 완료"
+                : "배정 대기"
+            }
           />
         </div>
       </section>
 
-      <EnrollmentRequestActions
-        requestId={requestData.id}
-        status={requestData.status}
+      {assignedTeacher && (
+        <section
+          style={{
+            marginTop: "20px",
+            padding: "20px",
+            border:
+              "1px solid #abefc6",
+            borderRadius:
+              "14px",
+            background:
+              "#ecfdf3",
+          }}
+        >
+          <div
+            style={{
+              color: "#067647",
+              fontSize: "12px",
+              fontWeight: 900,
+            }}
+          >
+            CURRENT
+            ASSIGNMENT
+          </div>
+
+          <div
+            style={{
+              marginTop: "6px",
+              color: "#065f46",
+              fontSize: "18px",
+              fontWeight: 900,
+            }}
+          >
+            {
+              assignedTeacher.display_name
+            }
+            {assignedTeacher.nationality
+              ? ` · ${assignedTeacher.nationality}`
+              : ""}
+          </div>
+
+          <div
+            style={{
+              marginTop: "7px",
+              color: "#047857",
+              fontSize: "12px",
+              lineHeight: 1.7,
+            }}
+          >
+            {scheduleText(
+              enrollmentRequest.assigned_days,
+              enrollmentRequest.assigned_times
+            )}{" "}
+            ·{" "}
+            {
+              enrollmentRequest.assigned_lesson_duration_minutes
+            }
+            분 · 주{" "}
+            {
+              enrollmentRequest.assigned_lessons_per_week
+            }
+            회
+          </div>
+        </section>
+      )}
+
+      <AssignmentManager
+        requestId={
+          enrollmentRequest.id
+        }
+        preferredDays={
+          enrollmentRequest.preferred_days ??
+          []
+        }
+        preferredTimes={
+          enrollmentRequest.preferred_times ??
+          {}
+        }
+        startDate={
+          enrollmentRequest.start_date
+        }
+        lessonDurationMinutes={
+          enrollmentRequest.lesson_duration_minutes ??
+          25
+        }
+        lessonsPerWeek={
+          enrollmentRequest.lessons_per_week ??
+          1
+        }
+        teacherPreferenceType={
+          enrollmentRequest.teacher_preference_type ??
+          "any"
+        }
+        preferredTeacherUserId={
+          enrollmentRequest.preferred_teacher_user_id
+        }
         teachers={
-          teachersResult.data ?? []
+          teachers
         }
-        initialTeacherUserId={
-          requestData.assigned_teacher_user_id ??
-          ""
+        currentAssignedTeacherUserId={
+          enrollmentRequest.assigned_teacher_user_id
         }
-        initialCurriculum={
-          requestData.assigned_curriculum ??
-          ""
+        currentAssignedDays={
+          enrollmentRequest.assigned_days
         }
-        initialAdminNote={
-          requestData.admin_note ?? ""
+        currentAssignedTimes={
+          enrollmentRequest.assigned_times
         }
-        enrollmentId={enrollmentId}
       />
     </main>
   );
 }
 
-function Info({
+function InfoBox({
   label,
   value,
 }: {
@@ -379,11 +549,23 @@ function Info({
   value: string;
 }) {
   return (
-    <div>
+    <div
+      style={{
+        padding:
+          "15px 16px",
+        border:
+          "1px solid #eaecf0",
+        borderRadius:
+          "11px",
+        background:
+          "#fcfcfd",
+      }}
+    >
       <div
         style={{
-          fontSize: "12px",
-          color: "#7b8493",
+          color: "#667085",
+          fontSize: "11px",
+          fontWeight: 800,
         }}
       >
         {label}
@@ -391,10 +573,11 @@ function Info({
 
       <div
         style={{
-          marginTop: "7px",
-          fontSize: "16px",
-          fontWeight: 800,
+          marginTop: "5px",
           color: "#101828",
+          fontSize: "13px",
+          fontWeight: 900,
+          lineHeight: 1.6,
         }}
       >
         {value}
