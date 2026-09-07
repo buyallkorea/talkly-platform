@@ -1,7 +1,13 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import {
+  notFound,
+  redirect,
+} from "next/navigation";
+
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
+
+import PaymentPreparation from "./PaymentPreparation";
 
 type PageProps = {
   params: Promise<{
@@ -15,32 +21,38 @@ type EnrollmentRequestRow = {
   applicant_user_id: string;
   child_id: number;
   course_id: number;
-  level_test_id: number | null;
-  recommended_course_id: number | null;
-  final_level_snapshot: string | null;
-  request_type: string;
   status: string;
-  lesson_duration_minutes: number | null;
-  lessons_per_week: number | null;
-  preferred_days: string[] | null;
-  preferred_times: Record<string, string> | null;
-  teacher_preference_type: string | null;
-  preferred_teacher_user_id: string | null;
-  start_date: string | null;
   assigned_teacher_user_id: string | null;
   assigned_days: string[] | null;
   assigned_times: Record<string, string> | null;
   assigned_lesson_duration_minutes: number | null;
   assigned_lessons_per_week: number | null;
-  assigned_at: string | null;
   assignment_confirmed_at: string | null;
+  pricing_category: string | null;
+  course_pricing_id: number | null;
   duration_months: number | null;
   monthly_lesson_count: number | null;
   regular_price: number | null;
   discount_rate: number | null;
   discount_amount: number | null;
   final_price: number | null;
-  created_at: string;
+};
+
+type PricingRow = {
+  id: number;
+  course_id: number;
+  lesson_duration_minutes: number;
+  price_per_lesson: number;
+  weekend_multiplier: number;
+  pricing_category: string;
+  lessons_per_week: number | null;
+  monthly_lesson_count: number | null;
+};
+
+type DiscountPolicyRow = {
+  id: number;
+  duration_months: number;
+  discount_rate: number;
 };
 
 const DAY_LABELS: Record<string, string> = {
@@ -53,514 +65,571 @@ const DAY_LABELS: Record<string, string> = {
   Saturday: "토",
 };
 
+function getPricingCategory(
+  savedCategory: string | null,
+  nationality: string | null
+) {
+  if (
+    savedCategory &&
+    [
+      "philippines",
+      "western",
+      "special",
+      "intensive",
+    ].includes(savedCategory)
+  ) {
+    return savedCategory;
+  }
+
+  const normalized =
+    (nationality ?? "")
+      .trim()
+      .toLowerCase();
+
+  if (
+    normalized.includes("philipp") ||
+    normalized.includes("필리핀")
+  ) {
+    return "philippines";
+  }
+
+  /*
+   * 현재 teacher_profiles에는 별도 가격등급 필드가 없으므로,
+   * 기존 신청에 pricing_category가 저장되어 있지 않은 경우
+   * 필리핀 강사 외 등록 원어민은 western으로 계산합니다.
+   *
+   * special / intensive는 향후 관리자에서
+   * pricing_category를 명시적으로 지정할 때 그대로 사용됩니다.
+   */
+  return "western";
+}
+
 function scheduleText(
   days: string[] | null,
   times: Record<string, string> | null
 ) {
   return (days ?? [])
-    .map((day) => `${DAY_LABELS[day] ?? day} ${times?.[day] ?? "-"}`)
+    .map(
+      (day) =>
+        `${DAY_LABELS[day] ?? day} ${
+          times?.[day] ?? "-"
+        }`
+    )
     .join(" · ");
 }
 
-function formatDate(value: string | null) {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
-
-export default async function ParentEnrollmentRequestDetailPage({
+export default async function ParentEnrollmentRequestPaymentPage({
   params,
 }: PageProps) {
-  const { id, requestId: requestIdText } = await params;
+  const {
+    id,
+    requestId,
+  } = await params;
 
   const childId = Number(id);
-  const requestId = Number(requestIdText);
+  const enrollmentRequestId =
+    Number(requestId);
 
   if (
     !Number.isInteger(childId) ||
     childId <= 0 ||
-    !Number.isInteger(requestId) ||
-    requestId <= 0
+    !Number.isInteger(
+      enrollmentRequestId
+    ) ||
+    enrollmentRequestId <= 0
   ) {
     notFound();
   }
 
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } =
+    await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
+  const {
+    data: profile,
+  } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (!profile || profile.role !== "parent") {
+  if (
+    !profile ||
+    profile.role !== "parent"
+  ) {
     redirect("/");
   }
 
-  const { data: child, error: childError } = await supabase
+  const {
+    data: child,
+    error: childError,
+  } = await supabase
     .from("children")
     .select(`
       id,
-      name,
-      grade,
-      school_name
+      name
     `)
     .eq("id", childId)
-    .eq("parent_user_id", user.id)
+    .eq(
+      "parent_user_id",
+      user.id
+    )
     .eq("is_active", true)
     .maybeSingle();
 
-  if (childError || !child) {
+  if (
+    childError ||
+    !child
+  ) {
     notFound();
   }
 
-  const adminClient = createAdminClient();
+  const adminClient =
+    createAdminClient();
 
-  const { data: requestData, error: requestError } = await adminClient
+  const {
+    data: requestData,
+    error: requestError,
+  } = await adminClient
     .from("enrollment_requests")
     .select(`
       id,
       applicant_user_id,
       child_id,
       course_id,
-      level_test_id,
-      recommended_course_id,
-      final_level_snapshot,
-      request_type,
       status,
-      lesson_duration_minutes,
-      lessons_per_week,
-      preferred_days,
-      preferred_times,
-      teacher_preference_type,
-      preferred_teacher_user_id,
-      start_date,
       assigned_teacher_user_id,
       assigned_days,
       assigned_times,
       assigned_lesson_duration_minutes,
       assigned_lessons_per_week,
-      assigned_at,
       assignment_confirmed_at,
+      pricing_category,
+      course_pricing_id,
       duration_months,
       monthly_lesson_count,
       regular_price,
       discount_rate,
       discount_amount,
-      final_price,
-      created_at
+      final_price
     `)
-    .eq("id", requestId)
-    .eq("applicant_user_id", user.id)
-    .eq("child_id", childId)
+    .eq(
+      "id",
+      enrollmentRequestId
+    )
+    .eq(
+      "applicant_user_id",
+      user.id
+    )
+    .eq(
+      "child_id",
+      childId
+    )
     .maybeSingle();
 
-  if (requestError || !requestData) {
+  if (requestError) {
+    throw new Error(
+      `수강신청 정보를 불러오지 못했습니다: ${requestError.message}`
+    );
+  }
+
+  if (!requestData) {
     notFound();
   }
 
-  const enrollmentRequest = requestData as EnrollmentRequestRow;
+  const request =
+    requestData as EnrollmentRequestRow;
 
-  const [courseResult, teacherResult] = await Promise.all([
-    adminClient
-      .from("courses")
-      .select(`
-        id,
-        name
-      `)
-      .eq("id", enrollmentRequest.course_id)
-      .maybeSingle(),
+  const assigned =
+    Boolean(
+      request.assigned_teacher_user_id &&
+        request.assignment_confirmed_at &&
+        request.assigned_lesson_duration_minutes &&
+        request.assigned_lessons_per_week
+    );
 
-    enrollmentRequest.assigned_teacher_user_id
-      ? adminClient
-          .from("teacher_profiles")
-          .select(`
-            user_id,
-            display_name,
-            nationality
-          `)
-          .eq("user_id", enrollmentRequest.assigned_teacher_user_id)
-          .maybeSingle()
-      : Promise.resolve({
-          data: null,
-          error: null,
-        }),
-  ]);
+  if (!assigned) {
+    redirect(
+      `/parent/children/${childId}/enrollment-requests`
+    );
+  }
 
-  const course = courseResult.data;
-  const teacher = teacherResult.data;
+  const [
+    courseResult,
+    teacherResult,
+    discountResult,
+  ] =
+    await Promise.all([
+      adminClient
+        .from("courses")
+        .select(
+          "id, name"
+        )
+        .eq(
+          "id",
+          request.course_id
+        )
+        .maybeSingle(),
 
-  const assigned = Boolean(
-    enrollmentRequest.assigned_teacher_user_id &&
-      enrollmentRequest.assignment_confirmed_at
-  );
+      adminClient
+        .from(
+          "teacher_profiles"
+        )
+        .select(`
+          user_id,
+          display_name,
+          nationality
+        `)
+        .eq(
+          "user_id",
+          request.assigned_teacher_user_id!
+        )
+        .maybeSingle(),
 
-  const pricingSelected = Boolean(
-    enrollmentRequest.duration_months &&
-      enrollmentRequest.final_price !== null
-  );
+      adminClient
+        .from(
+          "enrollment_discount_policies"
+        )
+        .select(`
+          id,
+          duration_months,
+          discount_rate
+        `)
+        .eq(
+          "is_active",
+          true
+        )
+        .order(
+          "duration_months",
+          {
+            ascending: true,
+          }
+        ),
+    ]);
+
+  if (
+    courseResult.error ||
+    !courseResult.data
+  ) {
+    throw new Error(
+      "과정 정보를 불러올 수 없습니다."
+    );
+  }
+
+  if (
+    teacherResult.error ||
+    !teacherResult.data
+  ) {
+    throw new Error(
+      "배정된 강사 정보를 불러올 수 없습니다."
+    );
+  }
+
+  if (discountResult.error) {
+    throw new Error(
+      `기간 할인정책을 불러오지 못했습니다: ${discountResult.error.message}`
+    );
+  }
+
+  const pricingCategory =
+    getPricingCategory(
+      request.pricing_category,
+      teacherResult.data.nationality
+    );
+
+  const {
+    data: pricingData,
+    error: pricingError,
+  } = await adminClient
+    .from("course_pricing")
+    .select(`
+      id,
+      course_id,
+      lesson_duration_minutes,
+      price_per_lesson,
+      weekend_multiplier,
+      pricing_category,
+      lessons_per_week,
+      monthly_lesson_count
+    `)
+    .eq(
+      "course_id",
+      request.course_id
+    )
+    .eq(
+      "lesson_duration_minutes",
+      request.assigned_lesson_duration_minutes!
+    )
+    .eq(
+      "lessons_per_week",
+      request.assigned_lessons_per_week!
+    )
+    .eq(
+      "pricing_category",
+      pricingCategory
+    )
+    .eq(
+      "is_active",
+      true
+    )
+    .maybeSingle();
+
+  if (pricingError) {
+    throw new Error(
+      `수강료 정보를 불러오지 못했습니다: ${pricingError.message}`
+    );
+  }
+
+  if (!pricingData) {
+    throw new Error(
+      "현재 배정 조건에 맞는 수강료가 등록되어 있지 않습니다."
+    );
+  }
+
+  const pricing =
+    pricingData as PricingRow;
+
+  const discounts =
+    (
+      discountResult.data ??
+      []
+    ) as DiscountPolicyRow[];
+
+  if (
+    discounts.length === 0
+  ) {
+    throw new Error(
+      "사용 가능한 수강기간 할인정책이 없습니다."
+    );
+  }
+
+  const schedule =
+    scheduleText(
+      request.assigned_days,
+      request.assigned_times
+    );
 
   return (
     <main
       style={{
-        maxWidth: "980px",
-        margin: "0 auto",
-        padding: "40px 20px 80px",
+        minHeight:
+          "100vh",
+        background:
+          "linear-gradient(180deg, #f5f8ff 0%, #ffffff 48%, #f8fbff 100%)",
       }}
     >
-      <Link
-        href={`/parent/children/${child.id}/enrollment-requests`}
+      <div
         style={{
-          color: "var(--talkly-blue)",
-          textDecoration: "none",
-          fontWeight: 800,
+          maxWidth:
+            "1120px",
+          margin:
+            "0 auto",
+          padding:
+            "34px 20px 90px",
         }}
       >
-        ← 수강신청 현황
-      </Link>
-
-      <div style={{ marginTop: "18px" }}>
-        <div className="talkly-section-label">ENROLLMENT REQUEST</div>
-
-        <h1
+        <Link
+          href={`/parent/children/${childId}/enrollment-requests`}
           style={{
-            margin: "7px 0 0",
-            color: "var(--talkly-navy)",
-            fontSize: "32px",
+            display:
+              "inline-flex",
+            alignItems:
+              "center",
+            color:
+              "#475467",
+            textDecoration:
+              "none",
+            fontSize:
+              "13px",
+            fontWeight:
+              800,
           }}
         >
-          {child.name} 학생 수강신청 상세
-        </h1>
+          ← 수강 준비 현황
+        </Link>
 
-        <p
-          style={{
-            margin: "10px 0 0",
-            color: "var(--text-muted)",
-            lineHeight: 1.7,
-          }}
-        >
-          신청 조건과 TALKLY의 강사·일정 배정 결과를 확인할 수 있습니다.
-        </p>
-      </div>
-
-      <section
-        className="talkly-card"
-        style={{
-          marginTop: "24px",
-          padding: "26px",
-        }}
-      >
-        <div className="talkly-section-label">REQUEST</div>
-
-        <h2
-          style={{
-            margin: "7px 0 0",
-            color: "#101828",
-            fontSize: "24px",
-          }}
-        >
-          {course?.name ?? `과정 ${enrollmentRequest.course_id}`}
-        </h2>
-
-        <div
-          style={{
-            marginTop: "18px",
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: "12px",
-          }}
-        >
-          <InfoBox label="신청번호" value={`#${enrollmentRequest.id}`} />
-
-          <InfoBox
-            label="최종 레벨"
-            value={enrollmentRequest.final_level_snapshot ?? "-"}
-          />
-
-          <InfoBox
-            label="신청 수업"
-            value={`${enrollmentRequest.lesson_duration_minutes ?? "-"}분 · 주 ${
-              enrollmentRequest.lessons_per_week ?? "-"
-            }회`}
-          />
-
-          <InfoBox
-            label="희망 일정"
-            value={
-              scheduleText(
-                enrollmentRequest.preferred_days,
-                enrollmentRequest.preferred_times
-              ) || "-"
-            }
-          />
-
-          <InfoBox
-            label="수강 시작 기준일"
-            value={enrollmentRequest.start_date ?? "-"}
-          />
-
-          <InfoBox
-            label="접수일"
-            value={formatDate(enrollmentRequest.created_at)}
-          />
-        </div>
-      </section>
-
-      {!assigned ? (
         <section
           style={{
-            marginTop: "20px",
-            padding: "22px 24px",
-            border: "1px solid #fedf89",
-            borderRadius: "14px",
-            background: "#fffaeb",
+            position:
+              "relative",
+            overflow:
+              "hidden",
+            marginTop:
+              "18px",
+            padding:
+              "34px 36px",
+            borderRadius:
+              "24px",
+            background:
+              "linear-gradient(135deg, #0A1F44 0%, #164c96 58%, #3978ef 100%)",
+            boxShadow:
+              "0 18px 45px rgba(10,31,68,0.16)",
           }}
         >
           <div
             style={{
-              color: "#93370d",
-              fontSize: "12px",
-              fontWeight: 900,
+              position:
+                "absolute",
+              width:
+                "230px",
+              height:
+                "230px",
+              top: "-95px",
+              right:
+                "-50px",
+              borderRadius:
+                "999px",
+              background:
+                "rgba(255,255,255,0.08)",
             }}
-          >
-            ASSIGNMENT PENDING
-          </div>
+          />
 
           <div
             style={{
-              marginTop: "7px",
-              color: "#7a2e0e",
-              fontSize: "20px",
-              fontWeight: 900,
-            }}
-          >
-            강사와 수업 일정을 확인하고 있습니다.
-          </div>
-
-          <p
-            style={{
-              margin: "8px 0 0",
-              color: "#93370d",
-              fontSize: "13px",
-              lineHeight: 1.8,
-            }}
-          >
-            TALKLY에서 실제 강사 근무시간과 기존 수업 일정을 확인한 뒤
-            배정 결과를 안내합니다.
-          </p>
-        </section>
-      ) : (
-        <>
-          <section
-            style={{
-              marginTop: "20px",
-              padding: "24px",
-              border: "1px solid #abefc6",
-              borderRadius: "14px",
-              background: "#ecfdf3",
+              position:
+                "relative",
+              zIndex: 1,
             }}
           >
             <div
               style={{
-                color: "#067647",
-                fontSize: "12px",
-                fontWeight: 900,
+                color:
+                  "#b8d0ff",
+                fontSize:
+                  "12px",
+                fontWeight:
+                  900,
+                letterSpacing:
+                  "0.13em",
               }}
             >
-              ASSIGNMENT COMPLETE
+              TALKLY PAYMENT
             </div>
 
-            <h2
+            <h1
               style={{
-                margin: "7px 0 0",
-                color: "#065f46",
-                fontSize: "24px",
+                margin:
+                  "10px 0 0",
+                color:
+                  "#ffffff",
+                fontSize:
+                  "clamp(29px, 5vw, 44px)",
+                lineHeight:
+                  1.15,
+                letterSpacing:
+                  "-0.04em",
               }}
             >
-              강사와 수업 일정이 배정되었습니다.
-            </h2>
-
-            <div
-              style={{
-                marginTop: "18px",
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                gap: "12px",
-              }}
-            >
-              <InfoBox
-                label="배정 강사"
-                value={`${teacher?.display_name ?? "Teacher"}${
-                  teacher?.nationality ? ` · ${teacher.nationality}` : ""
-                }`}
-              />
-
-              <InfoBox
-                label="확정 일정"
-                value={
-                  scheduleText(
-                    enrollmentRequest.assigned_days,
-                    enrollmentRequest.assigned_times
-                  ) || "-"
-                }
-              />
-
-              <InfoBox
-                label="수업"
-                value={`${
-                  enrollmentRequest.assigned_lesson_duration_minutes ?? "-"
-                }분 · 주 ${
-                  enrollmentRequest.assigned_lessons_per_week ?? "-"
-                }회`}
-              />
-
-              <InfoBox
-                label="배정 확정일"
-                value={formatDate(enrollmentRequest.assignment_confirmed_at)}
-              />
-            </div>
-          </section>
-
-          <section
-            className="talkly-card"
-            style={{
-              marginTop: "20px",
-              padding: "26px",
-            }}
-          >
-            <div className="talkly-section-label">NEXT STEP</div>
-
-            <h2
-              style={{
-                margin: "7px 0 0",
-                color: "var(--talkly-navy)",
-                fontSize: "24px",
-              }}
-            >
-              수강기간 선택
-            </h2>
+              수강기간과
+              <br />
+              결제금액을 확인해 주세요
+            </h1>
 
             <p
               style={{
-                margin: "9px 0 0",
-                color: "#667085",
-                lineHeight: 1.75,
+                margin:
+                  "15px 0 0",
+                color:
+                  "rgba(255,255,255,0.82)",
+                fontSize:
+                  "14px",
+                lineHeight:
+                  1.75,
               }}
             >
-              다음 단계에서 1개월·3개월·6개월·12개월 중 수강기간을
-              선택하고, TALKLY의 실제 가격 및 할인정책을 적용한 최종
-              수강료를 계산합니다.
+              배정된 수업 조건은
+              그대로 유지되며,
+              수강기간만 선택하면
+              할인과 최종 금액이
+              자동으로 계산됩니다.
             </p>
+          </div>
+        </section>
 
-            {pricingSelected ? (
-              <div
-                style={{
-                  marginTop: "18px",
-                  padding: "18px",
-                  border: "1px solid #dbe7ff",
-                  borderRadius: "12px",
-                  background: "#f8fbff",
-                  color: "#344054",
-                  lineHeight: 1.8,
-                }}
-              >
-                이미 선택된 수강기간이 있습니다.
-                <br />
-                기간:{" "}
-                <strong>{enrollmentRequest.duration_months}개월</strong>
-                <br />
-                최종금액:{" "}
-                <strong>
-                  {new Intl.NumberFormat("ko-KR").format(
-                    Number(enrollmentRequest.final_price ?? 0)
-                  )}
-                  원
-                </strong>
-              </div>
-            ) : (
-              <div
-                style={{
-                  marginTop: "18px",
-                  padding: "18px",
-                  border: "1px dashed #b2ccff",
-                  borderRadius: "12px",
-                  background: "#f8fbff",
-                  color: "#475467",
-                  fontSize: "13px",
-                  lineHeight: 1.8,
-                }}
-              >
-                관리자 배정 결과까지 완료되었습니다. 다음 작업에서 DB의
-                수강료·할인정책을 확인하여 기간 선택 기능을 연결합니다.
-              </div>
-            )}
-          </section>
-        </>
-      )}
+        <PaymentPreparation
+          requestId={
+            request.id
+          }
+          childId={
+            child.id
+          }
+          childName={
+            child.name
+          }
+          courseName={
+            courseResult.data.name
+          }
+          teacherName={
+            teacherResult.data
+              .display_name ??
+            "Teacher"
+          }
+          teacherNationality={
+            teacherResult.data
+              .nationality
+          }
+          schedule={
+            schedule
+          }
+          assignedDays={
+            request.assigned_days ??
+            []
+          }
+          lessonDurationMinutes={
+            request.assigned_lesson_duration_minutes!
+          }
+          lessonsPerWeek={
+            request.assigned_lessons_per_week!
+          }
+          pricing={{
+            id:
+              pricing.id,
+            pricingCategory:
+              pricing.pricing_category,
+            pricePerLesson:
+              Number(
+                pricing.price_per_lesson
+              ),
+            monthlyLessonCount:
+              Number(
+                pricing.monthly_lesson_count ??
+                  0
+              ),
+            weekendMultiplier:
+              Number(
+                pricing.weekend_multiplier
+              ),
+          }}
+          discountPolicies={discounts.map(
+            (policy) => ({
+              id:
+                policy.id,
+              durationMonths:
+                Number(
+                  policy.duration_months
+                ),
+              discountRate:
+                Number(
+                  policy.discount_rate
+                ),
+            })
+          )}
+          savedSelection={{
+            durationMonths:
+              request.duration_months,
+            finalPrice:
+              request.final_price,
+          }}
+        />
+      </div>
     </main>
-  );
-}
-
-function InfoBox({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div
-      style={{
-        padding: "15px 16px",
-        border: "1px solid #eaecf0",
-        borderRadius: "11px",
-        background: "#ffffff",
-      }}
-    >
-      <div
-        style={{
-          color: "#667085",
-          fontSize: "11px",
-          fontWeight: 800,
-        }}
-      >
-        {label}
-      </div>
-
-      <div
-        style={{
-          marginTop: "5px",
-          color: "#101828",
-          fontSize: "13px",
-          fontWeight: 900,
-          lineHeight: 1.6,
-        }}
-      >
-        {value}
-      </div>
-    </div>
   );
 }
