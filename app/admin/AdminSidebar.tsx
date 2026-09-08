@@ -64,10 +64,6 @@ const menuGroups: MenuGroup[] = [
     title: "수강 관리",
     items: [
       {
-        label: "수강 가능 일정",
-        href: "/admin/enrollment-options",
-      },
-      {
         label: "수강 신청 관리",
         href: "/admin/enrollment-requests",
       },
@@ -76,8 +72,16 @@ const menuGroups: MenuGroup[] = [
         href: "/admin/enrollments",
       },
       {
-        label: "수강신청 설정",
+        label: "수강 운영 설정",
         href: "/admin/enrollment-settings",
+      },
+      {
+        label: "수강료·할인 관리",
+        href: "/admin/enrollment-pricing",
+      },
+      {
+        label: "운영일·휴무 관리",
+        href: "/admin/operation-blocks",
       },
     ],
   },
