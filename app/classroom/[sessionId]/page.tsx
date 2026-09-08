@@ -541,21 +541,11 @@ export default async function ClassroomPage({
   /*
    * =====================================================
    * 학생/학부모 수업 시작 전 대기실
-   *
-   * 중요:
-   * 수업 진행 여부는 started_at 하나만 보지 않고
-   * status = in_progress도 함께 인정합니다.
-   * 이렇게 해야 상태 API가 in_progress를 반환한 뒤
-   * 학생 화면이 다시 대기실로 들어가는 새로고침 루프를 막을 수 있습니다.
    * =====================================================
    */
-  const isSessionInProgress =
-    session.status === "in_progress" ||
-    Boolean(session.started_at);
-
   if (
     isLearner &&
-    !isSessionInProgress &&
+    !session.started_at &&
     !session.ended_at
   ) {
     return (
@@ -1099,7 +1089,7 @@ export default async function ClassroomPage({
           sessionId={session.id}
           enabled={
             profile.role === "student" &&
-            isSessionInProgress &&
+            Boolean(session.started_at) &&
             !session.ended_at
           }
         />
