@@ -28,20 +28,12 @@ type LevelTestRow = {
 export default async function TeacherLevelTestsPage() {
   const supabase = await createClient();
 
-  /*
-   * =====================================================
-   * Authentication
-   * =====================================================
-   */
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect(
-      "/login?next=/teacher/level-tests"
-    );
+    redirect("/login?next=/teacher/level-tests");
   }
 
   const {
@@ -61,18 +53,11 @@ export default async function TeacherLevelTestsPage() {
     redirect("/");
   }
 
-  /*
-   * =====================================================
-   * Assigned Level Tests
-   *
-   * service role은 서버에서만 사용하며,
-   * tester_user_id를 로그인 강사 ID로
-   * 반드시 고정합니다.
-   * =====================================================
-   */
-
   const admin = createAdminClient();
 
+  /*
+   * 로그인한 강사에게 배정된 인터뷰만 조회
+   */
   const {
     data: interviewData,
     error: interviewError,
@@ -140,17 +125,12 @@ export default async function TeacherLevelTestsPage() {
       (data ?? []) as LevelTestRow[];
   }
 
-  /*
-   * =====================================================
-   * Helpers
-   * =====================================================
-   */
-
   function getLevelTest(
     levelTestId: number
   ) {
     return levelTests.find(
-      (item) => item.id === levelTestId
+      (item) =>
+        item.id === levelTestId
     );
   }
 
@@ -219,9 +199,7 @@ export default async function TeacherLevelTestsPage() {
     ).format(new Date(value));
   }
 
-  function getStatus(
-    status: string
-  ) {
+  function getStatus(status: string) {
     switch (status) {
       case "scheduling":
         return {
@@ -282,15 +260,32 @@ export default async function TeacherLevelTestsPage() {
 
   const now = Date.now();
 
+  /*
+   * in_progress는 시작 시간이 지났어도
+   * 계속 현재 진행 업무로 표시합니다.
+   */
   const upcoming = interviews.filter(
-    (item) =>
-      item.scheduled_at &&
-      ["scheduling", "scheduled", "in_progress"].includes(
-        item.status
-      ) &&
-      new Date(
+    (item) => {
+      if (
+        item.status === "in_progress" ||
+        item.status === "scheduling"
+      ) {
+        return true;
+      }
+
+      if (
+        item.status === "scheduled" &&
         item.scheduled_at
-      ).getTime() >= now
+      ) {
+        return (
+          new Date(
+            item.scheduled_at
+          ).getTime() >= now
+        );
+      }
+
+      return false;
+    }
   );
 
   const completed = interviews.filter(
@@ -298,16 +293,18 @@ export default async function TeacherLevelTestsPage() {
       item.status === "completed"
   );
 
+  const upcomingIds = new Set(
+    upcoming.map((item) => item.id)
+  );
+
+  const completedIds = new Set(
+    completed.map((item) => item.id)
+  );
+
   const other = interviews.filter(
     (item) =>
-      !upcoming.some(
-        (upcomingItem) =>
-          upcomingItem.id === item.id
-      ) &&
-      !completed.some(
-        (completedItem) =>
-          completedItem.id === item.id
-      )
+      !upcomingIds.has(item.id) &&
+      !completedIds.has(item.id)
   );
 
   return (
@@ -326,7 +323,7 @@ export default async function TeacherLevelTestsPage() {
           padding: "32px 24px 64px",
         }}
       >
-        {/* NAVIGATION */}
+        {/* Navigation */}
         <nav
           style={{
             display: "flex",
@@ -338,34 +335,14 @@ export default async function TeacherLevelTestsPage() {
         >
           <Link
             href="/teacher"
-            style={{
-              padding: "9px 13px",
-              border:
-                "1px solid #d0d5dd",
-              borderRadius: "9px",
-              background: "#ffffff",
-              color: "#344054",
-              textDecoration: "none",
-              fontSize: "12px",
-              fontWeight: 800,
-            }}
+            style={backButtonStyle}
           >
             ← Back
           </Link>
 
           <Link
             href="/teacher"
-            style={{
-              padding: "9px 13px",
-              border:
-                "1px solid #b2ccff",
-              borderRadius: "9px",
-              background: "#eef4ff",
-              color: "#175cd3",
-              textDecoration: "none",
-              fontSize: "12px",
-              fontWeight: 900,
-            }}
+            style={homeButtonStyle}
           >
             Teacher Home
           </Link>
@@ -380,7 +357,7 @@ export default async function TeacherLevelTestsPage() {
           </span>
         </nav>
 
-        {/* HERO */}
+        {/* Hero */}
         <section
           style={{
             padding: "30px",
@@ -420,8 +397,7 @@ export default async function TeacherLevelTestsPage() {
                 "rgba(255,255,255,0.72)",
             }}
           >
-            나에게 배정된 원어민
-            레벨테스트
+            나에게 배정된 원어민 레벨테스트
           </div>
 
           <p
@@ -434,9 +410,9 @@ export default async function TeacherLevelTestsPage() {
                 "rgba(255,255,255,0.88)",
             }}
           >
-            Review your upcoming TALKLY
-            level tests and join the
-            scheduled interview.
+            Review your assigned level tests,
+            enter the interview, and complete
+            the evaluation.
           </p>
 
           <div
@@ -447,13 +423,12 @@ export default async function TeacherLevelTestsPage() {
                 "rgba(255,255,255,0.6)",
             }}
           >
-            예정된 레벨테스트 일정과
-            화상 접속 정보를 확인할 수
-            있습니다.
+            배정 확인부터 테스트 입장, 평가 작성까지
+            이곳에서 진행합니다.
           </div>
         </section>
 
-        {/* SUMMARY */}
+        {/* Summary */}
         <section
           style={{
             display: "grid",
@@ -485,47 +460,17 @@ export default async function TeacherLevelTestsPage() {
           />
         </section>
 
-        {/* UPCOMING */}
+        {/* Upcoming */}
         <section
           style={{
             marginTop: "28px",
           }}
         >
-          <div
-            style={{
-              marginBottom: "13px",
-            }}
-          >
-            <div
-              style={{
-                color: "#2f6fed",
-                fontSize: "11px",
-                fontWeight: 900,
-                letterSpacing: "0.1em",
-              }}
-            >
-              UPCOMING
-            </div>
-
-            <h2
-              style={{
-                margin: "5px 0 0",
-                fontSize: "24px",
-              }}
-            >
-              Upcoming Level Tests
-            </h2>
-
-            <div
-              style={{
-                marginTop: "4px",
-                fontSize: "12px",
-                color: "#667085",
-              }}
-            >
-              예정된 레벨테스트
-            </div>
-          </div>
+          <SectionHeader
+            label="UPCOMING"
+            title="Upcoming Level Tests"
+            korean="예정된 레벨테스트"
+          />
 
           {upcoming.length === 0 ? (
             <EmptyCard
@@ -533,13 +478,7 @@ export default async function TeacherLevelTestsPage() {
               korean="현재 예정된 레벨테스트가 없습니다."
             />
           ) : (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "13px",
-              }}
-            >
+            <div style={listStyle}>
               {upcoming.map(
                 (interview) => (
                   <LevelTestCard
@@ -567,56 +506,21 @@ export default async function TeacherLevelTestsPage() {
           )}
         </section>
 
-        {/* COMPLETED */}
+        {/* Completed */}
         {completed.length > 0 && (
           <section
             style={{
               marginTop: "34px",
             }}
           >
-            <div
-              style={{
-                marginBottom: "13px",
-              }}
-            >
-              <div
-                style={{
-                  color: "#667085",
-                  fontSize: "11px",
-                  fontWeight: 900,
-                  letterSpacing: "0.1em",
-                }}
-              >
-                COMPLETED
-              </div>
+            <SectionHeader
+              label="COMPLETED"
+              title="Completed Tests"
+              korean="완료된 레벨테스트"
+              muted
+            />
 
-              <h2
-                style={{
-                  margin: "5px 0 0",
-                  fontSize: "23px",
-                }}
-              >
-                Completed Tests
-              </h2>
-
-              <div
-                style={{
-                  marginTop: "4px",
-                  fontSize: "12px",
-                  color: "#667085",
-                }}
-              >
-                완료된 레벨테스트
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-              }}
-            >
+            <div style={listStyle}>
               {completed.map(
                 (interview) => (
                   <LevelTestCard
@@ -644,45 +548,20 @@ export default async function TeacherLevelTestsPage() {
           </section>
         )}
 
-        {/* OTHER */}
+        {/* Other */}
         {other.length > 0 && (
           <section
             style={{
               marginTop: "34px",
             }}
           >
-            <div
-              style={{
-                marginBottom: "13px",
-              }}
-            >
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize: "22px",
-                }}
-              >
-                Other Tests
-              </h2>
+            <SectionHeader
+              title="Other Tests"
+              korean="취소 또는 종료된 기타 테스트 기록"
+              muted
+            />
 
-              <div
-                style={{
-                  marginTop: "4px",
-                  fontSize: "12px",
-                  color: "#667085",
-                }}
-              >
-                기타 테스트
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-              }}
-            >
+            <div style={listStyle}>
               {other.map(
                 (interview) => (
                   <LevelTestCard
@@ -710,7 +589,6 @@ export default async function TeacherLevelTestsPage() {
           </section>
         )}
 
-        {/* FOOT NAV */}
         <div
           style={{
             marginTop: "32px",
@@ -720,38 +598,83 @@ export default async function TeacherLevelTestsPage() {
             display: "flex",
             gap: "10px",
             flexWrap: "wrap",
+            alignItems: "center",
           }}
         >
           <Link
             href="/teacher"
-            style={{
-              padding: "11px 16px",
-              border:
-                "1px solid #d0d5dd",
-              borderRadius: "9px",
-              background: "#ffffff",
-              color: "#344054",
-              textDecoration: "none",
-              fontSize: "12px",
-              fontWeight: 800,
-            }}
+            style={backButtonStyle}
           >
             ← Back to Teacher Home
           </Link>
 
-          <div
+          <span
             style={{
-              display: "flex",
-              alignItems: "center",
               fontSize: "11px",
               color: "#98a2b3",
             }}
           >
             강사 메인으로 돌아가기
-          </div>
+          </span>
         </div>
       </div>
     </main>
+  );
+}
+
+function SectionHeader({
+  label,
+  title,
+  korean,
+  muted = false,
+}: {
+  label?: string;
+  title: string;
+  korean: string;
+  muted?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        marginBottom: "13px",
+      }}
+    >
+      {label && (
+        <div
+          style={{
+            color: muted
+              ? "#667085"
+              : "#2f6fed",
+            fontSize: "11px",
+            fontWeight: 900,
+            letterSpacing: "0.1em",
+          }}
+        >
+          {label}
+        </div>
+      )}
+
+      <h2
+        style={{
+          margin: label
+            ? "5px 0 0"
+            : 0,
+          fontSize: "24px",
+        }}
+      >
+        {title}
+      </h2>
+
+      <div
+        style={{
+          marginTop: "4px",
+          fontSize: "12px",
+          color: "#667085",
+        }}
+      >
+        {korean}
+      </div>
+    </div>
   );
 }
 
@@ -886,6 +809,20 @@ function LevelTestCard({
     border: string;
   };
 }) {
+  const isCancelled =
+    interview.status === "cancelled" ||
+    interview.status === "canceled";
+
+  const actionLabel =
+    interview.status === "completed"
+      ? "View Evaluation →"
+      : interview.status ===
+        "in_progress"
+      ? "Continue Level Test →"
+      : isCancelled
+      ? "View Record →"
+      : "Open Level Test →";
+
   return (
     <article
       style={{
@@ -1040,7 +977,7 @@ function LevelTestCard({
           justifyContent:
             "space-between",
           alignItems: "center",
-          gap: "10px",
+          gap: "12px",
           flexWrap: "wrap",
         }}
       >
@@ -1066,67 +1003,27 @@ function LevelTestCard({
           </div>
         </div>
 
-        <div
+        <Link
+          href={`/teacher/level-tests/${interview.id}`}
           style={{
-            display: "flex",
-            gap: "8px",
-            flexWrap: "wrap",
+            padding: "10px 15px",
+            borderRadius: "9px",
+            background: isCancelled
+              ? "#ffffff"
+              : "#0A1F44",
+            border: isCancelled
+              ? "1px solid #d0d5dd"
+              : "1px solid #0A1F44",
+            color: isCancelled
+              ? "#667085"
+              : "#ffffff",
+            textDecoration: "none",
+            fontSize: "12px",
+            fontWeight: 900,
           }}
         >
-          {interview.meeting_url &&
-            interview.status !==
-              "completed" && (
-              <a
-                href={
-                  interview.meeting_url
-                }
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  padding:
-                    "10px 15px",
-                  borderRadius:
-                    "9px",
-                  background:
-                    "#0A1F44",
-                  color: "#ffffff",
-                  textDecoration:
-                    "none",
-                  fontSize: "12px",
-                  fontWeight: 900,
-                }}
-              >
-                Enter Level Test ↗
-              </a>
-            )}
-
-          <div
-            style={{
-              padding: "10px 14px",
-              border:
-                "1px solid #e4e7ec",
-              borderRadius: "9px",
-              background: "#f9fafb",
-              color: "#98a2b3",
-              fontSize: "11px",
-              fontWeight: 800,
-            }}
-          >
-            Details & Evaluation
-          </div>
-        </div>
-      </div>
-
-      <div
-        style={{
-          marginTop: "9px",
-          fontSize: "10px",
-          color: "#98a2b3",
-          textAlign: "right",
-        }}
-      >
-        상세 및 평가 기능은 다음 단계에서
-        연결됩니다.
+          {actionLabel}
+        </Link>
       </div>
     </article>
   );
@@ -1197,3 +1094,31 @@ function InfoBox({
     </div>
   );
 }
+
+const listStyle = {
+  display: "flex",
+  flexDirection: "column" as const,
+  gap: "13px",
+};
+
+const backButtonStyle = {
+  padding: "9px 13px",
+  border: "1px solid #d0d5dd",
+  borderRadius: "9px",
+  background: "#ffffff",
+  color: "#344054",
+  textDecoration: "none",
+  fontSize: "12px",
+  fontWeight: 800,
+};
+
+const homeButtonStyle = {
+  padding: "9px 13px",
+  border: "1px solid #b2ccff",
+  borderRadius: "9px",
+  background: "#eef4ff",
+  color: "#175cd3",
+  textDecoration: "none",
+  fontSize: "12px",
+  fontWeight: 900,
+};
