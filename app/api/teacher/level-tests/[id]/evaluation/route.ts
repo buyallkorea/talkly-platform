@@ -28,7 +28,15 @@ type InterviewRow = {
   level_test_id: number;
   tester_user_id: string | null;
   status: string;
+
+  /*
+   * 테스트 예정시간
+   * 시작 10분 전 입장 제한에 사용
+   */
+  scheduled_at: string | null;
+
   meeting_url: string | null;
+
   started_at: string | null;
   completed_at: string | null;
 
@@ -172,6 +180,7 @@ export async function POST(
         level_test_id,
         tester_user_id,
         status,
+        scheduled_at,
         meeting_url,
         started_at,
         completed_at,
@@ -345,7 +354,10 @@ export async function POST(
       }
 
       /*
-       * 이미 진행 중이면 재입장을 허용
+       * 이미 테스트가 시작된 경우에는
+       * 예정 종료시간이 지나더라도 재입장 허용.
+       *
+       * 따라서 시간 검증보다 먼저 처리합니다.
        */
       if (
         interview.status ===
@@ -374,6 +386,10 @@ export async function POST(
         });
       }
 
+      /*
+       * 아직 시작 전이라면
+       * scheduled 상태만 시작 가능
+       */
       if (
         interview.status !==
         "scheduled"
@@ -389,6 +405,109 @@ export async function POST(
         );
       }
 
+      /*
+       * =====================================================
+       * 4. 예정시간 검증
+       * =====================================================
+       */
+
+      if (
+        !interview.scheduled_at
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "The level test schedule has not been registered.",
+          },
+          {
+            status: 409,
+          }
+        );
+      }
+
+      const scheduledTime =
+        new Date(
+          interview.scheduled_at
+        ).getTime();
+
+      if (
+        Number.isNaN(
+          scheduledTime
+        )
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "The scheduled level test time is invalid.",
+          },
+          {
+            status: 500,
+          }
+        );
+      }
+
+      /*
+       * 테스트 시작 10분 전부터 입장 가능.
+       *
+       * 예:
+       * 12:00 테스트
+       * → 11:50부터 입장 가능
+       */
+      const entryOpenTime =
+        scheduledTime -
+        10 * 60 * 1000;
+
+      const currentTime =
+        Date.now();
+
+      if (
+        currentTime <
+        entryOpenTime
+      ) {
+        const remainingMinutes =
+          Math.max(
+            1,
+            Math.ceil(
+              (
+                entryOpenTime -
+                currentTime
+              ) /
+                60000
+            )
+          );
+
+        return NextResponse.json(
+          {
+            error:
+              `You can enter this level test 10 minutes before the scheduled start time. Entry opens in approximately ${remainingMinutes} minute${
+                remainingMinutes === 1
+                  ? ""
+                  : "s"
+              }.`,
+
+            code:
+              "LEVEL_TEST_ENTRY_TOO_EARLY",
+
+            scheduledAt:
+              interview.scheduled_at,
+
+            entryOpenAt:
+              new Date(
+                entryOpenTime
+              ).toISOString(),
+          },
+          {
+            status: 409,
+          }
+        );
+      }
+
+      /*
+       * =====================================================
+       * 5. Meeting URL 확인
+       * =====================================================
+       */
+
       if (
         !interview.meeting_url
       ) {
@@ -402,6 +521,12 @@ export async function POST(
           }
         );
       }
+
+      /*
+       * =====================================================
+       * 6. 인터뷰 시작
+       * =====================================================
+       */
 
       const {
         data: startedInterview,
@@ -460,6 +585,7 @@ export async function POST(
        * 최종 상태는 평가 제출 때
        * interview_completed로 변경.
        */
+
       const {
         error:
           levelTestStartError,
@@ -483,6 +609,7 @@ export async function POST(
         /*
          * 가능한 범위에서 원상복구
          */
+
         await admin
           .from(
             "level_test_interviews"
@@ -490,9 +617,12 @@ export async function POST(
           .update({
             status:
               interview.status,
+
             started_at:
               interview.started_at,
-            updated_at: now,
+
+            updated_at:
+              now,
           })
           .eq(
             "id",
@@ -559,6 +689,12 @@ export async function POST(
           }
         );
       }
+
+      /*
+       * =====================================================
+       * 평가 점수 검증
+       * =====================================================
+       */
 
       if (
         !validScore(
@@ -631,6 +767,12 @@ export async function POST(
         cleanOptionalText(
           body.teacherComment
         );
+
+      /*
+       * =====================================================
+       * 인터뷰 평가 저장
+       * =====================================================
+       */
 
       const {
         data:
@@ -706,6 +848,9 @@ export async function POST(
       }
 
       /*
+       * =====================================================
+       * level_tests 상태 반영
+       *
        * 강사는 여기까지만 결정합니다.
        *
        * teacher_suggested_level 저장
@@ -713,7 +858,9 @@ export async function POST(
        *
        * final_level / final_course_id는
        * 절대 수정하지 않습니다.
+       * =====================================================
        */
+
       const {
         error:
           levelTestUpdateError,
@@ -742,8 +889,10 @@ export async function POST(
       ) {
         /*
          * level_tests 저장 실패 시
-         * 인터뷰를 가능한 범위에서 이전 상태로 복원
+         * 인터뷰를 가능한 범위에서
+         * 이전 상태로 복원
          */
+
         await admin
           .from(
             "level_test_interviews"

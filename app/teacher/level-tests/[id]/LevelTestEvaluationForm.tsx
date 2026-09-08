@@ -2,14 +2,20 @@
 
 import {
   FormEvent,
+  useEffect,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
 
 type Props = {
   interviewId: number;
+
   initialStatus: string;
+
+  scheduledAt: string | null;
+
   meetingUrl: string | null;
+
   isCurrentInterview: boolean;
 
   interview: {
@@ -17,42 +23,71 @@ type Props = {
     listening_level: number | null;
     pronunciation_level: number | null;
     comprehension_level: number | null;
+
     suggested_level: string | null;
+
     strengths: string | null;
     weaknesses: string | null;
     teacher_comment: string | null;
   };
 };
 
+type ApiResponse = {
+  ok?: boolean;
+
+  status?: string;
+
+  levelTestStatus?: string;
+
+  meetingUrl?: string | null;
+
+  error?: string;
+
+  code?: string;
+
+  scheduledAt?: string;
+
+  entryOpenAt?: string;
+};
+
 export default function LevelTestEvaluationForm({
   interviewId,
   initialStatus,
+  scheduledAt,
   meetingUrl,
   isCurrentInterview,
   interview,
 }: Props) {
   const router = useRouter();
 
-  const [status, setStatus] =
-    useState(initialStatus);
+  const [
+    status,
+    setStatus,
+  ] = useState(
+    initialStatus
+  );
 
-  const [speakingLevel, setSpeakingLevel] =
-    useState(
-      interview.speaking_level
-        ? String(
-            interview.speaking_level
-          )
-        : ""
-    );
+  const [
+    speakingLevel,
+    setSpeakingLevel,
+  ] = useState(
+    interview.speaking_level
+      ? String(
+          interview.speaking_level
+        )
+      : ""
+  );
 
-  const [listeningLevel, setListeningLevel] =
-    useState(
-      interview.listening_level
-        ? String(
-            interview.listening_level
-          )
-        : ""
-    );
+  const [
+    listeningLevel,
+    setListeningLevel,
+  ] = useState(
+    interview.listening_level
+      ? String(
+          interview.listening_level
+        )
+      : ""
+  );
 
   const [
     pronunciationLevel,
@@ -80,28 +115,38 @@ export default function LevelTestEvaluationForm({
     suggestedLevel,
     setSuggestedLevel,
   ] = useState(
-    interview.suggested_level || ""
+    interview.suggested_level ??
+      ""
   );
 
-  const [strengths, setStrengths] =
-    useState(
-      interview.strengths || ""
-    );
+  const [
+    strengths,
+    setStrengths,
+  ] = useState(
+    interview.strengths ??
+      ""
+  );
 
-  const [weaknesses, setWeaknesses] =
-    useState(
-      interview.weaknesses || ""
-    );
+  const [
+    weaknesses,
+    setWeaknesses,
+  ] = useState(
+    interview.weaknesses ??
+      ""
+  );
 
   const [
     teacherComment,
     setTeacherComment,
   ] = useState(
-    interview.teacher_comment || ""
+    interview.teacher_comment ??
+      ""
   );
 
-  const [loading, setLoading] =
-    useState(false);
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
 
   const [
     errorMessage,
@@ -113,96 +158,185 @@ export default function LevelTestEvaluationForm({
     setSuccessMessage,
   ] = useState("");
 
-  const isCancelled =
-    status === "cancelled" ||
-    status === "canceled";
+  /*
+   * =====================================================
+   * 현재 시간
+   *
+   * scheduled 상태인 동안 15초마다 갱신합니다.
+   * 페이지를 새로고침하지 않아도
+   * 테스트 시작 10분 전이 되면
+   * 입장 버튼이 자동으로 활성화됩니다.
+   * =====================================================
+   */
 
-  function parseScore(
-    value: string,
-    label: string
-  ) {
-    if (!value) {
-      throw new Error(
-        `Please select the ${label} score.`
-      );
-    }
+  const [
+    nowMs,
+    setNowMs,
+  ] = useState(
+    () => Date.now()
+  );
 
-    const numberValue =
-      Number(value);
-
+  useEffect(() => {
     if (
-      !Number.isInteger(numberValue) ||
-      numberValue < 1 ||
-      numberValue > 10
+      status !==
+      "scheduled"
     ) {
-      throw new Error(
-        `${label} must be an integer from 1 to 10.`
-      );
+      return;
     }
 
-    return numberValue;
-  }
+    const timer =
+      window.setInterval(
+        () => {
+          setNowMs(
+            Date.now()
+          );
+        },
+        15_000
+      );
+
+    return () => {
+      window.clearInterval(
+        timer
+      );
+    };
+  }, [status]);
 
   /*
-   * 테스트 시작 + 화상회의 입장
-   *
-   * 서버에서 먼저 담당 강사와 현재 인터뷰인지
-   * 확인하고 status를 in_progress로 바꾼 뒤
-   * meeting URL로 이동합니다.
+   * =====================================================
+   * 입장 가능시간 계산
+   * =====================================================
    */
-  async function handleStartAndEnter() {
-    setErrorMessage("");
-    setSuccessMessage("");
 
-    if (!meetingUrl) {
-      setErrorMessage(
-        "The meeting link has not been registered yet."
-      );
+  const scheduledTimeMs =
+    scheduledAt
+      ? new Date(
+          scheduledAt
+        ).getTime()
+      : null;
+
+  const hasValidSchedule =
+    scheduledTimeMs !==
+      null &&
+    !Number.isNaN(
+      scheduledTimeMs
+    );
+
+  /*
+   * 테스트 시작 10분 전
+   */
+  const entryOpenAtMs =
+    hasValidSchedule
+      ? scheduledTimeMs -
+        10 * 60 * 1000
+      : null;
+
+  /*
+   * 이미 테스트가 진행 중이면
+   * 예정 시간이 지나도 재입장 가능
+   */
+  const canEnterByTime =
+    status ===
+      "in_progress" ||
+    (
+      status ===
+        "scheduled" &&
+      entryOpenAtMs !==
+        null &&
+      nowMs >=
+        entryOpenAtMs
+    );
+
+  const minutesUntilEntry =
+    entryOpenAtMs !==
+      null &&
+    nowMs <
+      entryOpenAtMs
+      ? Math.max(
+          1,
+          Math.ceil(
+            (
+              entryOpenAtMs -
+              nowMs
+            ) /
+              60000
+          )
+        )
+      : 0;
+
+  /*
+   * =====================================================
+   * 테스트 시작 + 입장
+   * =====================================================
+   */
+
+  async function handleStartAndEnter() {
+    if (
+      loading ||
+      !isCurrentInterview
+    ) {
       return;
     }
 
     setLoading(true);
+    setErrorMessage("");
+    setSuccessMessage("");
 
     try {
-      const response = await fetch(
-        `/api/teacher/level-tests/${interviewId}/evaluation`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            action: "start",
-          }),
-        }
-      );
+      const response =
+        await fetch(
+          `/api/teacher/level-tests/${interviewId}/evaluation`,
+          {
+            method:
+              "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                action:
+                  "start",
+              }),
+          }
+        );
 
       const result =
-        await response.json();
+        (await response.json()) as ApiResponse;
 
-      if (!response.ok) {
-        setErrorMessage(
-          result?.error ||
+      if (
+        !response.ok
+      ) {
+        throw new Error(
+          result.error ??
             "Unable to start the level test."
         );
-        return;
       }
 
-      setStatus("in_progress");
+      if (
+        !result.meetingUrl
+      ) {
+        throw new Error(
+          "The meeting link has not been registered."
+        );
+      }
+
+      setStatus(
+        "in_progress"
+      );
 
       /*
-       * 새 창 팝업 차단 문제를 피하기 위해
-       * 현재 탭에서 회의로 이동합니다.
-       * 테스트 종료 후 TALKLY로 돌아와 평가 작성.
+       * 현재 탭에서 화상회의로 이동합니다.
+       *
+       * 브라우저 popup 차단을 피하기 위해
+       * window.open 대신 location.href 사용.
        */
-      window.location.assign(
-        result.meetingUrl ||
-          meetingUrl
-      );
+      window.location.href =
+        result.meetingUrl;
     } catch (error) {
       console.error(
-        "LEVEL TEST START ERROR:",
+        "TEACHER LEVEL TEST START ERROR:",
         error
       );
 
@@ -216,22 +350,163 @@ export default function LevelTestEvaluationForm({
     }
   }
 
+  /*
+   * =====================================================
+   * 진행 중 테스트 재입장
+   * =====================================================
+   */
+
+  async function handleReEnter() {
+    if (
+      loading ||
+      !isCurrentInterview
+    ) {
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const response =
+        await fetch(
+          `/api/teacher/level-tests/${interviewId}/evaluation`,
+          {
+            method:
+              "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                action:
+                  "start",
+              }),
+          }
+        );
+
+      const result =
+        (await response.json()) as ApiResponse;
+
+      if (
+        !response.ok
+      ) {
+        throw new Error(
+          result.error ??
+            "Unable to re-enter the level test."
+        );
+      }
+
+      if (
+        !result.meetingUrl
+      ) {
+        throw new Error(
+          "The meeting link has not been registered."
+        );
+      }
+
+      window.location.href =
+        result.meetingUrl;
+    } catch (error) {
+      console.error(
+        "TEACHER LEVEL TEST RE-ENTRY ERROR:",
+        error
+      );
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to re-enter the level test."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /*
+   * =====================================================
+   * 평가 저장
+   * =====================================================
+   */
+
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
+    if (
+      loading ||
+      !isCurrentInterview
+    ) {
+      return;
+    }
+
     setErrorMessage("");
     setSuccessMessage("");
 
-    if (status !== "in_progress") {
+    if (
+      status !==
+      "in_progress"
+    ) {
       setErrorMessage(
-        "The level test must be started before you can submit the evaluation."
+        "The level test must be started before the evaluation can be submitted."
       );
       return;
     }
 
-    if (!suggestedLevel.trim()) {
+    const speaking =
+      Number(
+        speakingLevel
+      );
+
+    const listening =
+      Number(
+        listeningLevel
+      );
+
+    const pronunciation =
+      Number(
+        pronunciationLevel
+      );
+
+    const comprehension =
+      Number(
+        comprehensionLevel
+      );
+
+    const scores = [
+      speaking,
+      listening,
+      pronunciation,
+      comprehension,
+    ];
+
+    const invalidScore =
+      scores.some(
+        (score) =>
+          !Number.isInteger(
+            score
+          ) ||
+          score < 1 ||
+          score > 10
+      );
+
+    if (
+      invalidScore
+    ) {
+      setErrorMessage(
+        "Please select a score from 1 to 10 for all four evaluation areas."
+      );
+      return;
+    }
+
+    if (
+      !suggestedLevel.trim()
+    ) {
       setErrorMessage(
         "Please enter your suggested level."
       );
@@ -241,628 +516,996 @@ export default function LevelTestEvaluationForm({
     setLoading(true);
 
     try {
-      const speaking =
-        parseScore(
-          speakingLevel,
-          "Speaking"
-        );
+      const response =
+        await fetch(
+          `/api/teacher/level-tests/${interviewId}/evaluation`,
+          {
+            method:
+              "POST",
 
-      const listening =
-        parseScore(
-          listeningLevel,
-          "Listening"
-        );
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
 
-      const pronunciation =
-        parseScore(
-          pronunciationLevel,
-          "Pronunciation"
-        );
+            body:
+              JSON.stringify({
+                action:
+                  "complete",
 
-      const comprehension =
-        parseScore(
-          comprehensionLevel,
-          "Comprehension"
-        );
+                speakingLevel:
+                  speaking,
 
-      const response = await fetch(
-        `/api/teacher/level-tests/${interviewId}/evaluation`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            action: "complete",
-            speakingLevel:
-              speaking,
-            listeningLevel:
-              listening,
-            pronunciationLevel:
-              pronunciation,
-            comprehensionLevel:
-              comprehension,
-            suggestedLevel:
-              suggestedLevel.trim(),
-            strengths:
-              strengths.trim(),
-            weaknesses:
-              weaknesses.trim(),
-            teacherComment:
-              teacherComment.trim(),
-          }),
-        }
-      );
+                listeningLevel:
+                  listening,
+
+                pronunciationLevel:
+                  pronunciation,
+
+                comprehensionLevel:
+                  comprehension,
+
+                suggestedLevel:
+                  suggestedLevel.trim(),
+
+                strengths:
+                  strengths.trim(),
+
+                weaknesses:
+                  weaknesses.trim(),
+
+                teacherComment:
+                  teacherComment.trim(),
+              }),
+          }
+        );
 
       const result =
-        await response.json();
+        (await response.json()) as ApiResponse;
 
-      if (!response.ok) {
-        setErrorMessage(
-          result?.error ||
-            "Unable to save the evaluation."
+      if (
+        !response.ok
+      ) {
+        throw new Error(
+          result.error ??
+            "Unable to save the level test evaluation."
         );
-        return;
       }
 
-      setStatus("completed");
+      setStatus(
+        "completed"
+      );
 
       setSuccessMessage(
-        "Your level test evaluation has been submitted successfully."
+        "Level test evaluation submitted successfully."
       );
 
       router.refresh();
     } catch (error) {
       console.error(
-        "LEVEL TEST EVALUATION ERROR:",
+        "TEACHER LEVEL TEST COMPLETE ERROR:",
         error
       );
 
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Unable to save the evaluation."
+          : "Unable to save the level test evaluation."
       );
     } finally {
       setLoading(false);
     }
   }
 
+  /*
+   * =====================================================
+   * 과거 / 비활성 인터뷰
+   * =====================================================
+   */
+
   if (
-    !isCurrentInterview ||
-    isCancelled
+    !isCurrentInterview
   ) {
     return (
-      <section style={sectionStyle}>
-        <SectionTitle
-          title="Teacher Action"
-          korean="강사 작업"
-          description="This interview is an archived record. No action is available."
-          descriptionKo="과거 또는 취소된 인터뷰 기록으로 입장 및 평가 작업을 할 수 없습니다."
+      <section
+        style={
+          sectionStyle
+        }
+      >
+        <SectionHeader
+          eyebrow="LEVEL TEST RECORD"
+          title="Archived Level Test"
+          description="This is a previous level-test record and can no longer be modified."
+          korean="과거 레벨테스트 기록으로, 현재는 수정할 수 없습니다."
         />
+
+        <NoticeBox
+          type="warning"
+        >
+          This level test is
+          read-only.
+          <br />
+          현재 유효한 테스트가
+          아니므로 입장하거나 평가를
+          변경할 수 없습니다.
+        </NoticeBox>
       </section>
     );
   }
 
-  if (status === "completed") {
+  /*
+   * =====================================================
+   * 취소된 테스트
+   * =====================================================
+   */
+
+  if (
+    status ===
+      "cancelled" ||
+    status ===
+      "canceled"
+  ) {
     return (
-      <section style={sectionStyle}>
-        <SectionTitle
-          title="Evaluation Completed"
-          korean="평가 제출 완료"
-          description="Your evaluation has been submitted and is now waiting for the administrator's final review."
-          descriptionKo="강사 평가가 저장되었습니다. 최종 레벨과 추천 과정은 관리자가 확정합니다."
+      <section
+        style={
+          sectionStyle
+        }
+      >
+        <SectionHeader
+          eyebrow="LEVEL TEST"
+          title="Level Test Cancelled"
+          description="This level test has been cancelled."
+          korean="취소된 레벨테스트입니다."
         />
 
-        <div
-          style={{
-            marginTop: "20px",
-            padding: "17px",
-            border:
-              "1px solid #abefc6",
-            borderRadius: "11px",
-            background: "#ecfdf3",
-            color: "#027a48",
-          }}
+        <NoticeBox
+          type="warning"
         >
-          <strong>
-            Evaluation submitted
-            successfully.
-          </strong>
-
-          <div
-            style={{
-              marginTop: "3px",
-              fontSize: "11px",
-            }}
-          >
-            평가가 정상적으로 제출되었습니다.
-          </div>
-        </div>
-
-        <div
-          style={{
-            marginTop: "18px",
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit, minmax(150px, 1fr))",
-            gap: "10px",
-          }}
-        >
-          <ResultBox
-            label="Speaking"
-            value={
-              speakingLevel || "-"
-            }
-          />
-          <ResultBox
-            label="Listening"
-            value={
-              listeningLevel || "-"
-            }
-          />
-          <ResultBox
-            label="Pronunciation"
-            value={
-              pronunciationLevel ||
-              "-"
-            }
-          />
-          <ResultBox
-            label="Comprehension"
-            value={
-              comprehensionLevel ||
-              "-"
-            }
-          />
-        </div>
-
-        <ReadOnlyText
-          label="Suggested Level"
-          korean="강사 제안 레벨"
-          value={
-            suggestedLevel || "-"
-          }
-        />
-
-        <ReadOnlyText
-          label="Strengths"
-          korean="강점"
-          value={strengths || "-"}
-        />
-
-        <ReadOnlyText
-          label="Areas for Improvement"
-          korean="보완점"
-          value={weaknesses || "-"}
-        />
-
-        <ReadOnlyText
-          label="Teacher Comment"
-          korean="강사 의견"
-          value={
-            teacherComment || "-"
-          }
-        />
-
-        {successMessage && (
-          <div style={successStyle}>
-            {successMessage}
-          </div>
-        )}
+          This test is no longer
+          available.
+        </NoticeBox>
       </section>
     );
   }
 
-  if (status === "scheduled") {
+  /*
+   * =====================================================
+   * 예정 상태
+   * =====================================================
+   */
+
+  if (
+    status ===
+    "scheduled"
+  ) {
     return (
-      <section style={sectionStyle}>
-        <SectionTitle
-          title="Start Level Test"
-          korean="레벨테스트 시작"
-          description="Start the assigned level test and enter the registered video meeting."
-          descriptionKo="테스트 시작 버튼을 누르면 진행 중 상태로 변경되고 등록된 화상회의로 이동합니다."
+      <section
+        style={
+          sectionStyle
+        }
+      >
+        <SectionHeader
+          eyebrow="LEVEL TEST ENTRY"
+          title="Enter Level Test"
+          description="You can enter the video level test starting 10 minutes before the scheduled time."
+          korean="예정된 테스트 시작 10분 전부터 입장할 수 있습니다."
         />
 
         {!meetingUrl ? (
-          <div style={warningStyle}>
+          <NoticeBox
+            type="warning"
+          >
             <strong>
-              Meeting link not registered.
+              Meeting link not
+              registered yet.
             </strong>
 
-            <div
+            <br />
+
+            The administrator must
+            register the meeting
+            link before you can
+            enter.
+
+            <br />
+
+            관리자가 화상
+            레벨테스트 링크를
+            등록해야 입장할 수
+            있습니다.
+          </NoticeBox>
+        ) : !hasValidSchedule ? (
+          <NoticeBox
+            type="warning"
+          >
+            <strong>
+              Schedule information
+              is unavailable.
+            </strong>
+
+            <br />
+
+            Please contact the
+            administrator.
+
+            <br />
+
+            테스트 일정 정보를
+            확인할 수 없습니다.
+          </NoticeBox>
+        ) : !canEnterByTime ? (
+          <>
+            <NoticeBox
+              type="info"
+            >
+              <strong>
+                Entry opens 10
+                minutes before the
+                scheduled start.
+              </strong>
+
+              <br />
+
+              테스트 시작 10분
+              전부터 입장할 수
+              있습니다.
+
+              {minutesUntilEntry >
+                0 && (
+                <>
+                  <br />
+
+                  Approximately{" "}
+                  <strong>
+                    {
+                      minutesUntilEntry
+                    }{" "}
+                    minute
+                    {minutesUntilEntry ===
+                    1
+                      ? ""
+                      : "s"}
+                  </strong>{" "}
+                  until entry opens.
+                </>
+              )}
+            </NoticeBox>
+
+            <button
+              type="button"
+              disabled
               style={{
-                marginTop: "4px",
-                fontSize: "11px",
+                ...primaryButtonStyle,
+                marginTop:
+                  "16px",
+                background:
+                  "#98a2b3",
+                cursor:
+                  "default",
               }}
             >
-              화상회의 링크가 등록된 후
-              테스트를 시작할 수 있습니다.
-            </div>
-          </div>
+              Entry Opens 10
+              Minutes Before
+            </button>
+          </>
         ) : (
-          <div
-            style={{
-              marginTop: "22px",
-              display: "flex",
-              justifyContent:
-                "flex-end",
-            }}
-          >
+          <>
+            <NoticeBox
+              type="success"
+            >
+              <strong>
+                The level test is
+                ready.
+              </strong>
+
+              <br />
+
+              You can enter the
+              meeting now.
+
+              <br />
+
+              지금 화상
+              레벨테스트에 입장할
+              수 있습니다.
+            </NoticeBox>
+
             <button
               type="button"
               onClick={
                 handleStartAndEnter
               }
-              disabled={loading}
+              disabled={
+                loading
+              }
               style={{
-                minHeight: "48px",
-                padding: "0 22px",
-                border: "none",
-                borderRadius: "10px",
-                background: loading
-                  ? "#98a2b3"
-                  : "#0A1F44",
-                color: "#ffffff",
-                fontFamily: "inherit",
-                fontSize: "13px",
-                fontWeight: 900,
-                cursor: loading
-                  ? "default"
-                  : "pointer",
+                ...primaryButtonStyle,
+                marginTop:
+                  "16px",
+                background:
+                  loading
+                    ? "#98a2b3"
+                    : "#0A1F44",
+                cursor:
+                  loading
+                    ? "default"
+                    : "pointer",
               }}
             >
               {loading
                 ? "Starting..."
                 : "Start & Enter Level Test ↗"}
             </button>
-          </div>
+          </>
         )}
 
         {errorMessage && (
-          <div style={errorStyle}>
-            {errorMessage}
-          </div>
+          <MessageBox
+            type="error"
+            message={
+              errorMessage
+            }
+          />
         )}
       </section>
     );
   }
 
-  if (status !== "in_progress") {
+  /*
+   * =====================================================
+   * 완료 상태
+   * =====================================================
+   */
+
+  if (
+    status ===
+    "completed"
+  ) {
     return (
-      <section style={sectionStyle}>
-        <SectionTitle
-          title="Teacher Action"
-          korean="강사 작업"
-          description="No teacher action is currently available for this interview."
-          descriptionKo="현재 상태에서는 강사가 진행할 수 있는 작업이 없습니다."
-        />
-      </section>
-    );
-  }
-
-  return (
-    <section style={sectionStyle}>
-      <SectionTitle
-        title="Level Test Evaluation"
-        korean="레벨테스트 강사 평가"
-        description="After completing the interview, evaluate the student's speaking, listening, pronunciation and comprehension."
-        descriptionKo="테스트 종료 후 학생의 Speaking, Listening, Pronunciation, Comprehension 및 강사 의견을 입력해주세요."
-      />
-
-      {meetingUrl && (
-        <div
-          style={{
-            marginTop: "18px",
-            display: "flex",
-            justifyContent:
-              "flex-end",
-          }}
-        >
-          <a
-            href={meetingUrl}
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              padding: "9px 14px",
-              border:
-                "1px solid #b2ccff",
-              borderRadius: "9px",
-              background: "#eef4ff",
-              color: "#175cd3",
-              textDecoration: "none",
-              fontSize: "11px",
-              fontWeight: 900,
-            }}
-          >
-            Re-enter Meeting ↗
-          </a>
-        </div>
-      )}
-
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          marginTop: "22px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "21px",
-        }}
+      <section
+        style={
+          sectionStyle
+        }
       >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit, minmax(145px, 1fr))",
-            gap: "12px",
-          }}
-        >
-          <ScoreSelect
-            id="speakingLevel"
-            label="Speaking"
-            korean="말하기"
-            value={speakingLevel}
-            onChange={setSpeakingLevel}
-            disabled={loading}
-          />
+        <SectionHeader
+          eyebrow="EVALUATION COMPLETE"
+          title="Level Test Evaluation"
+          description="Your evaluation has been submitted. The administrator will make the final level and course decision."
+          korean="강사 평가는 제출 완료되었습니다. 최종 레벨 및 과정은 관리자가 확정합니다."
+        />
 
-          <ScoreSelect
-            id="listeningLevel"
-            label="Listening"
-            korean="듣기"
-            value={listeningLevel}
-            onChange={setListeningLevel}
-            disabled={loading}
-          />
-
-          <ScoreSelect
-            id="pronunciationLevel"
-            label="Pronunciation"
-            korean="발음"
-            value={pronunciationLevel}
-            onChange={
-              setPronunciationLevel
-            }
-            disabled={loading}
-          />
-
-          <ScoreSelect
-            id="comprehensionLevel"
-            label="Comprehension"
-            korean="이해도"
-            value={comprehensionLevel}
-            onChange={
-              setComprehensionLevel
-            }
-            disabled={loading}
-          />
-        </div>
-
-        <FieldGroup
-          label="Suggested Level"
-          korean="강사 제안 레벨"
-        >
-          <input
-            type="text"
-            value={suggestedLevel}
-            onChange={(event) => {
-              setSuggestedLevel(
-                event.target.value
-              );
-              setSuccessMessage("");
-            }}
-            placeholder="e.g. TALKLY Level 4"
-            disabled={loading}
-            style={fieldStyle}
-          />
-        </FieldGroup>
-
-        <FieldGroup
-          label="Strengths"
-          korean="강점"
-        >
-          <textarea
-            value={strengths}
-            onChange={(event) => {
-              setStrengths(
-                event.target.value
-              );
-              setSuccessMessage("");
-            }}
-            rows={4}
-            placeholder="Describe the student's strengths."
-            disabled={loading}
-            style={textareaStyle}
-          />
-        </FieldGroup>
-
-        <FieldGroup
-          label="Areas for Improvement"
-          korean="보완점"
-        >
-          <textarea
-            value={weaknesses}
-            onChange={(event) => {
-              setWeaknesses(
-                event.target.value
-              );
-              setSuccessMessage("");
-            }}
-            rows={4}
-            placeholder="Describe areas that need improvement."
-            disabled={loading}
-            style={textareaStyle}
-          />
-        </FieldGroup>
-
-        <FieldGroup
-          label="Teacher Comment"
-          korean="강사 의견"
-        >
-          <textarea
-            value={teacherComment}
-            onChange={(event) => {
-              setTeacherComment(
-                event.target.value
-              );
-              setSuccessMessage("");
-            }}
-            rows={5}
-            placeholder="Add observations and notes for the administrator."
-            disabled={loading}
-            style={textareaStyle}
-          />
-        </FieldGroup>
-
-        <div
-          style={{
-            padding: "14px 16px",
-            border:
-              "1px solid #dbe7ff",
-            borderRadius: "10px",
-            background: "#f7faff",
-            color: "#344054",
-            fontSize: "11px",
-            lineHeight: 1.65,
-          }}
+        <NoticeBox
+          type="success"
         >
           <strong>
-            Your suggested level is a
-            teacher recommendation only.
+            Evaluation submitted
+            successfully.
           </strong>
+
           <br />
-          강사는 학생의 레벨을 제안합니다.
-          최종 레벨과 추천 교육과정은 TALKLY
-          관리자가 확정합니다.
+
+          Teacher recommendation
+          only — final placement is
+          decided by the
+          administrator.
+        </NoticeBox>
+
+        <div
+          style={
+            scoreGridStyle
+          }
+        >
+          <ReadOnlyScore
+            label="Speaking"
+            value={
+              speakingLevel
+            }
+          />
+
+          <ReadOnlyScore
+            label="Listening"
+            value={
+              listeningLevel
+            }
+          />
+
+          <ReadOnlyScore
+            label="Pronunciation"
+            value={
+              pronunciationLevel
+            }
+          />
+
+          <ReadOnlyScore
+            label="Comprehension"
+            value={
+              comprehensionLevel
+            }
+          />
         </div>
 
-        {errorMessage && (
-          <div style={errorStyle}>
-            {errorMessage}
-          </div>
-        )}
+        <ReadOnlyItem
+          label="Suggested Level"
+          korean="강사 제안 레벨"
+          value={
+            suggestedLevel
+          }
+        />
+
+        <ReadOnlyItem
+          label="Strengths"
+          korean="강점"
+          value={
+            strengths
+          }
+        />
+
+        <ReadOnlyItem
+          label="Areas to Improve"
+          korean="보완점"
+          value={
+            weaknesses
+          }
+        />
+
+        <ReadOnlyItem
+          label="Teacher Comment"
+          korean="강사 의견"
+          value={
+            teacherComment
+          }
+        />
 
         {successMessage && (
-          <div style={successStyle}>
-            {successMessage}
-          </div>
+          <MessageBox
+            type="success"
+            message={
+              successMessage
+            }
+          />
         )}
+      </section>
+    );
+  }
+
+  /*
+   * =====================================================
+   * 진행 중
+   * =====================================================
+   */
+
+  if (
+    status ===
+    "in_progress"
+  ) {
+    return (
+      <section
+        style={
+          sectionStyle
+        }
+      >
+        <SectionHeader
+          eyebrow="LEVEL TEST IN PROGRESS"
+          title="Level Test Evaluation"
+          description="Complete the evaluation after the video level test."
+          korean="화상 레벨테스트 종료 후 학생 평가를 입력해주세요."
+        />
 
         <div
           style={{
-            display: "flex",
-            justifyContent:
-              "flex-end",
+            padding:
+              "16px",
+            borderRadius:
+              "14px",
+            border:
+              "1px solid #c7d7fe",
+            background:
+              "#f5f8ff",
+            marginBottom:
+              "24px",
           }}
         >
+          <div
+            style={{
+              display:
+                "flex",
+              alignItems:
+                "center",
+              justifyContent:
+                "space-between",
+              gap: "14px",
+              flexWrap:
+                "wrap",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  color:
+                    "#0A1F44",
+                  fontSize:
+                    "14px",
+                  fontWeight:
+                    800,
+                }}
+              >
+                Video level test
+                in progress
+              </div>
+
+              <div
+                style={{
+                  marginTop:
+                    "4px",
+                  color:
+                    "#667085",
+                  fontSize:
+                    "12px",
+                  lineHeight:
+                    1.6,
+                }}
+              >
+                You may re-enter
+                the meeting if
+                necessary.
+                <br />
+                필요하면 화상
+                레벨테스트에 다시
+                입장할 수 있습니다.
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={
+                handleReEnter
+              }
+              disabled={
+                loading ||
+                !meetingUrl
+              }
+              style={{
+                minHeight:
+                  "42px",
+                padding:
+                  "0 18px",
+                border:
+                  "1px solid #0A1F44",
+                borderRadius:
+                  "10px",
+                background:
+                  "#ffffff",
+                color:
+                  "#0A1F44",
+                fontSize:
+                  "13px",
+                fontWeight:
+                  800,
+                cursor:
+                  loading ||
+                  !meetingUrl
+                    ? "default"
+                    : "pointer",
+                opacity:
+                  meetingUrl
+                    ? 1
+                    : 0.55,
+              }}
+            >
+              Re-enter Meeting ↗
+            </button>
+          </div>
+        </div>
+
+        <form
+          onSubmit={
+            handleSubmit
+          }
+        >
+          <div
+            style={
+              scoreGridStyle
+            }
+          >
+            <ScoreSelect
+              label="Speaking"
+              korean="말하기"
+              value={
+                speakingLevel
+              }
+              onChange={
+                setSpeakingLevel
+              }
+              disabled={
+                loading
+              }
+            />
+
+            <ScoreSelect
+              label="Listening"
+              korean="듣기"
+              value={
+                listeningLevel
+              }
+              onChange={
+                setListeningLevel
+              }
+              disabled={
+                loading
+              }
+            />
+
+            <ScoreSelect
+              label="Pronunciation"
+              korean="발음"
+              value={
+                pronunciationLevel
+              }
+              onChange={
+                setPronunciationLevel
+              }
+              disabled={
+                loading
+              }
+            />
+
+            <ScoreSelect
+              label="Comprehension"
+              korean="이해도"
+              value={
+                comprehensionLevel
+              }
+              onChange={
+                setComprehensionLevel
+              }
+              disabled={
+                loading
+              }
+            />
+          </div>
+
+          <div
+            style={{
+              marginTop:
+                "24px",
+            }}
+          >
+            <FieldLabel
+              label="Suggested Level"
+              korean="강사 제안 레벨"
+              required
+            />
+
+            <input
+              type="text"
+              value={
+                suggestedLevel
+              }
+              onChange={(
+                event
+              ) => {
+                setSuggestedLevel(
+                  event
+                    .target
+                    .value
+                );
+
+                setErrorMessage(
+                  ""
+                );
+              }}
+              maxLength={
+                100
+              }
+              placeholder="e.g. TALKLY Level 4"
+              disabled={
+                loading
+              }
+              style={
+                inputStyle
+              }
+            />
+
+            <p
+              style={{
+                margin:
+                  "7px 0 0",
+                color:
+                  "#667085",
+                fontSize:
+                  "11px",
+                lineHeight:
+                  1.6,
+              }}
+            >
+              This is your
+              recommendation only.
+              The administrator
+              decides the final
+              level and course.
+              <br />
+              강사는 추천 레벨만
+              입력하며 최종 레벨과
+              과정은 관리자가
+              확정합니다.
+            </p>
+          </div>
+
+          <div
+            style={{
+              marginTop:
+                "20px",
+            }}
+          >
+            <FieldLabel
+              label="Strengths"
+              korean="강점"
+            />
+
+            <textarea
+              value={
+                strengths
+              }
+              onChange={(
+                event
+              ) =>
+                setStrengths(
+                  event
+                    .target
+                    .value
+                )
+              }
+              rows={4}
+              placeholder="Describe the student's strengths."
+              disabled={
+                loading
+              }
+              style={
+                textareaStyle
+              }
+            />
+          </div>
+
+          <div
+            style={{
+              marginTop:
+                "20px",
+            }}
+          >
+            <FieldLabel
+              label="Areas to Improve"
+              korean="보완점"
+            />
+
+            <textarea
+              value={
+                weaknesses
+              }
+              onChange={(
+                event
+              ) =>
+                setWeaknesses(
+                  event
+                    .target
+                    .value
+                )
+              }
+              rows={4}
+              placeholder="Describe areas that need improvement."
+              disabled={
+                loading
+              }
+              style={
+                textareaStyle
+              }
+            />
+          </div>
+
+          <div
+            style={{
+              marginTop:
+                "20px",
+            }}
+          >
+            <FieldLabel
+              label="Teacher Comment"
+              korean="강사 의견"
+            />
+
+            <textarea
+              value={
+                teacherComment
+              }
+              onChange={(
+                event
+              ) =>
+                setTeacherComment(
+                  event
+                    .target
+                    .value
+                )
+              }
+              rows={5}
+              placeholder="Add any additional comments for the administrator."
+              disabled={
+                loading
+              }
+              style={
+                textareaStyle
+              }
+            />
+          </div>
+
+          {errorMessage && (
+            <MessageBox
+              type="error"
+              message={
+                errorMessage
+              }
+            />
+          )}
+
+          {successMessage && (
+            <MessageBox
+              type="success"
+              message={
+                successMessage
+              }
+            />
+          )}
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={
+              loading
+            }
             style={{
-              minHeight: "48px",
-              padding: "0 22px",
-              border: "none",
-              borderRadius: "10px",
-              background: loading
-                ? "#98a2b3"
-                : "#0A1F44",
-              color: "#ffffff",
-              fontFamily: "inherit",
-              fontSize: "13px",
-              fontWeight: 900,
-              cursor: loading
-                ? "default"
-                : "pointer",
+              ...primaryButtonStyle,
+              marginTop:
+                "24px",
+              background:
+                loading
+                  ? "#98a2b3"
+                  : "#0A1F44",
+              cursor:
+                loading
+                  ? "default"
+                  : "pointer",
             }}
           >
             {loading
               ? "Submitting..."
               : "Submit Evaluation"}
           </button>
-        </div>
-      </form>
+        </form>
+      </section>
+    );
+  }
+
+  /*
+   * 기타 상태
+   */
+  return (
+    <section
+      style={
+        sectionStyle
+      }
+    >
+      <SectionHeader
+        eyebrow="LEVEL TEST"
+        title="Level Test"
+        description="This level test is not currently available."
+        korean="현재 진행할 수 없는 레벨테스트 상태입니다."
+      />
+
+      <NoticeBox
+        type="warning"
+      >
+        Current status:{" "}
+        <strong>
+          {status}
+        </strong>
+      </NoticeBox>
     </section>
   );
 }
 
-function SectionTitle({
+/*
+ * =====================================================
+ * UI COMPONENTS
+ * =====================================================
+ */
+
+function SectionHeader({
+  eyebrow,
   title,
-  korean,
   description,
-  descriptionKo,
+  korean,
 }: {
+  eyebrow: string;
   title: string;
-  korean: string;
   description: string;
-  descriptionKo: string;
+  korean: string;
 }) {
   return (
-    <div>
+    <div
+      style={{
+        marginBottom:
+          "24px",
+      }}
+    >
       <div
         style={{
-          color: "#2f6fed",
-          fontSize: "10px",
-          fontWeight: 900,
-          letterSpacing: "0.08em",
+          color:
+            "#2f6fed",
+          fontSize:
+            "11px",
+          fontWeight:
+            900,
+          letterSpacing:
+            "0.12em",
         }}
       >
-        TEACHER ACTION
+        {eyebrow}
       </div>
 
       <h2
         style={{
-          margin: "6px 0 0",
-          fontSize: "22px",
+          margin:
+            "8px 0 0",
+          color:
+            "#101828",
+          fontSize:
+            "24px",
+          lineHeight:
+            1.25,
+          fontWeight:
+            900,
         }}
       >
         {title}
       </h2>
 
-      <div
-        style={{
-          marginTop: "3px",
-          fontSize: "11px",
-          color: "#98a2b3",
-        }}
-      >
-        {korean}
-      </div>
-
       <p
         style={{
-          margin: "14px 0 0",
-          fontSize: "13px",
-          lineHeight: 1.7,
-          color: "#475467",
+          margin:
+            "9px 0 0",
+          color:
+            "#475467",
+          fontSize:
+            "13px",
+          lineHeight:
+            1.7,
         }}
       >
         {description}
       </p>
 
-      <div
+      <p
         style={{
-          marginTop: "3px",
-          fontSize: "11px",
-          lineHeight: 1.6,
-          color: "#98a2b3",
+          margin:
+            "3px 0 0",
+          color:
+            "#98a2b3",
+          fontSize:
+            "11px",
+          lineHeight:
+            1.6,
         }}
       >
-        {descriptionKo}
-      </div>
+        {korean}
+      </p>
     </div>
   );
 }
 
 function ScoreSelect({
-  id,
   label,
   korean,
   value,
   onChange,
   disabled,
 }: {
-  id: string;
   label: string;
   korean: string;
   value: string;
@@ -873,90 +1516,243 @@ function ScoreSelect({
 }) {
   return (
     <div>
-      <label
-        htmlFor={id}
-        style={labelStyle}
-      >
-        {label}
-
-        <span
-          style={{
-            display: "block",
-            marginTop: "2px",
-            color: "#98a2b3",
-            fontSize: "10px",
-            fontWeight: 500,
-          }}
-        >
-          {korean}
-        </span>
-      </label>
+      <FieldLabel
+        label={
+          label
+        }
+        korean={
+          korean
+        }
+        required
+      />
 
       <select
-        id={id}
-        value={value}
-        onChange={(event) =>
+        value={
+          value
+        }
+        onChange={(
+          event
+        ) =>
           onChange(
-            event.target.value
+            event.target
+              .value
           )
         }
-        disabled={disabled}
-        style={fieldStyle}
+        disabled={
+          disabled
+        }
+        style={
+          inputStyle
+        }
       >
         <option value="">
           Select
         </option>
 
         {Array.from(
-          { length: 10 },
-          (_, index) =>
-            index + 1
-        ).map((score) => (
-          <option
-            key={score}
-            value={score}
-          >
-            {score}
-          </option>
-        ))}
+          {
+            length: 10,
+          },
+          (
+            _,
+            index
+          ) => {
+            const score =
+              index + 1;
+
+            return (
+              <option
+                key={
+                  score
+                }
+                value={
+                  score
+                }
+              >
+                {score}
+              </option>
+            );
+          }
+        )}
       </select>
     </div>
   );
 }
 
-function FieldGroup({
+function FieldLabel({
   label,
   korean,
-  children,
+  required = false,
 }: {
   label: string;
   korean: string;
-  children: React.ReactNode;
+  required?: boolean;
 }) {
   return (
-    <div>
-      <div style={labelStyle}>
+    <label
+      style={{
+        display:
+          "block",
+        marginBottom:
+          "7px",
+      }}
+    >
+      <span
+        style={{
+          color:
+            "#344054",
+          fontSize:
+            "13px",
+          fontWeight:
+            800,
+        }}
+      >
         {label}
 
-        <span
-          style={{
-            display: "block",
-            marginTop: "2px",
-            color: "#98a2b3",
-            fontSize: "10px",
-            fontWeight: 500,
-          }}
-        >
-          {korean}
-        </span>
-      </div>
+        {required && (
+          <span
+            style={{
+              color:
+                "#d92d20",
+            }}
+          >
+            {" "}
+            *
+          </span>
+        )}
+      </span>
 
+      <span
+        style={{
+          display:
+            "block",
+          marginTop:
+            "2px",
+          color:
+            "#98a2b3",
+          fontSize:
+            "10px",
+        }}
+      >
+        {korean}
+      </span>
+    </label>
+  );
+}
+
+function NoticeBox({
+  type,
+  children,
+}: {
+  type:
+    | "info"
+    | "success"
+    | "warning";
+  children:
+    React.ReactNode;
+}) {
+  const palette =
+    type ===
+    "success"
+      ? {
+          background:
+            "#ecfdf3",
+          border:
+            "#abefc6",
+          color:
+            "#067647",
+        }
+      : type ===
+        "warning"
+      ? {
+          background:
+            "#fffaeb",
+          border:
+            "#fedf89",
+          color:
+            "#93370d",
+        }
+      : {
+          background:
+            "#f5f8ff",
+          border:
+            "#c7d7fe",
+          color:
+            "#344054",
+        };
+
+  return (
+    <div
+      style={{
+        padding:
+          "15px 17px",
+        border:
+          `1px solid ${palette.border}`,
+        borderRadius:
+          "12px",
+        background:
+          palette.background,
+        color:
+          palette.color,
+        fontSize:
+          "13px",
+        lineHeight:
+          1.7,
+      }}
+    >
       {children}
     </div>
   );
 }
 
-function ResultBox({
+function MessageBox({
+  type,
+  message,
+}: {
+  type:
+    | "error"
+    | "success";
+  message: string;
+}) {
+  const isError =
+    type ===
+    "error";
+
+  return (
+    <div
+      style={{
+        marginTop:
+          "18px",
+        padding:
+          "13px 15px",
+        border:
+          `1px solid ${
+            isError
+              ? "#fecdca"
+              : "#abefc6"
+          }`,
+        borderRadius:
+          "10px",
+        background:
+          isError
+            ? "#fef3f2"
+            : "#ecfdf3",
+        color:
+          isError
+            ? "#b42318"
+            : "#067647",
+        fontSize:
+          "12px",
+        lineHeight:
+          1.6,
+      }}
+    >
+      {message}
+    </div>
+  );
+}
+
+function ReadOnlyScore({
   label,
   value,
 }: {
@@ -966,18 +1762,24 @@ function ResultBox({
   return (
     <div
       style={{
-        padding: "15px",
+        padding:
+          "15px",
         border:
           "1px solid #e4e7ec",
-        borderRadius: "10px",
-        background: "#f9fafb",
+        borderRadius:
+          "12px",
+        background:
+          "#f9fafb",
       }}
     >
       <div
         style={{
-          color: "#667085",
-          fontSize: "10px",
-          fontWeight: 800,
+          color:
+            "#667085",
+          fontSize:
+            "11px",
+          fontWeight:
+            700,
         }}
       >
         {label}
@@ -985,18 +1787,27 @@ function ResultBox({
 
       <div
         style={{
-          marginTop: "6px",
-          fontSize: "21px",
-          fontWeight: 900,
+          marginTop:
+            "5px",
+          color:
+            "#101828",
+          fontSize:
+            "22px",
+          fontWeight:
+            900,
         }}
       >
-        {value} / 10
+        {value ||
+          "-"}
+        {value
+          ? " / 10"
+          : ""}
       </div>
     </div>
   );
 }
 
-function ReadOnlyText({
+function ReadOnlyItem({
   label,
   korean,
   value,
@@ -1008,19 +1819,26 @@ function ReadOnlyText({
   return (
     <div
       style={{
-        marginTop: "15px",
-        padding: "15px",
+        marginTop:
+          "18px",
+        padding:
+          "16px",
         border:
           "1px solid #e4e7ec",
-        borderRadius: "10px",
-        background: "#f9fafb",
+        borderRadius:
+          "12px",
+        background:
+          "#ffffff",
       }}
     >
       <div
         style={{
-          fontSize: "11px",
-          fontWeight: 900,
-          color: "#344054",
+          color:
+            "#344054",
+          fontSize:
+            "12px",
+          fontWeight:
+            800,
         }}
       >
         {label}
@@ -1028,9 +1846,12 @@ function ReadOnlyText({
 
       <div
         style={{
-          marginTop: "2px",
-          fontSize: "10px",
-          color: "#98a2b3",
+          marginTop:
+            "2px",
+          color:
+            "#98a2b3",
+          fontSize:
+            "10px",
         }}
       >
         {korean}
@@ -1038,91 +1859,102 @@ function ReadOnlyText({
 
       <div
         style={{
-          marginTop: "8px",
-          fontSize: "13px",
-          lineHeight: 1.7,
-          whiteSpace: "pre-wrap",
+          marginTop:
+            "10px",
+          color:
+            "#475467",
+          fontSize:
+            "13px",
+          lineHeight:
+            1.7,
+          whiteSpace:
+            "pre-wrap",
         }}
       >
-        {value}
+        {value ||
+          "-"}
       </div>
     </div>
   );
 }
 
-const sectionStyle = {
-  marginTop: "20px",
-  padding: "26px",
-  border: "1px solid #e4e7ec",
-  borderRadius: "16px",
-  background: "#ffffff",
-};
+/*
+ * =====================================================
+ * STYLES
+ * =====================================================
+ */
 
-const labelStyle = {
-  display: "block",
-  marginBottom: "8px",
-  color: "#344054",
-  fontSize: "13px",
-  fontWeight: 800,
-};
+const sectionStyle:
+  React.CSSProperties = {
+    marginTop: "26px",
+    padding: "26px",
+    border:
+      "1px solid #e4e7ec",
+    borderRadius:
+      "20px",
+    background:
+      "#ffffff",
+    boxShadow:
+      "0 12px 32px rgba(16, 24, 40, 0.05)",
+  };
 
-const fieldStyle = {
-  width: "100%",
-  minHeight: "46px",
-  boxSizing:
-    "border-box" as const,
-  padding: "0 14px",
-  border:
-    "1px solid #d0d5dd",
-  borderRadius: "9px",
-  background: "#ffffff",
-  color: "#101828",
-  fontFamily: "inherit",
-  fontSize: "14px",
-  outline: "none",
-};
+const scoreGridStyle:
+  React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(150px, 1fr))",
+    gap: "14px",
+    marginTop: "8px",
+  };
 
-const textareaStyle = {
-  ...fieldStyle,
-  minHeight: "110px",
-  padding: "13px 14px",
-  resize: "vertical" as const,
-  lineHeight: 1.7,
-};
+const inputStyle:
+  React.CSSProperties = {
+    width: "100%",
+    minHeight:
+      "44px",
+    padding:
+      "10px 12px",
+    border:
+      "1px solid #d0d5dd",
+    borderRadius:
+      "10px",
+    background:
+      "#ffffff",
+    color:
+      "#101828",
+    fontSize:
+      "13px",
+    outline:
+      "none",
+    boxSizing:
+      "border-box",
+  };
 
-const warningStyle = {
-  marginTop: "20px",
-  padding: "16px",
-  border:
-    "1px solid #fedf89",
-  borderRadius: "10px",
-  background: "#fffaeb",
-  color: "#93370d",
-  fontSize: "12px",
-  lineHeight: 1.6,
-};
+const textareaStyle:
+  React.CSSProperties = {
+    ...inputStyle,
+    minHeight:
+      "110px",
+    resize:
+      "vertical",
+    lineHeight:
+      1.6,
+  };
 
-const errorStyle = {
-  marginTop: "14px",
-  padding: "14px 16px",
-  border:
-    "1px solid #fda29b",
-  borderRadius: "10px",
-  background: "#fffbfa",
-  color: "#b42318",
-  fontSize: "12px",
-  fontWeight: 700,
-  lineHeight: 1.6,
-};
-
-const successStyle = {
-  marginTop: "14px",
-  padding: "14px 16px",
-  border:
-    "1px solid #abefc6",
-  borderRadius: "10px",
-  background: "#ecfdf3",
-  color: "#027a48",
-  fontSize: "12px",
-  fontWeight: 800,
-};
+const primaryButtonStyle:
+  React.CSSProperties = {
+    width: "100%",
+    minHeight:
+      "50px",
+    padding:
+      "0 18px",
+    border: 0,
+    borderRadius:
+      "12px",
+    color:
+      "#ffffff",
+    fontSize:
+      "14px",
+    fontWeight:
+      900,
+  };

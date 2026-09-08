@@ -652,6 +652,9 @@ export default async function TeacherLevelTestDetailPage({
           initialStatus={
             interview.status
           }
+          scheduledAt={
+            interview.scheduled_at
+          }
           meetingUrl={
             interview.meeting_url
           }
