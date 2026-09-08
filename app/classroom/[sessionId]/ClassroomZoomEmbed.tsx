@@ -390,10 +390,23 @@ export default function ClassroomZoomEmbed({
 
         const rootHeight =
           Math.max(
-            120,
+            220,
             Math.floor(
               rootRef.current.clientHeight || 430
             )
+          );
+
+        /*
+         * Zoom Component View는 비디오 캔버스 아래에
+         * 마이크/카메라 등 기본 컨트롤 바를 렌더링합니다.
+         * 비디오 높이를 컨테이너 전체 높이와 동일하게 주면
+         * 하단 컨트롤 바가 부모의 overflow:hidden에 의해
+         * 잘릴 수 있으므로 약 96px을 미리 확보합니다.
+         */
+        const videoHeight =
+          Math.max(
+            135,
+            rootHeight - 96
           );
 
         await client.init({
@@ -414,7 +427,7 @@ export default function ClassroomZoomEmbed({
               viewSizes: {
                 default: {
                   width: rootWidth,
-                  height: rootHeight,
+                  height: videoHeight,
                 },
 
                 ribbon: {
@@ -424,7 +437,7 @@ export default function ClassroomZoomEmbed({
                     Math.min(
                       120,
                       Math.round(
-                        rootHeight * 0.28
+                        videoHeight * 0.28
                       )
                     )
                   ),
