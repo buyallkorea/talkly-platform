@@ -2,6 +2,7 @@
 
 import {
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type {
@@ -178,6 +179,11 @@ export default function CustomEnrollmentScheduler({
 }: Props) {
   const router =
     useRouter();
+
+  const completionRef =
+    useRef<HTMLDivElement | null>(
+      null
+    );
 
   const usableDurations =
     allowedDurationMinutes.filter(
@@ -763,8 +769,15 @@ export default function CustomEnrollmentScheduler({
       }
 
       setSuccessMessage(
-        "맞춤 수강신청이 접수되었습니다. TALKLY에서 희망일정의 가용성을 다시 확인한 뒤 실제 강사와 수업 일정을 배정합니다."
+        "맞춤 수강신청이 정상적으로 접수되었습니다."
       );
+
+      window.setTimeout(() => {
+        completionRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 80);
 
       router.refresh();
     } catch (error) {
@@ -1315,30 +1328,6 @@ export default function CustomEnrollmentScheduler({
         </div>
       )}
 
-      {successMessage && (
-        <div
-          style={{
-            marginTop: "18px",
-            padding:
-              "13px 15px",
-            border:
-              "1px solid #abefc6",
-            borderRadius:
-              "10px",
-            background:
-              "#ecfdf3",
-            color:
-              "#067647",
-            fontSize:
-              "12px",
-            lineHeight: 1.7,
-            fontWeight: 700,
-          }}
-        >
-          {successMessage}
-        </div>
-      )}
-
       {errorMessage && (
         <div
           style={{
@@ -1363,7 +1352,8 @@ export default function CustomEnrollmentScheduler({
         </div>
       )}
 
-      <button
+      {!successMessage && (
+        <button
         type="button"
         onClick={
           searchAvailability
@@ -1406,6 +1396,7 @@ export default function CustomEnrollmentScheduler({
           ? "가능 강사 조회 중..."
           : "선택한 시간에 가능한 강사 찾기"}
       </button>
+      )}
 
       {hasSearched &&
         matchingTeachers.length >
@@ -1586,49 +1577,172 @@ export default function CustomEnrollmentScheduler({
             매 수업 {preferredTime}
           </div>
 
-          <button
-            type="button"
-            onClick={
-              submitCustomRequest
-            }
-            disabled={
-              !canSubmit
-            }
+          {!successMessage && (
+            <button
+              type="button"
+              onClick={
+                submitCustomRequest
+              }
+              disabled={
+                !canSubmit
+              }
+              style={{
+                marginTop:
+                  "16px",
+                width: "100%",
+                minHeight:
+                  "52px",
+                border: 0,
+                borderRadius:
+                  "11px",
+                background:
+                  canSubmit
+                    ? "#0a1f44"
+                    : "#d0d5dd",
+                color:
+                  canSubmit
+                    ? "#ffffff"
+                    : "#667085",
+                fontFamily:
+                  "inherit",
+                fontSize:
+                  "14px",
+                fontWeight:
+                  900,
+                cursor:
+                  canSubmit
+                    ? "pointer"
+                    : "not-allowed",
+              }}
+            >
+              {submitting
+                ? "수강신청 접수 중..."
+                : "이 조건으로 수강신청 접수"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {successMessage && (
+        <div
+          ref={completionRef}
+          style={{
+            marginTop: "28px",
+            padding: "24px",
+            border: "1px solid #abefc6",
+            borderRadius: "16px",
+            background:
+              "linear-gradient(180deg, #f0fdf4 0%, #ecfdf3 100%)",
+            boxShadow:
+              "0 10px 28px rgba(6, 118, 71, 0.08)",
+          }}
+        >
+          <div
             style={{
-              marginTop:
-                "16px",
-              width: "100%",
-              minHeight:
-                "52px",
-              border: 0,
-              borderRadius:
-                "11px",
-              background:
-                canSubmit
-                  ? "#0a1f44"
-                  : "#d0d5dd",
-              color:
-                canSubmit
-                  ? "#ffffff"
-                  : "#667085",
-              fontFamily:
-                "inherit",
-              fontSize:
-                "14px",
-              fontWeight:
-                900,
-              cursor:
-                canSubmit
-                  ? "pointer"
-                  : "not-allowed",
+              display: "flex",
+              gap: "14px",
+              alignItems: "flex-start",
             }}
           >
-            {submitting
-              ? "수강신청 접수 중..."
-              : successMessage
-                ? "수강신청 접수 완료"
-                : "이 조건으로 수강신청 접수"}
-          </button>
+            <div
+              aria-hidden="true"
+              style={{
+                width: "42px",
+                height: "42px",
+                flex: "0 0 42px",
+                borderRadius: "999px",
+                display: "grid",
+                placeItems: "center",
+                background: "#dcfae6",
+                color: "#067647",
+                fontSize: "22px",
+                fontWeight: 900,
+              }}
+            >
+              ✓
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  color: "#067647",
+                  fontSize: "17px",
+                  fontWeight: 900,
+                  lineHeight: 1.5,
+                }}
+              >
+                수강신청이 정상적으로 접수되었습니다.
+              </div>
+
+              <div
+                style={{
+                  marginTop: "8px",
+                  color: "#344054",
+                  fontSize: "13px",
+                  lineHeight: 1.8,
+                }}
+              >
+                TALKLY에서 희망일정의 가용성을 다시 확인한 뒤 실제 강사와 수업 일정을 배정합니다.
+                <br />
+                배정이 완료되면 수강기간과 결제금액을 확인하고 결제를 진행할 수 있습니다.
+              </div>
+
+              <div
+                style={{
+                  marginTop: "18px",
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "10px",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(
+                      `/parent/children/${childId}/enrollment-requests`
+                    )
+                  }
+                  style={{
+                    minHeight: "44px",
+                    padding: "0 17px",
+                    border: 0,
+                    borderRadius: "10px",
+                    background: "#0a1f44",
+                    color: "#ffffff",
+                    fontFamily: "inherit",
+                    fontSize: "13px",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  수강신청 현황 보기 →
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(
+                      `/parent/children/${childId}`
+                    )
+                  }
+                  style={{
+                    minHeight: "44px",
+                    padding: "0 17px",
+                    border: "1px solid #b7c7da",
+                    borderRadius: "10px",
+                    background: "#ffffff",
+                    color: "#0a1f44",
+                    fontFamily: "inherit",
+                    fontSize: "13px",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  자녀 관리로 돌아가기
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </section>
