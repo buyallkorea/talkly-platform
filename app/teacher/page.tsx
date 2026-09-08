@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
+import { createAdminClient } from "@/lib/supabase-admin";
 
 export default async function TeacherPage() {
   const supabase = await createClient();
@@ -23,6 +24,12 @@ export default async function TeacherPage() {
     redirect("/");
   }
 
+  /*
+   * =====================================================
+   * 1. My Classes
+   * =====================================================
+   */
+
   const {
     data: enrollments,
     error: enrollmentError,
@@ -44,7 +51,7 @@ export default async function TeacherPage() {
   }
 
   const enrollmentIds =
-    enrollments?.map((enrollment) => enrollment.id) ?? [];
+    enrollments?.map((item) => item.id) ?? [];
 
   let sessions: {
     id: number;
@@ -86,11 +93,8 @@ export default async function TeacherPage() {
     sessions = data ?? [];
 
     /*
-     * 종료시간이 지났는데 한 번도 시작되지 않은 scheduled 수업은
-     * 강사 대시보드에서도 즉시 미진행(not_held)으로 정리합니다.
-     *
-     * 이미 started_at이 있는 수업은 예정 종료시간이 지나도
-     * 자동마감하지 않습니다.
+     * 예정 종료시간이 지났지만
+     * 한 번도 시작되지 않은 수업을 not_held 처리
      */
     const nowIso = new Date().toISOString();
 
@@ -100,33 +104,36 @@ export default async function TeacherPage() {
           session.status === "scheduled" &&
           !session.started_at &&
           !session.ended_at &&
-          new Date(session.scheduled_end).getTime() <= Date.now()
+          new Date(session.scheduled_end).getTime() <=
+            Date.now()
       )
       .map((session) => session.id);
 
     if (expiredSessionIds.length > 0) {
-      const { error: closeExpiredError } = await supabase
-        .from("class_sessions")
-        .update({
-          status: "not_held",
-          updated_at: nowIso,
-        })
-        .in("id", expiredSessionIds)
-        .eq("status", "scheduled")
-        .is("started_at", null)
-        .lte("scheduled_end", nowIso);
+      const { error: closeExpiredError } =
+        await supabase
+          .from("class_sessions")
+          .update({
+            status: "not_held",
+            updated_at: nowIso,
+          })
+          .in("id", expiredSessionIds)
+          .eq("status", "scheduled")
+          .is("started_at", null)
+          .lte("scheduled_end", nowIso);
 
       if (closeExpiredError) {
-        throw new Error(closeExpiredError.message);
+        throw new Error(
+          closeExpiredError.message
+        );
       }
 
-      /*
-       * 현재 렌더링에도 즉시 반영합니다.
-       */
-      const expiredIdSet = new Set(expiredSessionIds);
+      const expiredSet = new Set(
+        expiredSessionIds
+      );
 
       sessions = sessions.map((session) =>
-        expiredIdSet.has(session.id)
+        expiredSet.has(session.id)
           ? {
               ...session,
               status: "not_held",
@@ -136,10 +143,18 @@ export default async function TeacherPage() {
     }
   }
 
+  /*
+   * =====================================================
+   * 2. Student / Child / Course
+   * =====================================================
+   */
+
   const childIds =
     enrollments
-      ?.map((enrollment) => enrollment.child_id)
-      .filter((id): id is number => id !== null) ?? [];
+      ?.map((item) => item.child_id)
+      .filter(
+        (id): id is number => id !== null
+      ) ?? [];
 
   let children: {
     id: number;
@@ -164,8 +179,10 @@ export default async function TeacherPage() {
 
   const studentIds =
     enrollments
-      ?.map((enrollment) => enrollment.student_user_id)
-      .filter((id): id is string => id !== null) ?? [];
+      ?.map((item) => item.student_user_id)
+      .filter(
+        (id): id is string => id !== null
+      ) ?? [];
 
   let students: {
     id: string;
@@ -190,7 +207,7 @@ export default async function TeacherPage() {
 
   const courseIds =
     enrollments?.map(
-      (enrollment) => enrollment.course_id
+      (item) => item.course_id
     ) ?? [];
 
   let courses: {
@@ -214,14 +231,143 @@ export default async function TeacherPage() {
     courses = data ?? [];
   }
 
-  function getEnrollment(enrollmentId: number) {
+  /*
+   * =====================================================
+   * 3. Reviews
+   * =====================================================
+   */
+
+  const [
+    reviewSummaryResult,
+    recentReviewsResult,
+  ] = await Promise.all([
+    supabase
+      .from("teacher_review_summary")
+      .select(`
+        teacher_user_id,
+        review_count,
+        overall_average,
+        latest_review_at
+      `)
+      .eq("teacher_user_id", user.id)
+      .maybeSingle(),
+
+    supabase
+      .from("teacher_reviews")
+      .select(`
+        id,
+        attitude_score,
+        lesson_quality_score,
+        explanation_score,
+        communication_score,
+        preparation_score,
+        satisfaction_score,
+        comment,
+        created_at
+      `)
+      .eq("teacher_user_id", user.id)
+      .order("created_at", {
+        ascending: false,
+      })
+      .limit(3),
+  ]);
+
+  const reviewError =
+    reviewSummaryResult.error ||
+    recentReviewsResult.error;
+
+  if (reviewError) {
+    throw new Error(reviewError.message);
+  }
+
+  const reviewSummary =
+    reviewSummaryResult.data;
+
+  const recentReviews =
+    recentReviewsResult.data ?? [];
+
+  /*
+   * =====================================================
+   * 4. Level Tests
+   *
+   * 서비스키는 서버에서만 사용합니다.
+   * teacher role 검증 후 tester_user_id를
+   * 로그인 강사의 user.id로 고정합니다.
+   * =====================================================
+   */
+
+  const admin = createAdminClient();
+
+  const {
+    data: levelTestInterviews,
+    error: levelTestInterviewError,
+  } = await admin
+    .from("level_test_interviews")
+    .select(`
+      id,
+      level_test_id,
+      status,
+      scheduled_at,
+      duration_minutes
+    `)
+    .eq("tester_user_id", user.id)
+    .order("scheduled_at", {
+      ascending: true,
+    });
+
+  if (levelTestInterviewError) {
+    throw new Error(
+      levelTestInterviewError.message
+    );
+  }
+
+  const activeInterviewStatuses = new Set([
+    "scheduling",
+    "scheduled",
+    "in_progress",
+  ]);
+
+  const upcomingLevelTests =
+    (levelTestInterviews ?? []).filter(
+      (item) =>
+        item.scheduled_at &&
+        activeInterviewStatuses.has(
+          item.status
+        ) &&
+        new Date(
+          item.scheduled_at
+        ).getTime() >= Date.now()
+    );
+
+  const upcomingClasses = sessions.filter(
+    (session) =>
+      ["scheduled", "in_progress"].includes(
+        session.status
+      ) &&
+      new Date(
+        session.scheduled_end
+      ).getTime() > Date.now()
+  );
+
+  /*
+   * =====================================================
+   * Helpers
+   * =====================================================
+   */
+
+  function getEnrollment(
+    enrollmentId: number
+  ) {
     return enrollments?.find(
       (item) => item.id === enrollmentId
     );
   }
 
-  function getStudentName(enrollmentId: number) {
-    const enrollment = getEnrollment(enrollmentId);
+  function getStudentName(
+    enrollmentId: number
+  ) {
+    const enrollment =
+      getEnrollment(enrollmentId);
 
     if (!enrollment) {
       return "Student";
@@ -229,7 +375,8 @@ export default async function TeacherPage() {
 
     if (enrollment.child_id) {
       const child = children.find(
-        (item) => item.id === enrollment.child_id
+        (item) =>
+          item.id === enrollment.child_id
       );
 
       return child?.name || "Student";
@@ -238,30 +385,39 @@ export default async function TeacherPage() {
     if (enrollment.student_user_id) {
       const student = students.find(
         (item) =>
-          item.id === enrollment.student_user_id
+          item.id ===
+          enrollment.student_user_id
       );
 
-      return student?.name || "Adult Student";
+      return (
+        student?.name || "Adult Student"
+      );
     }
 
     return "Student";
   }
 
-  function getCourseName(enrollmentId: number) {
-    const enrollment = getEnrollment(enrollmentId);
+  function getCourseName(
+    enrollmentId: number
+  ) {
+    const enrollment =
+      getEnrollment(enrollmentId);
 
     if (!enrollment) {
       return "-";
     }
 
     const course = courses.find(
-      (item) => item.id === enrollment.course_id
+      (item) =>
+        item.id === enrollment.course_id
     );
 
     return course?.name || "-";
   }
 
-  function getSessionStatus(status: string) {
+  function getSessionStatus(
+    status: string
+  ) {
     switch (status) {
       case "scheduled":
         return {
@@ -313,30 +469,40 @@ export default async function TeacherPage() {
     }
   }
 
-  function formatEnglishDateTime(value: string) {
-    return new Intl.DateTimeFormat("en-US", {
-      timeZone: "Asia/Seoul",
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      weekday: "short",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    }).format(new Date(value));
+  function formatEnglishDateTime(
+    value: string
+  ) {
+    return new Intl.DateTimeFormat(
+      "en-US",
+      {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        weekday: "short",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }
+    ).format(new Date(value));
   }
 
-  function formatKoreanDateTime(value: string) {
-    return new Intl.DateTimeFormat("ko-KR", {
-      timeZone: "Asia/Seoul",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      weekday: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }).format(new Date(value));
+  function formatKoreanDateTime(
+    value: string
+  ) {
+    return new Intl.DateTimeFormat(
+      "ko-KR",
+      {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }
+    ).format(new Date(value));
   }
 
   function getDurationMinutes(
@@ -350,435 +516,947 @@ export default async function TeacherPage() {
     );
   }
 
-  const [reviewSummaryResult, recentReviewsResult] = await Promise.all([
-    supabase
-      .from("teacher_review_summary")
-      .select(`
-        teacher_user_id,
-        review_count,
-        overall_average,
-        latest_review_at
-      `)
-      .eq("teacher_user_id", user.id)
-      .maybeSingle(),
-
-    supabase
-      .from("teacher_reviews")
-      .select(`
-        id,
-        attitude_score,
-        lesson_quality_score,
-        explanation_score,
-        communication_score,
-        preparation_score,
-        satisfaction_score,
-        comment,
-        created_at
-      `)
-      .eq("teacher_user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(3),
-  ]);
-
-  const reviewError =
-    reviewSummaryResult.error ||
-    recentReviewsResult.error;
-
-  if (reviewError) {
-    throw new Error(reviewError.message);
-  }
-
-  const reviewSummary = reviewSummaryResult.data;
-  const recentReviews = recentReviewsResult.data ?? [];
-
   return (
     <main
       style={{
-        padding: "40px",
-        maxWidth: "1100px",
-        margin: "0 auto",
+        minHeight: "100vh",
+        background:
+          "linear-gradient(180deg, #f6f9ff 0%, #ffffff 320px)",
+        color: "#101828",
       }}
     >
       <div
         style={{
-          marginBottom: "36px",
+          maxWidth: "1120px",
+          margin: "0 auto",
+          padding: "36px 24px 64px",
         }}
       >
-        <h1
+        {/* HERO */}
+        <section
           style={{
-            marginBottom: "6px",
-            fontSize: "34px",
+            position: "relative",
+            overflow: "hidden",
+            padding: "34px",
+            borderRadius: "22px",
+            background:
+              "linear-gradient(135deg, #0A1F44 0%, #163d7a 100%)",
+            color: "#ffffff",
+            boxShadow:
+              "0 18px 45px rgba(10,31,68,0.14)",
           }}
         >
-          TALKLY Teacher
-        </h1>
-
-        <div
-          style={{
-            fontSize: "14px",
-            opacity: 0.65,
-            marginBottom: "14px",
-          }}
-        >
-          TALKLY 강사
-        </div>
-
-        <p
-          style={{
-            margin: 0,
-            fontSize: "18px",
-          }}
-        >
-          {profile.name
-            ? `Welcome, ${profile.name}.`
-            : "Welcome to your teacher dashboard."}
-        </p>
-
-        <div
-          style={{
-            marginTop: "5px",
-            fontSize: "13px",
-            opacity: 0.6,
-          }}
-        >
-          배정된 수업 일정을 확인하고 관리할 수 있습니다.
-        </div>
-      </div>
-
-      <section
-        style={{
-          marginBottom: "24px",
-          padding: "24px",
-          border: "1px solid #dbe7ff",
-          borderRadius: "14px",
-          background: "#f7faff",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: "18px",
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <div style={{ color: "#2f6fed", fontSize: "11px", fontWeight: 900, letterSpacing: "0.08em" }}>
-              MY REVIEWS
-            </div>
-            <h2 style={{ margin: "6px 0 0", fontSize: "24px" }}>내 강사 평가</h2>
-            <p style={{ margin: "8px 0 0", fontSize: "13px", opacity: 0.68 }}>
-              학생이 남긴 점수와 코멘트를 확인할 수 있습니다. 평가 작성 학생의 이름은 표시되지 않습니다.
-            </p>
-          </div>
-
-          <Link
-            href="/teacher/reviews"
-            style={{
-              padding: "10px 14px",
-              border: "1px solid #b9cdf8",
-              borderRadius: "9px",
-              color: "#175cd3",
-              background: "#ffffff",
-              textDecoration: "none",
-              fontWeight: 800,
-              whiteSpace: "nowrap",
-            }}
-          >
-            전체 평가 보기 →
-          </Link>
-        </div>
-
-        <div
-          style={{
-            marginTop: "18px",
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-            gap: "10px",
-          }}
-        >
-          <div style={{ padding: "15px", border: "1px solid #dbe7ff", borderRadius: "10px", background: "#ffffff" }}>
-            <div style={{ fontSize: "11px", opacity: 0.6 }}>종합 평점</div>
-            <div style={{ marginTop: "5px", fontSize: "25px", fontWeight: 900 }}>
-              {reviewSummary?.overall_average != null
-                ? `${Number(reviewSummary.overall_average).toFixed(2)} / 10`
-                : "-"}
-            </div>
-          </div>
-
-          <div style={{ padding: "15px", border: "1px solid #dbe7ff", borderRadius: "10px", background: "#ffffff" }}>
-            <div style={{ fontSize: "11px", opacity: 0.6 }}>평가 건수</div>
-            <div style={{ marginTop: "5px", fontSize: "25px", fontWeight: 900 }}>
-              {reviewSummary?.review_count ?? 0}건
-            </div>
-          </div>
-        </div>
-
-        {recentReviews.length > 0 && (
-          <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
-            {recentReviews.map((review) => (
-              <div
-                key={review.id}
-                style={{
-                  padding: "13px 14px",
-                  border: "1px solid #e5ecf6",
-                  borderRadius: "9px",
-                  background: "#ffffff",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
-                  <span style={{ fontSize: "12px", opacity: 0.62 }}>최근 평가</span>
-                  <strong>
-                    {((
-                      review.attitude_score +
-                      review.lesson_quality_score +
-                      review.explanation_score +
-                      review.communication_score +
-                      review.preparation_score +
-                      review.satisfaction_score
-                    ) / 6).toFixed(1)} / 10
-                  </strong>
-                </div>
-                {review.comment && (
-                  <div style={{ marginTop: "8px", fontSize: "13px", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>
-                    {review.comment}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section
-        style={{
-          padding: "28px",
-          border: "1px solid #ddd",
-          borderRadius: "14px",
-        }}
-      >
-        <div
-          style={{
-            marginBottom: "24px",
-          }}
-        >
-          <h2
-            style={{
-              marginTop: 0,
-              marginBottom: "4px",
-              fontSize: "26px",
-            }}
-          >
-            My Classes
-          </h2>
-
           <div
             style={{
-              fontSize: "13px",
-              opacity: 0.6,
-            }}
-          >
-            내 수업
-          </div>
-
-          <div
-            style={{
-              marginTop: "14px",
-              fontSize: "17px",
-            }}
-          >
-            {sessions.length} Classes
-          </div>
-
-          <div
-            style={{
-              marginTop: "2px",
-              fontSize: "12px",
-              opacity: 0.55,
-            }}
-          >
-            총 {sessions.length}회 수업
-          </div>
-        </div>
-
-        {sessions.length === 0 ? (
-          <div
-            style={{
-              padding: "28px",
-              border: "1px dashed #ccc",
-              borderRadius: "10px",
+              position: "relative",
+              zIndex: 1,
             }}
           >
             <div
               style={{
-                fontSize: "18px",
-                fontWeight: 700,
+                fontSize: "11px",
+                fontWeight: 900,
+                letterSpacing: "0.15em",
+                color: "#a9c7ff",
               }}
             >
-              No classes assigned.
+              TALKLY TEACHER PORTAL
             </div>
+
+            <h1
+              style={{
+                margin: "9px 0 0",
+                fontSize: "34px",
+                lineHeight: 1.15,
+              }}
+            >
+              Welcome
+              {profile.name
+                ? `, ${profile.name}`
+                : ""}
+              .
+            </h1>
 
             <div
               style={{
-                marginTop: "5px",
+                marginTop: "7px",
                 fontSize: "13px",
-                opacity: 0.6,
+                color:
+                  "rgba(255,255,255,0.72)",
               }}
             >
-              현재 배정된 수업이 없습니다.
+              안녕하세요. TALKLY 강사 전용
+              페이지입니다.
+            </div>
+
+            <p
+              style={{
+                maxWidth: "620px",
+                margin: "19px 0 0",
+                fontSize: "15px",
+                lineHeight: 1.75,
+                color:
+                  "rgba(255,255,255,0.88)",
+              }}
+            >
+              Manage your classes, level
+              tests and student feedback in
+              one place.
+            </p>
+
+            <div
+              style={{
+                marginTop: "4px",
+                fontSize: "12px",
+                color:
+                  "rgba(255,255,255,0.62)",
+              }}
+            >
+              수업 일정, 레벨테스트 및 학생
+              평가를 한 곳에서 관리할 수
+              있습니다.
             </div>
           </div>
-        ) : (
+        </section>
+
+        {/* QUICK ACCESS */}
+        <section
+          style={{
+            marginTop: "22px",
+          }}
+        >
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
+              marginBottom: "12px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "11px",
+                fontWeight: 900,
+                color: "#2f6fed",
+                letterSpacing: "0.1em",
+              }}
+            >
+              QUICK ACCESS
+            </div>
+
+            <h2
+              style={{
+                margin: "5px 0 0",
+                fontSize: "22px",
+              }}
+            >
+              Your Workspace
+            </h2>
+
+            <div
+              style={{
+                marginTop: "4px",
+                fontSize: "12px",
+                color: "#667085",
+              }}
+            >
+              자주 사용하는 강사 업무
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(250px, 1fr))",
               gap: "14px",
             }}
           >
-            {sessions.map((session) => {
-              const status =
-                getSessionStatus(session.status);
+            <Link
+              href="/teacher/level-tests"
+              style={{
+                padding: "22px",
+                border:
+                  "1px solid #c9dafb",
+                borderRadius: "16px",
+                background: "#ffffff",
+                textDecoration: "none",
+                color: "inherit",
+                boxShadow:
+                  "0 7px 24px rgba(47,111,237,0.07)",
+              }}
+            >
+              <div
+                style={{
+                  width: "42px",
+                  height: "42px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "12px",
+                  background: "#eef4ff",
+                  color: "#175cd3",
+                  fontSize: "19px",
+                  fontWeight: 900,
+                }}
+              >
+                LT
+              </div>
 
-              return (
-                <Link
-                  key={session.id}
-                  href={`/teacher/classes/${session.id}`}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "100px 1.2fr 1.3fr 90px 110px",
-                    gap: "18px",
-                    alignItems: "center",
-                    padding: "18px",
-                    border: "1px solid #ddd",
-                    borderRadius: "10px",
-                    textDecoration: "none",
-                    color: "inherit",
-                  }}
-                >
-                  <div>
-                    <strong
-                      style={{
-                        fontSize: "17px",
-                      }}
-                    >
-                      Lesson {session.lesson_number}
-                    </strong>
+              <div
+                style={{
+                  marginTop: "16px",
+                  fontSize: "11px",
+                  fontWeight: 900,
+                  color: "#2f6fed",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                LEVEL TESTS
+              </div>
 
+              <h3
+                style={{
+                  margin: "5px 0 0",
+                  fontSize: "20px",
+                }}
+              >
+                Level Tests
+              </h3>
+
+              <div
+                style={{
+                  marginTop: "3px",
+                  fontSize: "12px",
+                  color: "#667085",
+                }}
+              >
+                레벨테스트
+              </div>
+
+              <div
+                style={{
+                  marginTop: "18px",
+                  fontSize: "28px",
+                  fontWeight: 900,
+                  color: "#0A1F44",
+                }}
+              >
+                {upcomingLevelTests.length}
+              </div>
+
+              <div
+                style={{
+                  marginTop: "2px",
+                  fontSize: "12px",
+                  color: "#667085",
+                }}
+              >
+                Upcoming · 예정된 테스트
+              </div>
+
+              <div
+                style={{
+                  marginTop: "17px",
+                  color: "#175cd3",
+                  fontSize: "13px",
+                  fontWeight: 900,
+                }}
+              >
+                View Level Tests →
+              </div>
+            </Link>
+
+            <a
+              href="#my-classes"
+              style={{
+                padding: "22px",
+                border:
+                  "1px solid #e4e7ec",
+                borderRadius: "16px",
+                background: "#ffffff",
+                textDecoration: "none",
+                color: "inherit",
+              }}
+            >
+              <div
+                style={{
+                  width: "42px",
+                  height: "42px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "12px",
+                  background: "#f2f4f7",
+                  color: "#344054",
+                  fontSize: "18px",
+                  fontWeight: 900,
+                }}
+              >
+                CL
+              </div>
+
+              <div
+                style={{
+                  marginTop: "16px",
+                  fontSize: "11px",
+                  fontWeight: 900,
+                  color: "#667085",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                MY CLASSES
+              </div>
+
+              <h3
+                style={{
+                  margin: "5px 0 0",
+                  fontSize: "20px",
+                }}
+              >
+                My Classes
+              </h3>
+
+              <div
+                style={{
+                  marginTop: "3px",
+                  fontSize: "12px",
+                  color: "#667085",
+                }}
+              >
+                내 수업
+              </div>
+
+              <div
+                style={{
+                  marginTop: "18px",
+                  fontSize: "28px",
+                  fontWeight: 900,
+                }}
+              >
+                {upcomingClasses.length}
+              </div>
+
+              <div
+                style={{
+                  marginTop: "2px",
+                  fontSize: "12px",
+                  color: "#667085",
+                }}
+              >
+                Upcoming · 예정 수업
+              </div>
+
+              <div
+                style={{
+                  marginTop: "17px",
+                  color: "#344054",
+                  fontSize: "13px",
+                  fontWeight: 900,
+                }}
+              >
+                View Classes ↓
+              </div>
+            </a>
+
+            <Link
+              href="/teacher/reviews"
+              style={{
+                padding: "22px",
+                border:
+                  "1px solid #e4e7ec",
+                borderRadius: "16px",
+                background: "#ffffff",
+                textDecoration: "none",
+                color: "inherit",
+              }}
+            >
+              <div
+                style={{
+                  width: "42px",
+                  height: "42px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "12px",
+                  background: "#f2f4f7",
+                  color: "#344054",
+                  fontSize: "18px",
+                  fontWeight: 900,
+                }}
+              >
+                RV
+              </div>
+
+              <div
+                style={{
+                  marginTop: "16px",
+                  fontSize: "11px",
+                  fontWeight: 900,
+                  color: "#667085",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                REVIEWS
+              </div>
+
+              <h3
+                style={{
+                  margin: "5px 0 0",
+                  fontSize: "20px",
+                }}
+              >
+                My Reviews
+              </h3>
+
+              <div
+                style={{
+                  marginTop: "3px",
+                  fontSize: "12px",
+                  color: "#667085",
+                }}
+              >
+                내 강사 평가
+              </div>
+
+              <div
+                style={{
+                  marginTop: "18px",
+                  fontSize: "28px",
+                  fontWeight: 900,
+                }}
+              >
+                {reviewSummary?.review_count ??
+                  0}
+              </div>
+
+              <div
+                style={{
+                  marginTop: "2px",
+                  fontSize: "12px",
+                  color: "#667085",
+                }}
+              >
+                Reviews · 평가
+              </div>
+
+              <div
+                style={{
+                  marginTop: "17px",
+                  color: "#344054",
+                  fontSize: "13px",
+                  fontWeight: 900,
+                }}
+              >
+                View Reviews →
+              </div>
+            </Link>
+          </div>
+        </section>
+
+        {/* REVIEWS */}
+        <section
+          style={{
+            marginTop: "28px",
+            padding: "24px",
+            border:
+              "1px solid #dbe7ff",
+            borderRadius: "16px",
+            background: "#f7faff",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent:
+                "space-between",
+              alignItems: "flex-start",
+              gap: "18px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  color: "#2f6fed",
+                  fontSize: "11px",
+                  fontWeight: 900,
+                  letterSpacing: "0.08em",
+                }}
+              >
+                MY REVIEWS
+              </div>
+
+              <h2
+                style={{
+                  margin: "6px 0 0",
+                  fontSize: "23px",
+                }}
+              >
+                Teacher Feedback
+              </h2>
+
+              <div
+                style={{
+                  marginTop: "4px",
+                  fontSize: "12px",
+                  color: "#667085",
+                }}
+              >
+                내 강사 평가
+              </div>
+            </div>
+
+            <Link
+              href="/teacher/reviews"
+              style={{
+                padding: "10px 14px",
+                border:
+                  "1px solid #b9cdf8",
+                borderRadius: "9px",
+                color: "#175cd3",
+                background: "#ffffff",
+                textDecoration: "none",
+                fontSize: "12px",
+                fontWeight: 800,
+              }}
+            >
+              View All Reviews →
+            </Link>
+          </div>
+
+          <div
+            style={{
+              marginTop: "18px",
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(160px, 1fr))",
+              gap: "10px",
+            }}
+          >
+            <div
+              style={{
+                padding: "16px",
+                border:
+                  "1px solid #dbe7ff",
+                borderRadius: "11px",
+                background: "#ffffff",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "11px",
+                  color: "#667085",
+                }}
+              >
+                Overall Rating
+              </div>
+
+              <div
+                style={{
+                  marginTop: "5px",
+                  fontSize: "25px",
+                  fontWeight: 900,
+                }}
+              >
+                {reviewSummary?.overall_average !=
+                null
+                  ? `${Number(
+                      reviewSummary.overall_average
+                    ).toFixed(2)} / 10`
+                  : "-"}
+              </div>
+
+              <div
+                style={{
+                  marginTop: "3px",
+                  fontSize: "11px",
+                  color: "#98a2b3",
+                }}
+              >
+                종합 평점
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: "16px",
+                border:
+                  "1px solid #dbe7ff",
+                borderRadius: "11px",
+                background: "#ffffff",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "11px",
+                  color: "#667085",
+                }}
+              >
+                Total Reviews
+              </div>
+
+              <div
+                style={{
+                  marginTop: "5px",
+                  fontSize: "25px",
+                  fontWeight: 900,
+                }}
+              >
+                {reviewSummary?.review_count ??
+                  0}
+              </div>
+
+              <div
+                style={{
+                  marginTop: "3px",
+                  fontSize: "11px",
+                  color: "#98a2b3",
+                }}
+              >
+                평가 건수
+              </div>
+            </div>
+          </div>
+
+          {recentReviews.length > 0 && (
+            <div
+              style={{
+                marginTop: "16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+              }}
+            >
+              {recentReviews.map(
+                (review) => (
+                  <div
+                    key={review.id}
+                    style={{
+                      padding: "14px",
+                      border:
+                        "1px solid #e5ecf6",
+                      borderRadius:
+                        "10px",
+                      background:
+                        "#ffffff",
+                    }}
+                  >
                     <div
                       style={{
-                        marginTop: "3px",
-                        fontSize: "12px",
-                        opacity: 0.55,
+                        display: "flex",
+                        justifyContent:
+                          "space-between",
+                        gap: "12px",
                       }}
                     >
-                      {session.lesson_number}회차
-                    </div>
-                  </div>
-
-                  <div>
-                    <strong
-                      style={{
-                        fontSize: "17px",
-                      }}
-                    >
-                      {getStudentName(
-                        session.enrollment_id
-                      )}
-                    </strong>
-
-                    <div
-                      style={{
-                        marginTop: "5px",
-                        fontSize: "13px",
-                        opacity: 0.65,
-                      }}
-                    >
-                      {getCourseName(
-                        session.enrollment_id
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div
-                      style={{
-                        fontSize: "16px",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {formatEnglishDateTime(
-                        session.scheduled_start
-                      )}
-                    </div>
-
-                    <div
-                      style={{
-                        marginTop: "5px",
-                        fontSize: "12px",
-                        opacity: 0.55,
-                      }}
-                    >
-                      {formatKoreanDateTime(
-                        session.scheduled_start
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div
-                      style={{
-                        fontSize: "16px",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {getDurationMinutes(
-                        session.scheduled_start,
-                        session.scheduled_end
-                      )}{" "}
-                      min
-                    </div>
-
-                    <div
-                      style={{
-                        marginTop: "3px",
-                        fontSize: "12px",
-                        opacity: 0.55,
-                      }}
-                    >
-                      수업시간
-                    </div>
-                  </div>
-
-                  <div>
-                    <strong
-                      style={{
-                        fontSize: "16px",
-                      }}
-                    >
-                      {status.en}
-                    </strong>
-
-                    {status.ko && (
-                      <div
+                      <span
                         style={{
-                          marginTop: "3px",
-                          fontSize: "12px",
-                          opacity: 0.55,
+                          fontSize:
+                            "12px",
+                          color:
+                            "#667085",
                         }}
                       >
-                        {status.ko}
+                        Recent Review
+                      </span>
+
+                      <strong>
+                        {(
+                          (review.attitude_score +
+                            review.lesson_quality_score +
+                            review.explanation_score +
+                            review.communication_score +
+                            review.preparation_score +
+                            review.satisfaction_score) /
+                          6
+                        ).toFixed(1)}{" "}
+                        / 10
+                      </strong>
+                    </div>
+
+                    {review.comment && (
+                      <div
+                        style={{
+                          marginTop:
+                            "8px",
+                          fontSize:
+                            "13px",
+                          lineHeight: 1.65,
+                          whiteSpace:
+                            "pre-wrap",
+                        }}
+                      >
+                        {review.comment}
                       </div>
                     )}
                   </div>
-                </Link>
-              );
-            })}
+                )
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* CLASSES */}
+        <section
+          id="my-classes"
+          style={{
+            marginTop: "28px",
+            padding: "28px",
+            border:
+              "1px solid #e4e7ec",
+            borderRadius: "16px",
+            background: "#ffffff",
+          }}
+        >
+          <div
+            style={{
+              marginBottom: "24px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "11px",
+                fontWeight: 900,
+                color: "#2f6fed",
+                letterSpacing: "0.08em",
+              }}
+            >
+              MY CLASSES
+            </div>
+
+            <h2
+              style={{
+                margin: "6px 0 0",
+                fontSize: "26px",
+              }}
+            >
+              My Classes
+            </h2>
+
+            <div
+              style={{
+                marginTop: "4px",
+                fontSize: "12px",
+                color: "#667085",
+              }}
+            >
+              내 수업
+            </div>
+
+            <div
+              style={{
+                marginTop: "13px",
+                fontSize: "16px",
+                fontWeight: 800,
+              }}
+            >
+              {sessions.length} Classes
+            </div>
+
+            <div
+              style={{
+                marginTop: "2px",
+                fontSize: "11px",
+                color: "#98a2b3",
+              }}
+            >
+              총 {sessions.length}회 수업
+            </div>
           </div>
-        )}
-      </section>
+
+          {sessions.length === 0 ? (
+            <div
+              style={{
+                padding: "30px",
+                border:
+                  "1px dashed #d0d5dd",
+                borderRadius: "12px",
+                textAlign: "center",
+                background: "#f9fafb",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "18px",
+                  fontWeight: 800,
+                }}
+              >
+                No classes assigned.
+              </div>
+
+              <div
+                style={{
+                  marginTop: "5px",
+                  fontSize: "12px",
+                  color: "#667085",
+                }}
+              >
+                현재 배정된 수업이 없습니다.
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+              }}
+            >
+              {sessions.map((session) => {
+                const status =
+                  getSessionStatus(
+                    session.status
+                  );
+
+                return (
+                  <Link
+                    key={session.id}
+                    href={`/teacher/classes/${session.id}`}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "100px minmax(130px, 1.1fr) minmax(220px, 1.5fr) 80px 110px",
+                      gap: "18px",
+                      alignItems:
+                        "center",
+                      padding: "18px",
+                      border:
+                        "1px solid #e4e7ec",
+                      borderRadius:
+                        "12px",
+                      textDecoration:
+                        "none",
+                      color: "inherit",
+                      background:
+                        "#ffffff",
+                    }}
+                  >
+                    <div>
+                      <strong>
+                        Lesson{" "}
+                        {
+                          session.lesson_number
+                        }
+                      </strong>
+
+                      <div
+                        style={{
+                          marginTop:
+                            "3px",
+                          fontSize:
+                            "11px",
+                          color:
+                            "#98a2b3",
+                        }}
+                      >
+                        {
+                          session.lesson_number
+                        }
+                        회차
+                      </div>
+                    </div>
+
+                    <div>
+                      <strong>
+                        {getStudentName(
+                          session.enrollment_id
+                        )}
+                      </strong>
+
+                      <div
+                        style={{
+                          marginTop:
+                            "5px",
+                          fontSize:
+                            "12px",
+                          color:
+                            "#667085",
+                        }}
+                      >
+                        {getCourseName(
+                          session.enrollment_id
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div
+                        style={{
+                          fontSize:
+                            "14px",
+                          fontWeight:
+                            700,
+                        }}
+                      >
+                        {formatEnglishDateTime(
+                          session.scheduled_start
+                        )}
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop:
+                            "4px",
+                          fontSize:
+                            "11px",
+                          color:
+                            "#98a2b3",
+                        }}
+                      >
+                        {formatKoreanDateTime(
+                          session.scheduled_start
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <strong>
+                        {getDurationMinutes(
+                          session.scheduled_start,
+                          session.scheduled_end
+                        )}{" "}
+                        min
+                      </strong>
+
+                      <div
+                        style={{
+                          marginTop:
+                            "3px",
+                          fontSize:
+                            "11px",
+                          color:
+                            "#98a2b3",
+                        }}
+                      >
+                        수업시간
+                      </div>
+                    </div>
+
+                    <div>
+                      <strong>
+                        {status.en}
+                      </strong>
+
+                      {status.ko && (
+                        <div
+                          style={{
+                            marginTop:
+                              "3px",
+                            fontSize:
+                              "11px",
+                            color:
+                              "#98a2b3",
+                          }}
+                        >
+                          {status.ko}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
     </main>
   );
 }
