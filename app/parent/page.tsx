@@ -2,6 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import TalklyUserHeader from "@/components/TalklyUserHeader";
+import EnrollmentProgressCard from "@/components/parent/EnrollmentProgressCard";
+import {
+  getEnrollmentProgress,
+  type EnrollmentProgressResult,
+} from "@/lib/parent/get-enrollment-progress";
 
 type Child = {
   id: number;
@@ -108,6 +113,36 @@ export default async function ParentPage() {
 
   const children = (childData ?? []) as Child[];
   const childIds = children.map((child) => child.id);
+
+  /*
+   * =========================================================
+   * 자녀별 수강 진행 현황
+   *
+   * 레벨테스트
+   * → 수강신청
+   * → 강사·일정 배정
+   * → 결제
+   * → 수강 시작
+   * =========================================================
+   */
+  let enrollmentProgresses: EnrollmentProgressResult[] = [];
+
+  if (children.length > 0) {
+    const progressResults = await Promise.all(
+      children.map((child) =>
+        getEnrollmentProgress({
+          parentUserId: user.id,
+          childId: child.id,
+        })
+      )
+    );
+
+    enrollmentProgresses = progressResults.filter(
+      (
+        progress
+      ): progress is EnrollmentProgressResult => progress !== null
+    );
+  }
 
   let levelTests: LevelTest[] = [];
 
@@ -561,6 +596,84 @@ export default async function ParentPage() {
             }}
           />
         </section>
+
+        {/* ==============================
+            수강 진행 현황
+        ============================== */}
+
+        {enrollmentProgresses.length > 0 && (
+          <section
+            style={{
+              marginTop: "28px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-end",
+                gap: "20px",
+                marginBottom: "16px",
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <div className="talkly-section-label">
+                  ENROLLMENT PROGRESS
+                </div>
+
+                <h2
+                  style={{
+                    margin: "5px 0 0",
+                    color: "var(--talkly-navy)",
+                    fontSize: "25px",
+                  }}
+                >
+                  수강 진행 현황
+                </h2>
+
+                <p
+                  style={{
+                    margin: "7px 0 0",
+                    color: "var(--text-muted)",
+                    fontSize: "14px",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  레벨테스트부터 수강신청, 일정 배정, 결제와 수강 시작까지
+                  한눈에 확인하세요.
+                </p>
+              </div>
+
+              <Link
+                href="/parent/children"
+                style={{
+                  color: "var(--talkly-blue)",
+                  textDecoration: "none",
+                  fontSize: "14px",
+                  fontWeight: 800,
+                }}
+              >
+                자녀별 상세 보기 →
+              </Link>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gap: "14px",
+              }}
+            >
+              {enrollmentProgresses.map((progress) => (
+                <EnrollmentProgressCard
+                  key={progress.childId}
+                  progress={progress}
+                  compact
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="talkly-stat-grid">
           <div className="talkly-card talkly-stat-card">

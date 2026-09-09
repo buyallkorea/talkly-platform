@@ -3,8 +3,12 @@ import {
   notFound,
   redirect,
 } from "next/navigation";
+
 import { createClient } from "@/lib/supabase-server";
 import TalklyUserHeader from "@/components/TalklyUserHeader";
+import EnrollmentProgressCard from "@/components/parent/EnrollmentProgressCard";
+import { getEnrollmentProgress } from "@/lib/parent/get-enrollment-progress";
+
 import DeactivateChildButton from "./DeactivateChildButton";
 import StudentAccountCard from "./StudentAccountCard";
 
@@ -17,16 +21,14 @@ type PageProps = {
 export default async function ChildDetailPage({
   params,
 }: PageProps) {
-  const { id } =
-    await params;
+  const { id } = await params;
 
   const supabase =
     await createClient();
 
   const {
     data: { user },
-  } =
-    await supabase.auth.getUser();
+  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");
@@ -36,13 +38,8 @@ export default async function ChildDetailPage({
     data: profile,
   } = await supabase
     .from("profiles")
-    .select(
-      "role, name"
-    )
-    .eq(
-      "id",
-      user.id
-    )
+    .select("role, name")
+    .eq("id", user.id)
     .single();
 
   if (
@@ -68,10 +65,7 @@ export default async function ChildDetailPage({
       is_active,
       created_at
     `)
-    .eq(
-      "id",
-      id
-    )
+    .eq("id", id)
     .eq(
       "parent_user_id",
       user.id
@@ -95,62 +89,79 @@ export default async function ChildDetailPage({
   /*
    * 자녀에 학생 로그인 계정이 연결되어 있으면
    * profiles에서 학생 로그인 이메일을 조회합니다.
+   *
    * 계정이 아직 없으면 null을 그대로 전달하여
    * StudentAccountCard가 계정 생성 화면을 표시합니다.
    */
-  let studentEmail: string | null = null;
+  let studentEmail: string | null =
+    null;
 
   if (child.student_user_id) {
     const {
       data: studentProfile,
-      error: studentProfileError,
+      error:
+        studentProfileError,
     } = await supabase
       .from("profiles")
       .select("email")
-      .eq("id", child.student_user_id)
+      .eq(
+        "id",
+        child.student_user_id
+      )
       .maybeSingle();
 
-    if (studentProfileError) {
+    if (
+      studentProfileError
+    ) {
       console.error(
         "[Child Detail] Student profile lookup failed:",
         studentProfileError.message
       );
     } else {
       studentEmail =
-        studentProfile?.email ?? null;
+        studentProfile?.email ??
+        null;
     }
   }
 
+  /*
+   * =========================================================
+   * 수강 진행 현황
+   *
+   * 레벨테스트
+   * → 수강신청
+   * → 강사/일정 배정
+   * → 결제
+   * → 실제 수강 시작
+   * =========================================================
+   */
+  const enrollmentProgress =
+    await getEnrollmentProgress({
+      parentUserId: user.id,
+      childId: child.id,
+    });
+
   const menuCards = [
     {
-      title:
-        "수업",
+      title: "수업",
       description:
         "전체 수업 일정과 회차별 수업 정보를 확인합니다.",
-      href:
-        `/parent/children/${child.id}/classes`,
-      label:
-        "CLASSES",
+      href: `/parent/children/${child.id}/classes`,
+      label: "CLASSES",
     },
     {
-      title:
-        "출결",
+      title: "출결",
       description:
         "전체 출석 및 결석 기록을 확인합니다.",
-      href:
-        `/parent/children/${child.id}/attendance`,
-      label:
-        "ATTENDANCE",
+      href: `/parent/children/${child.id}/attendance`,
+      label: "ATTENDANCE",
     },
     {
-      title:
-        "학습 평가",
+      title: "학습 평가",
       description:
         "강사 평가와 AI 수업 분석을 회차별로 함께 확인합니다.",
-      href:
-        `/parent/children/${child.id}/evaluations`,
-      label:
-        "LEARNING REPORT",
+      href: `/parent/children/${child.id}/evaluations`,
+      label: "LEARNING REPORT",
     },
   ];
 
@@ -179,13 +190,16 @@ export default async function ChildDetailPage({
                 "none",
               fontSize:
                 "14px",
-              fontWeight:
-                800,
+              fontWeight: 800,
             }}
           >
             ← 자녀 목록
           </Link>
         </div>
+
+        {/* ==============================
+            학생 프로필 Hero
+        ============================== */}
 
         <section
           style={{
@@ -209,16 +223,14 @@ export default async function ChildDetailPage({
             style={{
               position:
                 "relative",
-              zIndex:
-                1,
+              zIndex: 1,
               display:
                 "flex",
               justifyContent:
                 "space-between",
               alignItems:
                 "center",
-              gap:
-                "24px",
+              gap: "24px",
               flexWrap:
                 "wrap",
             }}
@@ -229,8 +241,7 @@ export default async function ChildDetailPage({
                   "flex",
                 alignItems:
                   "center",
-                gap:
-                  "18px",
+                gap: "18px",
               }}
             >
               <div
@@ -265,8 +276,7 @@ export default async function ChildDetailPage({
 
               <div>
                 <div className="talkly-section-label">
-                  STUDENT
-                  PROFILE
+                  STUDENT PROFILE
                 </div>
 
                 <h1
@@ -303,6 +313,10 @@ export default async function ChildDetailPage({
           </div>
         </section>
 
+        {/* ==============================
+            기본 정보
+        ============================== */}
+
         <section
           className="talkly-card"
           style={{
@@ -335,8 +349,7 @@ export default async function ChildDetailPage({
                 "grid",
               gridTemplateColumns:
                 "repeat(auto-fit, minmax(190px, 1fr))",
-              gap:
-                "12px",
+              gap: "12px",
             }}
           >
             {[
@@ -389,9 +402,7 @@ export default async function ChildDetailPage({
                         700,
                     }}
                   >
-                    {
-                      label
-                    }
+                    {label}
                   </div>
 
                   <div
@@ -406,9 +417,7 @@ export default async function ChildDetailPage({
                         800,
                     }}
                   >
-                    {
-                      value
-                    }
+                    {value}
                   </div>
                 </div>
               )
@@ -452,8 +461,7 @@ export default async function ChildDetailPage({
                   "15px",
                 fontWeight:
                   700,
-                lineHeight:
-                  1.7,
+                lineHeight: 1.7,
                 whiteSpace:
                   "pre-wrap",
               }}
@@ -464,14 +472,46 @@ export default async function ChildDetailPage({
           </div>
         </section>
 
+        {/* ==============================
+            학생 로그인 계정
+        ============================== */}
+
         <StudentAccountCard
           childId={child.id}
-          childName={child.name}
-          studentUserId={
-            child.student_user_id ?? null
+          childName={
+            child.name
           }
-          studentEmail={studentEmail}
+          studentUserId={
+            child.student_user_id ??
+            null
+          }
+          studentEmail={
+            studentEmail
+          }
         />
+
+        {/* ==============================
+            수강 진행 현황
+        ============================== */}
+
+        {enrollmentProgress ? (
+          <section
+            style={{
+              marginTop:
+                "28px",
+            }}
+          >
+            <EnrollmentProgressCard
+              progress={
+                enrollmentProgress
+              }
+            />
+          </section>
+        ) : null}
+
+        {/* ==============================
+            학습 관리
+        ============================== */}
 
         <section
           style={{
@@ -502,8 +542,7 @@ export default async function ChildDetailPage({
                 "grid",
               gridTemplateColumns:
                 "repeat(auto-fit, minmax(230px, 1fr))",
-              gap:
-                "16px",
+              gap: "16px",
             }}
           >
             {menuCards.map(
@@ -539,9 +578,7 @@ export default async function ChildDetailPage({
                         "0.08em",
                     }}
                   >
-                    {
-                      item.label
-                    }
+                    {item.label}
                   </div>
 
                   <h3
@@ -554,9 +591,7 @@ export default async function ChildDetailPage({
                         "20px",
                     }}
                   >
-                    {
-                      item.title
-                    }
+                    {item.title}
                   </h3>
 
                   <p
@@ -599,8 +634,7 @@ export default async function ChildDetailPage({
               style={{
                 padding:
                   "24px",
-                opacity:
-                  0.72,
+                opacity: 0.72,
               }}
             >
               <div
@@ -663,6 +697,10 @@ export default async function ChildDetailPage({
           </div>
         </section>
 
+        {/* ==============================
+            자녀 등록 관리
+        ============================== */}
+
         <section
           className="talkly-card"
           style={{
@@ -684,8 +722,7 @@ export default async function ChildDetailPage({
                 "space-between",
               alignItems:
                 "center",
-              gap:
-                "22px",
+              gap: "22px",
               flexWrap:
                 "wrap",
             }}
@@ -701,8 +738,7 @@ export default async function ChildDetailPage({
                     900,
                 }}
               >
-                CHILD
-                REGISTRATION
+                CHILD REGISTRATION
               </div>
 
               <h3
