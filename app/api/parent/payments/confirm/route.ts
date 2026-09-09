@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
 
+import {
+  activatePaidEnrollment,
+} from "@/lib/enrollment/activate-paid-enrollment";
+
 type ConfirmRequestBody = {
   paymentKey?: string;
   orderId?: string;
@@ -39,6 +43,14 @@ type TossErrorResponse = {
   code?: string;
   message?: string;
   [key: string]: unknown;
+};
+
+type EnrollmentActivationResult = {
+  enrollmentId: number;
+  alreadyExisted: boolean;
+  totalLessons: number;
+  startDate: string;
+  endDate: string;
 };
 
 export async function POST(request: Request) {
@@ -215,19 +227,57 @@ export async function POST(request: Request) {
 
     /*
      * =========================================================
-     * 5. 이미 승인 완료된 주문이면 재승인하지 않음
+     * 5. 이미 승인 완료된 주문
      *
-     * 성공 페이지 새로고침 등에 대비합니다.
+     * Toss를 다시 승인하지 않습니다.
+     *
+     * 단, 수강 생성이 빠졌다면 다시 복구를 시도합니다.
+     * 성공 페이지 새로고침 및 중간 장애 복구용입니다.
      * =========================================================
      */
     if (payment.status === "paid") {
+      let activationResult:
+        | EnrollmentActivationResult
+        | null = null;
+
+      let activationError:
+        | string
+        | null = null;
+
+      try {
+        activationResult =
+          await activatePaidEnrollment(
+            payment.id
+          );
+      } catch (error) {
+        console.error(
+          "[TOSS CONFIRM] 기존 paid 결제 수강등록 복구 실패:",
+          error
+        );
+
+        activationError =
+          error instanceof Error
+            ? error.message
+            : "수강등록 자동 생성에 실패했습니다.";
+      }
+
       return NextResponse.json({
         success: true,
         alreadyPaid: true,
+
         paymentId: payment.id,
         orderId: payment.order_id,
         amount: payment.amount,
         approvedAt: payment.approved_at,
+
+        enrollment:
+          activationResult,
+
+        enrollmentActivationPending:
+          !activationResult,
+
+        enrollmentActivationError:
+          activationError,
       });
     }
 
@@ -733,17 +783,64 @@ export async function POST(request: Request) {
 
     /*
      * =========================================================
-     * 중요
+     * 14. 결제 완료 → 실제 수강 자동 활성화
      *
-     * 아직 여기서 enrollments를 생성하지 않습니다.
+     * 중요:
+     * Toss 결제는 이 시점에서 이미 정상 완료되었습니다.
      *
-     * 결제 테스트가 정상임을 확인한 다음 단계에서
-     * paid 결제를 기준으로 수강 등록을 생성합니다.
+     * 수강 생성에 문제가 생겨도 결제를 failed로 되돌리지 않습니다.
+     * 이후 같은 paid 결제를 다시 호출하면 복구를 재시도합니다.
+     * =========================================================
+     */
+    let activationResult:
+      | EnrollmentActivationResult
+      | null = null;
+
+    let activationError:
+      | string
+      | null = null;
+
+    try {
+      activationResult =
+        await activatePaidEnrollment(
+          savedPayment.id
+        );
+    } catch (error) {
+      console.error(
+        "[TOSS CONFIRM] 결제 후 수강등록 자동 생성 실패:",
+        error
+      );
+
+      activationError =
+        error instanceof Error
+          ? error.message
+          : "수강등록 자동 생성에 실패했습니다.";
+    }
+
+    /*
+     * =========================================================
+     * 15. 최종 결과 반환
+     *
+     * payment.success와 enrollment 생성 성공 여부는 분리합니다.
+     *
+     * 결제가 정상 완료됐다면 success=true입니다.
+     * enrollment 생성 실패 시에는 pending 플래그로 전달합니다.
      * =========================================================
      */
     return NextResponse.json({
       success: true,
-      payment: savedPayment,
+
+      payment:
+        savedPayment,
+
+      enrollment:
+        activationResult,
+
+      enrollmentActivationPending:
+        !activationResult,
+
+      enrollmentActivationError:
+        activationError,
     });
   } catch (error) {
     console.error(
