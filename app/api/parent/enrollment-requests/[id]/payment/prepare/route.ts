@@ -491,31 +491,34 @@ export async function POST(
      * =========================================================
      */
     return NextResponse.json({
-      success: true,
+  success: true,
 
-      paymentId:
-        payment.id,
+  paymentId:
+    payment.id,
 
-      orderId:
-        payment.order_id,
+  orderId:
+    payment.order_id,
 
-      orderName:
-        payment.order_name,
+  orderName:
+    payment.order_name,
 
-      amount:
-        payment.amount,
+  amount:
+    payment.amount,
 
-      currency:
-        payment.currency,
+  currency:
+    payment.currency,
 
-      childName:
-        childResult.data.name,
+  customerKey:
+    user.id,
 
-      courseName:
-        courseResult.data.name,
+  childName:
+    childResult.data.name,
 
-      durationMonths,
-    });
+  courseName:
+    courseResult.data.name,
+
+  durationMonths,
+});
   } catch (error) {
     console.error(
       "[TOSS PREPARE] 예상하지 못한 오류:",

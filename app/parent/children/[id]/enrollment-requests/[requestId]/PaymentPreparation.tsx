@@ -6,6 +6,85 @@ import {
 } from "react";
 import Link from "next/link";
 
+type TossPaymentMethod = {
+  code: string;
+  methodId?: string;
+};
+
+type TossPaymentWindow = {
+  on: (
+    eventName: "paymentRequest" | "cancel",
+    callback: (paymentMethod?: TossPaymentMethod) => void | Promise<void>
+  ) => void;
+  destroy: () => Promise<void> | void;
+};
+
+type TossWidgets = {
+  setAmount: (amount: { value: number; currency: "KRW" }) => Promise<void>;
+  renderPaymentWindow: () => Promise<TossPaymentWindow>;
+  requestPayment: (request: {
+    orderId: string;
+    orderName: string;
+    successUrl: string;
+    failUrl: string;
+    customerName?: string;
+  }) => Promise<void> | void;
+};
+
+type TossPaymentsInstance = {
+  widgets: (params: { customerKey: string }) => TossWidgets;
+};
+
+declare global {
+  interface Window {
+    TossPayments?: (clientKey: string) => TossPaymentsInstance;
+  }
+}
+
+type PreparePaymentResult = {
+  success?: boolean;
+  error?: string;
+  alreadyPaid?: boolean;
+  orderId?: string;
+  orderName?: string;
+  amount?: number;
+  currency?: string;
+  customerKey?: string;
+};
+
+const TOSS_SDK_URL = "https://js.tosspayments.com/v2/standard";
+
+function loadTossPaymentsSdk() {
+  return new Promise<void>((resolve, reject) => {
+    if (window.TossPayments) {
+      resolve();
+      return;
+    }
+
+    const existing = document.querySelector<HTMLScriptElement>(
+      `script[src="${TOSS_SDK_URL}"]`
+    );
+
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener(
+        "error",
+        () => reject(new Error("토스페이먼츠 결제 모듈을 불러오지 못했습니다.")),
+        { once: true }
+      );
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = TOSS_SDK_URL;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () =>
+      reject(new Error("토스페이먼츠 결제 모듈을 불러오지 못했습니다."));
+    document.head.appendChild(script);
+  });
+}
+
 type Pricing = {
   id: number;
   pricingCategory: string;
@@ -207,44 +286,147 @@ export default function PaymentPreparation({
     setSuccessMessage("");
 
     try {
-      const response =
-        await fetch(
-          `/api/parent/enrollment-requests/${requestId}/pricing`,
-          {
-            method:
-              "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body:
-              JSON.stringify({
-                durationMonths:
-                  selectedMonths,
-              }),
-          }
-        );
+      /*
+       * 1. 선택한 수강기간을 서버에 저장하고
+       *    최종 결제금액을 확정합니다.
+       */
+      const pricingResponse = await fetch(
+        `/api/parent/enrollment-requests/${requestId}/pricing`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            durationMonths: selectedMonths,
+          }),
+        }
+      );
 
-      const result =
-        await response.json();
+      const pricingResult = await pricingResponse.json();
 
-      if (!response.ok) {
+      if (!pricingResponse.ok) {
         throw new Error(
-          result.error ||
-            "결제금액을 확정할 수 없습니다."
+          pricingResult.error || "결제금액을 확정할 수 없습니다."
         );
       }
 
-      setSuccessMessage(
-        "수강기간과 결제금액이 저장되었습니다. 실제 결제모듈 연결 전 단계까지 완료되었습니다."
+      /*
+       * 2. TALKLY 서버에서 Toss 주문을 생성합니다.
+       *    결제금액은 브라우저의 finalPrice가 아니라
+       *    prepare API가 DB에서 다시 확인한 값을 사용합니다.
+       */
+      const prepareResponse = await fetch(
+        `/api/parent/enrollment-requests/${requestId}/payment/prepare`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
       );
+
+      const prepared =
+        (await prepareResponse.json()) as PreparePaymentResult;
+
+      if (!prepareResponse.ok) {
+        throw new Error(
+          prepared.error || "결제 주문을 준비하지 못했습니다."
+        );
+      }
+
+      if (
+        !prepared.orderId ||
+        !prepared.orderName ||
+        !prepared.customerKey ||
+        !Number.isInteger(Number(prepared.amount)) ||
+        Number(prepared.amount) <= 0
+      ) {
+        throw new Error("결제 주문 정보가 올바르지 않습니다.");
+      }
+
+      const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
+
+      if (!clientKey) {
+        throw new Error(
+          "토스페이먼츠 클라이언트 키가 설정되지 않았습니다."
+        );
+      }
+
+      /*
+       * 3. Toss Payments SDK v2를 불러옵니다.
+       */
+      await loadTossPaymentsSdk();
+
+      if (!window.TossPayments) {
+        throw new Error("토스페이먼츠 결제 모듈을 초기화하지 못했습니다.");
+      }
+
+      const tossPayments = window.TossPayments(clientKey);
+      const widgets = tossPayments.widgets({
+        customerKey: prepared.customerKey,
+      });
+
+      const amount = Number(prepared.amount);
+
+      await widgets.setAmount({
+        value: amount,
+        currency: "KRW",
+      });
+
+      /*
+       * 4. 결제창형 UI를 렌더링합니다.
+       *    사용자가 결제수단을 선택하고 결제를 요청하면
+       *    paymentRequest 이벤트가 발생합니다.
+       */
+      const paymentWindow = await widgets.renderPaymentWindow();
+
+      paymentWindow.on("cancel", async () => {
+        setIsSaving(false);
+        setSuccessMessage("");
+        setErrorMessage("결제를 취소했습니다. 다시 결제할 수 있습니다.");
+
+        try {
+          await paymentWindow.destroy();
+        } catch {
+          // 이미 닫힌 결제창이면 무시합니다.
+        }
+      });
+
+      paymentWindow.on("paymentRequest", async () => {
+        try {
+          const origin = window.location.origin;
+
+          await widgets.requestPayment({
+            orderId: prepared.orderId!,
+            orderName: prepared.orderName!,
+            successUrl: `${origin}/parent/payment/success`,
+            failUrl: `${origin}/parent/payment/fail`,
+            customerName: childName,
+          });
+        } catch (error) {
+          console.error("[TOSS PAYMENT REQUEST]", error);
+          setIsSaving(false);
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "결제 요청 중 오류가 발생했습니다."
+          );
+
+          try {
+            await paymentWindow.destroy();
+          } catch {
+            // 이미 닫힌 결제창이면 무시합니다.
+          }
+        }
+      });
     } catch (error) {
+      console.error("[TOSS PAYMENT PREPARE]", error);
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "처리 중 오류가 발생했습니다."
+          : "결제를 준비하는 중 오류가 발생했습니다."
       );
-    } finally {
       setIsSaving(false);
     }
   }
@@ -807,10 +989,8 @@ export default function PaymentPreparation({
                 "center",
             }}
           >
-            현재 단계에서는
-            수강기간과 결제금액을
-            서버에서 다시 검증하여
-            저장합니다.
+            결제금액은 TALKLY 서버에서 다시 검증한 뒤
+            토스페이먼츠 테스트 결제창으로 연결됩니다.
           </div>
         </aside>
       </section>
