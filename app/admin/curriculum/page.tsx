@@ -13,6 +13,8 @@ import {
   createAdminClient,
 } from "@/lib/supabase-admin";
 
+import CurriculumTextbookManager from "./CurriculumTextbookManager";
+
 type CurriculumLevel = {
   id: number;
   code: string;
@@ -184,7 +186,7 @@ async function updateCurriculumLevel(
     createAdminClient();
 
   /*
-   * 수정 대상이 실제 존재하는지 확인합니다.
+   * 수정 대상 확인
    */
   const {
     data: currentLevel,
@@ -381,6 +383,16 @@ export default async function AdminCurriculumPage({
           }
         ),
 
+      /*
+       * 중요:
+       *
+       * is_active=true 필터를 넣지 않습니다.
+       *
+       * 과거에 연결됐다가 해제된 교재도
+       * is_active=false 상태로 읽어야
+       * 나중에 다시 연결할 때 기존 row를
+       * 재활성화할 수 있습니다.
+       */
       adminClient
         .from(
           "curriculum_level_textbooks"
@@ -394,10 +406,6 @@ export default async function AdminCurriculumPage({
           sort_order,
           is_active
         `)
-        .eq(
-          "is_active",
-          true
-        )
         .order(
           "sort_order",
           {
@@ -475,9 +483,18 @@ export default async function AdminCurriculumPage({
       )
     );
 
+  /*
+   * 현재 활성화된 연결만 통계에 포함
+   */
+  const activeMappings =
+    mappings.filter(
+      (mapping) =>
+        mapping.is_active
+    );
+
   const mappedTextbookIds =
     new Set(
-      mappings.map(
+      activeMappings.map(
         (mapping) =>
           mapping.textbook_id
       )
@@ -607,7 +624,7 @@ export default async function AdminCurriculumPage({
             }}
           >
             <strong>
-              수정 원칙
+              운영 원칙
             </strong>
 
             <div
@@ -620,8 +637,10 @@ export default async function AdminCurriculumPage({
             >
               Grade 코드와 이름은
               시스템 기준값으로
-              유지하고, 수준지표와
-              설명을 관리합니다.
+              유지합니다. 수준지표와
+              설명, 교재 후보군은
+              관리자가 운영 중
+              변경할 수 있습니다.
             </div>
           </div>
         </div>
@@ -706,13 +725,13 @@ export default async function AdminCurriculumPage({
         <StatCard
           label="등록 교재"
           value={`${mappedTextbookIds.size}종`}
-          detail="Grade에 연결된 고유 교재"
+          detail="현재 Grade에 연결된 고유 교재"
         />
 
         <StatCard
-          label="Grade-교재 연결"
-          value={`${mappings.length}건`}
-          detail="현재 커리큘럼 교재 풀"
+          label="활성 Grade-교재 연결"
+          value={`${activeMappings.length}건`}
+          detail="현재 사용 중인 커리큘럼 교재 풀"
         />
       </section>
 
@@ -764,6 +783,54 @@ export default async function AdminCurriculumPage({
         </p>
       </section>
 
+      <section
+        style={{
+          padding:
+            "17px 20px",
+          border:
+            "1px solid #e5e8ef",
+          borderRadius:
+            "14px",
+          background:
+            "#ffffff",
+        }}
+      >
+        <strong
+          style={{
+            color:
+              "#0A1F44",
+            fontSize:
+              "14px",
+          }}
+        >
+          Grade별 교재는 자동 배정
+          교재가 아닙니다.
+        </strong>
+
+        <p
+          style={{
+            margin:
+              "6px 0 0",
+            color:
+              "#667085",
+            fontSize:
+              "13px",
+            lineHeight:
+              1.7,
+          }}
+        >
+          아래에서 연결하는 교재는
+          해당 Grade에서 사용할 수
+          있는 교재 후보군입니다.
+          실제 학생의 커리큘럼과
+          교재는 수강료 결제 후
+          관리자가 레벨테스트 결과,
+          수업 횟수, 수강 기간,
+          학습목표 등을 검토하여
+          학생별로 따로 결정합니다.
+        </p>
+      </section>
+
       {/* =====================================
           Grade별 카드
       ====================================== */}
@@ -777,11 +844,25 @@ export default async function AdminCurriculumPage({
       >
         {levels.map(
           (level) => {
-            const levelMappings =
+            /*
+             * 해당 Grade의 과거 연결까지
+             * 모두 포함합니다.
+             */
+            const allLevelMappings =
               mappings.filter(
                 (mapping) =>
                   mapping.curriculum_level_id ===
                   level.id
+              );
+
+            /*
+             * 실제 화면에 표시하는 현재 교재는
+             * 활성 연결만 사용합니다.
+             */
+            const levelMappings =
+              allLevelMappings.filter(
+                (mapping) =>
+                  mapping.is_active
               );
 
             const grouped =
@@ -857,7 +938,9 @@ export default async function AdminCurriculumPage({
                     "0 8px 24px rgba(15,31,68,0.05)",
                 }}
               >
-                {/* Grade 제목 */}
+                {/* =================================
+                    Grade 제목
+                ================================== */}
                 <div
                   style={{
                     display:
@@ -977,7 +1060,7 @@ export default async function AdminCurriculumPage({
                           "#8993a4",
                       }}
                     >
-                      사용 가능 교재
+                      현재 사용 가능 교재
                     </div>
 
                     <strong
@@ -992,9 +1075,7 @@ export default async function AdminCurriculumPage({
                           "21px",
                       }}
                     >
-                      {
-                        levelMappings.length
-                      }
+                      {levelMappings.length}
                       종
                     </strong>
                   </div>
@@ -1006,7 +1087,9 @@ export default async function AdminCurriculumPage({
                       "24px",
                   }}
                 >
-                  {/* 현재 수준정보 */}
+                  {/* =================================
+                      현재 수준정보
+                  ================================== */}
                   <div
                     style={{
                       display:
@@ -1066,7 +1149,7 @@ export default async function AdminCurriculumPage({
                   </p>
 
                   {/* =================================
-                      수정 영역
+                      커리큘럼 정보 수정
                   ================================== */}
                   <details
                     style={{
@@ -1142,6 +1225,7 @@ export default async function AdminCurriculumPage({
                         <FormField
                           label="수준 참고명"
                           name="display_name"
+                          id={`display_name-${level.id}`}
                           defaultValue={
                             level.display_name ??
                             ""
@@ -1152,6 +1236,7 @@ export default async function AdminCurriculumPage({
                         <FormField
                           label="CEFR"
                           name="cefr_level"
+                          id={`cefr_level-${level.id}`}
                           defaultValue={
                             level.cefr_level ??
                             ""
@@ -1162,6 +1247,7 @@ export default async function AdminCurriculumPage({
                         <FormField
                           label="Lexile"
                           name="lexile_range"
+                          id={`lexile_range-${level.id}`}
                           defaultValue={
                             level.lexile_range ??
                             ""
@@ -1172,6 +1258,7 @@ export default async function AdminCurriculumPage({
                         <FormField
                           label="AR Reading Level"
                           name="ar_level"
+                          id={`ar_level-${level.id}`}
                           defaultValue={
                             level.ar_level ??
                             ""
@@ -1182,6 +1269,7 @@ export default async function AdminCurriculumPage({
                         <FormField
                           label="US Grade"
                           name="us_grade"
+                          id={`us_grade-${level.id}`}
                           defaultValue={
                             level.us_grade ??
                             ""
@@ -1297,7 +1385,36 @@ export default async function AdminCurriculumPage({
                     </form>
                   </details>
 
-                  {/* 현재 설명 */}
+                  {/* =================================
+                      교재 연결 관리
+                  ================================== */}
+                  <CurriculumTextbookManager
+                    levelId={
+                      level.id
+                    }
+                    levelName={
+                      level.name
+                    }
+                    textbooks={
+                      textbooks
+                    }
+                    mappings={
+                      allLevelMappings.map(
+                        (
+                          mapping
+                        ) => ({
+                          textbook_id:
+                            mapping.textbook_id,
+                          is_active:
+                            mapping.is_active,
+                        })
+                      )
+                    }
+                  />
+
+                  {/* =================================
+                      현재 커리큘럼 설명
+                  ================================== */}
                   <div
                     style={{
                       marginTop:
@@ -1343,7 +1460,7 @@ export default async function AdminCurriculumPage({
                   </div>
 
                   {/* =================================
-                      교재 후보
+                      현재 연결된 교재
                   ================================== */}
                   <div
                     style={{
@@ -1377,7 +1494,7 @@ export default async function AdminCurriculumPage({
                             900,
                         }}
                       >
-                        사용 가능 교재
+                        현재 사용 가능 교재
                       </h3>
 
                       <span
@@ -1388,8 +1505,8 @@ export default async function AdminCurriculumPage({
                             "11px",
                         }}
                       >
-                        다음 단계에서
-                        연결·해제 기능 추가
+                        학생별 실제 교재 배정과는
+                        별도입니다.
                       </span>
                     </div>
 
@@ -1411,6 +1528,7 @@ export default async function AdminCurriculumPage({
                             "13px",
                         }}
                       >
+                        현재 이 Grade에
                         연결된 교재가
                         없습니다.
                       </div>
@@ -1570,6 +1688,28 @@ export default async function AdminCurriculumPage({
           }
         )}
       </section>
+
+      {levels.length === 0 && (
+        <section
+          style={{
+            padding:
+              "40px",
+            textAlign:
+              "center",
+            border:
+              "1px dashed #d8dee8",
+            borderRadius:
+              "16px",
+            background:
+              "#ffffff",
+            color:
+              "#7b8494",
+          }}
+        >
+          등록된 커리큘럼이
+          없습니다.
+        </section>
+      )}
     </main>
   );
 }
@@ -1604,25 +1744,29 @@ const labelStyle = {
 function FormField({
   label,
   name,
+  id,
   defaultValue,
   placeholder,
 }: {
   label: string;
   name: string;
+  id: string;
   defaultValue: string;
   placeholder?: string;
 }) {
   return (
     <div>
       <label
-        htmlFor={name}
-        style={labelStyle}
+        htmlFor={id}
+        style={
+          labelStyle
+        }
       >
         {label}
       </label>
 
       <input
-        id={name}
+        id={id}
         name={name}
         type="text"
         defaultValue={
