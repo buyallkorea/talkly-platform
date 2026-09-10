@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 type MenuItem = {
   label: string;
   href: string;
+  exact?: boolean;
 };
 
 type MenuGroup = {
@@ -20,14 +21,15 @@ const menuGroups: MenuGroup[] = [
       {
         label: "대시보드",
         href: "/admin",
+        exact: true,
       },
       {
         label: "수업 캘린더",
         href: "/admin/calendar",
+        exact: true,
       },
     ],
   },
-
   {
     title: "회원 관리",
     items: [
@@ -49,20 +51,13 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
-
-  {
-    title: "레벨테스트",
-    items: [
-      {
-        label: "레벨테스트 관리",
-        href: "/admin/level-tests",
-      },
-    ],
-  },
-
   {
     title: "수강 관리",
     items: [
+      {
+        label: "수강 가능 일정",
+        href: "/admin/enrollment-options",
+      },
       {
         label: "수강 신청 관리",
         href: "/admin/enrollment-requests",
@@ -72,20 +67,11 @@ const menuGroups: MenuGroup[] = [
         href: "/admin/enrollments",
       },
       {
-        label: "수강 운영 설정",
+        label: "수강신청 설정",
         href: "/admin/enrollment-settings",
-      },
-      {
-        label: "수강료·할인 관리",
-        href: "/admin/enrollment-pricing",
-      },
-      {
-        label: "운영일·휴무 관리",
-        href: "/admin/operation-blocks",
       },
     ],
   },
-
   {
     title: "수업 운영",
     items: [
@@ -96,6 +82,7 @@ const menuGroups: MenuGroup[] = [
       {
         label: "오늘 수업",
         href: "/admin/calendar",
+        exact: true,
       },
       {
         label: "주간 수업",
@@ -107,21 +94,25 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
-
   {
     title: "교육 콘텐츠",
     items: [
       {
-        label: "과정 관리",
-        href: "/admin/courses",
+        label: "커리큘럼 관리",
+        href: "/admin/curriculum",
+      },
+      {
+        label: "교재 관리",
+        href: "/admin/textbooks",
+        exact: true,
       },
       {
         label: "교재 등록",
         href: "/admin/textbooks/new",
+        exact: true,
       },
     ],
   },
-
   {
     title: "AI 서비스",
     items: [
@@ -133,23 +124,25 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
-function isActivePath(pathname: string, href: string) {
-  if (href === "/admin") {
-    return pathname === "/admin";
-  }
-
-  if (href === "/admin/calendar") {
-    return pathname === "/admin/calendar";
+function isActivePath(
+  pathname: string,
+  item: MenuItem
+) {
+  if (item.exact) {
+    return pathname === item.href;
   }
 
   return (
-    pathname === href ||
-    pathname.startsWith(`${href}/`)
+    pathname === item.href ||
+    pathname.startsWith(
+      `${item.href}/`
+    )
   );
 }
 
 export default function AdminSidebar() {
-  const pathname = usePathname();
+  const pathname =
+    usePathname();
 
   return (
     <aside className="talkly-admin-sidebar">
@@ -171,39 +164,50 @@ export default function AdminSidebar() {
       </Link>
 
       <nav className="talkly-admin-nav">
-        {menuGroups.map((group) => (
-          <section
-            key={group.title}
-            className="talkly-admin-nav-group"
-          >
-            <div className="talkly-admin-nav-title">
-              {group.title}
-            </div>
+        {menuGroups.map(
+          (group) => (
+            <section
+              key={group.title}
+              className="talkly-admin-nav-group"
+            >
+              <div className="talkly-admin-nav-title">
+                {group.title}
+              </div>
 
-            <div className="talkly-admin-nav-items">
-              {group.items.map((item) => {
-                const active = isActivePath(
-                  pathname,
-                  item.href
-                );
+              <div className="talkly-admin-nav-items">
+                {group.items.map(
+                  (item) => {
+                    const active =
+                      isActivePath(
+                        pathname,
+                        item
+                      );
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={
-                      active
-                        ? "talkly-admin-nav-link talkly-admin-nav-link-active"
-                        : "talkly-admin-nav-link"
-                    }
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        ))}
+                    return (
+                      <Link
+                        key={
+                          item.href
+                        }
+                        href={
+                          item.href
+                        }
+                        className={
+                          active
+                            ? "talkly-admin-nav-link talkly-admin-nav-link-active"
+                            : "talkly-admin-nav-link"
+                        }
+                      >
+                        {
+                          item.label
+                        }
+                      </Link>
+                    );
+                  }
+                )}
+              </div>
+            </section>
+          )
+        )}
       </nav>
 
       <div className="talkly-admin-sidebar-footer">
