@@ -37,6 +37,7 @@ type Textbook = {
   category: string | null;
   cover_image_url: string | null;
   cover_signed_url: string | null;
+  status: string | null;
 };
 
 const CATEGORY_ORDER = [
@@ -133,9 +134,11 @@ export default async function CurriculumPage() {
         description,
         publisher,
         category,
-        cover_image_url
+        cover_image_url,
+        status
       `)
       .eq("is_active", true)
+      .eq("status", "ready")
       .order("title", {
         ascending: true,
       }),
@@ -1711,6 +1714,12 @@ export default async function CurriculumPage() {
           color: #2f6fed;
         }
 
+        .talkly-textbook-item:hover {
+          background: #f2f7ff !important;
+          border-color: #cfdff5 !important;
+          transform: translateY(-1px);
+        }
+
         @media (max-width: 1040px) {
           .talkly-main-header {
             grid-template-columns: 190px 1fr auto !important;
@@ -1848,66 +1857,57 @@ function TextbookItem({
   textbook: Textbook;
 }) {
   return (
-    <div
+    <Link
+      href={`/curriculum/textbooks/${textbook.id}`}
+      aria-label={`${textbook.title} 교재 상세보기`}
       style={{
         display: "flex",
         gap: "11px",
-        alignItems:
-          "center",
-        padding:
-          "10px",
-        borderRadius:
-          "12px",
-        background:
-          "#f8fafc",
+        alignItems: "center",
+        padding: "10px",
+        borderRadius: "12px",
+        background: "#f8fafc",
+        border: "1px solid transparent",
+        textDecoration: "none",
+        transition: "0.18s ease",
       }}
+      className="talkly-textbook-item"
     >
       <div
         style={{
           flexShrink: 0,
           width: "42px",
           height: "54px",
-          overflow:
-            "hidden",
-          borderRadius:
-            "7px",
-          border:
-            "1px solid #dde4ee",
+          overflow: "hidden",
+          borderRadius: "7px",
+          border: "1px solid #dde4ee",
           background:
             "linear-gradient(145deg, #e8f0fc 0%, #f7faff 100%)",
         }}
       >
         {textbook.cover_signed_url ? (
           <img
-            src={
-              textbook.cover_signed_url
-            }
+            src={textbook.cover_signed_url}
             alt={`${textbook.title} 교재 표지`}
             style={{
               width: "100%",
               height: "100%",
-              objectFit:
-                "cover",
+              objectFit: "cover",
               display: "block",
             }}
           />
         ) : (
           <div
             style={{
-              display:
-                "flex",
-              alignItems:
-                "center",
-              justifyContent:
-                "center",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               width: "100%",
               height: "100%",
-              color:
-                "#5678a6",
+              color: "#5678a6",
               fontSize: "8px",
               fontWeight: 900,
-              textAlign:
-                "center",
+              textAlign: "center",
               lineHeight: 1.25,
             }}
           >
@@ -1918,22 +1918,14 @@ function TextbookItem({
         )}
       </div>
 
-      <div
-        style={{
-          minWidth: 0,
-        }}
-      >
+      <div style={{ minWidth: 0, flex: 1 }}>
         <strong
           style={{
-            display:
-              "block",
-            color:
-              "#26364e",
-            fontSize:
-              "12px",
+            display: "block",
+            color: "#26364e",
+            fontSize: "12px",
             lineHeight: 1.45,
-            wordBreak:
-              "keep-all",
+            wordBreak: "keep-all",
           }}
         >
           {textbook.title}
@@ -1942,19 +1934,27 @@ function TextbookItem({
         {textbook.publisher && (
           <div
             style={{
-              marginTop:
-                "3px",
-              color:
-                "#8b96a6",
-              fontSize:
-                "9px",
+              marginTop: "3px",
+              color: "#8b96a6",
+              fontSize: "9px",
             }}
           >
             {textbook.publisher}
           </div>
         )}
+
+        <div
+          style={{
+            marginTop: "5px",
+            color: "#356cad",
+            fontSize: "9px",
+            fontWeight: 800,
+          }}
+        >
+          교재 상세보기 →
+        </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
