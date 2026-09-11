@@ -1,4 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
+
+import HomeAuthMenu from "@/components/HomeAuthMenu";
 
 import {
   createAdminClient,
@@ -33,6 +36,7 @@ type Textbook = {
   publisher: string | null;
   category: string | null;
   cover_image_url: string | null;
+  cover_signed_url: string | null;
 };
 
 const CATEGORY_ORDER = [
@@ -73,6 +77,8 @@ const CATEGORY_KOREAN: Record<
   vocabulary: "보카",
   adult: "성인영어",
 };
+
+export const revalidate = 300;
 
 export default async function CurriculumPage() {
   const adminClient =
@@ -159,27 +165,355 @@ export default async function CurriculumPage() {
     (mappingsResult.data ??
       []) as CurriculumLevelTextbook[];
 
-  const textbooks =
+  const rawTextbooks =
     (textbooksResult.data ??
-      []) as Textbook[];
+      []) as Omit<
+      Textbook,
+      "cover_signed_url"
+    >[];
+
+  /*
+   * =========================================================
+   * Private Storage 교재 표지 signed URL 생성
+   * =========================================================
+   *
+   * cover_image_url에는 공개 URL이 아니라
+   * textbook-files bucket 내부 경로가 저장됩니다.
+   *
+   * 따라서 공개 페이지에서 직접 img src로 사용할 수 없고,
+   * 서버에서 signed URL을 만들어 전달합니다.
+   */
+  const textbooks =
+    await Promise.all(
+      rawTextbooks.map(
+        async (textbook) => {
+          if (
+            !textbook.cover_image_url
+          ) {
+            return {
+              ...textbook,
+              cover_signed_url:
+                null,
+            };
+          }
+
+          const {
+            data,
+            error,
+          } =
+            await adminClient.storage
+              .from(
+                "textbook-files"
+              )
+              .createSignedUrl(
+                textbook.cover_image_url,
+                60 * 60
+              );
+
+          if (error) {
+            console.error(
+              `TEXTBOOK COVER SIGNED URL ERROR (${textbook.id}):`,
+              error.message
+            );
+
+            return {
+              ...textbook,
+              cover_signed_url:
+                null,
+            };
+          }
+
+          return {
+            ...textbook,
+            cover_signed_url:
+              data?.signedUrl ??
+              null,
+          };
+        }
+      )
+    );
 
   const textbookMap =
     new Map<number, Textbook>(
-      textbooks.map((textbook) => [
-        textbook.id,
-        textbook,
-      ])
+      textbooks.map(
+        (textbook) => [
+          textbook.id,
+          textbook,
+        ]
+      )
     );
 
   return (
     <main
       style={{
         minHeight: "100vh",
-        background:
-          "linear-gradient(180deg, #f6f9ff 0%, #ffffff 34%, #f8fbff 100%)",
-        color: "#0A1F44",
+        background: "#fafaf7",
+        color: "#1b2a4a",
       }}
     >
+      {/* =========================================
+          상단 유틸리티
+      ========================================== */}
+      <div
+        className="talkly-utility"
+        style={{
+          background: "#16213e",
+          color: "#cfd8ee",
+          fontSize: "12px",
+        }}
+      >
+        <div
+          style={{
+            width:
+              "min(1200px, calc(100% - 36px))",
+            minHeight: "36px",
+            margin: "0 auto",
+            display: "flex",
+            justifyContent:
+              "flex-end",
+            alignItems: "center",
+            gap: "18px",
+          }}
+        >
+          <Link
+            href="/level-test"
+            style={utilityLinkStyle}
+          >
+            레벨테스트신청
+          </Link>
+
+          <span
+            style={{
+              opacity: 0.25,
+            }}
+          >
+            |
+          </span>
+
+          <Link
+            href="/enroll"
+            style={utilityLinkStyle}
+          >
+            수강신청
+          </Link>
+
+          <span
+            style={{
+              opacity: 0.25,
+            }}
+          >
+            |
+          </span>
+
+          <Link
+            href="/consultation"
+            style={utilityLinkStyle}
+          >
+            1:1상담
+          </Link>
+        </div>
+      </div>
+
+      {/* =========================================
+          HEADER
+      ========================================== */}
+      <header
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 50,
+          background:
+            "rgba(255,255,255,0.94)",
+          backdropFilter:
+            "blur(12px)",
+          borderBottom:
+            "1px solid #e7e9f0",
+        }}
+      >
+        <div
+          className="talkly-main-header"
+          style={{
+            width:
+              "min(1200px, calc(100% - 36px))",
+            minHeight: "82px",
+            margin: "0 auto",
+            display: "grid",
+            gridTemplateColumns:
+              "260px 1fr auto",
+            alignItems: "center",
+            gap: "24px",
+          }}
+        >
+          <Link
+            href="/"
+            aria-label="TALKLY 홈"
+            style={{
+              display:
+                "inline-flex",
+              alignItems:
+                "center",
+              width: "fit-content",
+            }}
+          >
+            <Image
+              src="/talkly-logo.png"
+              alt="TALKLY"
+              width={320}
+              height={110}
+              priority
+              style={{
+                width: "auto",
+                height: "82px",
+                objectFit:
+                  "contain",
+              }}
+            />
+          </Link>
+
+          <nav
+            className="talkly-desktop-nav"
+            style={{
+              display: "flex",
+              justifyContent:
+                "center",
+              alignItems:
+                "center",
+              gap: "5px",
+              fontSize: "14px",
+              fontWeight: 800,
+            }}
+          >
+            <div className="talkly-nav-item">
+              <Link
+                href="/#greeting"
+                className="talkly-nav-link"
+              >
+                토클리소개 ▾
+              </Link>
+
+              <div className="talkly-dropdown">
+                <Link href="/#greeting">
+                  인사말
+                </Link>
+
+                <Link href="/#why">
+                  Why TALKLY?
+                </Link>
+
+                <Link href="/#programs">
+                  프로그램
+                </Link>
+
+                <Link href="/#business-areas">
+                  사업영역
+                </Link>
+              </div>
+            </div>
+
+            <div className="talkly-nav-item">
+              <Link
+                href="/#programs"
+                className="talkly-nav-link"
+              >
+                교육센터 ▾
+              </Link>
+
+              <div className="talkly-dropdown">
+                <Link href="/#programs">
+                  프로그램소개
+                </Link>
+
+                <Link href="/curriculum">
+                  커리큘럼/교재
+                </Link>
+
+                <Link href="/#teachers">
+                  교사소개
+                </Link>
+              </div>
+            </div>
+
+            <div className="talkly-nav-item">
+              <Link
+                href="/#ai"
+                className="talkly-nav-link"
+              >
+                TALKLY AI ▾
+              </Link>
+
+              <div className="talkly-dropdown">
+                <Link href="/#ai">
+                  AI 수업리포트
+                </Link>
+
+                <Link href="/#ai">
+                  AI 성장리포트
+                </Link>
+
+                <Link href="/#ai">
+                  AI Writing
+                </Link>
+
+                <Link href="/#ai">
+                  강사 AI Brief
+                </Link>
+              </div>
+            </div>
+
+            <Link
+              href="/level-test"
+              className="talkly-nav-link"
+            >
+              레벨테스트
+            </Link>
+
+            <div className="talkly-nav-item">
+              <Link
+                href="/enroll"
+                className="talkly-nav-link"
+              >
+                수강신청 ▾
+              </Link>
+
+              <div className="talkly-dropdown">
+                <Link href="/enroll">
+                  수강신청
+                </Link>
+
+                <Link href="/login">
+                  내 수업관리
+                </Link>
+              </div>
+            </div>
+
+            <div className="talkly-nav-item">
+              <Link
+                href="/#information"
+                className="talkly-nav-link"
+              >
+                인포메이션 ▾
+              </Link>
+
+              <div className="talkly-dropdown">
+                <Link href="/notice">
+                  공지사항
+                </Link>
+
+                <Link href="/#reviews">
+                  수업후기
+                </Link>
+
+                <Link href="/consultation">
+                  1:1상담
+                </Link>
+              </div>
+            </div>
+          </nav>
+
+          <HomeAuthMenu />
+        </div>
+      </header>
+
       {/* =========================================
           HERO
       ========================================== */}
@@ -203,7 +537,8 @@ export default async function CurriculumPage() {
             style={{
               display:
                 "inline-flex",
-              alignItems: "center",
+              alignItems:
+                "center",
               gap: "8px",
               padding:
                 "7px 12px",
@@ -237,7 +572,8 @@ export default async function CurriculumPage() {
           >
             영어 실력에 맞춰
             <br />
-            정확한 단계에서 시작합니다.
+            정확한 단계에서
+            시작합니다.
           </h1>
 
           <p
@@ -257,10 +593,11 @@ export default async function CurriculumPage() {
             TALKLY는 단순히
             학생의 나이나 학교 학년으로
             수업 단계를 결정하지
-            않습니다. 레벨테스트 결과와
-            학습 목표를 바탕으로 현재
-            영어 실력에 가장 적합한
-            커리큘럼을 배정합니다.
+            않습니다. 레벨테스트
+            결과와 학습 목표를
+            바탕으로 현재 영어 실력에
+            가장 적합한 커리큘럼을
+            배정합니다.
           </p>
 
           <div
@@ -360,7 +697,8 @@ export default async function CurriculumPage() {
                   }}
                 >
                   TALKLY Grade는
-                  학교 학년이 아닙니다.
+                  학교 학년이
+                  아닙니다.
                 </h2>
 
                 <p
@@ -376,17 +714,18 @@ export default async function CurriculumPage() {
                       "keep-all",
                   }}
                 >
-                  Grade K부터 Grade
-                  9까지의 명칭은 영어
-                  수준을 이해하기 쉽게
-                  구분하기 위한 TALKLY의
-                  커리큘럼 단계입니다.
-                  실제 학교 학년과는
-                  별개이며, 영어 실력에
-                  따라 어린 학생이 높은
-                  Grade에서 시작하거나
-                  중학생이 기초 Grade에서
-                  시작할 수도 있습니다.
+                  Grade K부터
+                  Grade 9까지의 명칭은
+                  영어 수준을 이해하기
+                  쉽게 구분하기 위한
+                  TALKLY의 커리큘럼
+                  단계입니다. 실제 학교
+                  학년과는 별개이며,
+                  영어 실력에 따라 어린
+                  학생이 높은 Grade에서
+                  시작하거나 중학생이
+                  기초 Grade에서 시작할
+                  수도 있습니다.
                 </p>
               </div>
             </div>
@@ -395,7 +734,7 @@ export default async function CurriculumPage() {
       </section>
 
       {/* =========================================
-          CURRICULUM LEVELS
+          CURRICULUM
       ========================================== */}
       <section
         style={{
@@ -441,8 +780,7 @@ export default async function CurriculumPage() {
                 fontWeight: 900,
               }}
             >
-              TALKLY 커리큘럼
-              단계
+              TALKLY 커리큘럼 단계
             </h2>
 
             <p
@@ -557,8 +895,8 @@ export default async function CurriculumPage() {
                         "0 12px 34px rgba(10,31,68,0.055)",
                     }}
                   >
-                    {/* LEVEL HEADER */}
                     <div
+                      className="talkly-level-head"
                       style={{
                         display:
                           "grid",
@@ -651,6 +989,7 @@ export default async function CurriculumPage() {
                         </p>
 
                         <div
+                          className="talkly-reference-grid"
                           style={{
                             display:
                               "grid",
@@ -692,7 +1031,6 @@ export default async function CurriculumPage() {
                       </div>
                     </div>
 
-                    {/* TEXTBOOKS */}
                     <div
                       style={{
                         padding:
@@ -783,6 +1121,7 @@ export default async function CurriculumPage() {
                         </div>
                       ) : (
                         <div
+                          className="talkly-textbook-grid"
                           style={{
                             display:
                               "grid",
@@ -921,7 +1260,7 @@ export default async function CurriculumPage() {
       </section>
 
       {/* =========================================
-          HOW IT WORKS
+          PROCESS
       ========================================== */}
       <section
         style={{
@@ -1083,7 +1422,7 @@ export default async function CurriculumPage() {
             }}
           >
             <Link
-              href="/parent/level-tests/new"
+              href="/level-test"
               style={{
                 display:
                   "inline-flex",
@@ -1140,6 +1479,286 @@ export default async function CurriculumPage() {
           </div>
         </div>
       </section>
+
+      {/* =========================================
+          FOOTER
+      ========================================== */}
+      <footer
+        style={{
+          background: "#1b2a4a",
+          color: "#c6cde3",
+          padding:
+            "56px 0 24px",
+        }}
+      >
+        <div
+          style={{
+            width:
+              "min(1200px, calc(100% - 36px))",
+            margin: "0 auto",
+          }}
+        >
+          <div
+            className="talkly-footer-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "1.4fr repeat(4, 1fr)",
+              gap: "26px",
+              marginBottom:
+                "40px",
+            }}
+          >
+            <div>
+              <Image
+                src="/talkly-logo-white.png"
+                alt="TALKLY"
+                width={280}
+                height={95}
+                style={{
+                  width: "auto",
+                  height: "48px",
+                  objectFit:
+                    "contain",
+                }}
+              />
+
+              <p
+                style={{
+                  margin:
+                    "12px 0 0",
+                  color:
+                    "#8b96b8",
+                  fontSize:
+                    "13px",
+                  lineHeight: 1.7,
+                }}
+              >
+                언제 어디서나 톡.
+                <br />
+                전 연령을 위한
+                화상영어 학습 플랫폼
+                TALKLY.
+              </p>
+            </div>
+
+            <FooterColumn
+              title="토클리소개"
+              items={[
+                [
+                  "인사말",
+                  "/#greeting",
+                ],
+                [
+                  "Why TALKLY?",
+                  "/#why",
+                ],
+                [
+                  "프로그램",
+                  "/#programs",
+                ],
+                [
+                  "사업영역",
+                  "/#business-areas",
+                ],
+              ]}
+            />
+
+            <FooterColumn
+              title="교육센터"
+              items={[
+                [
+                  "프로그램소개",
+                  "/#programs",
+                ],
+                [
+                  "커리큘럼/교재",
+                  "/curriculum",
+                ],
+                [
+                  "교사소개",
+                  "/#teachers",
+                ],
+              ]}
+            />
+
+            <FooterColumn
+              title="TALKLY AI"
+              items={[
+                [
+                  "AI Lesson Report",
+                  "/#ai",
+                ],
+                [
+                  "AI Growth Report",
+                  "/#ai",
+                ],
+                [
+                  "AI Writing",
+                  "/#ai",
+                ],
+              ]}
+            />
+
+            <FooterColumn
+              title="인포메이션"
+              items={[
+                [
+                  "공지사항",
+                  "/notice",
+                ],
+                [
+                  "수업후기",
+                  "/#reviews",
+                ],
+                [
+                  "1:1상담",
+                  "/consultation",
+                ],
+              ]}
+            />
+          </div>
+
+          <div
+            style={{
+              borderTop:
+                "1px solid rgba(255,255,255,.1)",
+              paddingTop:
+                "20px",
+              display: "flex",
+              justifyContent:
+                "space-between",
+              gap: "12px",
+              flexWrap: "wrap",
+              color:
+                "#7a84a6",
+              fontSize: "12px",
+            }}
+          >
+            <span>
+              © 2026 TALKLY. All
+              rights reserved.
+            </span>
+
+            <span>
+              이용약관 ·
+              개인정보처리방침 ·
+              고객센터
+            </span>
+          </div>
+        </div>
+      </footer>
+
+      <style>{`
+        html {
+          scroll-behavior: smooth;
+        }
+
+        .talkly-nav-item {
+          position: relative;
+        }
+
+        .talkly-nav-link {
+          display: inline-flex;
+          align-items: center;
+          min-height: 44px;
+          padding: 0 13px;
+          border-radius: 8px;
+          color: #1b2a4a;
+          text-decoration: none;
+          white-space: nowrap;
+        }
+
+        .talkly-nav-link:hover {
+          background: #f0f3fc;
+          color: #2f6fed;
+        }
+
+        .talkly-dropdown {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          min-width: 185px;
+          padding: 9px;
+          border: 1px solid #e7e9f0;
+          border-radius: 12px;
+          background: #ffffff;
+          box-shadow: 0 14px 34px rgba(20,30,60,.12);
+          opacity: 0;
+          visibility: hidden;
+          transform: translateY(6px);
+          transition: .18s ease;
+        }
+
+        .talkly-nav-item:hover .talkly-dropdown {
+          opacity: 1;
+          visibility: visible;
+          transform: translateY(3px);
+        }
+
+        .talkly-dropdown a {
+          display: block;
+          padding: 9px 11px;
+          border-radius: 7px;
+          color: #3d4560;
+          text-decoration: none;
+          font-size: 13px;
+          font-weight: 600;
+        }
+
+        .talkly-dropdown a:hover {
+          background: #f0f3fc;
+          color: #2f6fed;
+        }
+
+        @media (max-width: 1040px) {
+          .talkly-main-header {
+            grid-template-columns: 190px 1fr auto !important;
+          }
+
+          .talkly-desktop-nav {
+            display: none !important;
+          }
+
+          .talkly-footer-grid {
+            grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+          }
+
+          .talkly-level-head {
+            grid-template-columns: 1fr !important;
+          }
+
+          .talkly-reference-grid {
+            grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+          }
+        }
+
+        @media (max-width: 680px) {
+          .talkly-utility {
+            display: none !important;
+          }
+
+          .talkly-main-header {
+            grid-template-columns: 1fr auto !important;
+          }
+
+          .talkly-main-header img {
+            height: 46px !important;
+          }
+
+          .talkly-footer-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .talkly-reference-grid {
+            grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+          }
+
+          .talkly-textbook-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </main>
   );
 }
@@ -1258,10 +1877,10 @@ function TextbookItem({
             "linear-gradient(145deg, #e8f0fc 0%, #f7faff 100%)",
         }}
       >
-        {textbook.cover_image_url ? (
+        {textbook.cover_signed_url ? (
           <img
             src={
-              textbook.cover_image_url
+              textbook.cover_signed_url
             }
             alt={`${textbook.title} 교재 표지`}
             style={{
@@ -1269,6 +1888,7 @@ function TextbookItem({
               height: "100%",
               objectFit:
                 "cover",
+              display: "block",
             }}
           />
         ) : (
@@ -1403,3 +2023,63 @@ function ProcessCard({
     </div>
   );
 }
+
+function FooterColumn({
+  title,
+  items,
+}: {
+  title: string;
+  items: [string, string][];
+}) {
+  return (
+    <div>
+      <h5
+        style={{
+          margin: 0,
+          color: "#ffffff",
+          fontSize: "13px",
+        }}
+      >
+        {title}
+      </h5>
+
+      <div
+        style={{
+          marginTop:
+            "13px",
+          display: "flex",
+          flexDirection:
+            "column",
+          gap: "8px",
+          color:
+            "#9aa4c4",
+          fontSize:
+            "12.5px",
+        }}
+      >
+        {items.map(
+          ([label, href]) => (
+            <Link
+              key={`${title}-${label}`}
+              href={href}
+              style={{
+                color:
+                  "inherit",
+                textDecoration:
+                  "none",
+              }}
+            >
+              {label}
+            </Link>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
+const utilityLinkStyle = {
+  color: "inherit",
+  textDecoration: "none",
+  opacity: 0.88,
+};
