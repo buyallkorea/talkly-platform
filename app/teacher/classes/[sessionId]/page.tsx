@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase-server";
 import CompleteClassButton from "./CompleteClassButton";
 import TeacherNoteForm from "./TeacherNoteForm";
 import EvaluationForm from "./EvaluationForm";
-import TalklyUserHeader from "@/components/TalklyUserHeader";
 
 type PageProps = {
   params: Promise<{
@@ -46,12 +45,11 @@ export default async function TeacherClassDetailPage({
         lesson_number,
         scheduled_start,
         scheduled_end,
-        started_at,
-        ended_at,
         status,
         meeting_provider,
         meeting_url,
-        teacher_notes
+        teacher_notes,
+        class_feedback
       `)
       .eq("id", Number(sessionId))
       .maybeSingle();
@@ -73,7 +71,8 @@ export default async function TeacherClassDetailPage({
         child_id,
         course_id,
         teacher_user_id,
-        status
+        status,
+        total_lessons
       `)
       .eq("id", session.enrollment_id)
       .eq("teacher_user_id", user.id)
@@ -85,40 +84,6 @@ export default async function TeacherClassDetailPage({
 
   if (!enrollment) {
     notFound();
-  }
-
-  /*
-   * 종료시간이 지났는데 한 번도 시작되지 않은 scheduled 수업은
-   * 상세페이지에서도 미진행(not_held)으로 정리합니다.
-   *
-   * 대시보드를 거치지 않고 상세 URL로 직접 들어온 경우에도
-   * 과거 수업을 scheduled 상태로 보여주지 않기 위한 방어입니다.
-   * 이미 시작된 수업은 예정 종료시간이 지나도 자동마감하지 않습니다.
-   */
-  if (
-    session.status === "scheduled" &&
-    !session.started_at &&
-    !session.ended_at &&
-    new Date(session.scheduled_end).getTime() <= Date.now()
-  ) {
-    const nowIso = new Date().toISOString();
-
-    const { error: closeExpiredError } = await supabase
-      .from("class_sessions")
-      .update({
-        status: "not_held",
-        updated_at: nowIso,
-      })
-      .eq("id", session.id)
-      .eq("status", "scheduled")
-      .is("started_at", null)
-      .lte("scheduled_end", nowIso);
-
-    if (closeExpiredError) {
-      throw new Error(closeExpiredError.message);
-    }
-
-    session.status = "not_held";
   }
 
   let studentName = "Student";
@@ -191,25 +156,64 @@ export default async function TeacherClassDetailPage({
     throw new Error(holdError.message);
   }
 
-  const { data: evaluation, error: evaluationError } =
+  const { data: lastSessionData, error: lastSessionError } =
     await supabase
-      .from("evaluations")
-      .select(`
-        id,
-        participation_score,
-        comprehension_score,
-        speaking_score,
-        pronunciation_score,
-        strengths,
-        improvements,
-        homework,
-        teacher_comment
-      `)
-      .eq("class_session_id", session.id)
+      .from("class_sessions")
+      .select("lesson_number")
+      .eq("enrollment_id", enrollment.id)
+      .order("lesson_number", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-  if (evaluationError) {
-    throw new Error(evaluationError.message);
+  if (lastSessionError) {
+    throw new Error(lastSessionError.message);
+  }
+
+  const finalLessonNumber =
+    typeof enrollment.total_lessons === "number" &&
+    enrollment.total_lessons > 0
+      ? enrollment.total_lessons
+      : lastSessionData?.lesson_number ?? null;
+
+  const isFinalLesson =
+    finalLessonNumber !== null &&
+    session.lesson_number === finalLessonNumber;
+
+  let evaluation: {
+    id: number;
+    participation_score: number | null;
+    comprehension_score: number | null;
+    speaking_score: number | null;
+    pronunciation_score: number | null;
+    strengths: string | null;
+    improvements: string | null;
+    homework: string | null;
+    teacher_comment: string | null;
+  } | null = null;
+
+  if (isFinalLesson) {
+    const { data: evaluationData, error: evaluationError } =
+      await supabase
+        .from("evaluations")
+        .select(`
+          id,
+          participation_score,
+          comprehension_score,
+          speaking_score,
+          pronunciation_score,
+          strengths,
+          improvements,
+          homework,
+          teacher_comment
+        `)
+        .eq("class_session_id", session.id)
+        .maybeSingle();
+
+    if (evaluationError) {
+      throw new Error(evaluationError.message);
+    }
+
+    evaluation = evaluationData;
   }
 
   function getSessionStatus(status: string) {
@@ -218,12 +222,6 @@ export default async function TeacherClassDetailPage({
         return {
           en: "Scheduled",
           ko: "예정",
-        };
-
-      case "in_progress":
-        return {
-          en: "In Progress",
-          ko: "수업 진행 중",
         };
 
       case "completed":
@@ -240,20 +238,14 @@ export default async function TeacherClassDetailPage({
 
       case "no_show":
         return {
-          en: "Absent",
-          ko: "결석",
+          en: "No Show",
+          ko: "무단결석",
         };
 
       case "held":
         return {
-          en: "Class Reschedule",
-          ko: "수업 연기",
-        };
-
-      case "not_held":
-        return {
-          en: "Not Held",
-          ko: "미진행",
+          en: "Class Hold",
+          ko: "결석 승인",
         };
 
       default:
@@ -304,32 +296,30 @@ export default async function TeacherClassDetailPage({
     }
   }
 
-  function getHoldStatus(status: string, adminNote: string | null) {
+  function getHoldStatus(status: string) {
     switch (status) {
       case "requested":
         return {
-          en: "Legacy Pending Review",
-          ko: "이전 승인 대기",
+          en: "Pending Review",
+          ko: "확인 대기중",
         };
 
-      case "approved": {
-        const automatic = Boolean(adminNote?.includes("시스템 자동승인"));
+      case "approved":
         return {
-          en: automatic ? "Automatically Approved" : "Legacy Manual Approval",
-          ko: automatic ? "자동 승인" : "이전 수동 승인",
+          en: "Approved",
+          ko: "승인 완료",
         };
-      }
 
       case "rejected":
         return {
-          en: "Legacy Rejected",
-          ko: "이전 반려",
+          en: "Rejected",
+          ko: "거절",
         };
 
       case "cancelled":
         return {
-          en: "Reschedule Cancelled",
-          ko: "연기 취소",
+          en: "Cancelled",
+          ko: "신청 취소",
         };
 
       default:
@@ -393,7 +383,7 @@ export default async function TeacherClassDetailPage({
     : null;
 
   const holdStatus = hold
-    ? getHoldStatus(hold.status, hold.admin_note)
+    ? getHoldStatus(hold.status)
     : null;
 
   const now = new Date();
@@ -401,21 +391,13 @@ export default async function TeacherClassDetailPage({
   const scheduledStart =
     new Date(session.scheduled_start);
 
-  const actualDurationMinutes =
-    session.started_at && session.ended_at
-      ? getDurationMinutes(
-          session.started_at,
-          session.ended_at
-        )
-      : null;
-
   const isClassStarted =
-    now.getTime() >= scheduledStart.getTime();
+    now.getTime() >=
+    scheduledStart.getTime();
 
   const isAttendanceBlocked =
     session.status === "held" ||
-    session.status === "cancelled" ||
-    session.status === "not_held";
+    session.status === "cancelled";
 
   const canEditAttendance =
     Boolean(attendance) &&
@@ -430,27 +412,20 @@ export default async function TeacherClassDetailPage({
     canEditAttendance ||
     canRecordAttendance;
 
-  function getAttendanceUnavailableMessage(
-    status: string
-  ) {
-    if (status === "held") {
+  const currentSessionStatus = session.status;
+
+  function getAttendanceUnavailableMessage() {
+    if (currentSessionStatus === "held") {
       return {
-        en: "Attendance is not required for a rescheduled class.",
-        ko: "수업 연기 처리된 수업은 출석 등록이 필요하지 않습니다.",
+        en: "Attendance is not required for an approved Class Hold.",
+        ko: "결석 승인이 완료된 수업은 출석 등록이 필요하지 않습니다.",
       };
     }
 
-    if (status === "cancelled") {
+    if (currentSessionStatus === "cancelled") {
       return {
         en: "Attendance cannot be recorded for a cancelled class.",
         ko: "취소된 수업은 출석을 등록할 수 없습니다.",
-      };
-    }
-
-    if (status === "not_held") {
-      return {
-        en: "Attendance cannot be recorded for a class that was not held.",
-        ko: "미진행으로 마감된 수업은 출석을 등록할 수 없습니다.",
       };
     }
 
@@ -468,704 +443,643 @@ export default async function TeacherClassDetailPage({
   }
 
   const attendanceUnavailable =
-    getAttendanceUnavailableMessage(
-      session.status
-    );
+    getAttendanceUnavailableMessage();
 
   return (
-    <div className="talkly-dashboard">
-      <TalklyUserHeader
-        role="teacher"
-        userName={profile.name}
-      />
+    <main
+      style={{
+        padding: "40px",
+        maxWidth: "950px",
+        margin: "0 auto",
+      }}
+    >
+      <Link
+        href="/teacher"
+        style={{
+          textDecoration: "none",
+        }}
+      >
+        ← My Classes
 
-      <main className="talkly-dashboard-main">
-        <div style={{ marginBottom: "20px" }}>
-          <Link
-            href="/teacher"
-            style={{
-              color: "var(--talkly-blue)",
-              textDecoration: "none",
-              fontSize: "14px",
-              fontWeight: 800,
-            }}
-          >
-            ← 내 수업
-          </Link>
+        <div
+          style={{
+            marginTop: "3px",
+            fontSize: "12px",
+            opacity: 0.55,
+          }}
+        >
+          내 수업
+        </div>
+      </Link>
+
+      <div
+        style={{
+          marginTop: "32px",
+        }}
+      >
+        <h1
+          style={{
+            marginBottom: "4px",
+            fontSize: "32px",
+          }}
+        >
+          Lesson {session.lesson_number}
+        </h1>
+
+        <div
+          style={{
+            fontSize: "13px",
+            opacity: 0.6,
+          }}
+        >
+          {session.lesson_number}회차 수업
+        </div>
+      </div>
+
+      <section
+        style={{
+          marginTop: "32px",
+          padding: "28px",
+          border: "1px solid #ddd",
+          borderRadius: "14px",
+        }}
+      >
+        <h2
+          style={{
+            marginTop: 0,
+            marginBottom: "4px",
+          }}
+        >
+          Class Details
+        </h2>
+
+        <div
+          style={{
+            fontSize: "13px",
+            opacity: 0.6,
+            marginBottom: "22px",
+          }}
+        >
+          수업 상세
         </div>
 
-        <section
+        <p>
+          <strong>Student:</strong>{" "}
+          {studentName}
+        </p>
+
+        <div
           style={{
-            position: "relative",
-            overflow: "hidden",
-            padding: "32px",
-            borderRadius: "22px",
-            background:
-              "linear-gradient(135deg, #ffffff 0%, #f1f6ff 65%, #e8f1ff 100%)",
-            border: "1px solid #e1e9f5",
-            boxShadow: "var(--shadow-card)",
+            marginTop: "-8px",
+            marginBottom: "16px",
+            fontSize: "12px",
+            opacity: 0.55,
           }}
         >
+          학생
+        </div>
+
+        <p>
+          <strong>Course:</strong>{" "}
+          {course?.name || "-"}
+        </p>
+
+        <div
+          style={{
+            marginTop: "-8px",
+            marginBottom: "16px",
+            fontSize: "12px",
+            opacity: 0.55,
+          }}
+        >
+          과정
+        </div>
+
+        <p>
+          <strong>Schedule:</strong>{" "}
+          {formatEnglishDateTime(
+            session.scheduled_start
+          )}
+        </p>
+
+        <div
+          style={{
+            marginTop: "-8px",
+            marginBottom: "16px",
+            fontSize: "12px",
+            opacity: 0.55,
+          }}
+        >
+          {formatKoreanDateTime(
+            session.scheduled_start
+          )}
+        </div>
+
+        <p>
+          <strong>Duration:</strong>{" "}
+          {getDurationMinutes(
+            session.scheduled_start,
+            session.scheduled_end
+          )}{" "}
+          min
+        </p>
+
+        <div
+          style={{
+            marginTop: "-8px",
+            marginBottom: "16px",
+            fontSize: "12px",
+            opacity: 0.55,
+          }}
+        >
+          수업시간
+        </div>
+
+        <p>
+          <strong>Status:</strong>{" "}
+          {sessionStatus.en}
+        </p>
+
+        <div
+          style={{
+            marginTop: "-8px",
+            marginBottom: "16px",
+            fontSize: "12px",
+            opacity: 0.55,
+          }}
+        >
+          {sessionStatus.ko}
+        </div>
+
+        <p>
+          <strong>Platform:</strong>{" "}
+          {session.meeting_provider || "-"}
+        </p>
+
+        <div
+          style={{
+            marginTop: "-8px",
+            marginBottom: "16px",
+            fontSize: "12px",
+            opacity: 0.55,
+          }}
+        >
+          화상수업 플랫폼
+        </div>
+
+        <div>
+          <strong>Meeting:</strong>{" "}
+          {session.meeting_url ? (
+            <a
+              href={session.meeting_url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Join Class
+            </a>
+          ) : (
+            "Not available yet"
+          )}
+
           <div
             style={{
-              position: "relative",
-              zIndex: 1,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: "24px",
-              flexWrap: "wrap",
+              marginTop: "3px",
+              fontSize: "12px",
+              opacity: 0.55,
             }}
           >
-            <div>
-              <div className="talkly-section-label">
-                CLASS DETAIL
-              </div>
+            수업 입장
+          </div>
+        </div>
+      </section>
 
-              <h1
-                className="talkly-dashboard-title"
-                style={{ marginTop: "6px" }}
-              >
-                {studentName} · {session.lesson_number}회차
-              </h1>
+      {hold && (
+        <section
+          style={{
+            marginTop: "24px",
+            padding: "28px",
+            border: "1px solid #ddd",
+            borderRadius: "14px",
+          }}
+        >
+          <h2
+            style={{
+              marginTop: 0,
+              marginBottom: "4px",
+            }}
+          >
+            Class Hold
+          </h2>
 
+          <div
+            style={{
+              fontSize: "13px",
+              opacity: 0.6,
+              marginBottom: "22px",
+            }}
+          >
+            결석신청
+          </div>
+
+          <p>
+            <strong>Status:</strong>{" "}
+            {holdStatus?.en}
+          </p>
+
+          <div
+            style={{
+              marginTop: "-8px",
+              marginBottom: "16px",
+              fontSize: "12px",
+              opacity: 0.55,
+            }}
+          >
+            {holdStatus?.ko}
+          </div>
+
+          <p>
+            <strong>Reason:</strong>
+          </p>
+
+          <div
+            style={{
+              padding: "14px",
+              border: "1px solid #ddd",
+              borderRadius: "8px",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {hold.reason || "-"}
+          </div>
+
+          <div
+            style={{
+              marginTop: "5px",
+              fontSize: "12px",
+              opacity: 0.55,
+            }}
+          >
+            신청사유
+          </div>
+
+          {hold.admin_note && (
+            <>
               <p
                 style={{
-                  margin: "8px 0 0",
-                  color: "var(--text-secondary)",
-                  fontSize: "15px",
+                  marginTop: "20px",
                 }}
               >
-                {course?.name || "-"} ·{" "}
-                {formatKoreanDateTime(session.scheduled_start)}
+                <strong>
+                  Admin Note:
+                </strong>
               </p>
-            </div>
 
-            <span
-              className={
-                session.status === "completed"
-                  ? "talkly-badge talkly-badge-success"
-                  : session.status === "scheduled" ||
-                      session.status === "in_progress"
-                    ? "talkly-badge talkly-badge-blue"
-                    : "talkly-badge talkly-badge-neutral"
-              }
-            >
-              {sessionStatus.ko || sessionStatus.en}
-            </span>
-          </div>
-
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              width: "220px",
-              height: "220px",
-              right: "-60px",
-              bottom: "-105px",
-              borderRadius: "50%",
-              background: "rgba(63,117,220,0.08)",
-            }}
-          />
-        </section>
-
-        <section
-          className="talkly-card"
-          style={{
-            marginTop: "24px",
-            padding: "28px",
-          }}
-        >
-          <div className="talkly-section-label">
-            CLASS INFORMATION
-          </div>
-
-          <h2
-            style={{
-              margin: "5px 0 20px",
-              color: "var(--talkly-navy)",
-              fontSize: "23px",
-            }}
-          >
-            수업 정보
-          </h2>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit, minmax(190px, 1fr))",
-              gap: "12px",
-            }}
-          >
-            {[
-              ["학생", studentName],
-              ["과정", course?.name || "-"],
-              [
-                "예정 일시",
-                formatKoreanDateTime(session.scheduled_start),
-              ],
-              [
-                "예정 수업시간",
-                `${getDurationMinutes(
-                  session.scheduled_start,
-                  session.scheduled_end
-                )}분`,
-              ],
-              [
-                "실제 시작",
-                formatKoreanDateTime(session.started_at),
-              ],
-              [
-                "실제 종료",
-                formatKoreanDateTime(session.ended_at),
-              ],
-              [
-                "실제 수업시간",
-                actualDurationMinutes !== null
-                  ? `${actualDurationMinutes}분`
-                  : "-",
-              ],
-              [
-                "학생 입장시간",
-                formatKoreanDateTime(
-                  attendance?.attended_at ?? null
-                ),
-              ],
-            ].map(([label, value]) => (
               <div
-                key={String(label)}
                 style={{
-                  padding: "16px",
-                  borderRadius: "11px",
-                  background: "var(--talkly-blue-soft)",
-                  border: "1px solid #e5ecf6",
+                  padding: "14px",
+                  border: "1px solid #ddd",
+                  borderRadius: "8px",
+                  whiteSpace: "pre-wrap",
                 }}
               >
-                <div
-                  style={{
-                    color: "var(--text-muted)",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                  }}
-                >
-                  {label}
-                </div>
-
-                <div
-                  style={{
-                    marginTop: "6px",
-                    color: "var(--talkly-navy)",
-                    fontSize: "15px",
-                    fontWeight: 800,
-                  }}
-                >
-                  {value}
-                </div>
+                {hold.admin_note}
               </div>
-            ))}
-          </div>
-        </section>
 
-        <section
+              <div
+                style={{
+                  marginTop: "5px",
+                  fontSize: "12px",
+                  opacity: 0.55,
+                }}
+              >
+                관리자 안내
+              </div>
+            </>
+          )}
+        </section>
+      )}
+            <section
+        style={{
+          marginTop: "24px",
+          padding: "28px",
+          border: "1px solid #ddd",
+          borderRadius: "14px",
+        }}
+      >
+        <h2
           style={{
-            marginTop: "24px",
-            display: "grid",
-            gridTemplateColumns:
-              "minmax(0, 1.3fr) minmax(300px, 0.7fr)",
-            gap: "18px",
+            marginTop: 0,
+            marginBottom: "4px",
           }}
         >
-          <div
-            className="talkly-card"
-            style={{
-              padding: "28px",
-            }}
-          >
-            <div className="talkly-section-label">
-              TALKLY CLASSROOM
-            </div>
+          Attendance
+        </h2>
 
-            <h2
-              style={{
-                margin: "5px 0 0",
-                color: "var(--talkly-navy)",
-                fontSize: "23px",
-              }}
-            >
-              Classroom
-            </h2>
+        <div
+          style={{
+            fontSize: "13px",
+            opacity: 0.6,
+            marginBottom: "22px",
+          }}
+        >
+          출석 관리
+        </div>
 
-            <p
-              style={{
-                margin: "10px 0 0",
-                color: "var(--text-muted)",
-                lineHeight: 1.7,
-                fontSize: "14px",
-              }}
-            >
-              화상수업과 교재가 연결된 TALKLY 수업화면으로 이동합니다.
+        {attendance ? (
+          <>
+            <p>
+              <strong>
+                Current Status:
+              </strong>{" "}
+              {attendanceStatus?.en}
             </p>
 
-            <div style={{ marginTop: "20px" }}>
-              {session.status === "not_held" ? (
-                <div
-                  style={{
-                    padding: "16px",
-                    border: "1px dashed var(--border)",
-                    borderRadius: "10px",
-                    color: "var(--text-muted)",
-                    lineHeight: 1.7,
-                  }}
-                >
-                  <strong style={{ color: "var(--talkly-navy)" }}>
-                    미진행으로 마감된 수업입니다.
-                  </strong>
-                  <div style={{ marginTop: "4px", fontSize: "12px" }}>
-                    This class was not held and the classroom can no longer be entered.
-                  </div>
-                </div>
-              ) : session.meeting_provider === "zoom" ? (
-                <Link
-                  href={`/classroom/${session.id}`}
-                  className="talkly-button talkly-button-primary"
-                >
-                  TALKLY Classroom 입장 →
-                </Link>
-              ) : (
-                <div
-                  style={{
-                    padding: "16px",
-                    border: "1px dashed var(--border)",
-                    borderRadius: "10px",
-                    color: "var(--text-muted)",
-                  }}
-                >
-                  현재 사용할 수 있는 화상수업 플랫폼이 없습니다.
-                </div>
+            <div
+              style={{
+                marginTop: "-8px",
+                marginBottom: "16px",
+                fontSize: "12px",
+                opacity: 0.55,
+              }}
+            >
+              {attendanceStatus?.ko}
+            </div>
+
+            <p>
+              <strong>
+                Checked At:
+              </strong>{" "}
+              {formatEnglishDateTime(
+                attendance.attended_at
+              )}
+            </p>
+
+            <div
+              style={{
+                marginTop: "-8px",
+                marginBottom: "16px",
+                fontSize: "12px",
+                opacity: 0.55,
+              }}
+            >
+              {formatKoreanDateTime(
+                attendance.attended_at
               )}
             </div>
-          </div>
 
-          <div
-            className="talkly-card"
-            style={{
-              padding: "28px",
-              background:
-                "linear-gradient(145deg, #0a1f44 0%, #15386f 100%)",
-              color: "#ffffff",
-              border: "none",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "12px",
-                fontWeight: 900,
-                letterSpacing: "0.08em",
-                opacity: 0.7,
-              }}
-            >
-              CLASS STATUS
-            </div>
+            {attendance.note && (
+              <>
+                <p>
+                  <strong>
+                    Attendance Note:
+                  </strong>
+                </p>
 
-            <h2
-              style={{
-                margin: "8px 0 0",
-                fontSize: "23px",
-              }}
-            >
-              {sessionStatus.ko || sessionStatus.en}
-            </h2>
-
-            <p
-              style={{
-                margin: "12px 0 0",
-                color: "rgba(255,255,255,0.72)",
-                fontSize: "14px",
-                lineHeight: 1.7,
-              }}
-            >
-              플랫폼: {session.meeting_provider || "-"}
-              <br />
-              회차: {session.lesson_number}회차
-            </p>
-          </div>
-        </section>
-
-        {hold && (
-          <section
-            className="talkly-card"
-            style={{
-              marginTop: "24px",
-              padding: "28px",
-            }}
-          >
-            <div className="talkly-section-label">
-              CLASS RESCHEDULE
-            </div>
-
-            <h2
-              style={{
-                margin: "5px 0 0",
-                color: "var(--talkly-navy)",
-                fontSize: "23px",
-              }}
-            >
-              수업 연기
-            </h2>
-
-            <div
-              style={{
-                marginTop: "18px",
-                display: "flex",
-                gap: "10px",
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
-            >
-              <span className="talkly-badge talkly-badge-neutral">
-                {holdStatus?.ko || holdStatus?.en}
-              </span>
-            </div>
-
-            <div
-              style={{
-                marginTop: "18px",
-                padding: "16px",
-                borderRadius: "10px",
-                background: "var(--talkly-blue-soft)",
-                border: "1px solid #e5ecf6",
-                whiteSpace: "pre-wrap",
-                color: "var(--text-secondary)",
-                lineHeight: 1.7,
-              }}
-            >
-              <strong
-                style={{
-                  color: "var(--talkly-navy)",
-                }}
-              >
-                신청사유
-              </strong>
-
-              <div style={{ marginTop: "6px" }}>
-                {hold.reason || "-"}
-              </div>
-            </div>
-
-            {hold.admin_note && (
-              <div
-                style={{
-                  marginTop: "14px",
-                  padding: "16px",
-                  borderRadius: "10px",
-                  border: "1px solid var(--border)",
-                  whiteSpace: "pre-wrap",
-                  color: "var(--text-secondary)",
-                  lineHeight: 1.7,
-                }}
-              >
-                <strong
+                <div
                   style={{
-                    color: "var(--talkly-navy)",
+                    padding: "14px",
+                    border: "1px solid #ddd",
+                    borderRadius: "8px",
+                    whiteSpace: "pre-wrap",
                   }}
                 >
-                  관리자 안내
-                </strong>
-
-                <div style={{ marginTop: "6px" }}>
-                  {hold.admin_note}
+                  {attendance.note}
                 </div>
-              </div>
+
+                <div
+                  style={{
+                    marginTop: "5px",
+                    fontSize: "12px",
+                    opacity: 0.55,
+                  }}
+                >
+                  출석 메모
+                </div>
+              </>
             )}
-          </section>
-        )}
-
-        <section
-          className="talkly-card"
-          style={{
-            marginTop: "24px",
-            padding: "28px",
-          }}
-        >
-          <div className="talkly-section-label">
-            ATTENDANCE
-          </div>
-
-          <h2
+          </>
+        ) : (
+          <div
             style={{
-              margin: "5px 0 0",
-              color: "var(--talkly-navy)",
-              fontSize: "23px",
+              padding: "20px",
+              border: "1px dashed #ccc",
+              borderRadius: "8px",
             }}
           >
-            출석 관리
-          </h2>
+            <strong>
+              Attendance has not been recorded yet.
+            </strong>
 
-          {attendance ? (
             <div
               style={{
-                marginTop: "20px",
-                display: "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fit, minmax(190px, 1fr))",
-                gap: "12px",
-              }}
-            >
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "11px",
-                  background: "var(--talkly-blue-soft)",
-                  border: "1px solid #e5ecf6",
-                }}
-              >
-                <div
-                  style={{
-                    color: "var(--text-muted)",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                  }}
-                >
-                  현재 상태
-                </div>
-
-                <div
-                  style={{
-                    marginTop: "6px",
-                    color: "var(--talkly-navy)",
-                    fontSize: "16px",
-                    fontWeight: 900,
-                  }}
-                >
-                  {attendanceStatus?.ko || attendanceStatus?.en}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "11px",
-                  background: "var(--talkly-blue-soft)",
-                  border: "1px solid #e5ecf6",
-                }}
-              >
-                <div
-                  style={{
-                    color: "var(--text-muted)",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                  }}
-                >
-                  등록시간
-                </div>
-
-                <div
-                  style={{
-                    marginTop: "6px",
-                    color: "var(--talkly-navy)",
-                    fontSize: "15px",
-                    fontWeight: 800,
-                  }}
-                >
-                  {formatKoreanDateTime(attendance.attended_at)}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div
-              style={{
-                marginTop: "20px",
-                padding: "20px",
-                border: "1px dashed var(--border)",
-                borderRadius: "10px",
-                color: "var(--text-muted)",
+                marginTop: "5px",
+                fontSize: "12px",
+                opacity: 0.55,
               }}
             >
               아직 출석정보가 등록되지 않았습니다.
             </div>
-          )}
+          </div>
+        )}
 
-          {attendance?.note && (
-            <div
+        <div
+          style={{
+            marginTop: "22px",
+          }}
+        >
+          {canManageAttendance ? (
+            <Link
+              href={`/teacher/classes/${session.id}/attendance`}
               style={{
-                marginTop: "14px",
-                padding: "16px",
-                borderRadius: "10px",
-                border: "1px solid var(--border)",
-                whiteSpace: "pre-wrap",
-                color: "var(--text-secondary)",
+                display: "inline-flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                padding: "12px 18px",
+                border: "1px solid #ddd",
+                borderRadius: "8px",
+                textDecoration: "none",
+                color: "inherit",
+                fontWeight: 700,
+                cursor: "pointer",
               }}
             >
-              <strong
+              <span>
+                {attendance
+                  ? "Edit Attendance"
+                  : "Record Attendance"}
+              </span>
+
+              <span
                 style={{
-                  color: "var(--talkly-navy)",
+                  marginTop: "3px",
+                  fontSize: "11px",
+                  opacity: 0.55,
+                  fontWeight: 400,
                 }}
               >
-                출석 메모
-              </strong>
-
-              <div style={{ marginTop: "6px" }}>
-                {attendance.note}
-              </div>
-            </div>
-          )}
-
-          <div style={{ marginTop: "20px" }}>
-            {canManageAttendance ? (
-              <Link
-                href={`/teacher/classes/${session.id}/attendance`}
-                className="talkly-button talkly-button-secondary"
-              >
-                {attendance ? "출석 수정" : "출석 등록"}
-              </Link>
-            ) : (
-              <div
-                style={{
-                  padding: "16px",
-                  border: "1px dashed var(--border)",
-                  borderRadius: "10px",
-                  color: "var(--text-muted)",
-                }}
-              >
-                <strong>
-                  {attendanceUnavailable.ko}
-                </strong>
-
-                <div
-                  style={{
-                    marginTop: "4px",
-                    fontSize: "12px",
-                  }}
-                >
-                  {attendanceUnavailable.en}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div
-            style={{
-              marginTop: "22px",
-              paddingTop: "20px",
-              borderTop: "1px solid var(--border-light)",
-            }}
-          >
-            <CompleteClassButton
-              sessionId={session.id}
-              currentStatus={session.status}
-              attendanceStatus={
-                attendance?.status ?? null
-              }
-            />
-          </div>
-        </section>
-
-        <section
-          className="talkly-card"
-          style={{
-            marginTop: "24px",
-            padding: "28px",
-          }}
-        >
-          <div className="talkly-section-label">
-            TEACHER NOTE
-          </div>
-
-          <h2
-            style={{
-              margin: "5px 0 0",
-              color: "var(--talkly-navy)",
-              fontSize: "23px",
-            }}
-          >
-            강사 내부 메모
-          </h2>
-
-          <p
-            style={{
-              margin: "8px 0 0",
-              color: "var(--text-muted)",
-              fontSize: "13px",
-            }}
-          >
-            학생과 학부모에게 공개되지 않는 내부 메모입니다.
-          </p>
-
-          <TeacherNoteForm
-            sessionId={session.id}
-            initialNote={session.teacher_notes}
-          />
-        </section>
-
-        <section
-          className="talkly-card"
-          style={{
-            marginTop: "24px",
-            padding: "28px",
-          }}
-        >
-          <div className="talkly-section-label">
-            EVALUATION
-          </div>
-
-          <h2
-            style={{
-              margin: "5px 0 0",
-              color: "var(--talkly-navy)",
-              fontSize: "23px",
-            }}
-          >
-            학습 평가
-          </h2>
-
-          <p
-            style={{
-              margin: "8px 0 0",
-              color: "var(--text-muted)",
-              fontSize: "13px",
-            }}
-          >
-            참여도, 이해도, 말하기, 발음 및 회차별 피드백을 기록합니다.
-          </p>
-
-          {session.ended_at ? (
-            <EvaluationForm
-              sessionId={session.id}
-              teacherUserId={user.id}
-              initialEvaluation={evaluation}
-            />
+                {attendance
+                  ? "출석 수정"
+                  : "출석 등록"}
+              </span>
+            </Link>
           ) : (
             <div
               style={{
-                marginTop: "20px",
-                padding: "18px",
-                border: "1px dashed var(--border)",
-                borderRadius: "10px",
-                background: "var(--talkly-blue-soft)",
+                padding: "14px 16px",
+                border: "1px dashed #ccc",
+                borderRadius: "8px",
               }}
             >
-              <strong
-                style={{
-                  color: "var(--talkly-navy)",
-                }}
-              >
-                학습 평가는 수업 종료 후 작성할 수 있습니다.
+              <strong>
+                {attendanceUnavailable.en}
               </strong>
 
               <div
                 style={{
-                  marginTop: "6px",
+                  marginTop: "5px",
                   fontSize: "12px",
-                  color: "var(--text-muted)",
+                  opacity: 0.6,
                 }}
               >
-                Evaluation will be available after the class ends.
+                {attendanceUnavailable.ko}
               </div>
             </div>
           )}
-        </section>
-      </main>
-    </div>
+        </div>
+
+        <CompleteClassButton
+          sessionId={session.id}
+          currentStatus={session.status}
+          attendanceStatus={
+            attendance?.status ?? null
+          }
+        />
+      </section>
+
+      <section
+        style={{
+          marginTop: "24px",
+          padding: "28px",
+          border: "1px solid #ddd",
+          borderRadius: "14px",
+        }}
+      >
+        <h2
+          style={{
+            marginTop: 0,
+            marginBottom: "4px",
+          }}
+        >
+          Teacher Note
+        </h2>
+
+        <div
+          style={{
+            fontSize: "13px",
+            opacity: 0.6,
+          }}
+        >
+          강사 내부 메모
+        </div>
+
+        <TeacherNoteForm
+          sessionId={session.id}
+          initialNote={
+            session.teacher_notes
+          }
+        />
+      </section>
+
+
+
+      <section
+        style={{
+          marginTop: "24px",
+          padding: "28px",
+          border: "1px solid #ddd",
+          borderRadius: "14px",
+        }}
+      >
+        <h2
+          style={{
+            marginTop: 0,
+            marginBottom: "4px",
+          }}
+        >
+          {isFinalLesson
+            ? "Final Teacher Evaluation"
+            : "AI Lesson Evaluation"}
+        </h2>
+
+        <div
+          style={{
+            fontSize: "13px",
+            opacity: 0.6,
+          }}
+        >
+          {isFinalLesson
+            ? "최종 강사 종합평가"
+            : "회차별 평가는 TALKLY AI가 분석합니다."}
+        </div>
+
+        {!isFinalLesson ? (
+          <div
+            style={{
+              marginTop: "20px",
+              padding: "18px",
+              border: "1px dashed #cbd5e1",
+              borderRadius: "10px",
+              background: "#f8fbff",
+              lineHeight: 1.7,
+            }}
+          >
+            <strong>
+              No teacher evaluation is required for this lesson.
+            </strong>
+            <div
+              style={{
+                marginTop: "6px",
+                fontSize: "12px",
+                opacity: 0.65,
+              }}
+            >
+              매 회차 수업은 TALKLY AI가 문법·어휘·표현·발음·유창성 등을
+              분석합니다. 강사의 학생 종합평가는 마지막 수업 종료 후 한 번만
+              작성합니다.
+            </div>
+          </div>
+        ) : session.status !== "completed" ? (
+          <div
+            style={{
+              marginTop: "20px",
+              padding: "18px",
+              border: "1px dashed #cbd5e1",
+              borderRadius: "10px",
+              background: "#fffdf7",
+              lineHeight: 1.7,
+            }}
+          >
+            <strong>
+              Final evaluation will be available after the last class is completed.
+            </strong>
+            <div
+              style={{
+                marginTop: "6px",
+                fontSize: "12px",
+                opacity: 0.65,
+              }}
+            >
+              마지막 수업을 완료한 뒤 전체 수강기간을 기준으로 종합평가를
+              작성해 주세요.
+            </div>
+          </div>
+        ) : (
+          <EvaluationForm
+            sessionId={session.id}
+            initialEvaluation={evaluation}
+          />
+        )}
+      </section>
+    </main>
   );
 }

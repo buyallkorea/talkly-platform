@@ -79,7 +79,7 @@ const CATEGORY_KOREAN: Record<
   adult: "성인영어",
 };
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export default async function CurriculumPage() {
   const adminClient =

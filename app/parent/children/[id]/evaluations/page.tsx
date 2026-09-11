@@ -12,6 +12,7 @@ type Enrollment = {
   child_id: number | null;
   course_id: number;
   teacher_user_id: string | null;
+  total_lessons: number | null;
 };
 
 type ClassSession = {
@@ -82,7 +83,7 @@ export default async function ParentChildEvaluationsPage({
   const { data: enrollmentData, error: enrollmentError } =
     await supabase
       .from("enrollments")
-      .select("id, child_id, course_id, teacher_user_id")
+      .select("id, child_id, course_id, teacher_user_id, total_lessons")
       .eq("child_id", child.id);
 
   if (enrollmentError) throw new Error(enrollmentError.message);
@@ -139,6 +140,48 @@ export default async function ParentChildEvaluationsPage({
     if (evaluationError) throw new Error(evaluationError.message);
     evaluations = (evaluationData ?? []) as Evaluation[];
   }
+
+  const finalLessonByEnrollment = new Map<number, number>();
+
+  for (const enrollment of enrollments) {
+    const enrollmentSessions = sessions.filter(
+      (session) => session.enrollment_id === enrollment.id
+    );
+
+    if (enrollmentSessions.length === 0) {
+      continue;
+    }
+
+    const finalLessonNumber =
+      typeof enrollment.total_lessons === "number" &&
+      enrollment.total_lessons > 0
+        ? enrollment.total_lessons
+        : Math.max(
+            ...enrollmentSessions.map(
+              (session) => session.lesson_number
+            )
+          );
+
+    finalLessonByEnrollment.set(
+      enrollment.id,
+      finalLessonNumber
+    );
+  }
+
+  evaluations = evaluations.filter((evaluation) => {
+    const session = sessions.find(
+      (item) => item.id === evaluation.class_session_id
+    );
+
+    if (!session) {
+      return false;
+    }
+
+    return (
+      finalLessonByEnrollment.get(session.enrollment_id) ===
+      session.lesson_number
+    );
+  });
 
   const courseIds = Array.from(
     new Set(enrollments.map((enrollment) => enrollment.course_id))
@@ -380,11 +423,11 @@ export default async function ParentChildEvaluationsPage({
                 className="talkly-dashboard-title"
                 style={{ marginTop: "6px" }}
               >
-                {child.name} 학습 평가
+                {child.name} 최종 강사 종합평가
               </h1>
 
               <p className="talkly-dashboard-subtitle">
-                수업별 학습 평가와 강사의 피드백을 확인합니다.
+                매 회차는 TALKLY AI가 분석하고, 담당 강사는 마지막 수업 종료 후 전체 수강기간을 기준으로 한 번 종합평가합니다.
               </p>
             </div>
 
@@ -404,7 +447,7 @@ export default async function ParentChildEvaluationsPage({
                   fontWeight: 800,
                 }}
               >
-                전체 평균
+                최근 종합평가
               </div>
 
               <div
@@ -443,7 +486,7 @@ export default async function ParentChildEvaluationsPage({
           }}
         >
           {[
-            ["등록 평가", `${evaluations.length}건`],
+            ["완료 종합평가", `${evaluations.length}건`],
             ["참여도", participationAverage ? `${participationAverage} / 5` : "-"],
             ["이해도", comprehensionAverage ? `${comprehensionAverage} / 5` : "-"],
             ["말하기", speakingAverage ? `${speakingAverage} / 5` : "-"],
@@ -496,7 +539,7 @@ export default async function ParentChildEvaluationsPage({
           >
             <div>
               <div className="talkly-section-label">
-                LEARNING TREND
+                AI LESSON REPORT
               </div>
 
               <h2
@@ -506,7 +549,7 @@ export default async function ParentChildEvaluationsPage({
                   fontSize: "22px",
                 }}
               >
-                최근 평가 추이
+                회차별 분석은 AI 수업 리포트에서 확인
               </h2>
             </div>
 
@@ -617,10 +660,57 @@ export default async function ParentChildEvaluationsPage({
           style={{
             marginTop: "24px",
             padding: "28px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "18px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <div className="talkly-section-label">
+              AI LESSON REPORT
+            </div>
+
+            <h2
+              style={{
+                margin: "5px 0 0",
+                color: "var(--talkly-navy)",
+                fontSize: "22px",
+              }}
+            >
+              회차별 AI 학습 분석
+            </h2>
+
+            <p
+              style={{
+                margin: "7px 0 0",
+                color: "var(--text-muted)",
+                fontSize: "13px",
+                lineHeight: 1.7,
+              }}
+            >
+              수업별 문법·어휘·표현·발음·유창성 분석은 AI 수업 리포트에서 확인합니다.
+            </p>
+          </div>
+
+          <Link
+            href={`/parent/children/${child.id}/ai-reports`}
+            className="talkly-button talkly-button-secondary"
+          >
+            AI 수업 리포트 보기 →
+          </Link>
+        </section>
+
+        <section
+          className="talkly-card"
+          style={{
+            marginTop: "24px",
+            padding: "28px",
           }}
         >
           <div className="talkly-section-label">
-            EVALUATION HISTORY
+            TEACHER SUMMARY
           </div>
 
           <h2
@@ -630,7 +720,7 @@ export default async function ParentChildEvaluationsPage({
               fontSize: "23px",
             }}
           >
-            회차별 평가
+            수강별 최종 종합평가
           </h2>
 
           <p
@@ -640,7 +730,7 @@ export default async function ParentChildEvaluationsPage({
               fontSize: "13px",
             }}
           >
-            최근 평가부터 표시됩니다.
+            수강 마지막 회차 종료 후 담당 강사가 작성한 종합평가입니다.
           </p>
 
           {evaluations.length === 0 ? (
@@ -653,7 +743,7 @@ export default async function ParentChildEvaluationsPage({
                 color: "var(--text-muted)",
               }}
             >
-              아직 등록된 학습 평가가 없습니다.
+              아직 완료된 강사 종합평가가 없습니다. 수강 중에는 회차별 AI 수업 리포트를 확인할 수 있습니다.
             </div>
           ) : (
             <div
@@ -696,7 +786,7 @@ export default async function ParentChildEvaluationsPage({
                             fontSize: "19px",
                           }}
                         >
-                          {session.lesson_number}회차 평가
+                          최종 강사 종합평가
                         </h3>
 
                         <div
