@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
+import { createAdminClient } from "@/lib/supabase-admin";
+import CurriculumTextbookAssignment from "./CurriculumTextbookAssignment";
 
 type PageProps = {
   params: Promise<{
@@ -47,7 +49,8 @@ export default async function EnrollmentDetailPage({
       lessons_per_week,
       total_lessons,
       created_at,
-      updated_at
+      updated_at,
+      source_payment_id
     `)
     .eq("id", Number(id))
     .maybeSingle();
@@ -126,6 +129,112 @@ export default async function EnrollmentDetailPage({
   if (classSessionsError) {
     throw new Error(classSessionsError.message);
   }
+
+  const admin = createAdminClient();
+
+  const { data: tuitionPayment } =
+    enrollment.source_payment_id
+      ? await admin
+          .from("enrollment_payments")
+          .select("id, status, amount")
+          .eq("id", enrollment.source_payment_id)
+          .eq("enrollment_id", enrollment.id)
+          .maybeSingle()
+      : {
+          data: null,
+        };
+
+  const tuitionPaid =
+    tuitionPayment?.status === "paid";
+
+  const { data: curriculumLevels, error: curriculumLevelsError } =
+    await admin
+      .from("curriculum_levels")
+      .select(`
+        id,
+        code,
+        name,
+        display_name,
+        sort_order
+      `)
+      .eq("is_active", true)
+      .order("sort_order", {
+        ascending: true,
+      });
+
+  if (curriculumLevelsError) {
+    throw new Error(curriculumLevelsError.message);
+  }
+
+  const { data: textbooks, error: textbooksError } =
+    await admin
+      .from("textbooks")
+      .select(`
+        id,
+        title,
+        publisher,
+        category,
+        sale_price,
+        is_for_sale
+      `)
+      .eq("is_active", true)
+      .eq("status", "ready")
+      .order("title", {
+        ascending: true,
+      });
+
+  if (textbooksError) {
+    throw new Error(textbooksError.message);
+  }
+
+  const { data: textbookMappings, error: textbookMappingsError } =
+    await admin
+      .from("curriculum_level_textbooks")
+      .select(`
+        curriculum_level_id,
+        textbook_id,
+        category,
+        sort_order
+      `)
+      .eq("is_active", true)
+      .order("sort_order", {
+        ascending: true,
+      });
+
+  if (textbookMappingsError) {
+    throw new Error(textbookMappingsError.message);
+  }
+
+  const { data: currentCurriculumAssignment } =
+    await admin
+      .from("enrollment_curriculum_assignments")
+      .select(`
+        id,
+        curriculum_level_id
+      `)
+      .eq("enrollment_id", enrollment.id)
+      .order("id", {
+        ascending: false,
+      })
+      .limit(1)
+      .maybeSingle();
+
+  const { data: currentEnrollmentTextbooks } =
+    await admin
+      .from("enrollment_textbooks")
+      .select(`
+        id,
+        textbook_id,
+        payment_required,
+        price_snapshot,
+        admin_note,
+        status
+      `)
+      .eq("enrollment_id", enrollment.id)
+      .in("status", ["assigned", "in_use"])
+      .order("id", {
+        ascending: true,
+      });
 
   function getStatusLabel(status: string) {
     switch (status) {
@@ -338,6 +447,26 @@ export default async function EnrollmentDetailPage({
           회
         </p>
       </div>
+
+      <CurriculumTextbookAssignment
+        enrollmentId={enrollment.id}
+        tuitionPaid={tuitionPaid}
+        curriculumLevels={curriculumLevels ?? []}
+        textbooks={textbooks ?? []}
+        textbookMappings={textbookMappings ?? []}
+        initialCurriculumLevelId={
+          currentCurriculumAssignment?.curriculum_level_id ?? null
+        }
+        initialAssignments={
+          (currentEnrollmentTextbooks ?? []).map((row) => ({
+            textbookId: row.textbook_id,
+            paymentRequired: row.payment_required,
+            priceSnapshot: row.price_snapshot,
+            adminNote: row.admin_note,
+            status: row.status,
+          }))
+        }
+      />
 
       <div
         style={{
