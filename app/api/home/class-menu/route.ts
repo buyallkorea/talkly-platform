@@ -9,43 +9,112 @@ type Role =
   | null;
 
 export async function GET() {
+  const startedAt = performance.now();
+
+  const timings: string[] = [];
+
+  function addTiming(
+    name: string,
+    start: number
+  ) {
+    const duration =
+      performance.now() - start;
+
+    timings.push(
+      `${name};dur=${duration.toFixed(1)}`
+    );
+  }
+
+  function json(
+    body: Record<string, unknown>
+  ) {
+    timings.push(
+      `total;dur=${(
+        performance.now() -
+        startedAt
+      ).toFixed(1)}`
+    );
+
+    return NextResponse.json(body, {
+      headers: {
+        "Server-Timing":
+          timings.join(", "),
+        "Cache-Control":
+          "private, no-store",
+      },
+    });
+  }
+
+  const supabaseStart =
+    performance.now();
+
   const supabase =
     await createClient();
+
+  addTiming(
+    "create_client",
+    supabaseStart
+  );
+
+  /*
+   * 로그인 사용자 확인
+   */
+  const authStart =
+    performance.now();
 
   const {
     data: { user },
   } =
     await supabase.auth.getUser();
 
-  /*
-   * 비로그인
-   */
+  addTiming(
+    "auth",
+    authStart
+  );
+
   if (!user) {
-    return NextResponse.json({
+    return json({
       loggedIn: false,
       role: null,
       manageHref:
         "/login?next=%2F",
       classroomHref:
         "/login?next=%2F",
+      hasUpcomingClass: false,
     });
   }
 
+  /*
+   * 사용자 역할
+   */
+  const profileStart =
+    performance.now();
+
   const {
     data: profile,
+    error: profileError,
   } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .maybeSingle();
 
+  addTiming(
+    "profile",
+    profileStart
+  );
+
+  if (profileError) {
+    console.error(
+      "HOME CLASS MENU PROFILE ERROR:",
+      profileError.message
+    );
+  }
+
   const role =
     (profile?.role as Role) ??
     null;
 
-  /*
-   * 역할별 기본 관리 페이지
-   */
   let manageHref = "/";
 
   if (role === "parent") {
@@ -65,19 +134,14 @@ export async function GET() {
     manageHref = "/admin";
   }
 
-  /*
-   * 관리자에게는 일반 강의실 입장
-   * 개념보다 관리자 화면이 우선입니다.
-   */
   if (role === "admin") {
-    return NextResponse.json({
+    return json({
       loggedIn: true,
       role,
       manageHref,
       classroomHref:
         "/admin/calendar",
-      hasUpcomingClass:
-        false,
+      hasUpcomingClass: false,
     });
   }
 
@@ -86,11 +150,11 @@ export async function GET() {
 
   /*
    * 학부모
-   *
-   * 본인의 활성 자녀 →
-   * 해당 자녀들의 enrollment 조회
    */
   if (role === "parent") {
+    const childStart =
+      performance.now();
+
     const {
       data: children,
       error: childError,
@@ -101,7 +165,15 @@ export async function GET() {
         "parent_user_id",
         user.id
       )
-      .eq("is_active", true);
+      .eq(
+        "is_active",
+        true
+      );
+
+    addTiming(
+      "children",
+      childStart
+    );
 
     if (childError) {
       console.error(
@@ -118,6 +190,9 @@ export async function GET() {
     if (
       childIds.length > 0
     ) {
+      const enrollmentStart =
+        performance.now();
+
       const {
         data: enrollments,
         error:
@@ -133,6 +208,11 @@ export async function GET() {
           "active",
           "pending",
         ]);
+
+      addTiming(
+        "enrollments",
+        enrollmentStart
+      );
 
       if (
         enrollmentError
@@ -154,6 +234,9 @@ export async function GET() {
    * 학생
    */
   if (role === "student") {
+    const enrollmentStart =
+      performance.now();
+
     const {
       data: enrollments,
       error:
@@ -170,7 +253,14 @@ export async function GET() {
         "pending",
       ]);
 
-    if (enrollmentError) {
+    addTiming(
+      "enrollments",
+      enrollmentStart
+    );
+
+    if (
+      enrollmentError
+    ) {
       console.error(
         "HOME CLASS MENU STUDENT ENROLLMENT ERROR:",
         enrollmentError.message
@@ -187,6 +277,9 @@ export async function GET() {
    * 강사
    */
   if (role === "teacher") {
+    const enrollmentStart =
+      performance.now();
+
     const {
       data: enrollments,
       error:
@@ -203,7 +296,14 @@ export async function GET() {
         "pending",
       ]);
 
-    if (enrollmentError) {
+    addTiming(
+      "enrollments",
+      enrollmentStart
+    );
+
+    if (
+      enrollmentError
+    ) {
       console.error(
         "HOME CLASS MENU TEACHER ENROLLMENT ERROR:",
         enrollmentError.message
@@ -217,30 +317,30 @@ export async function GET() {
   }
 
   /*
-   * 수강정보가 없으면
-   * 역할별 관리 페이지로 이동
+   * 수강 없음
    */
   if (
     enrollmentIds.length === 0
   ) {
-    return NextResponse.json({
+    return json({
       loggedIn: true,
       role,
       manageHref,
       classroomHref:
         manageHref,
-      hasUpcomingClass:
-        false,
+      hasUpcomingClass: false,
     });
   }
 
+  /*
+   * 다음 수업 1건만 조회
+   */
   const now =
     new Date().toISOString();
 
-  /*
-   * 현재 또는 앞으로 예정된
-   * 가장 가까운 수업 1건
-   */
+  const sessionStart =
+    performance.now();
+
   const {
     data: sessions,
     error: sessionError,
@@ -273,6 +373,11 @@ export async function GET() {
     )
     .limit(1);
 
+  addTiming(
+    "sessions",
+    sessionStart
+  );
+
   if (sessionError) {
     console.error(
       "HOME CLASS MENU SESSION ERROR:",
@@ -281,18 +386,15 @@ export async function GET() {
   }
 
   const nextSession =
-    sessions?.[0] ?? null;
+    sessions?.[0] ??
+    null;
 
-  /*
-   * 예정 수업이 있으면
-   * 실제 TALKLY Classroom으로 이동
-   */
   const classroomHref =
     nextSession
       ? `/classroom/${nextSession.id}`
       : manageHref;
 
-  return NextResponse.json({
+  return json({
     loggedIn: true,
     role,
     manageHref,
