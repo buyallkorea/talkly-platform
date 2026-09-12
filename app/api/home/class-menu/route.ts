@@ -8,20 +8,26 @@ type Role =
   | "admin"
   | null;
 
+type HomeClassMenuState = {
+  user_role: Role;
+  next_session_id: number | null;
+};
+
 export async function GET() {
-  const startedAt = performance.now();
+  const totalStartedAt =
+    performance.now();
 
   const timings: string[] = [];
 
   function addTiming(
     name: string,
-    start: number
+    startedAt: number
   ) {
-    const duration =
-      performance.now() - start;
-
     timings.push(
-      `${name};dur=${duration.toFixed(1)}`
+      `${name};dur=${(
+        performance.now() -
+        startedAt
+      ).toFixed(1)}`
     );
   }
 
@@ -31,21 +37,30 @@ export async function GET() {
     timings.push(
       `total;dur=${(
         performance.now() -
-        startedAt
+        totalStartedAt
       ).toFixed(1)}`
     );
 
-    return NextResponse.json(body, {
-      headers: {
-        "Server-Timing":
-          timings.join(", "),
-        "Cache-Control":
-          "private, no-store",
-      },
-    });
+    return NextResponse.json(
+      body,
+      {
+        headers: {
+          "Server-Timing":
+            timings.join(", "),
+          "Cache-Control":
+            "private, no-store",
+        },
+      }
+    );
   }
 
-  const supabaseStart =
+  /*
+   * =====================================================
+   * 1. Supabase client
+   * =====================================================
+   */
+
+  const clientStartedAt =
     performance.now();
 
   const supabase =
@@ -53,26 +68,33 @@ export async function GET() {
 
   addTiming(
     "create_client",
-    supabaseStart
+    clientStartedAt
   );
 
   /*
-   * 로그인 사용자 확인
+   * =====================================================
+   * 2. 로그인 확인
+   * =====================================================
    */
-  const authStart =
+
+  const authStartedAt =
     performance.now();
 
   const {
     data: { user },
+    error: authError,
   } =
     await supabase.auth.getUser();
 
   addTiming(
     "auth",
-    authStart
+    authStartedAt
   );
 
-  if (!user) {
+  if (
+    authError ||
+    !user
+  ) {
     return json({
       loggedIn: false,
       role: null,
@@ -80,40 +102,78 @@ export async function GET() {
         "/login?next=%2F",
       classroomHref:
         "/login?next=%2F",
-      hasUpcomingClass: false,
+      hasUpcomingClass:
+        false,
+      nextSessionId:
+        null,
     });
   }
 
   /*
-   * 사용자 역할
+   * =====================================================
+   * 3. 역할 + 다음 수업
+   *
+   * 기존:
+   * profiles
+   * → children
+   * → enrollments
+   * → class_sessions
+   *
+   * 현재:
+   * RPC 1회
+   * =====================================================
    */
-  const profileStart =
+
+  const rpcStartedAt =
     performance.now();
 
   const {
-    data: profile,
-    error: profileError,
+    data,
+    error,
   } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
+    .rpc(
+      "get_home_class_menu_state"
+    )
     .maybeSingle();
 
   addTiming(
-    "profile",
-    profileStart
+    "menu_rpc",
+    rpcStartedAt
   );
 
-  if (profileError) {
+  if (error) {
     console.error(
-      "HOME CLASS MENU PROFILE ERROR:",
-      profileError.message
+      "HOME CLASS MENU RPC ERROR:",
+      error.message
     );
+
+    return json({
+      loggedIn: true,
+      role: null,
+      manageHref: "/",
+      classroomHref: "/",
+      hasUpcomingClass:
+        false,
+      nextSessionId:
+        null,
+    });
   }
 
-  const role =
-    (profile?.role as Role) ??
+  const state =
+    data as HomeClassMenuState | null;
+
+  const role: Role =
+    state?.user_role ?? null;
+
+  const nextSessionId =
+    state?.next_session_id ??
     null;
+
+  /*
+   * =====================================================
+   * 4. 역할별 관리 페이지
+   * =====================================================
+   */
 
   let manageHref = "/";
 
@@ -134,6 +194,12 @@ export async function GET() {
     manageHref = "/admin";
   }
 
+  /*
+   * =====================================================
+   * 5. 강의실 링크
+   * =====================================================
+   */
+
   if (role === "admin") {
     return json({
       loggedIn: true,
@@ -141,257 +207,16 @@ export async function GET() {
       manageHref,
       classroomHref:
         "/admin/calendar",
-      hasUpcomingClass: false,
+      hasUpcomingClass:
+        false,
+      nextSessionId:
+        null,
     });
   }
-
-  let enrollmentIds: number[] =
-    [];
-
-  /*
-   * 학부모
-   */
-  if (role === "parent") {
-    const childStart =
-      performance.now();
-
-    const {
-      data: children,
-      error: childError,
-    } = await supabase
-      .from("children")
-      .select("id")
-      .eq(
-        "parent_user_id",
-        user.id
-      )
-      .eq(
-        "is_active",
-        true
-      );
-
-    addTiming(
-      "children",
-      childStart
-    );
-
-    if (childError) {
-      console.error(
-        "HOME CLASS MENU CHILD ERROR:",
-        childError.message
-      );
-    }
-
-    const childIds =
-      (children ?? []).map(
-        (item) => item.id
-      );
-
-    if (
-      childIds.length > 0
-    ) {
-      const enrollmentStart =
-        performance.now();
-
-      const {
-        data: enrollments,
-        error:
-          enrollmentError,
-      } = await supabase
-        .from("enrollments")
-        .select("id")
-        .in(
-          "child_id",
-          childIds
-        )
-        .in("status", [
-          "active",
-          "pending",
-        ]);
-
-      addTiming(
-        "enrollments",
-        enrollmentStart
-      );
-
-      if (
-        enrollmentError
-      ) {
-        console.error(
-          "HOME CLASS MENU PARENT ENROLLMENT ERROR:",
-          enrollmentError.message
-        );
-      }
-
-      enrollmentIds =
-        (enrollments ?? []).map(
-          (item) => item.id
-        );
-    }
-  }
-
-  /*
-   * 학생
-   */
-  if (role === "student") {
-    const enrollmentStart =
-      performance.now();
-
-    const {
-      data: enrollments,
-      error:
-        enrollmentError,
-    } = await supabase
-      .from("enrollments")
-      .select("id")
-      .eq(
-        "student_user_id",
-        user.id
-      )
-      .in("status", [
-        "active",
-        "pending",
-      ]);
-
-    addTiming(
-      "enrollments",
-      enrollmentStart
-    );
-
-    if (
-      enrollmentError
-    ) {
-      console.error(
-        "HOME CLASS MENU STUDENT ENROLLMENT ERROR:",
-        enrollmentError.message
-      );
-    }
-
-    enrollmentIds =
-      (enrollments ?? []).map(
-        (item) => item.id
-      );
-  }
-
-  /*
-   * 강사
-   */
-  if (role === "teacher") {
-    const enrollmentStart =
-      performance.now();
-
-    const {
-      data: enrollments,
-      error:
-        enrollmentError,
-    } = await supabase
-      .from("enrollments")
-      .select("id")
-      .eq(
-        "teacher_user_id",
-        user.id
-      )
-      .in("status", [
-        "active",
-        "pending",
-      ]);
-
-    addTiming(
-      "enrollments",
-      enrollmentStart
-    );
-
-    if (
-      enrollmentError
-    ) {
-      console.error(
-        "HOME CLASS MENU TEACHER ENROLLMENT ERROR:",
-        enrollmentError.message
-      );
-    }
-
-    enrollmentIds =
-      (enrollments ?? []).map(
-        (item) => item.id
-      );
-  }
-
-  /*
-   * 수강 없음
-   */
-  if (
-    enrollmentIds.length === 0
-  ) {
-    return json({
-      loggedIn: true,
-      role,
-      manageHref,
-      classroomHref:
-        manageHref,
-      hasUpcomingClass: false,
-    });
-  }
-
-  /*
-   * 다음 수업 1건만 조회
-   */
-  const now =
-    new Date().toISOString();
-
-  const sessionStart =
-    performance.now();
-
-  const {
-    data: sessions,
-    error: sessionError,
-  } = await supabase
-    .from("class_sessions")
-    .select(`
-      id,
-      enrollment_id,
-      scheduled_start,
-      scheduled_end,
-      status
-    `)
-    .in(
-      "enrollment_id",
-      enrollmentIds
-    )
-    .gte(
-      "scheduled_end",
-      now
-    )
-    .in("status", [
-      "scheduled",
-      "in_progress",
-    ])
-    .order(
-      "scheduled_start",
-      {
-        ascending: true,
-      }
-    )
-    .limit(1);
-
-  addTiming(
-    "sessions",
-    sessionStart
-  );
-
-  if (sessionError) {
-    console.error(
-      "HOME CLASS MENU SESSION ERROR:",
-      sessionError.message
-    );
-  }
-
-  const nextSession =
-    sessions?.[0] ??
-    null;
 
   const classroomHref =
-    nextSession
-      ? `/classroom/${nextSession.id}`
+    nextSessionId
+      ? `/classroom/${nextSessionId}`
       : manageHref;
 
   return json({
@@ -400,9 +225,7 @@ export async function GET() {
     manageHref,
     classroomHref,
     hasUpcomingClass:
-      Boolean(nextSession),
-    nextSessionId:
-      nextSession?.id ??
-      null,
+      Boolean(nextSessionId),
+    nextSessionId,
   });
 }
