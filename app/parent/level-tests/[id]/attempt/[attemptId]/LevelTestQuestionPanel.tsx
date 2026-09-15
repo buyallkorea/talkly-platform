@@ -23,6 +23,7 @@ type Question = {
 type Props = {
   levelTestId: number;
   attemptId: number;
+  targetGroup: string;
   currentDifficulty: number;
   answeredCount: number;
   question: Question | null;
@@ -33,6 +34,7 @@ const MAX_QUESTIONS = 20;
 export default function LevelTestQuestionPanel({
   levelTestId,
   attemptId,
+  targetGroup,
   currentDifficulty,
   answeredCount,
   question,
@@ -589,6 +591,9 @@ export default function LevelTestQuestionPanel({
         <CategoryBadge
           category={
             question.category
+          }
+          targetGroup={
+            targetGroup
           }
         />
       </div>
@@ -1177,12 +1182,20 @@ function ChoiceButton({
 
 function CategoryBadge({
   category,
+  targetGroup,
 }: {
   category: string;
+  targetGroup: string;
 }) {
   const listening =
     category ===
     "listening";
+
+  const grammarLabel =
+    targetGroup ===
+    "early_kids"
+      ? "WORDS & SENTENCES"
+      : "GRAMMAR";
 
   return (
     <span
@@ -1221,7 +1234,7 @@ function CategoryBadge({
     >
       {listening
         ? "LISTENING"
-        : "WORDS & SENTENCES"}
+        : grammarLabel}
     </span>
   );
 }

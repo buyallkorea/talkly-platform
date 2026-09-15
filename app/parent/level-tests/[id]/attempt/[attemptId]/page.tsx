@@ -629,6 +629,9 @@ export default async function ParentLevelTestAttemptPage({
         attemptId={
           parsedAttemptId
         }
+        targetGroup={
+          attempt.target_group
+        }
         currentDifficulty={
           currentCategoryDifficulty
         }
