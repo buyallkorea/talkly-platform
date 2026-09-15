@@ -79,6 +79,49 @@ const CATEGORY_KOREAN: Record<
   adult: "성인영어",
 };
 
+const CURRICULUM_MAP_ROWS = [
+  { category: "COURSE BOOK", title: "Hi Five", grades: ["K", "1", "2", "3", "4", "5"] },
+  { category: "COURSE BOOK", title: "Super Star", grades: ["K", "1", "2", "3", "4", "5"] },
+  { category: "COURSE BOOK", title: "Let\'s Go (OUP)", grades: ["K", "1", "2", "3", "4", "5", "6"] },
+  { category: "COURSE BOOK", title: "Everybody Up 3rd (OUP)", grades: ["K", "1", "2", "3", "4", "5", "6"] },
+  { category: "PHONICS", title: "Smart Ponics", grades: ["K", "1"] },
+  { category: "PHONICS", title: "Phonics Monster 3rd", grades: ["K", "1"] },
+  { category: "PHONICS", title: "Phonics Monster ASAP", grades: ["K", "1"] },
+  { category: "READING", title: "The Best Reading 1~2", grades: ["K", "1", "2"] },
+  { category: "READING", title: "The Best Reading 3~5", grades: ["3", "4", "5", "6"] },
+  { category: "READING", title: "The Best Reading 6", grades: ["5", "6", "7"] },
+  { category: "READING", title: "Reading Cue 2nd", grades: ["3", "4", "5"] },
+  { category: "READING", title: "Reading Cue Plus 2nd", grades: ["5", "6", "7", "8"] },
+  { category: "READING", title: "Reading Ace Starter", grades: ["3", "4", "5", "6"] },
+  { category: "READING", title: "Wonderful World Basic", grades: ["1", "2", "3", "4"] },
+  { category: "READING", title: "Wonderful World Prime", grades: ["3", "4", "5", "6"] },
+  { category: "READING", title: "Wonderful World Master", grades: ["5", "6", "7", "8", "9", "A"] },
+  { category: "READING", title: "Can You Believe It?", grades: ["5", "6", "7", "8", "9", "A"] },
+  { category: "SPEAKING", title: "Speak Up", grades: ["4", "5", "6"] },
+  { category: "SPEAKING", title: "Speak Up Plus", grades: ["5", "6", "7"] },
+  { category: "SPEAKING", title: "Side by Side 1~4", grades: ["3", "4", "5", "6", "7"] },
+  { category: "SPEAKING", title: "Interchange Intro~3", grades: ["4", "5", "6", "7", "8"] },
+  { category: "WRITING", title: "The Best Writing Starter 1-3", grades: ["3", "4"] },
+  { category: "WRITING", title: "The Best Writing 1-3", grades: ["4", "5", "6"] },
+  { category: "GRAMMAR", title: "Grammar Juice for Kids", grades: ["3", "4", "5"] },
+  { category: "GRAMMAR", title: "Grammar Juice for Junior", grades: ["5", "6", "7"] },
+  { category: "VOCA", title: "200 Words You Must Know", grades: ["K", "1", "2", "3"] },
+  { category: "VOCA", title: "Mission: 2000 Words", grades: ["4", "5", "6"] },
+  { category: "ADULT", title: "New Connection 1-3", grades: ["9", "A"] },
+  { category: "ADULT", title: "English Now 1-3", grades: ["9", "A"] },
+  { category: "ADULT", title: "Read to Succeed 1-2", grades: ["A"] },
+  { category: "ADULT", title: "Speak Now 1-4", grades: ["A"] },
+] as const;
+
+const CURRICULUM_MAP_GRADES = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A"] as const;
+
+const CURRICULUM_REFERENCE_ROWS = [
+  { label: "Lexile®", values: ["BR-150L", "50L-250L", "", "165L-520L", "", "360L-600L", "", "560L-720L", "", "700L-1000L", ""] },
+  { label: "CEFR", values: ["Pre A1", "", "", "A1", "", "A2", "", "B1", "", "B2", "A2-C1"] },
+  { label: "AR", values: ["0.4", "1.3", "1.6", "2.0", "2.2", "2.9", "3.1", "3.7", "4.3", "4.8", ""] },
+  { label: "US Grade", values: ["K", "1", "", "2", "", "", "3", "", "4", "", ""] },
+] as const;
+
 export const dynamic = "force-dynamic";
 
 export default async function CurriculumPage() {
@@ -627,6 +670,63 @@ export default async function CurriculumPage() {
               Personalized Textbooks
             </HeroChip>
           </div>
+        </div>
+      </section>
+
+      {/* =========================================
+          CURRICULUM MAP
+      ========================================== */}
+      <section className="talkly-map-section">
+        <div className="talkly-map-wrap">
+          <div className="talkly-map-heading">
+            <div className="talkly-map-eyebrow">TALKLY CURRICULUM AT A GLANCE</div>
+            <h2>전체 커리큘럼 한눈에 보기</h2>
+            <p>Grade K부터 Adult까지 TALKLY의 단계별 교재 구성을 한눈에 확인해 보세요. 각 교재는 학생의 레벨테스트 결과와 학습 목표에 따라 선택적으로 배정됩니다.</p>
+          </div>
+
+          <div className="talkly-map-scroll-hint">← 좌우로 밀어서 전체 Grade 보기 →</div>
+
+          <div className="talkly-map-scroll" role="region" aria-label="TALKLY 전체 커리큘럼 맵" tabIndex={0}>
+            <div className="talkly-map-table">
+              <div className="talkly-map-cell talkly-map-corner talkly-map-sticky">LEVEL</div>
+              <div className="talkly-map-cell talkly-map-book-head talkly-map-book-sticky">TEXTBOOK</div>
+              {CURRICULUM_MAP_GRADES.map((grade) => (
+                <div key={`head-${grade}`} className="talkly-map-cell talkly-map-grade-head">
+                  <span>Grade</span>
+                  <strong>{grade === "A" ? "Adult" : grade}</strong>
+                </div>
+              ))}
+
+              {CURRICULUM_REFERENCE_ROWS.map((row) => (
+                <div key={row.label} className="talkly-map-row-contents">
+                  <div className="talkly-map-cell talkly-map-reference-label talkly-map-sticky">{row.label}</div>
+                  <div className="talkly-map-cell talkly-map-reference-book talkly-map-book-sticky">LEVEL REFERENCE</div>
+                  {row.values.map((value, index) => (
+                    <div key={`${row.label}-${index}`} className="talkly-map-cell talkly-map-reference-value">{value || "—"}</div>
+                  ))}
+                </div>
+              ))}
+
+              {CURRICULUM_MAP_ROWS.map((row, rowIndex) => {
+                const showCategory = rowIndex === 0 || CURRICULUM_MAP_ROWS[rowIndex - 1].category !== row.category;
+                return (
+                  <div key={`${row.category}-${row.title}`} className={`talkly-map-row-contents ${showCategory ? "talkly-map-category-start" : ""}`}>
+                    <div className="talkly-map-cell talkly-map-category talkly-map-sticky">{showCategory ? row.category : ""}</div>
+                    <div className="talkly-map-cell talkly-map-title talkly-map-book-sticky">{row.title}</div>
+                    {CURRICULUM_MAP_GRADES.map((grade) => {
+                      const active = row.grades.includes(grade as never);
+                      return (
+                        <div key={`${row.title}-${grade}`} className={`talkly-map-cell talkly-map-grade-cell ${active ? "is-active" : ""}`}>
+                          {active ? <span className="talkly-map-dot" aria-label="해당 Grade 활용">●</span> : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <p className="talkly-map-note">※ 위 레벨 지표는 학습 수준을 이해하기 위한 참고 자료이며, 실제 TALKLY Grade와 교재는 레벨테스트 및 학습 목표를 종합하여 배정됩니다.</p>
         </div>
       </section>
 
@@ -1614,6 +1714,37 @@ export default async function CurriculumPage() {
           transform: translateY(-1px);
         }
 
+        .talkly-map-section {
+          padding: 64px 20px 30px;
+          background: #f3f7fc;
+        }
+        .talkly-map-wrap { width: 100%; max-width: 1280px; margin: 0 auto; }
+        .talkly-map-heading { max-width: 760px; margin-bottom: 24px; }
+        .talkly-map-eyebrow { color: #2f67b2; font-size: 11px; font-weight: 900; letter-spacing: .09em; }
+        .talkly-map-heading h2 { margin: 8px 0 0; color: #0A1F44; font-size: clamp(27px,4vw,38px); line-height: 1.25; letter-spacing: -.035em; font-weight: 900; }
+        .talkly-map-heading p { margin: 12px 0 0; color: #69788d; font-size: 14px; line-height: 1.8; word-break: keep-all; }
+        .talkly-map-scroll-hint { display: none; margin: 0 0 9px; color: #55708f; font-size: 11px; font-weight: 800; text-align: right; }
+        .talkly-map-scroll { overflow-x: auto; overflow-y: visible; border: 1px solid #dbe4f0; border-radius: 20px; background: #fff; box-shadow: 0 12px 34px rgba(10,31,68,.055); -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+        .talkly-map-table { display: grid; grid-template-columns: 112px 210px repeat(11, minmax(72px,1fr)); min-width: 1114px; }
+        .talkly-map-row-contents { display: contents; }
+        .talkly-map-cell { min-width: 0; min-height: 46px; padding: 9px 7px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #e8edf4; border-bottom: 1px solid #e8edf4; color: #42546b; font-size: 10px; line-height: 1.3; text-align: center; }
+        .talkly-map-sticky { position: sticky; left: 0; z-index: 6; }
+        .talkly-map-book-sticky { position: sticky; left: 112px; z-index: 5; }
+        .talkly-map-corner, .talkly-map-book-head { min-height: 62px; background: #0A1F44; color: #fff; font-size: 10px; font-weight: 900; letter-spacing: .06em; }
+        .talkly-map-grade-head { min-height: 62px; flex-direction: column; gap: 2px; background: #0A1F44; color: #fff; }
+        .talkly-map-grade-head span { opacity: .62; font-size: 8px; font-weight: 800; }
+        .talkly-map-grade-head strong { font-size: 12px; font-weight: 900; }
+        .talkly-map-reference-label { background: #eaf2fc; color: #315f9c; font-weight: 900; }
+        .talkly-map-reference-book { background: #f5f8fc; color: #91a0b2; font-size: 8px; font-weight: 900; letter-spacing: .04em; }
+        .talkly-map-reference-value { min-height: 38px; padding: 6px 4px; background: #f8fbff; color: #61738a; font-size: 8.5px; font-weight: 800; }
+        .talkly-map-category { justify-content: flex-start; padding-left: 12px; background: #f3f7fc; color: #315f9c; font-size: 9px; font-weight: 900; letter-spacing: .03em; text-align: left; }
+        .talkly-map-title { justify-content: flex-start; padding-left: 12px; background: #fff; color: #2d3c51; font-size: 10px; font-weight: 800; text-align: left; }
+        .talkly-map-grade-cell { background: #fff; }
+        .talkly-map-grade-cell.is-active { background: #edf5ff; }
+        .talkly-map-dot { color: #2f67b2; font-size: 12px; line-height: 1; }
+        .talkly-map-category-start > .talkly-map-cell { border-top: 2px solid #cddbec; }
+        .talkly-map-note { margin: 12px 2px 0; color: #8491a3; font-size: 10.5px; line-height: 1.6; word-break: keep-all; }
+
         @media (max-width: 1040px) {
           .talkly-main-header {
             grid-template-columns: 190px 1fr auto !important;
@@ -1634,6 +1765,10 @@ export default async function CurriculumPage() {
           .talkly-reference-grid {
             grid-template-columns: repeat(2, minmax(0,1fr)) !important;
           }
+        }
+
+        @media (max-width: 1040px) {
+          .talkly-map-scroll-hint { display: block; }
         }
 
         @media (max-width: 680px) {
@@ -1660,6 +1795,34 @@ export default async function CurriculumPage() {
           .talkly-textbook-grid {
             grid-template-columns: 1fr !important;
           }
+        }
+
+        @media (max-width: 680px) {
+          .talkly-map-section { padding: 44px 14px 24px; }
+          .talkly-map-heading { margin-bottom: 18px; }
+          .talkly-map-heading p { font-size: 12px; line-height: 1.7; }
+          .talkly-map-scroll { border-radius: 14px; }
+          .talkly-map-table { grid-template-columns: 88px 170px repeat(11, 64px); min-width: 962px; }
+          .talkly-map-book-sticky { left: 88px; }
+          .talkly-map-cell { min-height: 42px; padding: 7px 5px; }
+          .talkly-map-category { padding-left: 8px; font-size: 8px; }
+          .talkly-map-title { padding-left: 9px; font-size: 9px; }
+        }
+
+        @media (max-height: 520px) and (orientation: landscape) {
+          .talkly-map-section { padding: 28px 12px 20px; }
+          .talkly-map-heading { margin-bottom: 12px; }
+          .talkly-map-heading h2 { font-size: 24px; }
+          .talkly-map-heading p { margin-top: 7px; font-size: 11px; line-height: 1.55; }
+          .talkly-map-scroll-hint { margin-bottom: 6px; font-size: 9px; }
+          .talkly-map-table { grid-template-columns: 82px 156px repeat(11, 58px); min-width: 876px; }
+          .talkly-map-book-sticky { left: 82px; }
+          .talkly-map-cell { min-height: 34px; padding: 5px 4px; }
+          .talkly-map-corner, .talkly-map-book-head, .talkly-map-grade-head { min-height: 46px; }
+          .talkly-map-category { padding-left: 7px; font-size: 7.5px; }
+          .talkly-map-title { padding-left: 8px; font-size: 8px; }
+          .talkly-map-reference-value { min-height: 30px; font-size: 7.5px; }
+          .talkly-map-note { font-size: 9px; }
         }
       `}</style>
     </main>
