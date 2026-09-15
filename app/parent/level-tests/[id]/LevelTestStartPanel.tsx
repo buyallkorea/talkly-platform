@@ -292,8 +292,23 @@ export default function LevelTestStartPanel({
           status:
             "in_progress",
 
+                    /*
+           * TALKLY 적응형 레벨테스트 시작 난이도
+           *
+           * Grammar / Listening 모두
+           * 중간 난이도인 Level 3에서 시작합니다.
+           *
+           * current_difficulty는
+           * 과거 코드 호환을 위해 동일하게 3으로 시작합니다.
+           */
           current_difficulty:
-            1,
+            3,
+
+          current_grammar_difficulty:
+            3,
+
+          current_listening_difficulty:
+            3,
 
           started_at:
             now,
