@@ -1727,21 +1727,21 @@ export default async function CurriculumPage() {
         .talkly-map-scroll { overflow-x: auto; overflow-y: visible; border: 1px solid #dbe4f0; border-radius: 20px; background: #fff; box-shadow: 0 12px 34px rgba(10,31,68,.055); -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
         .talkly-map-table { display: grid; grid-template-columns: 112px 210px repeat(11, minmax(72px,1fr)); min-width: 1114px; }
         .talkly-map-row-contents { display: contents; }
-        .talkly-map-cell { min-width: 0; min-height: 46px; padding: 9px 7px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #e8edf4; border-bottom: 1px solid #e8edf4; color: #42546b; font-size: 10px; line-height: 1.3; text-align: center; }
+        .talkly-map-cell { min-width: 0; min-height: 46px; padding: 9px 7px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #e8edf4; border-bottom: 1px solid #e8edf4; color: #42546b; font-size: 12px; line-height: 1.35; text-align: center; }
         .talkly-map-sticky { position: sticky; left: 0; z-index: 6; }
         .talkly-map-book-sticky { position: sticky; left: 112px; z-index: 5; }
-        .talkly-map-corner, .talkly-map-book-head { min-height: 62px; background: #0A1F44; color: #fff; font-size: 10px; font-weight: 900; letter-spacing: .06em; }
+        .talkly-map-corner, .talkly-map-book-head { min-height: 62px; background: #0A1F44; color: #fff; font-size: 13px; font-weight: 900; letter-spacing: .06em; }
         .talkly-map-grade-head { min-height: 62px; flex-direction: column; gap: 2px; background: #0A1F44; color: #fff; }
-        .talkly-map-grade-head span { opacity: .62; font-size: 8px; font-weight: 800; }
-        .talkly-map-grade-head strong { font-size: 12px; font-weight: 900; }
+        .talkly-map-grade-head span { opacity: .68; font-size: 10px; font-weight: 800; }
+        .talkly-map-grade-head strong { font-size: 15px; font-weight: 900; }
         .talkly-map-reference-label { background: #eaf2fc; color: #315f9c; font-weight: 900; }
-        .talkly-map-reference-book { background: #f5f8fc; color: #91a0b2; font-size: 8px; font-weight: 900; letter-spacing: .04em; }
-        .talkly-map-reference-value { min-height: 38px; padding: 6px 4px; background: #f8fbff; color: #61738a; font-size: 8.5px; font-weight: 800; }
-        .talkly-map-category { justify-content: flex-start; padding-left: 12px; background: #f3f7fc; color: #315f9c; font-size: 9px; font-weight: 900; letter-spacing: .03em; text-align: left; }
-        .talkly-map-title { justify-content: flex-start; padding-left: 12px; background: #fff; color: #2d3c51; font-size: 10px; font-weight: 800; text-align: left; }
+        .talkly-map-reference-book { background: #f5f8fc; color: #91a0b2; font-size: 10px; font-weight: 900; letter-spacing: .04em; }
+        .talkly-map-reference-value { min-height: 38px; padding: 6px 4px; background: #f8fbff; color: #61738a; font-size: 11px; font-weight: 800; }
+        .talkly-map-category { justify-content: flex-start; padding-left: 12px; background: #f3f7fc; color: #315f9c; font-size: 11px; font-weight: 900; letter-spacing: .03em; text-align: left; }
+        .talkly-map-title { justify-content: flex-start; padding-left: 12px; background: #fff; color: #2d3c51; font-size: 13px; font-weight: 800; text-align: left; }
         .talkly-map-grade-cell { background: #fff; }
         .talkly-map-grade-cell.is-active { background: #edf5ff; }
-        .talkly-map-dot { color: #2f67b2; font-size: 12px; line-height: 1; }
+        .talkly-map-dot { color: #2f67b2; font-size: 15px; line-height: 1; }
         .talkly-map-category-start > .talkly-map-cell { border-top: 2px solid #cddbec; }
         .talkly-map-note { margin: 12px 2px 0; color: #8491a3; font-size: 10.5px; line-height: 1.6; word-break: keep-all; }
 
@@ -1805,8 +1805,8 @@ export default async function CurriculumPage() {
           .talkly-map-table { grid-template-columns: 88px 170px repeat(11, 64px); min-width: 962px; }
           .talkly-map-book-sticky { left: 88px; }
           .talkly-map-cell { min-height: 42px; padding: 7px 5px; }
-          .talkly-map-category { padding-left: 8px; font-size: 8px; }
-          .talkly-map-title { padding-left: 9px; font-size: 9px; }
+          .talkly-map-category { padding-left: 8px; font-size: 10px; }
+          .talkly-map-title { padding-left: 9px; font-size: 11px; }
         }
 
         @media (max-height: 520px) and (orientation: landscape) {
@@ -1819,9 +1819,9 @@ export default async function CurriculumPage() {
           .talkly-map-book-sticky { left: 82px; }
           .talkly-map-cell { min-height: 34px; padding: 5px 4px; }
           .talkly-map-corner, .talkly-map-book-head, .talkly-map-grade-head { min-height: 46px; }
-          .talkly-map-category { padding-left: 7px; font-size: 7.5px; }
-          .talkly-map-title { padding-left: 8px; font-size: 8px; }
-          .talkly-map-reference-value { min-height: 30px; font-size: 7.5px; }
+          .talkly-map-category { padding-left: 7px; font-size: 9px; }
+          .talkly-map-title { padding-left: 8px; font-size: 10px; }
+          .talkly-map-reference-value { min-height: 30px; font-size: 9px; }
           .talkly-map-note { font-size: 9px; }
         }
       `}</style>
