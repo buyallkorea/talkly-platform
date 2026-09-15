@@ -47,6 +47,19 @@ type CategoryResult = {
   averageDifficulty: number;
 };
 
+type PreviousAnswerRow = {
+  id: number;
+  question_id: number;
+  difficulty: number;
+  is_correct: boolean;
+  created_at: string;
+};
+
+type PreviousQuestionRow = {
+  id: number;
+  category: string;
+};
+
 function createAdmin() {
   const url =
     process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -151,33 +164,79 @@ function clamp(
   );
 }
 
-function calculateNextDifficulty(
-  currentDifficulty: number,
-  isCorrect: boolean
-) {
-  /*
-   * TALKLY 적응형 테스트
-   *
-   * 정답:
-   * 해당 영역 난이도 +1
-   *
-   * 오답:
-   * 해당 영역 난이도 -1
-   *
-   * 난이도 범위:
-   * Level 1 ~ Level 5
-   */
-  if (isCorrect) {
+/*
+ * =========================================================
+ * TALKLY 적응형 난이도 조정
+ * =========================================================
+ *
+ * 같은 영역 + 같은 현재 난이도에서
+ *
+ * 2문제 연속 정답:
+ * Level +1
+ *
+ * 2문제 연속 오답:
+ * Level -1
+ *
+ * 정답/오답이 섞이면:
+ * 현재 Level 유지
+ *
+ * 난이도가 한 번 변경되면
+ * 이전 난이도에서의 연속 기록은
+ * 자연스럽게 종료됩니다.
+ *
+ * 범위:
+ * Level 1 ~ Level 5
+ */
+function calculateNextDifficulty({
+  currentDifficulty,
+  isCorrect,
+  previousIsCorrect,
+  previousDifficulty,
+}: {
+  currentDifficulty: number;
+  isCorrect: boolean;
+  previousIsCorrect: boolean | null;
+  previousDifficulty: number | null;
+}) {
+  const normalizedCurrentDifficulty =
+    normalizeDifficulty(
+      currentDifficulty
+    );
+
+  const hasMatchingPreviousAnswer =
+    previousIsCorrect !== null &&
+    previousDifficulty !== null &&
+    normalizeDifficulty(
+      previousDifficulty
+    ) === normalizedCurrentDifficulty;
+
+  if (!hasMatchingPreviousAnswer) {
+    return normalizedCurrentDifficulty;
+  }
+
+  const isTwoCorrectInARow =
+    previousIsCorrect === true &&
+    isCorrect === true;
+
+  if (isTwoCorrectInARow) {
     return Math.min(
       5,
-      currentDifficulty + 1
+      normalizedCurrentDifficulty + 1
     );
   }
 
-  return Math.max(
-    1,
-    currentDifficulty - 1
-  );
+  const isTwoWrongInARow =
+    previousIsCorrect === false &&
+    isCorrect === false;
+
+  if (isTwoWrongInARow) {
+    return Math.max(
+      1,
+      normalizedCurrentDifficulty - 1
+    );
+  }
+
+  return normalizedCurrentDifficulty;
 }
 
 function isQuestionCategory(
@@ -1043,7 +1102,7 @@ export async function POST(
 
     /*
      * ==========================================
-     * 10. 영역별 적응형 난이도 계산
+     * 10. 영역별 현재 난이도
      * ==========================================
      */
     const currentGrammarDifficulty =
@@ -1061,11 +1120,182 @@ export async function POST(
         ? currentGrammarDifficulty
         : currentListeningDifficulty;
 
-    const nextDifficulty =
-      calculateNextDifficulty(
-        currentCategoryDifficulty,
-        isCorrect
+    /*
+     * ==========================================
+     * 10-1. 현재 영역의 직전 답안 확인
+     * ==========================================
+     *
+     * level_test_answers에는 category 컬럼이
+     * 없기 때문에 기존 답안의 question_id를
+     * level_test_questions와 연결하여
+     * 현재 영역의 가장 최근 답안을 찾습니다.
+     *
+     * 현재 답안은 아직 INSERT 전이므로
+     * 이 조회에는 포함되지 않습니다.
+     */
+    const {
+      data: previousAnswerData,
+      error: previousAnswerError,
+    } = await admin
+      .from(
+        "level_test_answers"
+      )
+      .select(`
+        id,
+        question_id,
+        difficulty,
+        is_correct,
+        created_at
+      `)
+      .eq(
+        "attempt_id",
+        attemptId
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        }
       );
+
+    if (
+      previousAnswerError
+    ) {
+      return jsonError(
+        `직전 답안 확인 실패: ${previousAnswerError.message}`,
+        500
+      );
+    }
+
+    const previousAnswers =
+      (
+        previousAnswerData ??
+        []
+      ) as PreviousAnswerRow[];
+
+    let previousCategoryAnswer:
+      {
+        difficulty: number;
+        isCorrect: boolean;
+      } | null = null;
+
+    if (
+      previousAnswers.length > 0
+    ) {
+      const previousQuestionIds =
+        Array.from(
+          new Set(
+            previousAnswers.map(
+              (answer) =>
+                Number(
+                  answer.question_id
+                )
+            )
+          )
+        ).filter(
+          (id) =>
+            Number.isInteger(id) &&
+            id > 0
+        );
+
+      if (
+        previousQuestionIds.length > 0
+      ) {
+        const {
+          data:
+            previousQuestionData,
+          error:
+            previousQuestionsError,
+        } = await admin
+          .from(
+            "level_test_questions"
+          )
+          .select(`
+            id,
+            category
+          `)
+          .in(
+            "id",
+            previousQuestionIds
+          );
+
+        if (
+          previousQuestionsError
+        ) {
+          return jsonError(
+            `직전 문제 영역 확인 실패: ${previousQuestionsError.message}`,
+            500
+          );
+        }
+
+        const previousQuestions =
+          (
+            previousQuestionData ??
+            []
+          ) as PreviousQuestionRow[];
+
+        const previousCategoryMap =
+          new Map<
+            number,
+            string
+          >(
+            previousQuestions.map(
+              (item) => [
+                Number(item.id),
+                String(item.category),
+              ]
+            )
+          );
+
+        const matchedAnswer =
+          previousAnswers.find(
+            (answer) =>
+              previousCategoryMap.get(
+                Number(
+                  answer.question_id
+                )
+              ) ===
+                questionCategory
+          );
+
+        if (
+          matchedAnswer
+        ) {
+          previousCategoryAnswer = {
+            difficulty:
+              normalizeDifficulty(
+                matchedAnswer.difficulty
+              ),
+
+            isCorrect:
+              Boolean(
+                matchedAnswer.is_correct
+              ),
+          };
+        }
+      }
+    }
+
+    /*
+     * ==========================================
+     * 10-2. 2연속 정답/오답 난이도 계산
+     * ==========================================
+     */
+    const nextDifficulty =
+      calculateNextDifficulty({
+        currentDifficulty:
+          currentCategoryDifficulty,
+
+        isCorrect,
+
+        previousIsCorrect:
+          previousCategoryAnswer
+            ?.isCorrect ?? null,
+
+        previousDifficulty:
+          previousCategoryAnswer
+            ?.difficulty ?? null,
+      });
 
     const nextGrammarDifficulty =
       questionCategory === "grammar"
