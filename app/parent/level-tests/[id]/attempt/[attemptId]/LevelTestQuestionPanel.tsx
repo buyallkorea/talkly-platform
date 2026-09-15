@@ -64,6 +64,17 @@ export default function LevelTestQuestionPanel({
     setErrorMessage,
   ] = useState("");
 
+  /*
+   * Grammar 10문항 완료 후 Listening 시작 전에
+   * 학생이 소리 환경을 준비할 수 있도록 안내 화면을 보여줍니다.
+   * 서버의 응시 상태를 추가로 변경하지 않고,
+   * 11번 Listening 문항을 같은 화면에서 이어서 표시합니다.
+   */
+  const [
+    listeningReady,
+    setListeningReady,
+  ] = useState(false);
+
   const [
     questionStartedAt,
     setQuestionStartedAt,
@@ -339,6 +350,110 @@ export default function LevelTestQuestionPanel({
               }
             `}
           </style>
+        </div>
+      </section>
+    );
+  }
+
+  /*
+   * Grammar 10문항을 모두 푼 직후에는
+   * 11번 Listening 문항을 바로 노출하지 않고
+   * 먼저 Listening 준비 안내를 보여줍니다.
+   */
+  if (
+    answeredCount === 10 &&
+    question?.category === "listening" &&
+    !listeningReady
+  ) {
+    return (
+      <section style={sectionStyle}>
+        <div
+          style={{
+            minHeight: "390px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            padding: "34px 20px",
+          }}
+        >
+          <div
+            style={{
+              width: "64px",
+              height: "64px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "999px",
+              background: "#eef4ff",
+              fontSize: "30px",
+            }}
+          >
+            🎧
+          </div>
+
+          <div
+            style={{
+              marginTop: "22px",
+              color: "#2f6fed",
+              fontSize: "12px",
+              fontWeight: 900,
+              letterSpacing: "0.08em",
+            }}
+          >
+            PART 1 COMPLETE
+          </div>
+
+          <h2
+            style={{
+              margin: "10px 0 0",
+              color: "#0A1F44",
+              fontSize: "26px",
+              lineHeight: 1.35,
+              letterSpacing: "-0.03em",
+            }}
+          >
+            이제 Listening 문제가 시작됩니다.
+          </h2>
+
+          <p
+            style={{
+              margin: "14px 0 0",
+              maxWidth: "480px",
+              color: "#667085",
+              fontSize: "14px",
+              lineHeight: 1.8,
+            }}
+          >
+            소리가 잘 들리는지 확인한 후 시작해주세요.
+            <br />
+            가능하면 이어폰이나 헤드폰을 사용해주세요.
+            <br />
+            Listening도 10문항이며 난이도는 별도로 조정됩니다.
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              setListeningReady(true)
+            }
+            style={{
+              marginTop: "28px",
+              minHeight: "50px",
+              padding: "0 30px",
+              border: "none",
+              borderRadius: "10px",
+              background: "#0A1F44",
+              color: "#ffffff",
+              fontFamily: "inherit",
+              fontSize: "14px",
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
+            Listening 시작하기
+          </button>
         </div>
       </section>
     );
@@ -1106,7 +1221,7 @@ function CategoryBadge({
     >
       {listening
         ? "LISTENING"
-        : "GRAMMAR"}
+        : "WORDS & SENTENCES"}
     </span>
   );
 }

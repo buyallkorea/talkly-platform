@@ -312,17 +312,15 @@ export default async function ParentLevelTestAttemptPage({
     answeredQuestionIds.length;
 
   /*
-   * Grammar / Listening을
-   * 번갈아 출제
+   * 영역별로 묶어서 출제
    *
-   * 1, 3, 5 ... = Grammar
-   * 2, 4, 6 ... = Listening
+   * 1~10번  = Grammar / Words & Sentences
+   * 11~20번 = Listening
    *
-   * 20문항 완료 시
-   * Grammar 10 + Listening 10
+   * 두 영역은 각각 독립된 적응 난이도를 사용합니다.
    */
   const nextCategory =
-    answeredCount % 2 === 0
+    answeredCount < 10
       ? "grammar"
       : "listening";
 
@@ -718,8 +716,14 @@ function getTargetGroupLabel(
   value: string
 ) {
   switch (value) {
+    case "early_kids":
+      return "7세~초2 영어";
+
     case "elementary":
-      return "초등 영어";
+      return "초3~초6 영어";
+
+    case "secondary":
+      return "중·고등 영어";
 
     case "middle":
       return "중등 영어";
@@ -728,7 +732,7 @@ function getTargetGroupLabel(
       return "고등 영어";
 
     case "adult":
-      return "대학생·성인 영어";
+      return "성인 영어";
 
     default:
       return value;
