@@ -77,7 +77,9 @@ export default function LevelTestRequestForm({
   const [grade, setGrade] =
     useState(
       children.length > 0
-        ? children[0].grade || ""
+        ? normalizeGrade(
+            children[0].grade
+          )
         : ""
     );
 
@@ -151,7 +153,9 @@ export default function LevelTestRequestForm({
     );
 
     setGrade(
-      child.grade || ""
+      normalizeGrade(
+        child.grade
+      )
     );
 
     setSchoolName(
@@ -205,7 +209,7 @@ export default function LevelTestRequestForm({
       setLearningHistory("");
       setLearningGoal("");
       setTargetGroup(
-        "elementary"
+        "early_kids"
       );
     }
   }
@@ -812,36 +816,80 @@ export default function LevelTestRequestForm({
               학년
             </label>
 
-            <input
+            <select
               id="grade"
-              type="text"
               value={grade}
               onChange={(
                 event
               ) => {
-                setGrade(
-                  event.target
-                    .value
-                );
+                const nextGrade =
+                  event.target.value;
 
+                setGrade(nextGrade);
                 setTargetGroup(
                   getTargetGroupFromGrade(
-                    event.target
-                      .value
+                    nextGrade
                   )
                 );
-
                 setSuccessMessage(
                   ""
                 );
               }}
-              placeholder="예: 초등 4학년"
               disabled={
                 loading ||
                 isStudent
               }
               style={fieldStyle}
-            />
+            >
+              <option value="">
+                학년을 선택해주세요
+              </option>
+              <option value="7세 / 미취학">
+                7세 / 미취학
+              </option>
+              <option value="초등 1학년">
+                초등 1학년
+              </option>
+              <option value="초등 2학년">
+                초등 2학년
+              </option>
+              <option value="초등 3학년">
+                초등 3학년
+              </option>
+              <option value="초등 4학년">
+                초등 4학년
+              </option>
+              <option value="초등 5학년">
+                초등 5학년
+              </option>
+              <option value="초등 6학년">
+                초등 6학년
+              </option>
+              <option value="중학교 1학년">
+                중학교 1학년
+              </option>
+              <option value="중학교 2학년">
+                중학교 2학년
+              </option>
+              <option value="중학교 3학년">
+                중학교 3학년
+              </option>
+              <option value="고등학교 1학년">
+                고등학교 1학년
+              </option>
+              <option value="고등학교 2학년">
+                고등학교 2학년
+              </option>
+              <option value="고등학교 3학년">
+                고등학교 3학년
+              </option>
+              <option value="대학생">
+                대학생
+              </option>
+              <option value="성인">
+                성인
+              </option>
+            </select>
           </div>
         </div>
 
@@ -968,44 +1016,31 @@ export default function LevelTestRequestForm({
             레벨테스트 유형
           </label>
 
-          <select
+          <div
             id="targetGroup"
-            value={
-              targetGroup
-            }
-            onChange={(
-              event
-            ) => {
-              setTargetGroup(
-                event.target
-                  .value
-              );
-              setSuccessMessage(
-                ""
-              );
+            style={{
+              ...fieldStyle,
+              display: "flex",
+              alignItems: "center",
+              background: "#f9fafb",
+              fontWeight: 800,
             }}
-            disabled={
-              loading ||
-              isStudent
-            }
-            style={fieldStyle}
           >
-            <option value="elementary">
-              초등 영어 레벨테스트
-            </option>
+            {getTargetGroupLabel(
+              targetGroup
+            )}
+          </div>
 
-            <option value="middle">
-              중등 영어 레벨테스트
-            </option>
-
-            <option value="high">
-              고등 영어 레벨테스트
-            </option>
-
-            <option value="adult">
-              대학생·성인 영어 레벨테스트
-            </option>
-          </select>
+          <p
+            style={{
+              margin: "7px 0 0",
+              color: "#667085",
+              fontSize: "11px",
+              lineHeight: 1.6,
+            }}
+          >
+            선택한 학년을 기준으로 AI 레벨테스트 유형이 자동 설정됩니다.
+          </p>
         </div>
 
         <div>
@@ -1274,40 +1309,146 @@ function ModeButton({
   );
 }
 
-function getTargetGroupFromGrade(
+function normalizeGrade(
   grade: string | null
 ) {
   if (!grade) {
-    return "elementary";
+    return "";
   }
 
-  const value =
-    grade.toLowerCase();
+  const raw = grade.trim();
+  const value = raw
+    .toLowerCase()
+    .replace(/\s+/g, "");
 
   if (
-    value.includes("중") ||
-    value.includes("middle")
+    value.includes("성인") ||
+    value.includes("adult")
   ) {
-    return "middle";
-  }
-
-  if (
-    value.includes("고") ||
-    value.includes("high")
-  ) {
-    return "high";
+    return "성인";
   }
 
   if (
     value.includes("대학") ||
-    value.includes("성인") ||
-    value.includes("adult") ||
-    value.includes("university")
+    value.includes("university") ||
+    value.includes("college")
+  ) {
+    return "대학생";
+  }
+
+  const highMatch =
+    value.match(
+      /(?:고등학교|고등|고|high)([123])/
+    );
+
+  if (highMatch) {
+    return `고등학교 ${highMatch[1]}학년`;
+  }
+
+  const middleMatch =
+    value.match(
+      /(?:중학교|중등|중|middle)([123])/
+    );
+
+  if (middleMatch) {
+    return `중학교 ${middleMatch[1]}학년`;
+  }
+
+  const elementaryMatch =
+    value.match(
+      /(?:초등학교|초등|초)([1-6])/
+    );
+
+  if (elementaryMatch) {
+    return `초등 ${elementaryMatch[1]}학년`;
+  }
+
+  const gradeOnlyMatch =
+    value.match(/^([1-6])(?:학년)?$/);
+
+  if (gradeOnlyMatch) {
+    return `초등 ${gradeOnlyMatch[1]}학년`;
+  }
+
+  if (
+    value.includes("7세") ||
+    value.includes("미취학") ||
+    value.includes("유치") ||
+    value.includes("kindergarten") ||
+    value === "7"
+  ) {
+    return "7세 / 미취학";
+  }
+
+  return raw;
+}
+
+function getTargetGroupFromGrade(
+  grade: string | null
+) {
+  const normalized =
+    normalizeGrade(grade);
+
+  if (
+    normalized ===
+      "7세 / 미취학" ||
+    normalized ===
+      "초등 1학년" ||
+    normalized ===
+      "초등 2학년"
+  ) {
+    return "early_kids";
+  }
+
+  if (
+    normalized.startsWith(
+      "초등 "
+    )
+  ) {
+    return "elementary";
+  }
+
+  if (
+    normalized.startsWith(
+      "중학교 "
+    ) ||
+    normalized.startsWith(
+      "고등학교 "
+    )
+  ) {
+    return "secondary";
+  }
+
+  if (
+    normalized === "대학생" ||
+    normalized === "성인"
   ) {
     return "adult";
   }
 
   return "elementary";
+}
+
+function getTargetGroupLabel(
+  targetGroup: string
+) {
+  if (targetGroup === "early_kids") {
+    return "7세~초2 영어 레벨테스트";
+  }
+
+  if (targetGroup === "elementary") {
+    return "초3~초6 영어 레벨테스트";
+  }
+
+  if (targetGroup === "secondary") {
+    return "중·고등 영어 레벨테스트";
+  }
+
+  if (targetGroup === "adult") {
+    return "성인 영어 레벨테스트";
+  }
+
+  return "영어 레벨테스트";
 }
 
 function calculateAge(
