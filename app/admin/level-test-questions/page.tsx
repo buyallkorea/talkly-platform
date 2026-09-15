@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 
 import LevelTestQuestionAudioManager from "@/components/admin/level-tests/LevelTestQuestionAudioManager";
+import LevelTestBulkAudioGenerator from "@/components/admin/level-tests/LevelTestBulkAudioGenerator";
 
 type SearchParams = Promise<{
   target_group?: string;
@@ -171,9 +172,6 @@ export default async function AdminLevelTestQuestionsPage({
   /*
    * ==========================================
    * 문제 조회
-   *
-   * 실제 level_test_questions 컬럼:
-   * choice_a ~ choice_d
    * ==========================================
    */
   let query =
@@ -332,7 +330,7 @@ export default async function AdminLevelTestQuestionsPage({
           </div>
         </section>
 
-        {/* 카테고리 */}
+        {/* 영역 */}
         <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">
             영역
@@ -501,6 +499,26 @@ export default async function AdminLevelTestQuestionsPage({
           )}
         </div>
 
+        {/* Listening AI 음원 일괄 생성 */}
+        {category ===
+          "listening" &&
+          !error && (
+            <LevelTestBulkAudioGenerator
+              questions={questions.map(
+                (
+                  question
+                ) => ({
+                  id:
+                    question.id,
+                  audio_url:
+                    question.audio_url,
+                  audio_script:
+                    question.audio_script,
+                })
+              )}
+            />
+          )}
+
         {/* 조회 오류 */}
         {error && (
           <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm font-medium text-red-700">
@@ -576,6 +594,7 @@ export default async function AdminLevelTestQuestionsPage({
                 </div>
 
                 <div className="p-5">
+                  {/* 문제 */}
                   <div className="mb-5">
                     <div className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">
                       Question
@@ -588,6 +607,7 @@ export default async function AdminLevelTestQuestionsPage({
                     </div>
                   </div>
 
+                  {/* 선택지 */}
                   <div className="grid gap-2 sm:grid-cols-2">
                     {[
                       [
@@ -629,6 +649,7 @@ export default async function AdminLevelTestQuestionsPage({
                     )}
                   </div>
 
+                  {/* Listening 음원 관리 */}
                   {question.category ===
                     "listening" && (
                     <LevelTestQuestionAudioManager
