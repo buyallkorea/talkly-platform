@@ -95,6 +95,19 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    title: "레벨테스트",
+    items: [
+      {
+        label: "레벨테스트 관리",
+        href: "/admin/level-tests",
+      },
+      {
+        label: "AI 문제은행",
+        href: "/admin/level-test-questions",
+      },
+    ],
+  },
+  {
     title: "교육 콘텐츠",
     items: [
       {
