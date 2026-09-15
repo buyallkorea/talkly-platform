@@ -13,14 +13,14 @@ type SearchParams = Promise<{
 
 type QuestionRow = {
   id: number;
-  target_group: string | null;
+  target_group: string;
   category: string;
   difficulty: number;
   question_text: string;
-  option_a: string | null;
-  option_b: string | null;
-  option_c: string | null;
-  option_d: string | null;
+  choice_a: string;
+  choice_b: string;
+  choice_c: string;
+  choice_d: string;
   audio_script: string | null;
   audio_url: string | null;
   is_active: boolean;
@@ -46,7 +46,7 @@ const TARGET_GROUPS = [
 ];
 
 function getTargetGroupLabel(
-  value: string | null
+  value: string
 ) {
   return (
     TARGET_GROUPS.find(
@@ -60,7 +60,7 @@ function getTargetGroupLabel(
 
 function getCategoryLabel(
   category: string,
-  targetGroup: string | null
+  targetGroup: string
 ) {
   if (category === "listening") {
     return "Listening";
@@ -132,13 +132,27 @@ export default async function AdminLevelTestQuestionsPage({
   const params =
     await searchParams;
 
+  const allowedTargetGroups =
+    TARGET_GROUPS.map(
+      (group) =>
+        group.value
+    );
+
   const targetGroup =
-    params.target_group ||
-    "early_kids";
+    params.target_group &&
+    allowedTargetGroups.includes(
+      params.target_group
+    )
+      ? params.target_group
+      : "early_kids";
 
   const category =
-    params.category ||
-    "listening";
+    params.category ===
+      "grammar" ||
+    params.category ===
+      "listening"
+      ? params.category
+      : "listening";
 
   const parsedDifficulty =
     Number(
@@ -157,6 +171,9 @@ export default async function AdminLevelTestQuestionsPage({
   /*
    * ==========================================
    * 문제 조회
+   *
+   * 실제 level_test_questions 컬럼:
+   * choice_a ~ choice_d
    * ==========================================
    */
   let query =
@@ -170,10 +187,10 @@ export default async function AdminLevelTestQuestionsPage({
         category,
         difficulty,
         question_text,
-        option_a,
-        option_b,
-        option_c,
-        option_d,
+        choice_a,
+        choice_b,
+        choice_c,
+        choice_d,
         audio_script,
         audio_url,
         is_active
@@ -291,10 +308,20 @@ export default async function AdminLevelTestQuestionsPage({
                         ? `&difficulty=${difficulty}`
                         : ""
                     }`}
+                    style={
+                      active
+                        ? {
+                            backgroundColor:
+                              "#0A1F44",
+                            color:
+                              "#FFFFFF",
+                          }
+                        : undefined
+                    }
                     className={
                       active
-                        ? "rounded-xl bg-[#0A1F44] px-4 py-2.5 text-sm font-semibold text-white shadow-sm"
-                        : "rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                        ? "rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm"
+                        : "rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
                     }
                   >
                     {group.label}
@@ -318,11 +345,22 @@ export default async function AdminLevelTestQuestionsPage({
                   ? `&difficulty=${difficulty}`
                   : ""
               }`}
+              style={
+                category ===
+                "grammar"
+                  ? {
+                      backgroundColor:
+                        "#0A1F44",
+                      color:
+                        "#FFFFFF",
+                    }
+                  : undefined
+              }
               className={
                 category ===
                 "grammar"
-                  ? "rounded-xl bg-[#0A1F44] px-4 py-2.5 text-sm font-semibold text-white shadow-sm"
-                  : "rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                  ? "rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm"
+                  : "rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               }
             >
               {targetGroup ===
@@ -337,11 +375,22 @@ export default async function AdminLevelTestQuestionsPage({
                   ? `&difficulty=${difficulty}`
                   : ""
               }`}
+              style={
+                category ===
+                "listening"
+                  ? {
+                      backgroundColor:
+                        "#0A1F44",
+                      color:
+                        "#FFFFFF",
+                    }
+                  : undefined
+              }
               className={
                 category ===
                 "listening"
-                  ? "rounded-xl bg-[#0A1F44] px-4 py-2.5 text-sm font-semibold text-white shadow-sm"
-                  : "rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                  ? "rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm"
+                  : "rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               }
             >
               Listening
@@ -358,30 +407,55 @@ export default async function AdminLevelTestQuestionsPage({
           <div className="flex flex-wrap gap-2">
             <Link
               href={`/admin/level-test-questions?target_group=${targetGroup}&category=${category}`}
+              style={
+                !difficulty
+                  ? {
+                      backgroundColor:
+                        "#2563EB",
+                      color:
+                        "#FFFFFF",
+                    }
+                  : undefined
+              }
               className={
                 !difficulty
-                  ? "rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
-                  : "rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                  ? "rounded-xl px-4 py-2 text-sm font-semibold"
+                  : "rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               }
             >
               전체
             </Link>
 
             {[1, 2, 3, 4, 5].map(
-              (level) => (
-                <Link
-                  key={level}
-                  href={`/admin/level-test-questions?target_group=${targetGroup}&category=${category}&difficulty=${level}`}
-                  className={
-                    difficulty ===
-                    level
-                      ? "rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
-                      : "rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-                  }
-                >
-                  Level {level}
-                </Link>
-              )
+              (level) => {
+                const active =
+                  difficulty ===
+                  level;
+
+                return (
+                  <Link
+                    key={level}
+                    href={`/admin/level-test-questions?target_group=${targetGroup}&category=${category}&difficulty=${level}`}
+                    style={
+                      active
+                        ? {
+                            backgroundColor:
+                              "#2563EB",
+                            color:
+                              "#FFFFFF",
+                          }
+                        : undefined
+                    }
+                    className={
+                      active
+                        ? "rounded-xl px-4 py-2 text-sm font-semibold"
+                        : "rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    }
+                  >
+                    Level {level}
+                  </Link>
+                );
+              }
             )}
           </div>
         </section>
@@ -518,24 +592,24 @@ export default async function AdminLevelTestQuestionsPage({
                     {[
                       [
                         "A",
-                        question.option_a,
+                        question.choice_a,
                       ],
                       [
                         "B",
-                        question.option_b,
+                        question.choice_b,
                       ],
                       [
                         "C",
-                        question.option_c,
+                        question.choice_c,
                       ],
                       [
                         "D",
-                        question.option_d,
+                        question.choice_d,
                       ],
                     ].map(
                       ([
                         label,
-                        option,
+                        choice,
                       ]) => (
                         <div
                           key={
@@ -549,8 +623,7 @@ export default async function AdminLevelTestQuestionsPage({
                             }.
                           </span>
 
-                          {option ||
-                            "-"}
+                          {choice}
                         </div>
                       )
                     )}
@@ -563,8 +636,7 @@ export default async function AdminLevelTestQuestionsPage({
                         question.id
                       }
                       targetGroup={
-                        question.target_group ||
-                        ""
+                        question.target_group
                       }
                       audioScript={
                         question.audio_script
