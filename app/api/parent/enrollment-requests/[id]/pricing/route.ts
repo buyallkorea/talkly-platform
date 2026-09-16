@@ -88,10 +88,13 @@ export async function POST(
     .eq("id", user.id)
     .maybeSingle();
 
-  if (!profile || profile.role !== "parent") {
+  if (
+    !profile ||
+    !["parent", "student"].includes(profile.role)
+  ) {
     return NextResponse.json(
       {
-        error: "학부모 계정에서만 이용할 수 있습니다.",
+        error: "수강신청자만 이용할 수 있습니다.",
       },
       {
         status: 403,
@@ -174,6 +177,26 @@ export async function POST(
       },
       {
         status: 404,
+      }
+    );
+  }
+
+  /*
+   * 학부모 신청은 child_id가 있어야 하고,
+   * 직접 수강생 신청은 child_id가 없어야 합니다.
+   */
+  if (
+    (profile.role === "parent" &&
+      enrollmentRequest.child_id === null) ||
+    (profile.role === "student" &&
+      enrollmentRequest.child_id !== null)
+  ) {
+    return NextResponse.json(
+      {
+        error: "수강신청 유형을 확인할 수 없습니다.",
+      },
+      {
+        status: 403,
       }
     );
   }
