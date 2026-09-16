@@ -441,6 +441,13 @@ export default function LevelTestRequestForm({
               null;
       }
 
+      if (
+        userRole === "student" &&
+        studentMode === "direct"
+      ) {
+        studentUserId = currentUserId;
+      }
+
       /*
        * 동일 학부모가 동일 학생명으로
        * 진행 중인 레벨테스트가 있는지 확인
@@ -664,7 +671,9 @@ export default function LevelTestRequestForm({
           }}
         >
           {isStudent
-            ? "현재 로그인한 학생 정보로 레벨테스트를 신청합니다."
+            ? children.length > 0
+              ? "현재 로그인한 학생 정보로 레벨테스트를 신청합니다."
+              : "현재 로그인한 수강생 본인의 정보를 입력하여 레벨테스트를 신청합니다."
             : "등록된 자녀를 선택하거나 레벨테스트를 받을 학생 정보를 직접 입력해주세요."}
         </p>
       </div>
@@ -801,8 +810,7 @@ export default function LevelTestRequestForm({
               disabled={
                 loading ||
                 studentMode ===
-                  "existing" ||
-                isStudent
+                  "existing"
               }
               style={fieldStyle}
             />
@@ -837,7 +845,7 @@ export default function LevelTestRequestForm({
               }}
               disabled={
                 loading ||
-                isStudent
+                (isStudent && studentMode === "existing")
               }
               style={fieldStyle}
             >
@@ -919,7 +927,7 @@ export default function LevelTestRequestForm({
               }
               disabled={
                 loading ||
-                isStudent
+                (isStudent && studentMode === "existing")
               }
               style={fieldStyle}
             />
@@ -953,7 +961,7 @@ export default function LevelTestRequestForm({
               placeholder="예: 10"
               disabled={
                 loading ||
-                isStudent
+                (isStudent && studentMode === "existing")
               }
               style={fieldStyle}
             />
@@ -1445,7 +1453,7 @@ function getTargetGroupLabel(
   }
 
   if (targetGroup === "adult") {
-    return "성인 영어 레벨테스트";
+    return "대학생·성인 영어 레벨테스트";
   }
 
   return "영어 레벨테스트";

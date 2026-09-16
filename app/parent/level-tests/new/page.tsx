@@ -159,109 +159,16 @@ export default async function ParentLevelTestNewPage({
       (studentChildren ??
         []) as ChildRow[];
 
-    if (
-      linkedChildren.length === 0
-    ) {
-      return (
-        <main
-          style={{
-            width: "100%",
-            maxWidth: "760px",
-            margin: "0 auto",
-            padding:
-              "70px 32px 100px",
-          }}
-        >
-          <Link
-            href="/"
-            style={{
-              color: "#667085",
-              textDecoration:
-                "none",
-              fontSize: "13px",
-              fontWeight: 800,
-            }}
-          >
-            ← TALKLY 홈
-          </Link>
-
-          <section
-            style={{
-              marginTop: "26px",
-              padding: "36px",
-              border:
-                "1px solid #e4e7ec",
-              borderRadius: "18px",
-              background: "#ffffff",
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                color: "#2f6fed",
-                fontSize: "12px",
-                fontWeight: 900,
-                letterSpacing:
-                  "0.08em",
-              }}
-            >
-              TALKLY LEVEL TEST
-            </div>
-
-            <h1
-              style={{
-                margin:
-                  "12px 0 0",
-                color: "#101828",
-                fontSize: "28px",
-                lineHeight: 1.4,
-              }}
-            >
-              학생 연결 정보를
-              확인할 수 없습니다.
-            </h1>
-
-            <p
-              style={{
-                margin:
-                  "14px auto 0",
-                maxWidth: "520px",
-                color: "#667085",
-                fontSize: "14px",
-                lineHeight: 1.8,
-              }}
-            >
-              현재 로그인한 학생 계정과 연결된
-              자녀 정보가 없습니다.
-              학부모 계정에서 자녀와 학생 계정을
-              연결한 뒤 다시 이용해주세요.
-            </p>
-
-            <Link
-              href="/student"
-              style={{
-                marginTop: "24px",
-                minHeight: "46px",
-                padding: "0 20px",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: "10px",
-                background: "#2f6fed",
-                color: "#ffffff",
-                textDecoration:
-                  "none",
-                fontSize: "13px",
-                fontWeight: 900,
-              }}
-            >
-              학생 마이페이지 →
-            </Link>
-          </section>
-        </main>
-      );
-    }
-
+    /*
+     * 연결된 children 행이 없는 독립 수강생도
+     * 본인 정보로 무료 레벨테스트를 신청할 수 있습니다.
+     * 이 경우 children을 새로 만들지 않고
+     * level_tests.student_user_id에 현재 사용자 ID를 저장합니다.
+     */
+    if (linkedChildren.length === 0) {
+      children = [];
+      parentUserId = user.id;
+    } else {
     /*
      * /level-test/start에서 childId를 전달한 경우
      * 그 자녀가 현재 학생 계정과 실제 연결되어 있는지 확인합니다.
@@ -301,6 +208,7 @@ export default async function ParentLevelTestNewPage({
 
     parentUserId =
       children[0].parent_user_id;
+    }
   }
 
   const backHref =
@@ -385,7 +293,7 @@ export default async function ParentLevelTestNewPage({
           진행할 수 있습니다.
         </p>
 
-        {isStudent && (
+        {isStudent && children.length > 0 && (
           <div
             style={{
               marginTop: "16px",
@@ -406,6 +314,24 @@ export default async function ParentLevelTestNewPage({
               {children[0]?.name}
             </strong>
             님의 정보로 레벨테스트를 진행합니다.
+          </div>
+        )}
+
+        {isStudent && children.length === 0 && (
+          <div
+            style={{
+              marginTop: "16px",
+              padding: "14px 16px",
+              border: "1px solid #dbe7ff",
+              borderRadius: "10px",
+              background: "#f5f8ff",
+              color: "#344054",
+              fontSize: "13px",
+              lineHeight: 1.7,
+            }}
+          >
+            현재 로그인한 수강생 본인의 정보를 입력하여
+            레벨테스트를 진행합니다.
           </div>
         )}
       </div>
@@ -494,8 +420,8 @@ export default async function ParentLevelTestNewPage({
           {isStudent ? (
             <>
               <div>
-                • 현재 로그인한 학생 계정과
-                연결된 본인 정보로 응시합니다.
+                • 연결된 자녀 정보가 있는 학생 계정은 등록된 본인 정보로 응시하고,
+                독립 가입 수강생은 본인 정보를 직접 입력하여 응시합니다.
               </div>
 
               <div>
