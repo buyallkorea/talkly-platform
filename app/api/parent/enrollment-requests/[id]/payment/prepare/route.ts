@@ -13,7 +13,7 @@ type RouteContext = {
 type EnrollmentRequestRow = {
   id: number;
   applicant_user_id: string;
-  child_id: number;
+  child_id: number | null;
   course_id: number;
   status: string;
   assigned_teacher_user_id: string | null;
@@ -79,23 +79,23 @@ export async function POST(
 
     /*
      * =========================================================
-     * 3. 학부모 계정 확인
+     * 3. 수강신청자 계정 확인
      * =========================================================
      */
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, name")
       .eq("id", user.id)
       .maybeSingle();
 
     if (
       !profile ||
-      profile.role !== "parent"
+      !["parent", "student"].includes(profile.role)
     ) {
       return NextResponse.json(
         {
           success: false,
-          error: "학부모 계정만 결제할 수 있습니다.",
+          error: "수강신청자만 결제할 수 있습니다.",
         },
         {
           status: 403,
@@ -164,6 +164,27 @@ export async function POST(
 
     const enrollmentRequest =
       requestData as EnrollmentRequestRow;
+
+    /*
+     * 학부모 신청은 child_id가 있어야 하고,
+     * 직접 수강생 신청은 child_id가 없어야 합니다.
+     */
+    if (
+      (profile.role === "parent" &&
+        enrollmentRequest.child_id === null) ||
+      (profile.role === "student" &&
+        enrollmentRequest.child_id !== null)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "수강신청 유형을 확인할 수 없습니다.",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
 
     /*
      * =========================================================
@@ -311,66 +332,72 @@ export async function POST(
 
     /*
      * =========================================================
-     * 8. 학생 / 과정명 조회
+     * 8. 수강생 / 과정명 조회
      * =========================================================
      */
-    const [
-      childResult,
-      courseResult,
-    ] = await Promise.all([
-      admin
-        .from("children")
-        .select(`
-          id,
-          name
-        `)
-        .eq(
-          "id",
-          enrollmentRequest.child_id
-        )
-        .maybeSingle(),
+    let studentName = "";
 
-      admin
-        .from("courses")
-        .select(`
-          id,
-          name
-        `)
-        .eq(
-          "id",
-          enrollmentRequest.course_id
-        )
-        .maybeSingle(),
-    ]);
+    if (profile.role === "parent") {
+      const { data: child, error: childError } =
+        await admin
+          .from("children")
+          .select(`
+            id,
+            name
+          `)
+          .eq(
+            "id",
+            enrollmentRequest.child_id!
+          )
+          .maybeSingle();
 
-    if (
-      childResult.error ||
-      !childResult.data
-    ) {
-      console.error(
-        "[TOSS PREPARE] 자녀 조회 실패:",
-        childResult.error
-      );
+      if (childError || !child) {
+        console.error(
+          "[TOSS PREPARE] 자녀 조회 실패:",
+          childError
+        );
 
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "학생 정보를 확인할 수 없습니다.",
-        },
-        {
-          status: 500,
-        }
-      );
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "학생 정보를 확인할 수 없습니다.",
+          },
+          {
+            status: 500,
+          }
+        );
+      }
+
+      studentName =
+        child.name?.trim() || "수강생";
+    } else {
+      studentName =
+        profile.name?.trim() ||
+        user.user_metadata?.name?.trim?.() ||
+        user.email ||
+        "수강생";
     }
 
-    if (
-      courseResult.error ||
-      !courseResult.data
-    ) {
+    const {
+      data: course,
+      error: courseError,
+    } = await admin
+      .from("courses")
+      .select(`
+        id,
+        name
+      `)
+      .eq(
+        "id",
+        enrollmentRequest.course_id
+      )
+      .maybeSingle();
+
+    if (courseError || !course) {
       console.error(
         "[TOSS PREPARE] 과정 조회 실패:",
-        courseResult.error
+        courseError
       );
 
       return NextResponse.json(
@@ -400,7 +427,7 @@ export async function POST(
      * Toss 주문명은 너무 길지 않도록 제한합니다.
      */
     const rawOrderName =
-      `${courseResult.data.name} ${durationMonths}개월 수강료`;
+      `${course.name} ${durationMonths}개월 수강료`;
 
     const orderName =
       rawOrderName.slice(
@@ -512,10 +539,10 @@ export async function POST(
     user.id,
 
   childName:
-    childResult.data.name,
+    studentName,
 
   courseName:
-    courseResult.data.name,
+    course.name,
 
   durationMonths,
 });
