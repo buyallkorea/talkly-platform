@@ -6,7 +6,8 @@ import { createAdminClient } from "@/lib/supabase-admin";
 
 type RequestRow = {
   id: number;
-  child_id: number;
+  applicant_user_id: string;
+  child_id: number | null;
   course_id: number;
   request_type: string;
   status: string;
@@ -260,6 +261,7 @@ export default async function AdminEnrollmentRequestsPage({
     )
     .select(`
       id,
+      applicant_user_id,
       child_id,
       course_id,
       request_type,
@@ -297,10 +299,33 @@ export default async function AdminEnrollmentRequestsPage({
   const childIds =
     Array.from(
       new Set(
-        requests.map(
-          (row) =>
-            row.child_id
-        )
+        requests
+          .map(
+            (row) =>
+              row.child_id
+          )
+          .filter(
+            (
+              value
+            ): value is number =>
+              value !== null
+          )
+      )
+    );
+
+  const directApplicantIds =
+    Array.from(
+      new Set(
+        requests
+          .filter(
+            (row) =>
+              row.child_id ===
+              null
+          )
+          .map(
+            (row) =>
+              row.applicant_user_id
+          )
       )
     );
 
@@ -337,6 +362,7 @@ export default async function AdminEnrollmentRequestsPage({
     childrenResult,
     coursesResult,
     teachersResult,
+    applicantsResult,
   ] =
     await Promise.all([
       childIds.length > 0
@@ -385,6 +411,22 @@ export default async function AdminEnrollmentRequestsPage({
             data: [],
             error: null,
           }),
+
+      directApplicantIds.length >
+      0
+        ? adminClient
+            .from("profiles")
+            .select(
+              "id, name, role"
+            )
+            .in(
+              "id",
+              directApplicantIds
+            )
+        : Promise.resolve({
+            data: [],
+            error: null,
+          }),
     ]);
 
   if (
@@ -411,6 +453,14 @@ export default async function AdminEnrollmentRequestsPage({
     );
   }
 
+  if (
+    applicantsResult.error
+  ) {
+    throw new Error(
+      `직접 수강생 정보를 불러오지 못했습니다: ${applicantsResult.error.message}`
+    );
+  }
+
   const childMap =
     new Map(
       (
@@ -423,6 +473,24 @@ export default async function AdminEnrollmentRequestsPage({
         }) => [
           row.id,
           row.name,
+        ]
+      )
+    );
+
+  const applicantMap =
+    new Map(
+      (
+        applicantsResult.data ??
+        []
+      ).map(
+        (row: {
+          id: string;
+          name: string | null;
+          role: string | null;
+        }) => [
+          row.id,
+          row.name ??
+            "수강생",
         ]
       )
     );
@@ -662,7 +730,7 @@ export default async function AdminEnrollmentRequestsPage({
                 1.7,
             }}
           >
-            학부모가 신청한
+            학부모 또는 수강생이 신청한
             희망 수업조건을 확인하고,
             실제 강사 가용시간을
             검토하여 담당 강사와
@@ -698,7 +766,7 @@ export default async function AdminEnrollmentRequestsPage({
           </strong>
           <br />
           신청 확인 → 강사/시간
-          배정 → 학부모 확인 →
+          배정 → 신청자 확인 →
           기간 선택 및 결제
         </div>
       </div>
@@ -1026,7 +1094,7 @@ export default async function AdminEnrollmentRequestsPage({
                 }}
               >
                 <div>번호</div>
-                <div>학생</div>
+                <div>수강생</div>
                 <div>과정</div>
                 <div>희망 수업조건</div>
                 <div>강사 선호</div>
@@ -1042,11 +1110,25 @@ export default async function AdminEnrollmentRequestsPage({
                       row
                     );
 
-                  const childName =
-                    childMap.get(
-                      row.child_id
-                    ) ??
-                    `자녀 ${row.child_id}`;
+                  const isDirectStudent =
+                    row.child_id ===
+                    null;
+
+                  const learnerName =
+                    isDirectStudent
+                      ? applicantMap.get(
+                          row.applicant_user_id
+                        ) ??
+                        "수강생"
+                      : childMap.get(
+                          row.child_id as number
+                        ) ??
+                        `자녀 ${row.child_id}`;
+
+                  const learnerMeta =
+                    isDirectStudent
+                      ? "직접 신청"
+                      : `자녀 #${row.child_id}`;
 
                   const courseName =
                     courseMap.get(
@@ -1143,7 +1225,7 @@ export default async function AdminEnrollmentRequestsPage({
                           }}
                         >
                           {
-                            childName
+                            learnerName
                           }
                         </div>
 
@@ -1157,9 +1239,8 @@ export default async function AdminEnrollmentRequestsPage({
                               "9px",
                           }}
                         >
-                          child #
                           {
-                            row.child_id
+                            learnerMeta
                           }
                         </div>
                       </div>
@@ -1489,12 +1570,13 @@ export default async function AdminEnrollmentRequestsPage({
               1.7,
           }}
         >
-          이 화면에서는 학부모가
-          제출한 맞춤 수강신청을
-          관리합니다. 관리자가 강사와
-          실제 수업일정을 배정한 뒤
-          학부모가 수강기간을 선택하고
-          결제를 진행하는 구조입니다.
+          이 화면에서는 학부모가 자녀를
+          위해 제출한 신청과 수강생이
+          본인 명의로 직접 제출한 맞춤
+          수강신청을 함께 관리합니다.
+          관리자가 강사와 실제 수업일정을
+          배정한 뒤 신청자가 수강기간을
+          선택하고 결제를 진행합니다.
           결제 완료 후 실제 수강은
           전체 수강 관리에서 운영합니다.
         </div>
