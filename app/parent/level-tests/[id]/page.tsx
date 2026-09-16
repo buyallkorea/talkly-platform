@@ -1335,6 +1335,73 @@ export default async function ParentLevelTestDetailPage({
                     수강신청 현황
                   </Link>
                 </div>
+              ) : isStudent &&
+                !levelTest.child_id &&
+                levelTest.student_user_id ===
+                  user.id ? (
+                <div
+                  style={{
+                    marginTop: "18px",
+                    display: "flex",
+                    gap: "10px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Link
+                    href={`/student/enrollment?levelTestId=${levelTest.id}`}
+                    style={{
+                      minHeight: "50px",
+                      padding: "0 22px",
+                      display:
+                        "inline-flex",
+                      alignItems:
+                        "center",
+                      justifyContent:
+                        "center",
+                      borderRadius:
+                        "11px",
+                      background:
+                        "#0A1F44",
+                      color: "#ffffff",
+                      textDecoration:
+                        "none",
+                      fontSize: "14px",
+                      fontWeight: 900,
+                      boxShadow:
+                        "0 10px 24px rgba(10,31,68,0.16)",
+                    }}
+                  >
+                    추천 프로그램
+                    수강신청 →
+                  </Link>
+
+                  <Link
+                    href="/student/enrollment-requests"
+                    style={{
+                      minHeight: "50px",
+                      padding: "0 18px",
+                      display:
+                        "inline-flex",
+                      alignItems:
+                        "center",
+                      justifyContent:
+                        "center",
+                      border:
+                        "1px solid #d0d5dd",
+                      borderRadius:
+                        "11px",
+                      background:
+                        "#ffffff",
+                      color: "#344054",
+                      textDecoration:
+                        "none",
+                      fontSize: "13px",
+                      fontWeight: 800,
+                    }}
+                  >
+                    수강신청 현황
+                  </Link>
+                </div>
               ) : (
                 <div
                   style={{
@@ -1352,9 +1419,9 @@ export default async function ParentLevelTestDetailPage({
                     lineHeight: 1.75,
                   }}
                 >
+                  학부모가 등록한 자녀 계정의
                   정규수업 신청과 결제는
-                  학부모 계정에서
-                  진행합니다.
+                  학부모 계정에서 진행합니다.
                 </div>
               )}
             </>
@@ -1830,14 +1897,14 @@ function getTargetGroupLabel(
   value: string | null
 ) {
   switch (value) {
+    case "early_kids":
+      return "7세~초2 영어";
+
     case "elementary":
-      return "초등 영어";
+      return "초3~초6 영어";
 
-    case "middle":
-      return "중등 영어";
-
-    case "high":
-      return "고등 영어";
+    case "secondary":
+      return "중·고등 영어";
 
     case "adult":
       return "대학생·성인 영어";
