@@ -328,7 +328,7 @@ function SignupPageContent() {
           >
             학부모는 자녀를 등록해
             수업과 학습 기록을
-            관리하고, 성인 학습자는
+            관리하고, 수강생은
             본인 계정으로 수업에
             직접 참여할 수 있습니다.
           </p>
@@ -446,7 +446,7 @@ function SignupPageContent() {
                     0.65,
                 }}
               >
-                ADULT STUDENT
+                STUDENT
               </div>
 
               <div
@@ -461,7 +461,7 @@ function SignupPageContent() {
                     900,
                 }}
               >
-                성인 학생
+                수강생
               </div>
 
               <p
@@ -734,7 +734,7 @@ function SignupPageContent() {
                         "student" as const,
 
                       title:
-                        "성인 학생",
+                        "수강생",
 
                       description:
                         "본인이 직접 수업에 참여합니다.",
@@ -952,7 +952,7 @@ function SignupPageContent() {
                   : role ===
                     "parent"
                   ? "학부모 가입 후 자녀를 등록하면 수업 일정, 출결, 학습평가를 확인할 수 있습니다."
-                  : "성인 학습자만 학생 회원으로 직접 가입해주세요. 미성년 학생은 학부모 계정에서 자녀로 등록합니다."}
+                  : "본인 계정으로 직접 가입하는 수강생용입니다. 미성년 학생은 학부모 계정에서 자녀로 등록합니다."}
               </div>
 
               {errorMessage && (
