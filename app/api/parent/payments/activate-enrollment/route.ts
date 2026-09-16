@@ -59,7 +59,7 @@ export async function POST(
 
     /*
      * =========================================================
-     * 2. 학부모 확인
+     * 2. 수강신청자 확인
      * =========================================================
      */
     const {
@@ -81,15 +81,19 @@ export async function POST(
 
     if (
       !profile ||
-      profile.role !==
-        "parent"
+      ![
+        "parent",
+        "student",
+      ].includes(
+        profile.role
+      )
     ) {
       return NextResponse.json(
         {
           success:
             false,
           error:
-            "학부모 계정만 처리할 수 있습니다.",
+            "수강신청자만 처리할 수 있습니다.",
         },
         {
           status:
@@ -151,7 +155,7 @@ export async function POST(
 
     /*
      * =========================================================
-     * 4. 본인 결제인지 먼저 확인
+     * 4. 본인 결제 및 신청 유형 확인
      * =========================================================
      */
     const admin =
@@ -170,6 +174,7 @@ export async function POST(
         .select(`
           id,
           parent_user_id,
+          child_id,
           status
         `)
         .eq(
@@ -206,6 +211,38 @@ export async function POST(
             false,
           error:
             "본인의 결제만 처리할 수 있습니다.",
+        },
+        {
+          status:
+            403,
+        }
+      );
+    }
+
+    /*
+     * 학부모 결제는 child_id가 있어야 하고,
+     * 직접 수강생 결제는 child_id가 없어야 합니다.
+     */
+    if (
+      (
+        profile.role ===
+          "parent" &&
+        payment.child_id ===
+          null
+      ) ||
+      (
+        profile.role ===
+          "student" &&
+        payment.child_id !==
+          null
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success:
+            false,
+          error:
+            "결제 신청 유형을 확인할 수 없습니다.",
         },
         {
           status:
