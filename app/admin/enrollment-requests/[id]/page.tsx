@@ -18,7 +18,7 @@ type PageProps = {
 type EnrollmentRequestRow = {
   id: number;
   applicant_user_id: string;
-  child_id: number;
+  child_id: number | null;
   course_id: number;
   level_test_id: number | null;
   recommended_course_id: number | null;
@@ -266,25 +266,54 @@ export default async function AdminEnrollmentRequestDetailPage({
     notFound();
   }
 
+  const isDirectStudent =
+    enrollmentRequest.child_id ===
+    null;
+
   const [
     childResult,
+    applicantResult,
     courseResult,
     teachersResult,
   ] =
     await Promise.all([
-      adminClient
-        .from("children")
-        .select(`
-          id,
-          name,
-          grade,
-          school_name
-        `)
-        .eq(
-          "id",
-          enrollmentRequest.child_id
-        )
-        .maybeSingle(),
+      enrollmentRequest.child_id !==
+      null
+        ? adminClient
+            .from("children")
+            .select(`
+              id,
+              name,
+              grade,
+              school_name
+            `)
+            .eq(
+              "id",
+              enrollmentRequest.child_id
+            )
+            .maybeSingle()
+        : Promise.resolve({
+            data: null,
+            error: null,
+          }),
+
+      isDirectStudent
+        ? adminClient
+            .from("profiles")
+            .select(`
+              id,
+              name,
+              role
+            `)
+            .eq(
+              "id",
+              enrollmentRequest.applicant_user_id
+            )
+            .maybeSingle()
+        : Promise.resolve({
+            data: null,
+            error: null,
+          }),
 
       adminClient
         .from("courses")
@@ -329,6 +358,14 @@ export default async function AdminEnrollmentRequestDetailPage({
   }
 
   if (
+    applicantResult.error
+  ) {
+    throw new Error(
+      `직접 수강생 정보를 불러오지 못했습니다: ${applicantResult.error.message}`
+    );
+  }
+
+  if (
     courseResult.error
   ) {
     throw new Error(
@@ -347,6 +384,9 @@ export default async function AdminEnrollmentRequestDetailPage({
   const child =
     childResult.data;
 
+  const applicant =
+    applicantResult.data;
+
   const course =
     courseResult.data;
 
@@ -355,6 +395,28 @@ export default async function AdminEnrollmentRequestDetailPage({
       teachersResult.data ??
       []
     ) as TeacherSummary[];
+
+  const learnerName =
+    isDirectStudent
+      ? applicant?.name ??
+        "수강생"
+      : child?.name ??
+        `자녀 ${enrollmentRequest.child_id}`;
+
+  const applicantTypeLabel =
+    isDirectStudent
+      ? "수강생 직접 신청"
+      : "학부모 신청";
+
+  const studentMeta =
+    isDirectStudent
+      ? "본인 계정으로 직접 신청"
+      : [
+          child?.school_name,
+          child?.grade,
+        ]
+          .filter(Boolean)
+          .join(" · ");
 
   const preferredTeacher =
     enrollmentRequest.preferred_teacher_user_id
@@ -374,13 +436,6 @@ export default async function AdminEnrollmentRequestDetailPage({
     Boolean(
       enrollmentRequest.assigned_teacher_user_id
     );
-
-  const studentMeta = [
-    child?.school_name,
-    child?.grade,
-  ]
-    .filter(Boolean)
-    .join(" · ");
 
   return (
     <main
@@ -469,7 +524,7 @@ export default async function AdminEnrollmentRequestDetailPage({
               lineHeight: 1.7,
             }}
           >
-            학부모가 제출한
+            신청자가 제출한
             수업조건과 배정 상태를
             확인하고 실제 강사와
             수업 일정을 관리합니다.
@@ -574,8 +629,7 @@ export default async function AdminEnrollmentRequestDetailPage({
                 fontWeight: 900,
               }}
             >
-              {child?.name ??
-                `자녀 ${enrollmentRequest.child_id}`}
+              {learnerName}
               {" · "}
               {course?.name ??
                 `과정 ${enrollmentRequest.course_id}`}
@@ -604,6 +658,11 @@ export default async function AdminEnrollmentRequestDetailPage({
               flexWrap: "wrap",
             }}
           >
+            <HeaderBadge
+              label="신청 유형"
+              value={applicantTypeLabel}
+            />
+
             {enrollmentRequest.final_level_snapshot && (
               <HeaderBadge
                 label="최종 레벨"
@@ -656,7 +715,7 @@ export default async function AdminEnrollmentRequestDetailPage({
                 fontSize: "20px",
               }}
             >
-              학부모 신청 조건
+              신청 희망 조건
             </h2>
 
             <p
@@ -669,7 +728,7 @@ export default async function AdminEnrollmentRequestDetailPage({
               }}
             >
               실제 배정 시 참고하는
-              학부모의 최초 희망조건입니다.
+              신청자의 최초 희망조건입니다.
             </p>
           </div>
 
@@ -745,7 +804,7 @@ export default async function AdminEnrollmentRequestDetailPage({
             subValue={
               enrollmentRequest.teacher_preference_type ===
               "specific"
-                ? "학부모 지정 강사"
+                ? "신청자 지정 강사"
                 : "강사 지정 없음"
             }
           />
@@ -891,7 +950,7 @@ export default async function AdminEnrollmentRequestDetailPage({
           }}
         >
           강사와 수업 일정 배정이
-          완료되면 학부모가 확정된
+          완료되면 신청자가 확정된
           수업조건을 확인하고
           수강기간을 선택합니다.
           이후 결제를 완료하면 실제
