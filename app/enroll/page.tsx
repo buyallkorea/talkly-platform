@@ -45,9 +45,24 @@ export default async function EnrollPage() {
   }
 
   /*
-   * 현재 TALKLY의 일반 수강신청 화면은
-   * 학부모가 자녀를 선택한 뒤
-   * 표준 수강상품을 고르는 구조입니다.
+   * 직접 수강생은 자녀 선택 단계가 필요하지 않습니다.
+   * 방금 추가한 직접 수강생용 맞춤 수강신청 페이지로
+   * 바로 이동합니다.
+   */
+  if (
+    profile.role === "student"
+  ) {
+    redirect(
+      "/student/enrollment"
+    );
+  }
+
+  /*
+   * 학부모는 기존 자녀 선택형 수강신청 구조를
+   * 그대로 사용합니다.
+   *
+   * teacher / admin 등 그 외 역할은
+   * 아래 안내 화면을 유지합니다.
    */
   if (
     profile.role !== "parent"
@@ -145,10 +160,9 @@ export default async function EnrollPage() {
                   1.75,
               }}
             >
-              현재 일반 수강신청은
-              학부모 계정에서 자녀를
-              선택한 뒤 진행하도록
-              구성되어 있습니다.
+              현재 계정 유형에서는
+              이 수강신청 화면을
+              이용할 수 없습니다.
             </p>
 
             <div
@@ -171,9 +185,10 @@ export default async function EnrollPage() {
                   1.7,
               }}
             >
-              대학생·성인 수강신청은
-              별도의 맞춤 신청 방식으로
-              연결할 예정입니다.
+              학부모는 자녀를 등록한 뒤
+              수강신청을 진행할 수 있고,
+              수강생 계정은 본인 명의로
+              직접 신청할 수 있습니다.
             </div>
 
             <Link
