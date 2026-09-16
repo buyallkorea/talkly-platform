@@ -17,7 +17,7 @@ type EnrollmentPaymentRow = {
   id: number;
   enrollment_request_id: number;
   parent_user_id: string;
-  child_id: number;
+  child_id: number | null;
   order_id: string;
   payment_key: string | null;
   order_name: string;
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 
     /*
      * =========================================================
-     * 2. 학부모 계정 확인
+     * 2. 수강신청자 계정 확인
      * =========================================================
      */
     const { data: profile } = await supabase
@@ -90,11 +90,14 @@ export async function POST(request: Request) {
       .eq("id", user.id)
       .maybeSingle();
 
-    if (!profile || profile.role !== "parent") {
+    if (
+      !profile ||
+      !["parent", "student"].includes(profile.role)
+    ) {
       return NextResponse.json(
         {
           success: false,
-          error: "학부모 계정만 결제를 승인할 수 있습니다.",
+          error: "수강신청자만 결제를 승인할 수 있습니다.",
         },
         {
           status: 403,
@@ -168,7 +171,7 @@ export async function POST(request: Request) {
      * =========================================================
      * 4. TALKLY DB 주문 조회
      *
-     * orderId + 로그인 학부모를 동시에 확인합니다.
+     * orderId + 로그인 수강신청자를 동시에 확인합니다.
      * =========================================================
      */
     const {
@@ -224,6 +227,27 @@ export async function POST(request: Request) {
 
     const payment =
       paymentData as EnrollmentPaymentRow;
+
+    /*
+     * 학부모 결제는 child_id가 있어야 하고,
+     * 직접 수강생 결제는 child_id가 없어야 합니다.
+     */
+    if (
+      (profile.role === "parent" &&
+        payment.child_id === null) ||
+      (profile.role === "student" &&
+        payment.child_id !== null)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "결제 신청 유형을 확인할 수 없습니다.",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
 
     /*
      * =========================================================
@@ -366,6 +390,25 @@ export async function POST(request: Request) {
         },
         {
           status: 500,
+        }
+      );
+    }
+
+    if (
+      enrollmentRequest.child_id !== payment.child_id ||
+      (profile.role === "parent" &&
+        enrollmentRequest.child_id === null) ||
+      (profile.role === "student" &&
+        enrollmentRequest.child_id !== null)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "수강신청과 결제 주문의 신청자 유형이 일치하지 않습니다.",
+        },
+        {
+          status: 409,
         }
       );
     }
