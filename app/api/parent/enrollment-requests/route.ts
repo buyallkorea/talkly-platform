@@ -4,13 +4,13 @@ import { createAdminClient } from "@/lib/supabase-admin";
 
 type StandardRequestBody = {
   requestType?: "standard";
-  childId: number;
+  childId?: number | null;
   enrollmentOptionId: number;
 };
 
 type CustomRequestBody = {
   requestType: "custom";
-  childId: number;
+  childId?: number | null;
   levelTestId?: number | null;
   courseId: number;
   lessonDurationMinutes: number;
@@ -98,7 +98,9 @@ export async function POST(
 
   /*
    * =====================================================
-   * 2. 학부모 확인
+   * 2. 신청자 역할 확인
+   * - parent: 자녀를 대신하여 신청
+   * - student: 본인이 직접 신청
    * =====================================================
    */
   const {
@@ -111,18 +113,26 @@ export async function POST(
 
   if (
     !profile ||
-    profile.role !== "parent"
+    !["parent", "student"].includes(
+      profile.role
+    )
   ) {
     return NextResponse.json(
       {
         error:
-          "학부모 계정에서만 신청할 수 있습니다.",
+          "학부모 또는 수강생 계정에서만 신청할 수 있습니다.",
       },
       {
         status: 403,
       }
     );
   }
+
+  const isParent =
+    profile.role === "parent";
+
+  const isStudent =
+    profile.role === "student";
 
   /*
    * =====================================================
@@ -157,7 +167,7 @@ export async function POST(
     return NextResponse.json(
       {
         error:
-          "현재 학부모 수강신청이 열려 있지 않습니다.",
+          "현재 수강신청이 열려 있지 않습니다.",
       },
       {
         status: 403,
@@ -184,59 +194,85 @@ export async function POST(
     );
   }
 
-  const childId =
-    Number(body.childId);
+  const rawChildId =
+    body.childId;
 
-  if (
-    !Number.isInteger(childId) ||
-    childId <= 0
-  ) {
-    return NextResponse.json(
-      {
-        error:
-          "자녀 정보를 확인해주세요.",
-      },
-      {
-        status: 400,
-      }
-    );
-  }
+  const childId =
+    rawChildId === undefined ||
+    rawChildId === null
+      ? null
+      : Number(rawChildId);
 
   /*
    * =====================================================
-   * 4. 자기 자녀인지 확인
+   * 4. 신청 대상 확인
+   * - parent: childId 필수 + 본인 자녀인지 확인
+   * - student: childId 없이 본인 명의로 신청
    * =====================================================
    */
-  const {
-    data: child,
-    error: childError,
-  } = await supabase
-    .from("children")
-    .select(
-      "id, name, is_active"
-    )
-    .eq("id", childId)
-    .eq(
-      "parent_user_id",
-      user.id
-    )
-    .eq(
-      "is_active",
-      true
-    )
-    .single();
+  if (isParent) {
+    if (
+      childId === null ||
+      !Number.isInteger(childId) ||
+      childId <= 0
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "자녀 정보를 확인해주세요.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const {
+      data: child,
+      error: childError,
+    } = await supabase
+      .from("children")
+      .select(
+        "id, name, is_active"
+      )
+      .eq("id", childId)
+      .eq(
+        "parent_user_id",
+        user.id
+      )
+      .eq(
+        "is_active",
+        true
+      )
+      .single();
+
+    if (
+      childError ||
+      !child
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "자녀 정보를 확인할 수 없습니다.",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
+  }
 
   if (
-    childError ||
-    !child
+    isStudent &&
+    childId !== null
   ) {
     return NextResponse.json(
       {
         error:
-          "자녀 정보를 확인할 수 없습니다.",
+          "수강생 직접 신청에서는 자녀 정보를 사용할 수 없습니다.",
       },
       {
-        status: 404,
+        status: 400,
       }
     );
   }
@@ -632,31 +668,51 @@ export async function POST(
           parsedLevelTestId
         )
       ) {
+        let levelTestQuery =
+          supabase
+            .from(
+              "level_tests"
+            )
+            .select(`
+              id,
+              status,
+              final_level,
+              final_course_id
+            `)
+            .eq(
+              "id",
+              parsedLevelTestId
+            );
+
+        if (isParent) {
+          levelTestQuery =
+            levelTestQuery
+              .eq(
+                "parent_user_id",
+                user.id
+              )
+              .eq(
+                "child_id",
+                childId as number
+              );
+        } else {
+          levelTestQuery =
+            levelTestQuery
+              .eq(
+                "student_user_id",
+                user.id
+              )
+              .is(
+                "child_id",
+                null
+              );
+        }
+
         const {
           data: levelTest,
-        } = await supabase
-          .from(
-            "level_tests"
-          )
-          .select(`
-            id,
-            status,
-            final_level,
-            final_course_id
-          `)
-          .eq(
-            "id",
-            parsedLevelTestId
-          )
-          .eq(
-            "parent_user_id",
-            user.id
-          )
-          .eq(
-            "child_id",
-            childId
-          )
-          .maybeSingle();
+        } =
+          await levelTestQuery
+            .maybeSingle();
 
         if (
           levelTest &&
@@ -682,37 +738,48 @@ export async function POST(
     /*
      * 동일 자녀의 처리 중인 맞춤신청 중복 방지
      */
+    let existingCustomQuery =
+      supabase
+        .from(
+          "enrollment_requests"
+        )
+        .select(
+          "id, status"
+        )
+        .eq(
+          "applicant_user_id",
+          user.id
+        )
+        .eq(
+          "request_type",
+          "custom"
+        )
+        .in(
+          "status",
+          [
+            "pending",
+            "approved",
+          ]
+        );
+
+    existingCustomQuery =
+      isParent
+        ? existingCustomQuery.eq(
+            "child_id",
+            childId as number
+          )
+        : existingCustomQuery.is(
+            "child_id",
+            null
+          );
+
     const {
       data:
         existingCustom,
-    } = await supabase
-      .from(
-        "enrollment_requests"
-      )
-      .select(
-        "id, status"
-      )
-      .eq(
-        "applicant_user_id",
-        user.id
-      )
-      .eq(
-        "child_id",
-        childId
-      )
-      .eq(
-        "request_type",
-        "custom"
-      )
-      .in(
-        "status",
-        [
-          "pending",
-          "approved",
-        ]
-      )
-      .limit(1)
-      .maybeSingle();
+    } =
+      await existingCustomQuery
+        .limit(1)
+        .maybeSingle();
 
     if (
       existingCustom
@@ -888,7 +955,7 @@ export async function POST(
     return NextResponse.json(
       {
         error:
-          "자녀와 수업 일정을 확인해주세요.",
+          "수업 일정을 확인해주세요.",
       },
       {
         status: 400,
@@ -969,33 +1036,44 @@ export async function POST(
     );
   }
 
+  let existingQuery =
+    supabase
+      .from(
+        "enrollment_requests"
+      )
+      .select("id, status")
+      .eq(
+        "applicant_user_id",
+        user.id
+      )
+      .eq(
+        "enrollment_option_id",
+        optionId
+      )
+      .in(
+        "status",
+        [
+          "pending",
+          "approved",
+        ]
+      );
+
+  existingQuery =
+    isParent
+      ? existingQuery.eq(
+          "child_id",
+          childId as number
+        )
+      : existingQuery.is(
+          "child_id",
+          null
+        );
+
   const {
     data: existing,
-  } = await supabase
-    .from(
-      "enrollment_requests"
-    )
-    .select("id, status")
-    .eq(
-      "applicant_user_id",
-      user.id
-    )
-    .eq(
-      "child_id",
-      childId
-    )
-    .eq(
-      "enrollment_option_id",
-      optionId
-    )
-    .in(
-      "status",
-      [
-        "pending",
-        "approved",
-      ]
-    )
-    .maybeSingle();
+  } =
+    await existingQuery
+      .maybeSingle();
 
   if (existing) {
     return NextResponse.json(
