@@ -347,7 +347,7 @@ function LoginPageContent() {
             {[
               [
                 "STUDENT",
-                "학생",
+                "수강생",
               ],
               [
                 "PARENT",
