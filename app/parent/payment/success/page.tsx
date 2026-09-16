@@ -20,7 +20,7 @@ type ConfirmResult = {
   payment?: {
     id: number;
     enrollment_request_id: number;
-    child_id: number;
+    child_id: number | null;
     order_id: string;
     order_name: string;
     amount: number;
@@ -80,6 +80,12 @@ export default function PaymentSuccessPage() {
         | null;
     } | null>(null);
 
+  const [
+    isStudent,
+    setIsStudent,
+  ] =
+    useState(false);
+
   useEffect(() => {
     if (startedRef.current) {
       return;
@@ -89,6 +95,15 @@ export default function PaymentSuccessPage() {
 
     async function confirmPayment() {
       try {
+        const storedMode =
+          window.sessionStorage.getItem(
+            "talkly-payment-user-mode"
+          );
+
+        if (storedMode === "student") {
+          setIsStudent(true);
+        }
+
         const params =
           new URLSearchParams(
             window.location.search
@@ -177,6 +192,20 @@ export default function PaymentSuccessPage() {
         if (
           result.payment
         ) {
+          const directStudent =
+            result.payment.child_id === null;
+
+          setIsStudent(
+            directStudent
+          );
+
+          window.sessionStorage.setItem(
+            "talkly-payment-user-mode",
+            directStudent
+              ? "student"
+              : "parent"
+          );
+
           setPayment({
             childId:
               result.payment
@@ -504,8 +533,37 @@ export default function PaymentSuccessPage() {
                 "10px",
             }}
           >
-            {payment?.childId &&
-            payment.requestId ? (
+            {isStudent ? (
+              <Link
+                href="/student/enrollment-requests"
+                style={{
+                  minHeight:
+                    "50px",
+                  display:
+                    "flex",
+                  alignItems:
+                    "center",
+                  justifyContent:
+                    "center",
+                  padding:
+                    "0 18px",
+                  borderRadius:
+                    "12px",
+                  background:
+                    "#0A1F44",
+                  color:
+                    "#ffffff",
+                  textDecoration:
+                    "none",
+                  fontWeight:
+                    900,
+                }}
+              >
+                수강신청 현황으로
+                돌아가기
+              </Link>
+            ) : payment?.childId &&
+              payment.requestId ? (
               <Link
                 href={`/parent/children/${payment.childId}/enrollment-requests/${payment.requestId}`}
                 style={{
@@ -580,7 +638,11 @@ export default function PaymentSuccessPage() {
             }}
           >
             <Link
-              href="/parent"
+              href={
+                isStudent
+                  ? "/student"
+                  : "/parent"
+              }
               style={{
                 minHeight:
                   "50px",
@@ -604,8 +666,9 @@ export default function PaymentSuccessPage() {
                   900,
               }}
             >
-              학부모
-              대시보드로 이동
+              {isStudent
+                ? "수강생 대시보드로 이동"
+                : "학부모 대시보드로 이동"}
             </Link>
 
             <div
