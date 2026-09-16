@@ -11,7 +11,7 @@ type ActivateResult = {
 type EnrollmentRequestRow = {
   id: number;
   applicant_user_id: string;
-  child_id: number;
+  child_id: number | null;
   course_id: number;
   status: string;
   assigned_teacher_user_id: string | null;
@@ -30,7 +30,7 @@ type PaymentRow = {
   id: number;
   enrollment_request_id: number;
   parent_user_id: string;
-  child_id: number;
+  child_id: number | null;
   amount: number;
   status: string;
   enrollment_id: number | null;
@@ -416,52 +416,100 @@ export async function activatePaidEnrollment(
 
   /*
    * =========================================================
-   * 3. 자녀 및 학생 계정 확인
+   * 3. 실제 수강생 계정 확인
+   *
+   * 학부모 신청:
+   *   child_id가 존재하며 기존 children 연결 학생계정을 사용합니다.
+   *
+   * 직접 수강생 신청:
+   *   child_id는 null이며 applicant_user_id 본인을 사용합니다.
    * =========================================================
    */
-  const {
-    data: child,
-    error: childError,
-  } = await admin
-    .from("children")
-    .select(`
-      id,
-      parent_user_id,
-      student_user_id,
-      linked_student_user_id,
-      is_active
-    `)
-    .eq(
-      "id",
-      enrollmentRequest.child_id
-    )
-    .maybeSingle();
+  let studentUserId: string | null = null;
 
-  if (
-    childError ||
-    !child
-  ) {
-    throw new Error(
-      "자녀 정보를 찾을 수 없습니다."
-    );
+  if (enrollmentRequest.child_id !== null) {
+    const {
+      data: child,
+      error: childError,
+    } = await admin
+      .from("children")
+      .select(`
+        id,
+        parent_user_id,
+        student_user_id,
+        linked_student_user_id,
+        is_active
+      `)
+      .eq(
+        "id",
+        enrollmentRequest.child_id
+      )
+      .maybeSingle();
+
+    if (
+      childError ||
+      !child
+    ) {
+      throw new Error(
+        "자녀 정보를 찾을 수 없습니다."
+      );
+    }
+
+    if (
+      child.parent_user_id !==
+      payment.parent_user_id
+    ) {
+      throw new Error(
+        "자녀 소유정보가 일치하지 않습니다."
+      );
+    }
+
+    /*
+     * 기존 구조 두 필드를 모두 지원합니다.
+     */
+    studentUserId =
+      child.student_user_id ??
+      child.linked_student_user_id ??
+      null;
+  } else {
+    /*
+     * 직접 신청은 결제의 parent_user_id 필드를
+     * 기존 스키마 호환용 payer/applicant ID로 사용합니다.
+     */
+    if (
+      enrollmentRequest.applicant_user_id !==
+      payment.parent_user_id
+    ) {
+      throw new Error(
+        "직접 수강신청자 정보가 결제정보와 일치하지 않습니다."
+      );
+    }
+
+    const {
+      data: studentProfile,
+      error: studentProfileError,
+    } = await admin
+      .from("profiles")
+      .select("id, role")
+      .eq(
+        "id",
+        enrollmentRequest.applicant_user_id
+      )
+      .maybeSingle();
+
+    if (
+      studentProfileError ||
+      !studentProfile ||
+      studentProfile.role !== "student"
+    ) {
+      throw new Error(
+        "직접 수강생 계정을 확인할 수 없습니다."
+      );
+    }
+
+    studentUserId =
+      enrollmentRequest.applicant_user_id;
   }
-
-  if (
-    child.parent_user_id !==
-    payment.parent_user_id
-  ) {
-    throw new Error(
-      "자녀 소유정보가 일치하지 않습니다."
-    );
-  }
-
-  /*
-   * 기존 구조 두 필드를 모두 지원합니다.
-   */
-  const studentUserId =
-    child.student_user_id ??
-    child.linked_student_user_id ??
-    null;
 
   /*
    * =========================================================
