@@ -1,5 +1,9 @@
 import Link from "next/link";
 
+import {
+  createClient,
+} from "@/lib/supabase-server";
+
 type PageProps = {
   searchParams: Promise<{
     code?: string;
@@ -45,6 +49,63 @@ export default async function PaymentFailPage({
       code,
       message
     );
+
+  /*
+   * 결제 실패 페이지는 학부모와 직접 수강생이 함께 사용합니다.
+   * 로그인된 사용자의 실제 role을 확인하여 돌아갈 대시보드를 결정합니다.
+   */
+  const supabase =
+    await createClient();
+
+  const {
+    data: {
+      user,
+    },
+  } =
+    await supabase.auth.getUser();
+
+  let role:
+    | "parent"
+    | "student"
+    | null = null;
+
+  if (user) {
+    const {
+      data: profile,
+    } =
+      await supabase
+        .from(
+          "profiles"
+        )
+        .select(
+          "role"
+        )
+        .eq(
+          "id",
+          user.id
+        )
+        .maybeSingle();
+
+    if (
+      profile?.role ===
+        "parent" ||
+      profile?.role ===
+        "student"
+    ) {
+      role =
+        profile.role;
+    }
+  }
+
+  const dashboardHref =
+    role === "student"
+      ? "/student"
+      : "/parent";
+
+  const dashboardLabel =
+    role === "student"
+      ? "수강생 대시보드로 이동"
+      : "학부모 대시보드로 이동";
 
   return (
     <main
@@ -199,7 +260,9 @@ export default async function PaymentFailPage({
           }}
         >
           <Link
-            href="/parent"
+            href={
+              dashboardHref
+            }
             style={{
               minHeight:
                 "50px",
@@ -223,8 +286,7 @@ export default async function PaymentFailPage({
                 900,
             }}
           >
-            학부모 대시보드로
-            이동
+            {dashboardLabel}
           </Link>
 
           <div
