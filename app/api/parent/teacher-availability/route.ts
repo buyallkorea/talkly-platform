@@ -192,12 +192,14 @@ export async function POST(
 
   if (
     !profile ||
-    profile.role !== "parent"
+    !["parent", "student"].includes(
+      profile.role
+    )
   ) {
     return NextResponse.json(
       {
         error:
-          "학부모 계정에서만 조회할 수 있습니다.",
+          "학부모 또는 수강생 계정에서만 조회할 수 있습니다.",
       },
       {
         status: 403,
