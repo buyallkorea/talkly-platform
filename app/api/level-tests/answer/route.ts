@@ -1056,7 +1056,58 @@ export async function POST(
 
     /*
      * ==========================================
-     * 9. 동일 문항 중복 답변 방지
+     * 9. 현재 문항 순서 / 영역 검증
+     * ==========================================
+     *
+     * 서버에서도 Grammar 10문항 → Listening 10문항
+     * 순서를 강제합니다. UI 요청이 변조되더라도
+     * 현재 차례와 다른 영역의 문항은 저장하지 않습니다.
+     */
+    const {
+      count: existingAnsweredCount,
+      error: existingAnsweredCountError,
+    } = await admin
+      .from("level_test_answers")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("attempt_id", attemptId);
+
+    if (existingAnsweredCountError) {
+      return jsonError(
+        `현재 응답 문항 수 확인 실패: ${existingAnsweredCountError.message}`,
+        500
+      );
+    }
+
+    const answeredBeforeCurrent =
+      existingAnsweredCount ?? 0;
+
+    if (answeredBeforeCurrent >= MAX_QUESTIONS) {
+      return jsonError(
+        "이미 모든 레벨테스트 문항에 답변했습니다.",
+        409
+      );
+    }
+
+    const expectedCategory: QuestionCategory =
+      answeredBeforeCurrent < MAX_QUESTIONS / 2
+        ? "grammar"
+        : "listening";
+
+    if (questionCategory !== expectedCategory) {
+      return jsonError(
+        expectedCategory === "grammar"
+          ? "현재는 Grammar 문항에 답변해야 합니다."
+          : "현재는 Listening 문항에 답변해야 합니다.",
+        409
+      );
+    }
+
+    /*
+     * ==========================================
+     * 9-1. 동일 문항 중복 답변 방지
      * ==========================================
      */
     const {
