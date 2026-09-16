@@ -616,7 +616,7 @@ export default async function StudentEnrollmentPage({
       <CustomEnrollmentScheduler
         childId={null}
         childName={learnerName}
-        enrollmentRequestsHref="/student"
+        enrollmentRequestsHref="/student/enrollment-requests"
         returnHref="/student"
         returnLabel="대시보드로 돌아가기"
         allowedWeekdays={
