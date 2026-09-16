@@ -26,8 +26,10 @@ type Props = {
   childId: number | null;
   studentName: string;
   grade: string;
-  parentName: string;
-  parentPhone: string;
+  applicantRole: "parent" | "student";
+  applicantName: string;
+  applicantPhone: string;
+  dashboardHref: string;
   learningGoal: string;
   existingRequest: ExistingRequest | null;
 };
@@ -95,8 +97,8 @@ function createTimeOptions(
 
   if (duration === 25) {
     for (
-      let hour = 6;
-      hour <= 23;
+      let hour = 10;
+      hour <= 21;
       hour += 1
     ) {
       options.push(
@@ -118,8 +120,8 @@ function createTimeOptions(
   }
 
   for (
-    let hour = 6;
-    hour <= 23;
+    let hour = 10;
+    hour <= 21;
     hour += 1
   ) {
     options.push(
@@ -138,8 +140,10 @@ export default function InterviewRequestForm({
   childId,
   studentName,
   grade,
-  parentName,
-  parentPhone,
+  applicantRole,
+  applicantName,
+  applicantPhone,
+  dashboardHref,
   learningGoal,
   existingRequest,
 }: Props) {
@@ -155,7 +159,7 @@ export default function InterviewRequestForm({
   ] = useState(
     existingRequest
       ?.contact_phone ||
-      parentPhone ||
+      applicantPhone ||
       ""
   );
 
@@ -725,9 +729,14 @@ export default function InterviewRequestForm({
             />
 
             <ReadOnlyField
-              label="보호자"
+              label={
+                applicantRole === "parent"
+                  ? "보호자"
+                  : "신청자"
+              }
               value={
-                parentName ||
+                applicantName ||
+                studentName ||
                 "-"
               }
             />
@@ -1630,7 +1639,7 @@ export default function InterviewRequestForm({
                   }}
                 >
                   <a
-                    href="/parent"
+                    href={dashboardHref}
                     style={{
                       minHeight: "46px",
                       padding: "0 18px",
@@ -1669,7 +1678,7 @@ export default function InterviewRequestForm({
                   </a>
 
                   <a
-                    href="/parent"
+                    href={dashboardHref}
                     style={{
                       minHeight: "46px",
                       padding: "0 18px",
@@ -1685,7 +1694,9 @@ export default function InterviewRequestForm({
                       textDecoration: "none",
                     }}
                   >
-                    학부모 대시보드
+                    {applicantRole === "parent"
+                      ? "학부모 대시보드"
+                      : "수강생 대시보드"}
                   </a>
                 </div>
               </div>

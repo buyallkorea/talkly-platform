@@ -83,17 +83,15 @@ function isValidTimeFormat(
  * =========================================================
  * TALKLY 수업시간 규칙 검사
  *
+ * 정규수업 운영시간: 10:00 ~ 22:00
+ *
  * 25분 수업
- * 오전 06:00 ~ 오후 11:30
+ * 10:00 ~ 21:30 시작
  * 30분 단위
  *
  * 50분 수업
- * 오전 06:00 ~ 오후 11:00
+ * 10:00 ~ 21:00 시작
  * 1시간 단위
- *
- * 사용자가 말한 "밤 12시"는
- * 수업 가능 운영시간의 종료 시각이며,
- * 실제 마지막 시작시간은 위와 같습니다.
  * =========================================================
  */
 
@@ -115,8 +113,8 @@ function isValidClassTime(
     Number(minuteText);
 
   if (
-    hour < 6 ||
-    hour > 23
+    hour < 10 ||
+    hour > 21
   ) {
     return false;
   }
@@ -176,8 +174,8 @@ export async function POST(
      * -----------------------------------------------------
      * 2. 사용자 프로필 확인
      *
-     * 현재 이 신청 화면은 학부모 흐름을 기준으로
-     * 만들어져 있으므로 parent 계정만 허용합니다.
+     * 학부모(parent)와 직접 가입 수강생(student)
+     * 모두 같은 신청 API를 사용합니다.
      * -----------------------------------------------------
      */
 
@@ -211,18 +209,22 @@ export async function POST(
     }
 
     if (
-      profile.role !== "parent"
+      profile.role !== "parent" &&
+      profile.role !== "student"
     ) {
       return NextResponse.json(
         {
           error:
-            "학부모 계정에서만 신청할 수 있습니다.",
+            "수강생 또는 학부모 계정에서 신청할 수 있습니다.",
         },
         {
           status: 403,
         }
       );
     }
+
+    const isDirectStudent =
+      profile.role === "student";
 
     /*
      * -----------------------------------------------------
@@ -583,8 +585,8 @@ export async function POST(
           error:
             validatedDuration ===
             25
-              ? "25분 수업은 오전 6시부터 밤 12시 사이에서 30분 단위로 선택해주세요."
-              : "50분 수업은 오전 6시부터 밤 12시 사이에서 1시간 단위로 선택해주세요.",
+              ? "25분 수업은 10:00부터 21:30 사이에서 30분 단위로 선택해주세요."
+              : "50분 수업은 10:00부터 21:00 사이에서 1시간 단위로 선택해주세요.",
         },
         {
           status: 400,
@@ -624,10 +626,6 @@ export async function POST(
         "id",
         levelTestId
       )
-      .eq(
-        "parent_user_id",
-        user.id
-      )
       .maybeSingle();
 
     if (
@@ -645,6 +643,39 @@ export async function POST(
       );
     }
 
+    const ownsLevelTest =
+      profile.role === "parent"
+        ? levelTest.parent_user_id === user.id
+        : levelTest.student_user_id === user.id &&
+          levelTest.child_id === null;
+
+    if (!ownsLevelTest) {
+      return NextResponse.json(
+        {
+          error:
+            "본인의 레벨테스트만 신청할 수 있습니다.",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
+    if (
+      isDirectStudent &&
+      requestedChildId !== null
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "직접 가입 수강생 신청에는 자녀 정보를 지정할 수 없습니다.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
     /*
      * -----------------------------------------------------
      * 10. 자녀 정보 일치 확인
@@ -656,8 +687,10 @@ export async function POST(
      */
 
     const actualChildId =
-      levelTest.child_id ??
-      requestedChildId;
+      isDirectStudent
+        ? null
+        : levelTest.child_id ??
+          requestedChildId;
 
     if (
       levelTest.child_id !==
@@ -923,8 +956,10 @@ export async function POST(
         actualChildId,
 
       student_user_id:
-        levelTest.student_user_id ??
-        null,
+        isDirectStudent
+          ? user.id
+          : levelTest.student_user_id ??
+            null,
 
       student_name:
         studentName,
@@ -1092,29 +1127,57 @@ export async function POST(
      * -----------------------------------------------------
      */
 
+    const levelTestUpdateResult =
+      profile.role === "parent"
+        ? await supabase
+            .from("level_tests")
+            .update({
+              interview_required:
+                true,
+
+              interview_status:
+                "requested",
+
+              updated_at:
+                now,
+            })
+            .eq(
+              "id",
+              levelTestId
+            )
+            .eq(
+              "parent_user_id",
+              user.id
+            )
+        : await supabase
+            .from("level_tests")
+            .update({
+              interview_required:
+                true,
+
+              interview_status:
+                "requested",
+
+              updated_at:
+                now,
+            })
+            .eq(
+              "id",
+              levelTestId
+            )
+            .eq(
+              "student_user_id",
+              user.id
+            )
+            .is(
+              "child_id",
+              null
+            );
+
     const {
       error:
         levelTestUpdateError,
-    } = await supabase
-      .from("level_tests")
-      .update({
-        interview_required:
-          true,
-
-        interview_status:
-          "requested",
-
-        updated_at:
-          now,
-      })
-      .eq(
-        "id",
-        levelTestId
-      )
-      .eq(
-        "parent_user_id",
-        user.id
-      );
+    } = levelTestUpdateResult;
 
     if (
       levelTestUpdateError

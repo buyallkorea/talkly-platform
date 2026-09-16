@@ -63,13 +63,10 @@ export default async function InterviewRequestPage({
 
   /*
    * =====================================================
-   * 2. 학부모 계정 확인
+   * 2. 신청자 계정 확인
    *
-   * 현재 화상레벨테스트 신청은
-   * 학부모 신청 흐름부터 구현합니다.
-   *
-   * 성인 / 학생 직접 신청은 이후 같은 구조를
-   * 확장하여 연결할 수 있습니다.
+   * 학부모(parent)와 직접 가입 수강생(student)
+   * 모두 같은 화상레벨테스트 신청 흐름을 사용합니다.
    * =====================================================
    */
   const {
@@ -96,10 +93,14 @@ export default async function InterviewRequestPage({
 
   if (
     !profile ||
-    profile.role !== "parent"
+    (profile.role !== "parent" &&
+      profile.role !== "student")
   ) {
     redirect("/");
   }
+
+  const isDirectStudent =
+    profile.role === "student";
 
   /*
    * =====================================================
@@ -158,12 +159,22 @@ export default async function InterviewRequestPage({
 
   /*
    * 본인이 신청한 레벨테스트인지 확인
+   *
+   * parent: parent_user_id가 본인이어야 함
+   * student: student_user_id가 본인이며 child_id가 없어야 함
    */
-  if (
-    levelTest.parent_user_id !==
-    user.id
-  ) {
-    redirect("/parent");
+  const ownsLevelTest =
+    profile.role === "parent"
+      ? levelTest.parent_user_id === user.id
+      : levelTest.student_user_id === user.id &&
+        levelTest.child_id === null;
+
+  if (!ownsLevelTest) {
+    redirect(
+      isDirectStudent
+        ? "/student"
+        : "/parent"
+    );
   }
 
   /*
@@ -202,7 +213,10 @@ export default async function InterviewRequestPage({
   let child:
     ChildRow | null = null;
 
-  if (levelTest.child_id) {
+  if (
+    profile.role === "parent" &&
+    levelTest.child_id
+  ) {
     const {
       data: childData,
       error: childError,
@@ -685,11 +699,19 @@ export default async function InterviewRequestPage({
         grade={
           studentGrade
         }
-        parentName={
+        applicantRole={
+          profile.role
+        }
+        applicantName={
           profile.name ?? ""
         }
-        parentPhone={
+        applicantPhone={
           profile.phone ?? ""
+        }
+        dashboardHref={
+          isDirectStudent
+            ? "/student"
+            : "/parent"
         }
         learningGoal={
           levelTest.learning_goal ??
