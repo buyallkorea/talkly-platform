@@ -45,8 +45,11 @@ type MatchingTeacher = {
 };
 
 type Props = {
-  childId: number;
+  childId: number | null;
   childName: string;
+  enrollmentRequestsHref?: string;
+  returnHref?: string;
+  returnLabel?: string;
   allowedWeekdays: string[];
   allowedTimeSlots: string[];
   allowedLessonsPerWeek: number[];
@@ -166,6 +169,9 @@ function getNextDateForWeekday({
 export default function CustomEnrollmentScheduler({
   childId,
   childName,
+  enrollmentRequestsHref,
+  returnHref,
+  returnLabel,
   allowedWeekdays,
   allowedTimeSlots,
   allowedLessonsPerWeek,
@@ -179,6 +185,27 @@ export default function CustomEnrollmentScheduler({
 }: Props) {
   const router =
     useRouter();
+
+  const isDirectStudent =
+    childId === null;
+
+  const resolvedEnrollmentRequestsHref =
+    enrollmentRequestsHref ??
+    (childId !== null
+      ? `/parent/children/${childId}/enrollment-requests`
+      : "/student/enrollment-requests");
+
+  const resolvedReturnHref =
+    returnHref ??
+    (childId !== null
+      ? `/parent/children/${childId}`
+      : "/student");
+
+  const resolvedReturnLabel =
+    returnLabel ??
+    (childId !== null
+      ? "자녀 관리로 돌아가기"
+      : "내 수업 관리로 돌아가기");
 
   const completionRef =
     useRef<HTMLDivElement | null>(
@@ -693,7 +720,7 @@ export default function CustomEnrollmentScheduler({
 
     const confirmed =
       window.confirm(
-        `${childName} 학생의 맞춤 수강신청을 접수하시겠습니까?\n\n과정: ${selectedCourse.name}\n수업: ${durationMinutes}분 · 주 ${lessonsPerWeek}회\n강사: ${teacherText}\n희망일정: ${selectedDays
+        `${childName}${isDirectStudent ? "님의" : " 학생의"} 맞춤 수강신청을 접수하시겠습니까?\n\n과정: ${selectedCourse.name}\n수업: ${durationMinutes}분 · 주 ${lessonsPerWeek}회\n강사: ${teacherText}\n희망일정: ${selectedDays
           .map(
             (day) =>
               `${DAY_LABELS[day] ?? day} ${preferredTime}`
@@ -1549,7 +1576,9 @@ export default function CustomEnrollmentScheduler({
               신청 조건
             </strong>
             <br />
-            학생: {childName}
+            {isDirectStudent
+              ? "수강생"
+              : "학생"}: {childName}
             <br />
             과정:{" "}
             {selectedCourse?.name ??
@@ -1699,7 +1728,7 @@ export default function CustomEnrollmentScheduler({
                   type="button"
                   onClick={() =>
                     router.push(
-                      `/parent/children/${childId}/enrollment-requests`
+                      resolvedEnrollmentRequestsHref
                     )
                   }
                   style={{
@@ -1722,7 +1751,7 @@ export default function CustomEnrollmentScheduler({
                   type="button"
                   onClick={() =>
                     router.push(
-                      `/parent/children/${childId}`
+                      resolvedReturnHref
                     )
                   }
                   style={{
@@ -1738,7 +1767,7 @@ export default function CustomEnrollmentScheduler({
                     cursor: "pointer",
                   }}
                 >
-                  자녀 관리로 돌아가기
+                  {resolvedReturnLabel}
                 </button>
               </div>
             </div>
