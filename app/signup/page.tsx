@@ -10,7 +10,6 @@ import {
   useRouter,
   useSearchParams,
 } from "next/navigation";
-import { createClient } from "@/lib/supabase-browser";
 
 type SignupRole =
   | "student"
@@ -20,9 +19,6 @@ function SignupPageContent() {
   const router = useRouter();
   const searchParams =
     useSearchParams();
-
-  const supabase =
-    createClient();
 
   const [role, setRole] =
     useState<SignupRole>(
@@ -44,6 +40,27 @@ function SignupPageContent() {
     passwordConfirm,
     setPasswordConfirm,
   ] = useState("");
+
+  const [phone, setPhone] =
+    useState("");
+
+  const [verificationCode, setVerificationCode] =
+    useState("");
+
+  const [phoneVerified, setPhoneVerified] =
+    useState(false);
+
+  const [verificationToken, setVerificationToken] =
+    useState("");
+
+  const [sendingCode, setSendingCode] =
+    useState(false);
+
+  const [verifyingCode, setVerifyingCode] =
+    useState(false);
+
+  const [resendLocked, setResendLocked] =
+    useState(false);
 
   const [
     errorMessage,
@@ -85,6 +102,131 @@ function SignupPageContent() {
         )}`
       : "/login";
 
+  function normalizePhone(value: string) {
+    return value.replace(/[^0-9]/g, "");
+  }
+
+  function handlePhoneChange(value: string) {
+    const digits = normalizePhone(value).slice(0, 11);
+    setPhone(digits);
+    setVerificationCode("");
+    setPhoneVerified(false);
+    setVerificationToken("");
+    setErrorMessage("");
+    setSuccessMessage("");
+  }
+
+  async function handleSendVerificationCode() {
+    if (sendingCode || loading || resendLocked) {
+      return;
+    }
+
+    const normalizedPhone = normalizePhone(phone);
+
+    if (!/^01[016789][0-9]{7,8}$/.test(normalizedPhone)) {
+      setErrorMessage("올바른 휴대폰 번호를 입력해주세요.");
+      return;
+    }
+
+    setSendingCode(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+    setPhoneVerified(false);
+    setVerificationToken("");
+
+    try {
+      const response = await fetch("/api/auth/phone/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: normalizedPhone,
+        }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setErrorMessage(
+          result?.error ?? "인증번호를 발송하지 못했습니다."
+        );
+        return;
+      }
+
+      setSuccessMessage(
+        "인증번호를 발송했습니다. 5분 안에 입력해주세요."
+      );
+      setResendLocked(true);
+      window.setTimeout(() => {
+        setResendLocked(false);
+      }, 60_000);
+    } catch (error) {
+      console.error("PHONE SEND ERROR:", error);
+      setErrorMessage(
+        "인증번호 발송 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+      );
+    } finally {
+      setSendingCode(false);
+    }
+  }
+
+  async function handleVerifyPhone() {
+    if (verifyingCode || loading || phoneVerified) {
+      return;
+    }
+
+    const normalizedPhone = normalizePhone(phone);
+    const code = verificationCode.replace(/[^0-9]/g, "");
+
+    if (!/^[0-9]{6}$/.test(code)) {
+      setErrorMessage("6자리 인증번호를 입력해주세요.");
+      return;
+    }
+
+    setVerifyingCode(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const response = await fetch("/api/auth/phone/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: normalizedPhone,
+          code,
+        }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setErrorMessage(
+          result?.error ?? "휴대폰 인증에 실패했습니다."
+        );
+        return;
+      }
+
+      if (!result?.verificationToken) {
+        setErrorMessage("휴대폰 인증정보를 확인하지 못했습니다.");
+        return;
+      }
+
+      setVerificationToken(result.verificationToken);
+      setPhoneVerified(true);
+      setSuccessMessage("휴대폰 인증이 완료되었습니다.");
+    } catch (error) {
+      console.error("PHONE VERIFY ERROR:", error);
+      setErrorMessage(
+        "휴대폰 인증 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+      );
+    } finally {
+      setVerifyingCode(false);
+    }
+  }
+
   async function handleSignup(
     event: FormEvent<HTMLFormElement>
   ) {
@@ -97,96 +239,64 @@ function SignupPageContent() {
     setErrorMessage("");
     setSuccessMessage("");
 
-    const trimmedName =
-      name.trim();
-
-    const trimmedEmail =
-      email.trim();
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+    const normalizedPhone = normalizePhone(phone);
 
     if (!trimmedName) {
-      setErrorMessage(
-        "이름을 입력해주세요."
-      );
+      setErrorMessage("이름을 입력해주세요.");
+      return;
+    }
 
+    if (!phoneVerified || !verificationToken) {
+      setErrorMessage("휴대폰 인증을 완료해주세요.");
+      return;
+    }
+
+    if (password !== passwordConfirm) {
+      setErrorMessage("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setErrorMessage("비밀번호는 8자 이상 입력해주세요.");
       return;
     }
 
     if (
-      password !==
-      passwordConfirm
-    ) {
-      setErrorMessage(
-        "비밀번호가 일치하지 않습니다."
-      );
-
-      return;
-    }
-
-    if (
-      password.length < 8
-    ) {
-      setErrorMessage(
-        "비밀번호는 8자 이상 입력해주세요."
-      );
-
-      return;
-    }
-
-    /*
-     * /parent 경로로 복귀해야 하는 경우
-     * 학부모 계정만 허용합니다.
-     */
-    if (
-      safeNextPath?.startsWith(
-        "/parent/"
-      ) &&
+      safeNextPath?.startsWith("/parent/") &&
       role !== "parent"
     ) {
       setErrorMessage(
         "자녀 레벨테스트는 학부모 계정으로 가입해주세요."
       );
-
       return;
     }
 
     setLoading(true);
 
     try {
-      const {
-        data,
-        error,
-      } =
-        await supabase.auth.signUp(
-          {
-            email:
-              trimmedEmail,
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: trimmedName,
+          email: trimmedEmail,
+          password,
+          role,
+          phone: normalizedPhone,
+          verificationToken,
+        }),
+      });
 
-            password,
+      const result = await response.json().catch(() => null);
 
-            options: {
-              data: {
-                name:
-                  trimmedName,
-
-                role,
-              },
-            },
-          }
-        );
-
-      if (error) {
+      if (!response.ok) {
         setErrorMessage(
-          error.message
+          result?.error ?? "회원가입에 실패했습니다."
         );
-
-        return;
-      }
-
-      if (!data.user) {
-        setErrorMessage(
-          "회원가입 정보를 확인할 수 없습니다."
-        );
-
         return;
       }
 
@@ -196,22 +306,12 @@ function SignupPageContent() {
           : "회원가입이 완료되었습니다. 로그인 페이지로 이동합니다."
       );
 
-      window.setTimeout(
-        () => {
-          router.replace(
-            loginHref
-          );
-
-          router.refresh();
-        },
-        1200
-      );
+      window.setTimeout(() => {
+        router.replace(loginHref);
+        router.refresh();
+      }, 1200);
     } catch (error) {
-      console.error(
-        "SIGNUP ERROR:",
-        error
-      );
-
+      console.error("SIGNUP ERROR:", error);
       setErrorMessage(
         "회원가입 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
       );
@@ -668,7 +768,7 @@ function SignupPageContent() {
               }}
             >
               {safeNextPath
-                ? "레벨테스트를 계속하려면 학부모 계정을 만들어주세요."
+                ? "레벨테스트를 계속하려면 회원 유형을 선택하고 가입해주세요."
                 : "회원 유형을 선택하고 기본 정보를 입력해주세요."}
             </p>
 
@@ -882,6 +982,180 @@ function SignupPageContent() {
                 }
               />
 
+
+              <div
+                style={{
+                  marginBottom: "18px",
+                }}
+              >
+                <label
+                  htmlFor="phone"
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    color: "#0a1f44",
+                    fontSize: "13px",
+                    fontWeight: 800,
+                  }}
+                >
+                  휴대폰 번호
+                </label>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "minmax(0, 1fr) auto",
+                    gap: "8px",
+                  }}
+                >
+                  <input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(event) =>
+                      handlePhoneChange(event.target.value)
+                    }
+                    required
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    disabled={loading || phoneVerified}
+                    placeholder="01012345678"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      minHeight: "48px",
+                      padding: "0 14px",
+                      border: phoneVerified
+                        ? "1px solid #b9dec6"
+                        : "1px solid #dce4ef",
+                      borderRadius: "10px",
+                      background: phoneVerified ? "#f4fbf6" : "#ffffff",
+                      color: "#16233a",
+                      fontSize: "15px",
+                      outline: "none",
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleSendVerificationCode}
+                    disabled={
+                      loading ||
+                      sendingCode ||
+                      resendLocked ||
+                      phoneVerified
+                    }
+                    style={{
+                      minWidth: "112px",
+                      minHeight: "48px",
+                      padding: "0 14px",
+                      border: "1px solid #3f75dc",
+                      borderRadius: "10px",
+                      background: phoneVerified ? "#eef7f1" : "#ffffff",
+                      color: phoneVerified ? "#237443" : "#2f66bb",
+                      fontSize: "12px",
+                      fontWeight: 900,
+                      cursor:
+                        loading || sendingCode || resendLocked || phoneVerified
+                          ? "default"
+                          : "pointer",
+                      opacity: resendLocked && !phoneVerified ? 0.65 : 1,
+                    }}
+                  >
+                    {phoneVerified
+                      ? "인증 완료"
+                      : sendingCode
+                      ? "발송 중..."
+                      : resendLocked
+                      ? "재발송 대기"
+                      : "인증번호 받기"}
+                  </button>
+                </div>
+
+                {!phoneVerified && (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "minmax(0, 1fr) auto",
+                      gap: "8px",
+                      marginTop: "8px",
+                    }}
+                  >
+                    <input
+                      type="text"
+                      value={verificationCode}
+                      onChange={(event) =>
+                        setVerificationCode(
+                          event.target.value.replace(/[^0-9]/g, "").slice(0, 6)
+                        )
+                      }
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      disabled={loading || verifyingCode}
+                      placeholder="6자리 인증번호"
+                      maxLength={6}
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        minHeight: "48px",
+                        padding: "0 14px",
+                        border: "1px solid #dce4ef",
+                        borderRadius: "10px",
+                        background: "#ffffff",
+                        color: "#16233a",
+                        fontSize: "15px",
+                        outline: "none",
+                      }}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={handleVerifyPhone}
+                      disabled={
+                        loading ||
+                        verifyingCode ||
+                        verificationCode.length !== 6
+                      }
+                      style={{
+                        minWidth: "112px",
+                        minHeight: "48px",
+                        padding: "0 14px",
+                        border: "none",
+                        borderRadius: "10px",
+                        background:
+                          verificationCode.length === 6
+                            ? "#0a1f44"
+                            : "#a9b5c7",
+                        color: "#ffffff",
+                        fontSize: "12px",
+                        fontWeight: 900,
+                        cursor:
+                          loading ||
+                          verifyingCode ||
+                          verificationCode.length !== 6
+                            ? "default"
+                            : "pointer",
+                      }}
+                    >
+                      {verifyingCode ? "확인 중..." : "인증 확인"}
+                    </button>
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    marginTop: "7px",
+                    color: phoneVerified ? "#237443" : "#7b899c",
+                    fontSize: "11px",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {phoneVerified
+                    ? "휴대폰 인증이 완료되었습니다."
+                    : "회원가입을 위해 휴대폰 인증이 필요합니다."}
+                </div>
+              </div>
+
               <SignupField
                 id="password"
                 label="비밀번호"
@@ -952,7 +1226,7 @@ function SignupPageContent() {
                   : role ===
                     "parent"
                   ? "학부모 가입 후 자녀를 등록하면 수업 일정, 출결, 학습평가를 확인할 수 있습니다."
-                  : "본인 계정으로 직접 가입하는 수강생용입니다. 미성년 학생은 학부모 계정에서 자녀로 등록합니다."}
+                  : "연령과 관계없이 본인 계정으로 직접 가입할 수 있습니다. 어린 수강생은 학부모 계정의 자녀 관리 방식도 이용할 수 있습니다."}
               </div>
 
               {errorMessage && (
@@ -1028,7 +1302,7 @@ function SignupPageContent() {
               <button
                 type="submit"
                 disabled={
-                  loading
+                  loading || !phoneVerified
                 }
                 style={{
                   width:
@@ -1044,7 +1318,7 @@ function SignupPageContent() {
                     "10px",
 
                   background:
-                    loading
+                    loading || !phoneVerified
                       ? "#91a9d7"
                       : "#3f75dc",
 
@@ -1058,7 +1332,7 @@ function SignupPageContent() {
                     900,
 
                   cursor:
-                    loading
+                    loading || !phoneVerified
                       ? "default"
                       : "pointer",
 
@@ -1068,6 +1342,8 @@ function SignupPageContent() {
               >
                 {loading
                   ? "가입 처리 중..."
+                  : !phoneVerified
+                  ? "휴대폰 인증 후 가입할 수 있습니다"
                   : "TALKLY 회원가입"}
               </button>
             </form>
