@@ -18,6 +18,13 @@ const ALLOWED_EXTENSIONS = [
   "docx",
 ];
 
+const ALLOWED_COVER_EXTENSIONS = [
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+];
+
 const CATEGORY_OPTIONS = [
   {
     value: "course_book",
@@ -161,7 +168,13 @@ export default function TextbookCreateForm() {
   const [fileType, setFileType] =
     useState("pdf");
 
+  const [coverFile, setCoverFile] =
+    useState<File | null>(null);
+
   const [originalFile, setOriginalFile] =
+    useState<File | null>(null);
+
+  const [audioZipFile, setAudioZipFile] =
     useState<File | null>(null);
 
   const [isForSale, setIsForSale] =
@@ -217,11 +230,22 @@ export default function TextbookCreateForm() {
     setSelectedLevels([]);
     setDescription("");
     setFileType("pdf");
+    setCoverFile(null);
     setOriginalFile(null);
+    setAudioZipFile(null);
     setIsForSale(false);
     setSalePrice("");
     setExternalPurchaseUrl("");
     setStatus("draft");
+
+    const coverInput =
+      document.getElementById(
+        "coverFile"
+      ) as HTMLInputElement | null;
+
+    if (coverInput) {
+      coverInput.value = "";
+    }
 
     const fileInput =
       document.getElementById(
@@ -230,6 +254,15 @@ export default function TextbookCreateForm() {
 
     if (fileInput) {
       fileInput.value = "";
+    }
+
+    const audioZipInput =
+      document.getElementById(
+        "audioZipFile"
+      ) as HTMLInputElement | null;
+
+    if (audioZipInput) {
+      audioZipInput.value = "";
     }
   }
 
@@ -294,6 +327,22 @@ export default function TextbookCreateForm() {
       }
     }
 
+    if (coverFile) {
+      const coverExtension =
+        getExtension(coverFile.name);
+
+      if (
+        !ALLOWED_COVER_EXTENSIONS.includes(
+          coverExtension
+        )
+      ) {
+        setErrorMessage(
+          "교재 표지는 JPG, JPEG, PNG, WEBP 형식만 사용할 수 있습니다."
+        );
+        return;
+      }
+    }
+
     if (originalFile) {
       const extension =
         getExtension(originalFile.name);
@@ -310,9 +359,35 @@ export default function TextbookCreateForm() {
       }
     }
 
+    if (audioZipFile) {
+      const audioZipExtension =
+        getExtension(audioZipFile.name);
+
+      if (audioZipExtension !== "zip") {
+        setErrorMessage(
+          "교재 오디오는 MP3 파일이 들어 있는 ZIP 파일만 등록할 수 있습니다."
+        );
+        return;
+      }
+
+      if (
+        audioZipFile.size >
+        500 * 1024 * 1024
+      ) {
+        setErrorMessage(
+          "교재 오디오 ZIP은 500MB 이하만 등록할 수 있습니다."
+        );
+        return;
+      }
+    }
+
     setLoading(true);
 
     let uploadedStoragePath:
+      | string
+      | null = null;
+
+    let uploadedCoverPath:
       | string
       | null = null;
 
@@ -393,6 +468,48 @@ export default function TextbookCreateForm() {
       }
 
       /*
+       * 선택적으로 교재 표지 이미지 업로드
+       *
+       * 표지는 원본 교재 파일과 별도로 저장합니다.
+       * 공개 커리큘럼 화면에서는 이 Storage 경로를
+       * 서버에서 signed URL로 변환해 표시합니다.
+       */
+      if (coverFile) {
+        const coverUploadId =
+          crypto.randomUUID();
+
+        const safeCoverFilename =
+          sanitizeFilename(
+            coverFile.name
+          );
+
+        uploadedCoverPath =
+          `covers/${coverUploadId}/${safeCoverFilename}`;
+
+        const {
+          error: coverUploadError,
+        } = await supabase.storage
+          .from("textbook-files")
+          .upload(
+            uploadedCoverPath,
+            coverFile,
+            {
+              cacheControl: "3600",
+              upsert: false,
+              contentType:
+                coverFile.type ||
+                undefined,
+            }
+          );
+
+        if (coverUploadError) {
+          throw new Error(
+            `교재 표지 업로드 실패: ${coverUploadError.message}`
+          );
+        }
+      }
+
+      /*
        * 선택적으로 원본 파일 업로드
        *
        * 출판사 협의 전에는 파일 없이
@@ -453,6 +570,9 @@ export default function TextbookCreateForm() {
           description:
             description.trim() || null,
 
+          cover_image_url:
+            uploadedCoverPath,
+
           original_file_url:
             uploadedStoragePath,
 
@@ -485,12 +605,18 @@ export default function TextbookCreateForm() {
          * DB 등록 실패 시 이번 요청에서
          * 업로드한 파일만 정리합니다.
          */
-        if (uploadedStoragePath) {
+        const cleanupPaths = [
+          uploadedStoragePath,
+          uploadedCoverPath,
+        ].filter(
+          (value): value is string =>
+            Boolean(value)
+        );
+
+        if (cleanupPaths.length > 0) {
           await supabase.storage
             .from("textbook-files")
-            .remove([
-              uploadedStoragePath,
-            ]);
+            .remove(cleanupPaths);
         }
 
         throw new Error(
@@ -575,9 +701,156 @@ export default function TextbookCreateForm() {
         );
       }
 
-      setSuccessMessage(
-        `교재 등록이 완료되었습니다. (${inserted.title} / 교재 ID: ${inserted.id} / 적용 Grade ${selectedLevels.length}개)`
-      );
+      const postProcessMessages: string[] = [];
+
+      /*
+       * PDF 원본이 등록된 경우 기존 페이지 생성 API를 호출합니다.
+       * 교재 마스터 등록은 이미 완료된 상태이므로
+       * 후처리 실패를 전체 등록 실패로 취급하지 않습니다.
+       */
+      if (
+        originalFile &&
+        getExtension(originalFile.name) ===
+          "pdf"
+      ) {
+        try {
+          const processResponse =
+            await fetch(
+              "/api/textbooks/process",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+                body: JSON.stringify({
+                  textbookId: inserted.id,
+                }),
+              }
+            );
+
+          const processResult =
+            await processResponse.json();
+
+          if (!processResponse.ok) {
+            postProcessMessages.push(
+              `PDF 페이지 생성 실패: ${
+                processResult.error ||
+                "처리 결과를 확인할 수 없습니다."
+              }`
+            );
+          }
+        } catch (processError) {
+          postProcessMessages.push(
+            `PDF 페이지 생성 실패: ${
+              processError instanceof Error
+                ? processError.message
+                : "알 수 없는 오류"
+            }`
+          );
+        }
+      }
+
+      /*
+       * 오디오 ZIP은 브라우저에서 Supabase Storage로 직접 올립니다.
+       * 큰 ZIP 파일을 Vercel API 요청 본문으로 직접 보내지 않기 위해
+       * 서버 API에는 Storage 경로만 전달합니다.
+       */
+      if (audioZipFile) {
+        try {
+          const safeAudioZipFilename =
+            sanitizeFilename(
+              audioZipFile.name
+            );
+
+          const audioZipStoragePath =
+            `textbooks/${inserted.id}/audio-source/${crypto.randomUUID()}-${safeAudioZipFilename}`;
+
+          const { error: audioZipUploadError } =
+            await supabase.storage
+              .from("textbook-files")
+              .upload(
+                audioZipStoragePath,
+                audioZipFile,
+                {
+                  cacheControl: "3600",
+                  upsert: false,
+                  contentType:
+                    audioZipFile.type ||
+                    "application/zip",
+                }
+              );
+
+          if (audioZipUploadError) {
+            throw new Error(
+              `오디오 ZIP 업로드 실패: ${audioZipUploadError.message}`
+            );
+          }
+
+          const audioResponse =
+            await fetch(
+              `/api/admin/textbooks/${inserted.id}/process-audio-zip`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+                body: JSON.stringify({
+                  sourcePath:
+                    audioZipStoragePath,
+                }),
+              }
+            );
+
+          const audioResult =
+            await audioResponse.json();
+
+          if (!audioResponse.ok) {
+            postProcessMessages.push(
+              `오디오 처리 실패: ${
+                audioResult.error ||
+                "처리 결과를 확인할 수 없습니다."
+              }`
+            );
+          } else {
+            postProcessMessages.push(
+              `오디오 ${
+                audioResult.uploadedCount ?? 0
+              }개 업로드 완료`
+            );
+          }
+        } catch (audioError) {
+          postProcessMessages.push(
+            audioError instanceof Error
+              ? audioError.message
+              : "오디오 처리 중 오류가 발생했습니다."
+          );
+        }
+      }
+
+      const hasPostProcessFailure =
+        postProcessMessages.some(
+          (message) =>
+            message.includes("실패") ||
+            message.includes("오류")
+        );
+
+      if (hasPostProcessFailure) {
+        setErrorMessage(
+          `교재 등록은 완료되었습니다. (교재 ID: ${inserted.id}) ${postProcessMessages.join(
+            " / "
+          )}`
+        );
+      } else {
+        setSuccessMessage(
+          `교재 등록이 완료되었습니다. (${inserted.title} / 교재 ID: ${inserted.id} / 적용 Grade ${selectedLevels.length}개${
+            postProcessMessages.length > 0
+              ? ` / ${postProcessMessages.join(" / ")}`
+              : ""
+          })`
+        );
+      }
 
       resetForm();
     } catch (error) {
@@ -798,6 +1071,138 @@ export default function TextbookCreateForm() {
               lineHeight: 1.7,
             }}
           />
+        </div>
+      </section>
+
+      {/* =========================
+          교재 표지
+      ========================== */}
+      <section style={sectionStyle}>
+        <h2 style={sectionTitleStyle}>
+          교재 표지
+        </h2>
+
+        <p
+          style={sectionDescriptionStyle}
+        >
+          사용자용 커리큘럼 페이지와
+          교재 관리 화면에 표시할 표지입니다.
+          JPG, PNG, WEBP 이미지를 사용할 수 있으며
+          수업용 원본 파일과는 별도입니다.
+        </p>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "minmax(180px, 240px) minmax(260px, 1fr)",
+            gap: "20px",
+            alignItems: "start",
+          }}
+        >
+          <div
+            style={{
+              aspectRatio: "3 / 4",
+              border: "1px solid #dfe4ee",
+              borderRadius: "14px",
+              overflow: "hidden",
+              background:
+                "linear-gradient(145deg, #eef3fb 0%, #f8fbff 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {coverFile ? (
+              <img
+                src={URL.createObjectURL(
+                  coverFile
+                )}
+                alt="교재 표지 미리보기"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  display: "block",
+                  background: "#ffffff",
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  textAlign: "center",
+                  color: "#7d8ba2",
+                  fontSize: "13px",
+                  lineHeight: 1.7,
+                  padding: "20px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "28px",
+                    marginBottom: "8px",
+                  }}
+                >
+                  📘
+                </div>
+                표지 이미지 미리보기
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label
+              htmlFor="coverFile"
+              style={labelStyle}
+            >
+              표지 이미지
+            </label>
+
+            <input
+              id="coverFile"
+              type="file"
+              disabled={loading}
+              accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+              onChange={(event) => {
+                const file =
+                  event.target.files?.[0] ??
+                  null;
+
+                setCoverFile(file);
+              }}
+              style={fieldStyle}
+            />
+
+            <p style={helperStyle}>
+              표지는 선택사항입니다. 아직 준비되지 않았다면
+              비워두고 나중에 교재 수정 화면에서 등록할 수 있습니다.
+            </p>
+
+            {coverFile && (
+              <div
+                style={{
+                  marginTop: "12px",
+                  padding: "12px 14px",
+                  borderRadius: "10px",
+                  background: "#f6f8fc",
+                  fontSize: "13px",
+                  color: "#475467",
+                }}
+              >
+                선택 이미지:{" "}
+                <strong>
+                  {coverFile.name}
+                </strong>{" "}
+                (
+                {(
+                  coverFile.size /
+                  1024 /
+                  1024
+                ).toFixed(2)}
+                MB)
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -1194,6 +1599,99 @@ export default function TextbookCreateForm() {
             MB)
           </div>
         )}
+      </section>
+
+      {/* =========================
+          교재 오디오
+      ========================== */}
+      <section style={sectionStyle}>
+        <h2 style={sectionTitleStyle}>
+          교재 오디오
+        </h2>
+
+        <p
+          style={sectionDescriptionStyle}
+        >
+          PDF에 표시된 T2, T3 등의
+          트랙 번호와 연결할 출판사 제공
+          MP3 파일을 ZIP으로 등록합니다.
+          ZIP 안의 TR02, TR03 등의 번호를
+          자동으로 인식합니다.
+        </p>
+
+        <div>
+          <label
+            htmlFor="audioZipFile"
+            style={labelStyle}
+          >
+            MP3 ZIP 파일
+          </label>
+
+          <input
+            id="audioZipFile"
+            type="file"
+            disabled={loading}
+            accept=".zip,application/zip,application/x-zip-compressed"
+            onChange={(event) => {
+              const file =
+                event.target.files?.[0] ??
+                null;
+
+              setAudioZipFile(file);
+            }}
+            style={fieldStyle}
+          />
+
+          <p style={helperStyle}>
+            선택사항 · 최대 500MB · ZIP 내부의
+            MP3 파일명에서 TR 번호를 자동으로
+            찾습니다. 예: TR02.mp3 → T2
+          </p>
+        </div>
+
+        {audioZipFile && (
+          <div
+            style={{
+              marginTop: "12px",
+              padding: "12px 14px",
+              borderRadius: "10px",
+              background: "#f6f8fc",
+              fontSize: "13px",
+              color: "#475467",
+            }}
+          >
+            선택 오디오 ZIP:{" "}
+            <strong>
+              {audioZipFile.name}
+            </strong>{" "}
+            (
+            {(
+              audioZipFile.size /
+              1024 /
+              1024
+            ).toFixed(2)}
+            MB)
+          </div>
+        )}
+
+        <div
+          style={{
+            marginTop: "14px",
+            padding: "13px 14px",
+            border: "1px solid #dbe7ff",
+            borderRadius: "10px",
+            background: "#f7faff",
+            color: "#344054",
+            fontSize: "13px",
+            lineHeight: 1.7,
+          }}
+        >
+          이번 단계에서는 ZIP 안의 MP3를
+          추출하여 교재별 오디오 Storage에
+          저장합니다. PDF의 실제 T번호 위치와
+          자동 Hotspot을 생성하는 연결은 다음
+          단계에서 적용합니다.
+        </div>
       </section>
 
       {/* =========================
