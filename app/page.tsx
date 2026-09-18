@@ -1185,16 +1185,49 @@ export default function Home() {
             style={{
               borderTop: "1px solid rgba(255,255,255,.1)",
               paddingTop: "20px",
-              display: "flex",
-              justifyContent: "space-between",
-              gap: "12px",
-              flexWrap: "wrap",
-              color: "#7a84a6",
-              fontSize: "12px",
             }}
           >
-            <span>© 2026 TALKLY. All rights reserved.</span>
-            <span>이용약관 · 개인정보처리방침 · 고객센터</span>
+            <div
+              style={{
+                color: "#8b96b8",
+                fontSize: "11.5px",
+                lineHeight: 1.85,
+                wordBreak: "keep-all",
+              }}
+            >
+              <div>
+                <strong
+                  style={{
+                    color: "#aab3cf",
+                    fontWeight: 700,
+                  }}
+                >
+                  토클리 Talkly
+                </strong>
+                {" | "}대표자 박선희
+                {" | "}사업자등록번호 617-28-89258
+                {" | "}통신판매업 신고번호 제2010-부산남구-221호
+              </div>
+              <div>
+                부산광역시 남구 용호로216번길 8, 2층(용호동)
+                {" | "}개인정보 보호책임자 박선희
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: "14px",
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "12px",
+                flexWrap: "wrap",
+                color: "#7a84a6",
+                fontSize: "12px",
+              }}
+            >
+              <span>© 2026 TALKLY. All rights reserved.</span>
+              <span>이용약관 · 개인정보처리방침 · 고객센터</span>
+            </div>
           </div>
         </div>
       </footer>
