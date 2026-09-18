@@ -703,6 +703,9 @@ export default function TextbookCreateForm() {
 
       const postProcessMessages: string[] = [];
 
+      let pdfProcessingSucceeded = false;
+      let audioProcessingSucceeded = false;
+
       /*
        * PDF 원본이 등록된 경우 기존 페이지 생성 API를 호출합니다.
        * 교재 마스터 등록은 이미 완료된 상태이므로
@@ -710,24 +713,21 @@ export default function TextbookCreateForm() {
        */
       if (
         originalFile &&
-        getExtension(originalFile.name) ===
-          "pdf"
+        getExtension(originalFile.name) === "pdf"
       ) {
         try {
-          const processResponse =
-            await fetch(
-              "/api/textbooks/process",
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type":
-                    "application/json",
-                },
-                body: JSON.stringify({
-                  textbookId: inserted.id,
-                }),
-              }
-            );
+          const processResponse = await fetch(
+            "/api/textbooks/process",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                textbookId: inserted.id,
+              }),
+            }
+          );
 
           const processResult =
             await processResponse.json();
@@ -738,6 +738,16 @@ export default function TextbookCreateForm() {
                 processResult.error ||
                 "처리 결과를 확인할 수 없습니다."
               }`
+            );
+          } else {
+            pdfProcessingSucceeded = true;
+
+            postProcessMessages.push(
+              `PDF 페이지 ${
+                processResult.pageCount ??
+                processResult.uploadedCount ??
+                "전체"
+              } 생성 완료`
             );
           }
         } catch (processError) {
@@ -759,9 +769,7 @@ export default function TextbookCreateForm() {
       if (audioZipFile) {
         try {
           const safeAudioZipFilename =
-            sanitizeFilename(
-              audioZipFile.name
-            );
+            sanitizeFilename(audioZipFile.name);
 
           const audioZipStoragePath =
             `textbooks/${inserted.id}/audio-source/${crypto.randomUUID()}-${safeAudioZipFilename}`;
@@ -787,21 +795,18 @@ export default function TextbookCreateForm() {
             );
           }
 
-          const audioResponse =
-            await fetch(
-              `/api/admin/textbooks/${inserted.id}/process-audio-zip`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type":
-                    "application/json",
-                },
-                body: JSON.stringify({
-                  sourcePath:
-                    audioZipStoragePath,
-                }),
-              }
-            );
+          const audioResponse = await fetch(
+            `/api/admin/textbooks/${inserted.id}/process-audio-zip`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                sourcePath: audioZipStoragePath,
+              }),
+            }
+          );
 
           const audioResult =
             await audioResponse.json();
@@ -814,6 +819,8 @@ export default function TextbookCreateForm() {
               }`
             );
           } else {
+            audioProcessingSucceeded = true;
+
             postProcessMessages.push(
               `오디오 ${
                 audioResult.uploadedCount ?? 0
@@ -827,6 +834,89 @@ export default function TextbookCreateForm() {
               : "오디오 처리 중 오류가 발생했습니다."
           );
         }
+      }
+
+      /*
+       * PDF 페이지와 MP3가 모두 준비된 경우에만
+       * PDF T번호 ↔ TR번호 자동 매칭을 실행합니다.
+       */
+      if (
+        pdfProcessingSucceeded &&
+        audioProcessingSucceeded
+      ) {
+        try {
+          const hotspotResponse = await fetch(
+            `/api/admin/textbooks/${inserted.id}/match-audio-hotspots`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          const hotspotResult =
+            await hotspotResponse.json();
+
+          if (!hotspotResponse.ok) {
+            postProcessMessages.push(
+              `오디오 Hotspot 자동 생성 실패: ${
+                hotspotResult.error ||
+                "처리 결과를 확인할 수 없습니다."
+              }`
+            );
+          } else {
+            const createdCount =
+              hotspotResult.createdCount ?? 0;
+            const skippedDuplicateCount =
+              hotspotResult.skippedDuplicateCount ?? 0;
+            const unmatchedPdfTrackCount =
+              hotspotResult.unmatchedPdfTrackCount ?? 0;
+            const unmatchedAudioTrackCount =
+              hotspotResult.unmatchedAudioTrackCount ?? 0;
+
+            postProcessMessages.push(
+              `오디오 Hotspot ${createdCount}개 자동 생성 완료`
+            );
+
+            if (skippedDuplicateCount > 0) {
+              postProcessMessages.push(
+                `기존 Hotspot ${skippedDuplicateCount}개 중복 생성 생략`
+              );
+            }
+
+            if (unmatchedPdfTrackCount > 0) {
+              postProcessMessages.push(
+                `MP3가 없는 PDF 트랙 ${unmatchedPdfTrackCount}개 확인 필요`
+              );
+            }
+
+            if (unmatchedAudioTrackCount > 0) {
+              postProcessMessages.push(
+                `PDF 위치가 없는 MP3 트랙 ${unmatchedAudioTrackCount}개 확인 필요`
+              );
+            }
+          }
+        } catch (hotspotError) {
+          postProcessMessages.push(
+            `오디오 Hotspot 자동 생성 실패: ${
+              hotspotError instanceof Error
+                ? hotspotError.message
+                : "알 수 없는 오류"
+            }`
+          );
+        }
+      } else if (audioZipFile && !originalFile) {
+        postProcessMessages.push(
+          "PDF 원본이 없어 오디오 Hotspot 자동 생성을 생략했습니다."
+        );
+      } else if (
+        audioProcessingSucceeded &&
+        !pdfProcessingSucceeded
+      ) {
+        postProcessMessages.push(
+          "PDF 페이지 처리가 완료되지 않아 오디오 Hotspot 자동 생성을 생략했습니다."
+        );
       }
 
       const hasPostProcessFailure =
@@ -1686,11 +1776,12 @@ export default function TextbookCreateForm() {
             lineHeight: 1.7,
           }}
         >
-          이번 단계에서는 ZIP 안의 MP3를
-          추출하여 교재별 오디오 Storage에
-          저장합니다. PDF의 실제 T번호 위치와
-          자동 Hotspot을 생성하는 연결은 다음
-          단계에서 적용합니다.
+          PDF와 MP3 ZIP을 함께 등록하면
+          PDF의 T2, T3 등의 위치와 ZIP의
+          TR02, TR03 등을 자동으로 연결하여
+          수업용 오디오 Hotspot을 생성합니다.
+          등록 후 교재 Viewer에서 위치와
+          오디오 연결 상태를 확인할 수 있습니다.
         </div>
       </section>
 
