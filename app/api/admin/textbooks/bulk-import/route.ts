@@ -6,12 +6,23 @@ import { createAdminClient } from "@/lib/supabase-admin";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+type CoverPayload = {
+  filename: string;
+  mimeType: string;
+  base64: string;
+};
+
 type Row = {
   title: string;
   publisher: string | null;
   description: string | null;
   image: string | null;
   salePrice: number | null;
+  cover?: CoverPayload | null;
+};
+
+type ImportBody = {
+  rows?: Row[];
 };
 
 type Textbook = {
@@ -23,10 +34,6 @@ type Textbook = {
   sale_price: number | null;
 };
 
-type ImportBody = {
-  rows?: Row[];
-};
-
 function normalizeTitle(value: string) {
   return value
     .normalize("NFKC")
@@ -34,9 +41,15 @@ function normalizeTitle(value: string) {
     .replace(/\blv\.?\s*/g, "")
     .replace(/\b3rd\b/g, "")
     .replace(/\(oup\)/g, "")
-    .replace(/\s+/g, "")
-    .replace(/~/g, "-")
-    .replace(/[^a-z0-9가-힣-]+/g, "");
+    .replace(/starter\s*[-~]\s*5$/g, "")
+    .replace(/[^a-z0-9가-힣]+/g, "");
+}
+
+function sanitizeFilename(filename: string) {
+  return filename
+    .normalize("NFKD")
+    .replace(/[^\w.\-]+/g, "_")
+    .replace(/_+/g, "_");
 }
 
 function findTextbook(
@@ -44,8 +57,6 @@ function findTextbook(
   textbooks: Textbook[]
 ) {
   const needle = normalizeTitle(rowTitle);
-
-  if (!needle) return null;
 
   const exact = textbooks.filter(
     (textbook) =>
@@ -56,104 +67,45 @@ function findTextbook(
     return exact[0];
   }
 
-  const close = textbooks.filter((textbook) => {
-    const candidate = normalizeTitle(textbook.title);
+  const close = textbooks.filter(
+    (textbook) => {
+      const candidate = normalizeTitle(
+        textbook.title
+      );
 
-    if (!candidate || candidate.length < 5) {
-      return false;
+      return (
+        candidate.length >= 8 &&
+        (candidate.startsWith(needle) ||
+          needle.startsWith(candidate))
+      );
     }
+  );
 
-    return (
-      candidate.startsWith(needle) ||
-      needle.startsWith(candidate)
-    );
-  });
-
-  return close.length === 1 ? close[0] : null;
+  return close.length === 1
+    ? close[0]
+    : null;
 }
 
-function cleanNullableString(value: unknown) {
-  if (typeof value !== "string") return null;
+function base64ToBuffer(value: string) {
+  const clean = value.includes(",")
+    ? value.slice(value.indexOf(",") + 1)
+    : value;
 
-  const trimmed = value.trim();
-
-  return trimmed || null;
+  return Buffer.from(clean, "base64");
 }
 
-function cleanSalePrice(value: unknown) {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
-
-  if (typeof value === "number") {
-    return Number.isFinite(value)
-      ? Math.round(value)
-      : null;
-  }
-
-  if (typeof value === "string") {
-    const numeric = value.replace(/[^0-9]/g, "");
-
-    if (!numeric) return null;
-
-    const parsed = Number(numeric);
-
-    return Number.isFinite(parsed)
-      ? Math.round(parsed)
-      : null;
-  }
+function extensionFromMimeType(
+  mimeType: string
+) {
+  if (mimeType === "image/png") return "png";
+  if (mimeType === "image/jpeg") return "jpg";
+  if (mimeType === "image/webp") return "webp";
 
   return null;
 }
 
-function cleanRows(input: unknown): Row[] {
-  if (!Array.isArray(input)) {
-    return [];
-  }
-
-  return input
-    .map((item): Row | null => {
-      if (
-        !item ||
-        typeof item !== "object" ||
-        Array.isArray(item)
-      ) {
-        return null;
-      }
-
-      const record = item as Record<string, unknown>;
-
-      const title =
-        typeof record.title === "string"
-          ? record.title.trim()
-          : "";
-
-      if (!title) {
-        return null;
-      }
-
-      return {
-        title,
-        publisher: cleanNullableString(
-          record.publisher
-        ),
-        description: cleanNullableString(
-          record.description
-        ),
-        image: cleanNullableString(record.image),
-        salePrice: cleanSalePrice(
-          record.salePrice
-        ),
-      };
-    })
-    .filter((row): row is Row => row !== null);
-}
-
 export async function POST(request: Request) {
   try {
-    /*
-     * 1. 로그인 / 관리자 권한 확인
-     */
     const supabase = await createClient();
 
     const {
@@ -171,25 +123,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: profile, error: profileError } =
-      await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
 
-    if (profileError) {
-      return NextResponse.json(
-        {
-          error: profileError.message,
-        },
-        {
-          status: 500,
-        }
-      );
-    }
-
-    if (!profile || profile.role !== "admin") {
+    if (
+      !profile ||
+      profile.role !== "admin"
+    ) {
       return NextResponse.json(
         {
           error: "관리자 권한이 필요합니다.",
@@ -200,21 +143,18 @@ export async function POST(request: Request) {
       );
     }
 
-    /*
-     * 2. JSON 데이터 읽기
-     *
-     * XLSX 파일 자체는 서버로 전송하지 않습니다.
-     * 브라우저에서 추출한 필요한 행만 받습니다.
-     */
-    let body: ImportBody;
+    const contentType =
+      request.headers.get("content-type") || "";
 
-    try {
-      body = (await request.json()) as ImportBody;
-    } catch {
+    if (
+      !contentType.includes(
+        "application/json"
+      )
+    ) {
       return NextResponse.json(
         {
           error:
-            "교재 등록 데이터를 읽을 수 없습니다.",
+            "잘못된 요청 형식입니다.",
         },
         {
           status: 400,
@@ -222,7 +162,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const rows = cleanRows(body.rows);
+    const body =
+      (await request.json()) as ImportBody;
+
+    const rows = Array.isArray(body.rows)
+      ? body.rows
+      : [];
 
     if (rows.length === 0) {
       return NextResponse.json(
@@ -236,16 +181,11 @@ export async function POST(request: Request) {
       );
     }
 
-    /*
-     * 현재 TALKLY 최종 교재는 25종이지만,
-     * 이후 커리큘럼 확장을 고려하여 특정 숫자로
-     * 강제 제한하지 않습니다.
-     */
-    if (rows.length > 500) {
+    if (rows.length > 100) {
       return NextResponse.json(
         {
           error:
-            "한 번에 등록할 수 있는 교재 수를 초과했습니다.",
+            "한 번에 처리할 수 있는 교재 수를 초과했습니다.",
         },
         {
           status: 400,
@@ -253,12 +193,6 @@ export async function POST(request: Request) {
       );
     }
 
-    /*
-     * 3. 기존 textbook 조회
-     *
-     * 여기서는 신규 textbook을 생성하지 않습니다.
-     * 기존 ID를 찾은 뒤 정보만 업데이트합니다.
-     */
     const admin = createAdminClient();
 
     const {
@@ -274,7 +208,7 @@ export async function POST(request: Request) {
       throw textbookError;
     }
 
-    const existingTextbooks =
+    const textbookList =
       (textbooks || []) as Textbook[];
 
     const results: Array<{
@@ -289,18 +223,24 @@ export async function POST(request: Request) {
       coverUpdated?: boolean;
     }> = [];
 
-    /*
-     * 4. 기존 교재와 매칭하여 정보만 갱신
-     */
     for (const row of rows) {
+      const title =
+        typeof row.title === "string"
+          ? row.title.trim()
+          : "";
+
+      if (!title) {
+        continue;
+      }
+
       const textbook = findTextbook(
-        row.title,
-        existingTextbooks
+        title,
+        textbookList
       );
 
       if (!textbook) {
         results.push({
-          title: row.title,
+          title,
           status: "unmatched",
           message:
             "기존 교재와 자동 매칭되지 않았습니다.",
@@ -309,75 +249,285 @@ export async function POST(request: Request) {
         continue;
       }
 
-      /*
-       * 중요:
-       * - id 변경 없음
-       * - title 변경 없음
-       * - category 변경 없음
-       * - status 변경 없음
-       * - is_active 변경 없음
-       * - cover_image_url 변경 없음
-       * - curriculum_level_textbooks 변경 없음
-       * - PDF/페이지/오디오/핫스팟 변경 없음
-       */
-      const update = {
-        publisher: row.publisher,
-        description: row.description,
-        sale_price: row.salePrice,
-        updated_at: new Date().toISOString(),
+      let newCoverPath:
+        | string
+        | null = null;
+
+      let coverUpdated = false;
+
+      if (row.cover?.base64) {
+        const mimeType =
+          row.cover.mimeType;
+
+        const extension =
+          extensionFromMimeType(
+            mimeType
+          );
+
+        if (!extension) {
+          results.push({
+            title,
+            textbookId:
+              textbook.id,
+            matchedTitle:
+              textbook.title,
+            status: "failed",
+            message:
+              "지원하지 않는 표지 이미지 형식입니다.",
+          });
+
+          continue;
+        }
+
+        const imageBuffer =
+          base64ToBuffer(
+            row.cover.base64
+          );
+
+        if (
+          imageBuffer.length === 0
+        ) {
+          results.push({
+            title,
+            textbookId:
+              textbook.id,
+            matchedTitle:
+              textbook.title,
+            status: "failed",
+            message:
+              "표지 이미지 데이터가 비어 있습니다.",
+          });
+
+          continue;
+        }
+
+        /*
+         * 비정상적으로 큰 이미지가 들어오는 것을 방지.
+         * 교재 표지는 10MB 이내로 제한.
+         */
+        if (
+          imageBuffer.length >
+          10 * 1024 * 1024
+        ) {
+          results.push({
+            title,
+            textbookId:
+              textbook.id,
+            matchedTitle:
+              textbook.title,
+            status: "failed",
+            message:
+              "표지 이미지가 10MB를 초과합니다.",
+          });
+
+          continue;
+        }
+
+        const originalFilename =
+          row.cover.filename ||
+          `cover.${extension}`;
+
+        const safeFilename =
+          sanitizeFilename(
+            originalFilename
+          );
+
+        newCoverPath =
+          `covers/bulk/${textbook.id}/${crypto.randomUUID()}-${safeFilename}`;
+
+        /*
+         * 파일 확장자가 이상한 경우에도
+         * MIME type을 기준으로 Storage에 저장.
+         */
+        if (
+          !newCoverPath
+            .toLowerCase()
+            .endsWith(
+              `.${extension}`
+            )
+        ) {
+          newCoverPath +=
+            `.${extension}`;
+        }
+
+        const {
+          error: uploadError,
+        } = await admin.storage
+          .from("textbook-files")
+          .upload(
+            newCoverPath,
+            imageBuffer,
+            {
+              contentType:
+                mimeType,
+              cacheControl:
+                "3600",
+              upsert: false,
+            }
+          );
+
+        if (uploadError) {
+          results.push({
+            title,
+            textbookId:
+              textbook.id,
+            matchedTitle:
+              textbook.title,
+            status: "failed",
+            message:
+              `표지 업로드 실패: ${uploadError.message}`,
+          });
+
+          continue;
+        }
+
+        coverUpdated = true;
+      }
+
+      const update: Record<
+        string,
+        unknown
+      > = {
+        publisher:
+          row.publisher ?? null,
+        description:
+          row.description ?? null,
+        sale_price:
+          row.salePrice ?? null,
+        updated_at:
+          new Date().toISOString(),
       };
 
-      const { error: updateError } = await admin
+      /*
+       * 새 표지가 실제로 추출·업로드된 경우에만
+       * cover_image_url을 변경한다.
+       *
+       * 엑셀에 이미지가 없는 행은 기존 표지를
+       * 절대로 null로 만들지 않는다.
+       */
+      if (newCoverPath) {
+        update.cover_image_url =
+          newCoverPath;
+      }
+
+      const {
+        error: updateError,
+      } = await admin
         .from("textbooks")
         .update(update)
         .eq("id", textbook.id);
 
       if (updateError) {
+        /*
+         * DB 갱신 실패 시 이번 요청에서
+         * 새로 올린 표지만 제거한다.
+         */
+        if (newCoverPath) {
+          await admin.storage
+            .from("textbook-files")
+            .remove([
+              newCoverPath,
+            ]);
+        }
+
         results.push({
-          title: row.title,
-          matchedTitle: textbook.title,
-          textbookId: textbook.id,
+          title,
+          textbookId:
+            textbook.id,
+          matchedTitle:
+            textbook.title,
           status: "failed",
-          message: updateError.message,
+          message:
+            updateError.message,
         });
 
         continue;
       }
 
+      /*
+       * DB 갱신까지 성공한 뒤에만
+       * 이전 표지를 제거한다.
+       */
+      if (
+        newCoverPath &&
+        textbook.cover_image_url &&
+        textbook.cover_image_url !==
+          newCoverPath
+      ) {
+        await admin.storage
+          .from("textbook-files")
+          .remove([
+            textbook.cover_image_url,
+          ]);
+      }
+
+      /*
+       * 같은 요청 중 동일 교재가 다시 들어올 경우를
+       * 대비해 메모리 데이터도 최신 상태로 맞춘다.
+       */
+      textbook.publisher =
+        row.publisher ?? null;
+
+      textbook.description =
+        row.description ?? null;
+
+      textbook.sale_price =
+        row.salePrice ?? null;
+
+      if (newCoverPath) {
+        textbook.cover_image_url =
+          newCoverPath;
+      }
+
       results.push({
-        title: row.title,
-        matchedTitle: textbook.title,
-        textbookId: textbook.id,
+        title,
+        matchedTitle:
+          textbook.title,
+        textbookId:
+          textbook.id,
         status: "updated",
-        coverUpdated: false,
+        coverUpdated,
       });
     }
 
-    /*
-     * 5. 처리 결과
-     */
     const updated = results.filter(
-      (result) => result.status === "updated"
+      (result) =>
+        result.status ===
+        "updated"
     ).length;
 
-    const unmatched = results.filter(
-      (result) => result.status === "unmatched"
-    ).length;
+    const unmatched =
+      results.filter(
+        (result) =>
+          result.status ===
+          "unmatched"
+      ).length;
 
     const failed = results.filter(
-      (result) => result.status === "failed"
+      (result) =>
+        result.status ===
+        "failed"
     ).length;
+
+    const coversUpdated =
+      results.filter(
+        (result) =>
+          result.status ===
+            "updated" &&
+          result.coverUpdated
+      ).length;
 
     return NextResponse.json({
       total: rows.length,
       updated,
+      coversUpdated,
       unmatched,
       failed,
       results,
     });
   } catch (error) {
     console.error(
-      "[textbook bulk import]",
+      "Bulk textbook import error:",
       error
     );
 
