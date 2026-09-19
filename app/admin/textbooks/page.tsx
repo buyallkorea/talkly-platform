@@ -524,6 +524,26 @@ export default async function AdminTextbooksPage() {
             </Link>
 
             <Link
+              href="/admin/textbooks/bulk-import"
+              style={{
+                minHeight: "44px",
+                padding: "0 17px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid rgba(255,255,255,0.28)",
+                borderRadius: "10px",
+                background: "rgba(255,255,255,0.08)",
+                color: "#ffffff",
+                textDecoration: "none",
+                fontSize: "12px",
+                fontWeight: 900,
+              }}
+            >
+              엑셀 일괄등록
+            </Link>
+
+            <Link
               href="/admin/textbooks/new"
               style={{
                 minHeight:
