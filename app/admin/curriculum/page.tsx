@@ -59,13 +59,10 @@ type PageProps = {
 };
 
 const CATEGORY_ORDER = [
-  "course_book",
   "phonics",
+  "course_book",
   "reading",
   "speaking",
-  "writing",
-  "grammar",
-  "vocabulary",
   "adult",
 ];
 
@@ -77,9 +74,6 @@ const CATEGORY_LABELS: Record<
   phonics: "PHONICS",
   reading: "READING",
   speaking: "SPEAKING",
-  writing: "WRITING",
-  grammar: "GRAMMAR",
-  vocabulary: "VOCA",
   adult: "ADULT",
 };
 

@@ -41,13 +41,10 @@ type Textbook = {
 };
 
 const CATEGORY_ORDER = [
-  "course_book",
   "phonics",
+  "course_book",
   "reading",
   "speaking",
-  "writing",
-  "grammar",
-  "vocabulary",
   "adult",
 ];
 
@@ -59,9 +56,6 @@ const CATEGORY_LABELS: Record<
   phonics: "Phonics",
   reading: "Reading",
   speaking: "Speaking",
-  writing: "Writing",
-  grammar: "Grammar",
-  vocabulary: "Vocabulary",
   adult: "Adult",
 };
 
@@ -73,53 +67,44 @@ const CATEGORY_KOREAN: Record<
   phonics: "파닉스",
   reading: "리딩",
   speaking: "스피킹",
-  writing: "라이팅",
-  grammar: "그래머",
-  vocabulary: "보카",
   adult: "성인영어",
 };
 
 const CURRICULUM_MAP_ROWS = [
-  { category: "COURSE BOOK", title: "Hi Five", grades: ["K", "1", "2", "3", "4", "5"] },
-  { category: "COURSE BOOK", title: "Super Star", grades: ["K", "1", "2", "3", "4", "5"] },
-  { category: "COURSE BOOK", title: "Let\'s Go (OUP)", grades: ["K", "1", "2", "3", "4", "5", "6"] },
-  { category: "COURSE BOOK", title: "Everybody Up 3rd (OUP)", grades: ["K", "1", "2", "3", "4", "5", "6"] },
-  { category: "PHONICS", title: "Smart Ponics", grades: ["K", "1"] },
-  { category: "PHONICS", title: "Phonics Monster 3rd", grades: ["K", "1"] },
-  { category: "PHONICS", title: "Phonics Monster ASAP", grades: ["K", "1"] },
+  { category: "PHONICS", title: "Smart Ponics 1~5", grades: ["K", "1"] },
+  { category: "PHONICS", title: "Phonics Monster 1~4", grades: ["K", "1"] },
+  { category: "PHONICS", title: "Phonics Monster ASAP 1~4", grades: ["K", "1"] },
+  { category: "COURSE BOOK", title: "Hi Five 1~6", grades: ["K", "1", "2", "3", "4", "5"] },
+  { category: "COURSE BOOK", title: "Super Star 1-6", grades: ["K", "1", "2", "3", "4", "5"] },
+  { category: "COURSE BOOK", title: "Hand in Hand starter~6", grades: ["K", "1", "2", "3", "4", "5", "6"] },
+  { category: "COURSE BOOK", title: "Everybody Up starter~6", grades: ["K", "1", "2", "3", "4", "5", "6"] },
   { category: "READING", title: "The Best Reading 1~2", grades: ["K", "1", "2"] },
   { category: "READING", title: "The Best Reading 3~5", grades: ["3", "4", "5", "6"] },
   { category: "READING", title: "The Best Reading 6", grades: ["5", "6", "7"] },
-  { category: "READING", title: "Reading Cue 2nd", grades: ["3", "4", "5"] },
-  { category: "READING", title: "Reading Cue Plus 2nd", grades: ["5", "6", "7", "8"] },
-  { category: "READING", title: "Reading Ace Starter", grades: ["3", "4", "5", "6"] },
-  { category: "READING", title: "Wonderful World Basic", grades: ["1", "2", "3", "4"] },
-  { category: "READING", title: "Wonderful World Prime", grades: ["3", "4", "5", "6"] },
-  { category: "READING", title: "Wonderful World Master", grades: ["5", "6", "7", "8", "9", "A"] },
-  { category: "READING", title: "Can You Believe It?", grades: ["5", "6", "7", "8", "9", "A"] },
-  { category: "SPEAKING", title: "Speak Up", grades: ["4", "5", "6"] },
-  { category: "SPEAKING", title: "Speak Up Plus", grades: ["5", "6", "7"] },
-  { category: "SPEAKING", title: "Side by Side 1~4", grades: ["3", "4", "5", "6", "7"] },
+  { category: "READING", title: "Reading Cue 1~3", grades: ["3", "4", "5"] },
+  { category: "READING", title: "Reading Cue Plus 1~3", grades: ["5", "6", "7", "8"] },
+  { category: "READING", title: "Wonderful World Basic 1~6", grades: ["1", "2", "3", "4"] },
+  { category: "READING", title: "Wonderful World Prime 1~6", grades: ["3", "4", "5", "6"] },
+  { category: "READING", title: "Wonderful World Master 1~6", grades: ["5", "6", "7", "8", "9", "A"] },
+  { category: "READING", title: "e-future DISCOVERY 1~6", grades: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "A"] },
+  { category: "SPEAKING", title: "Can You Believe It? 1~4", grades: ["5", "6", "7", "8", "9", "A"] },
+  { category: "SPEAKING", title: "Speak Up 1~3", grades: ["4", "5", "6"] },
+  { category: "SPEAKING", title: "Speak Up Plus 1~3", grades: ["5", "6", "7"] },
+  { category: "SPEAKING", title: "New Children's Talk 1-2", grades: ["4", "5", "6", "7"] },
   { category: "SPEAKING", title: "Interchange Intro~3", grades: ["4", "5", "6", "7", "8"] },
-  { category: "WRITING", title: "The Best Writing Starter 1-3", grades: ["3", "4"] },
-  { category: "WRITING", title: "The Best Writing 1-3", grades: ["4", "5", "6"] },
-  { category: "GRAMMAR", title: "Grammar Juice for Kids", grades: ["3", "4", "5"] },
-  { category: "GRAMMAR", title: "Grammar Juice for Junior", grades: ["5", "6", "7"] },
-  { category: "VOCA", title: "200 Words You Must Know", grades: ["K", "1", "2", "3"] },
-  { category: "VOCA", title: "Mission: 2000 Words", grades: ["4", "5", "6"] },
+  { category: "SPEAKING", title: "American English File", grades: ["4", "5", "6", "7", "8", "9", "A"] },
+  { category: "ADULT", title: "Talk Talk Talk 1-2", grades: ["5", "6", "7", "8", "9", "A"] },
   { category: "ADULT", title: "New Connection 1-3", grades: ["9", "A"] },
-  { category: "ADULT", title: "English Now 1-3", grades: ["9", "A"] },
   { category: "ADULT", title: "Read to Succeed 1-2", grades: ["A"] },
-  { category: "ADULT", title: "Speak Now 1-4", grades: ["A"] },
 ] as const;
 
 const CURRICULUM_MAP_GRADES = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A"] as const;
 
 const CURRICULUM_REFERENCE_ROWS = [
-  { label: "Lexile®", values: ["BR-150L", "50L-250L", "", "165L-520L", "", "360L-600L", "", "560L-720L", "", "700L-1000L", ""] },
-  { label: "CEFR", values: ["Pre A1", "", "", "A1", "", "A2", "", "B1", "", "B2", "A2-C1"] },
+  { label: "Lexile®", values: ["BR-150L", "50L-250L", "50L-250L", "165L-520L", "165L-520L", "360L-600L", "360L-600L", "560L-720L", "560L-720L", "700L-1000L", "700L-1000L"] },
+  { label: "CEFR", values: ["Pre A1", "Pre A1", "Pre A1", "A1", "A1", "A2", "A2", "B1", "B1", "B2", "A2-C1"] },
   { label: "AR", values: ["0.4", "1.3", "1.6", "2.0", "2.2", "2.9", "3.1", "3.7", "4.3", "4.8", ""] },
-  { label: "US Grade", values: ["K", "1", "", "2", "", "", "3", "", "4", "", ""] },
+  { label: "US Grade", values: ["K", "1", "1", "2", "2", "2", "3", "3", "4", "4", ""] },
 ] as const;
 
 export const dynamic = "force-dynamic";
