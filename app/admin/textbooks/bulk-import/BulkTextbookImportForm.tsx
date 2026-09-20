@@ -29,12 +29,16 @@ type Result = {
   coverUpdated?: boolean;
 };
 
+type SingleResponseData = {
+  result: Result;
+};
+
 type ResponseData = {
   total: number;
   updated: number;
   unmatched: number;
   failed: number;
-  coversUpdated?: number;
+  coversUpdated: number;
   results: Result[];
 };
 
@@ -260,7 +264,7 @@ async function extractEmbeddedImages(
       continue;
     }
 
-    // drawing row 값은 0부터 시작한다.
+    // XLSX drawing row는 0부터 시작한다.
     const rowNumber = Number(rowMatch[1]) + 1;
 
     const mediaTarget = findRelationshipTarget(
@@ -288,7 +292,6 @@ async function extractEmbeddedImages(
 
     const mimeType = mimeTypeFromFilename(filename);
 
-    // 교재 표지로 사용할 수 있는 형식만 처리한다.
     if (!mimeType) {
       continue;
     }
@@ -334,10 +337,6 @@ async function parseWorkbook(file: File): Promise<ImportRow[]> {
     throw new Error("'교재등록' 시트를 찾을 수 없습니다.");
   }
 
-  /*
-   * 첫 행을 헤더라고 가정하지 않는다.
-   * 시트 전체를 배열로 읽고 실제 '교재명' 행을 찾는다.
-   */
   const matrix = XLSX.utils.sheet_to_json<unknown[]>(
     worksheet,
     {
@@ -360,10 +359,6 @@ async function parseWorkbook(file: File): Promise<ImportRow[]> {
     );
   }
 
-  /*
-   * 실제 Excel 행 번호도 별도로 찾는다.
-   * 그림 anchor는 Excel의 실제 행 번호를 사용하기 때문이다.
-   */
   const range = XLSX.utils.decode_range(
     worksheet["!ref"] || "A1:A1"
   );
@@ -416,7 +411,7 @@ async function parseWorkbook(file: File): Promise<ImportRow[]> {
   }
 
   /*
-   * 2. XLSX ZIP 내부에서 삽입된 그림 추출
+   * 2. XLSX ZIP 내부에서 삽입된 표지 이미지 추출
    */
   const zip = await JSZip.loadAsync(arrayBuffer);
 
@@ -447,10 +442,6 @@ async function parseWorkbook(file: File): Promise<ImportRow[]> {
       continue;
     }
 
-    /*
-     * matrix에서 현재 교재명이 들어 있는 행을 찾는다.
-     * 빈 행이 있어도 잘못 밀리지 않도록 제목으로 확인한다.
-     */
     let sourceRow: unknown[] | null = null;
 
     for (
@@ -476,9 +467,6 @@ async function parseWorkbook(file: File): Promise<ImportRow[]> {
 
     const excelRowNumber = sheetRowIndex + 1;
 
-    /*
-     * 그림의 왼쪽 위 anchor 행이 현재 교재 행인 경우 연결한다.
-     */
     const embeddedCover =
       embeddedImages.find(
         (image) => image.rowNumber === excelRowNumber
@@ -535,8 +523,21 @@ async function readApiResponse(response: Response) {
   const text = await response.text();
 
   throw new Error(
-    text.trim() || `서버 요청에 실패했습니다. HTTP ${response.status}`
+    text.trim() ||
+      `서버 요청에 실패했습니다. HTTP ${response.status}`
   );
+}
+
+function makeFailedResult(
+  title: string,
+  message: string
+): Result {
+  return {
+    title,
+    status: "failed",
+    message,
+    coverUpdated: false,
+  };
 }
 
 export default function BulkTextbookImportForm() {
@@ -545,13 +546,21 @@ export default function BulkTextbookImportForm() {
   const [excel, setExcel] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [result, setResult] = useState<ResponseData | null>(null);
+  const [result, setResult] =
+    useState<ResponseData | null>(null);
+
+  const [progressCurrent, setProgressCurrent] = useState(0);
+  const [progressTotal, setProgressTotal] = useState(0);
+  const [currentTitle, setCurrentTitle] = useState("");
 
   async function submit(event: FormEvent) {
     event.preventDefault();
 
     setError("");
     setResult(null);
+    setProgressCurrent(0);
+    setProgressTotal(0);
+    setCurrentTitle("");
 
     if (!excel) {
       setError("교재등록 XLSX 파일을 선택해주세요.");
@@ -566,44 +575,127 @@ export default function BulkTextbookImportForm() {
     setLoading(true);
 
     try {
+      /*
+       * XLSX는 브라우저에서 한 번만 읽는다.
+       */
       const rows = await parseWorkbook(excel);
+
+      if (rows.length === 0) {
+        throw new Error(
+          "엑셀에서 등록할 교재를 찾지 못했습니다."
+        );
+      }
 
       const coversFound = rows.filter(
         (row) => Boolean(row.cover)
       ).length;
 
-      /*
-       * 이미지 추출에 실패한 상태에서 교재 정보를 다시 갱신하지 않는다.
-       * 엑셀 구조를 먼저 확인하도록 중단한다.
-       */
       if (coversFound === 0) {
         throw new Error(
           "엑셀에 삽입된 교재 표지 이미지를 찾지 못했습니다. 데이터베이스는 변경하지 않았습니다."
         );
       }
 
-      const response = await fetch(
-        "/api/admin/textbooks/bulk-import",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ rows }),
+      setProgressTotal(rows.length);
+
+      const results: Result[] = [];
+
+      /*
+       * 중요:
+       * 25개 교재 + 25개 Base64 이미지를 한 요청으로 보내지 않는다.
+       *
+       * 교재 한 종씩 순차적으로 서버에 전송한다.
+       * 따라서 Vercel FUNCTION_PAYLOAD_TOO_LARGE를 피한다.
+       */
+      for (let index = 0; index < rows.length; index += 1) {
+        const row = rows[index];
+
+        setProgressCurrent(index + 1);
+        setCurrentTitle(row.title);
+
+        try {
+          const response = await fetch(
+            "/api/admin/textbooks/bulk-import",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                row,
+              }),
+            }
+          );
+
+          const data = await readApiResponse(response);
+
+          if (!response.ok) {
+            const message =
+              typeof data?.error === "string"
+                ? data.error
+                : "교재 등록 요청에 실패했습니다.";
+
+            results.push(
+              makeFailedResult(row.title, message)
+            );
+
+            continue;
+          }
+
+          const responseData =
+            data as SingleResponseData;
+
+          if (!responseData.result) {
+            results.push(
+              makeFailedResult(
+                row.title,
+                "서버에서 처리 결과를 반환하지 않았습니다."
+              )
+            );
+
+            continue;
+          }
+
+          results.push(responseData.result);
+        } catch (requestError) {
+          results.push(
+            makeFailedResult(
+              row.title,
+              requestError instanceof Error
+                ? requestError.message
+                : "교재 처리 중 오류가 발생했습니다."
+            )
+          );
         }
-      );
-
-      const data = await readApiResponse(response);
-
-      if (!response.ok) {
-        throw new Error(
-          typeof data?.error === "string"
-            ? data.error
-            : "교재 정보 및 표지 일괄등록에 실패했습니다."
-        );
       }
 
-      setResult(data as ResponseData);
+      const updated = results.filter(
+        (item) => item.status === "updated"
+      ).length;
+
+      const unmatched = results.filter(
+        (item) => item.status === "unmatched"
+      ).length;
+
+      const failed = results.filter(
+        (item) => item.status === "failed"
+      ).length;
+
+      const coversUpdated = results.filter(
+        (item) =>
+          item.status === "updated" &&
+          item.coverUpdated === true
+      ).length;
+
+      setResult({
+        total: rows.length,
+        updated,
+        unmatched,
+        failed,
+        coversUpdated,
+        results,
+      });
+
       router.refresh();
     } catch (caughtError) {
       setError(
@@ -613,6 +705,7 @@ export default function BulkTextbookImportForm() {
       );
     } finally {
       setLoading(false);
+      setCurrentTitle("");
     }
   }
 
@@ -648,18 +741,23 @@ export default function BulkTextbookImportForm() {
             lineHeight: 1.7,
           }}
         >
-          교재명, 출판사명, 교재설명, 판매가격과 엑셀에 삽입된
-          교재 표지를 함께 읽습니다. 자료구분 열은 사용하지 않습니다.
-          기존 textbook ID와 Grade 연결은 그대로 유지합니다.
+          교재명, 출판사명, 교재설명, 판매가격과 엑셀에
+          삽입된 교재 표지를 함께 읽습니다. 자료구분 열은
+          사용하지 않습니다. 기존 textbook ID와 Grade 연결은
+          그대로 유지합니다.
         </p>
 
         <input
           type="file"
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          disabled={loading}
           onChange={(event) => {
             setExcel(event.target.files?.[0] ?? null);
             setError("");
             setResult(null);
+            setProgressCurrent(0);
+            setProgressTotal(0);
+            setCurrentTitle("");
           }}
         />
       </section>
@@ -689,11 +787,74 @@ export default function BulkTextbookImportForm() {
             marginBottom: 0,
           }}
         >
-          기존 교재 ID, 커리큘럼 Grade 연결, PDF, 교재 페이지,
-          오디오 및 Interactive PDF 데이터는 변경하지 않습니다.
-          표지가 정상 추출된 교재만 Storage에 등록합니다.
+          기존 교재 ID, 커리큘럼 Grade 연결, PDF, 교재
+          페이지, 오디오 및 Interactive PDF 데이터는 변경하지
+          않습니다. 엑셀에 삽입된 표지는 교재별로 하나씩
+          안전하게 Storage에 등록합니다.
         </p>
       </section>
+
+      {loading && progressTotal > 0 && (
+        <section
+          style={{
+            padding: 20,
+            border: "1px solid #bcd2f3",
+            borderRadius: 16,
+            background: "#f5f9ff",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 16,
+              alignItems: "center",
+              marginBottom: 10,
+            }}
+          >
+            <strong style={{ color: "#0A1F44" }}>
+              교재 일괄등록 진행 중
+            </strong>
+
+            <strong style={{ color: "#2563eb" }}>
+              {progressCurrent} / {progressTotal}
+            </strong>
+          </div>
+
+          <div
+            style={{
+              height: 10,
+              background: "#e4eaf2",
+              borderRadius: 999,
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                width: `${
+                  progressTotal > 0
+                    ? (progressCurrent / progressTotal) * 100
+                    : 0
+                }%`,
+                height: "100%",
+                background: "#2563eb",
+                transition: "width 0.2s ease",
+              }}
+            />
+          </div>
+
+          {currentTitle && (
+            <p
+              style={{
+                margin: "10px 0 0",
+                color: "#475467",
+              }}
+            >
+              현재 처리: {currentTitle}
+            </p>
+          )}
+        </section>
+      )}
 
       {error && (
         <div
@@ -722,11 +883,15 @@ export default function BulkTextbookImportForm() {
           color: "white",
           fontWeight: 900,
           cursor:
-            loading || !excel ? "not-allowed" : "pointer",
+            loading || !excel
+              ? "not-allowed"
+              : "pointer",
         }}
       >
         {loading
-          ? "교재 정보와 표지 처리 중..."
+          ? progressTotal > 0
+            ? `교재 처리 중 ${progressCurrent}/${progressTotal}`
+            : "엑셀 분석 중..."
           : "교재 정보 + 표지 일괄등록"}
       </button>
 
@@ -748,9 +913,14 @@ export default function BulkTextbookImportForm() {
             처리 결과
           </h2>
 
-          <p style={{ fontWeight: 800 }}>
-            전체 {result.total}종 · 갱신 {result.updated}종 · 표지{" "}
-            {result.coversUpdated ?? 0}종 · 미매칭{" "}
+          <p
+            style={{
+              fontWeight: 800,
+              lineHeight: 1.7,
+            }}
+          >
+            전체 {result.total}종 · 갱신 {result.updated}종 ·
+            표지 {result.coversUpdated}종 · 미매칭{" "}
             {result.unmatched}종 · 실패 {result.failed}종
           </p>
 
@@ -780,7 +950,9 @@ export default function BulkTextbookImportForm() {
 
                 {item.status === "updated"
                   ? `갱신 완료${
-                      item.coverUpdated ? " · 표지 등록" : ""
+                      item.coverUpdated
+                        ? " · 표지 등록"
+                        : " · 표지 없음"
                     }`
                   : item.message || item.status}
 
