@@ -59,7 +59,7 @@ const programs = [
     no: "02",
     title: "레벨별 커리큘럼 · 교재",
     subtitle: "현재 수준과 목표에 맞춘 단계별 학습",
-    text: "Grade K부터 Grade 9, Adult까지 영어 수준과 학습 목표에 맞는 단계별 커리큘럼과 교재를 연결합니다.",
+    text: "Pre-Beginner부터 Advanced까지 레벨별 교육목표와 교재를 연결해 학습 방향을 명확하게 제시합니다.",
     href: "/curriculum",
   },
   {
@@ -1209,8 +1209,8 @@ export default function Home() {
                 {" | "}통신판매업 신고번호 제2010-부산남구-221호
               </div>
               <div>
-                부산광역시 남구 용호로216번길 8
-                {" | "}개인정보보호책임자 박선희
+                부산광역시 남구 용호로216번길 8, 2층(용호동)
+                {" | "}개인정보 보호책임자 박선희
               </div>
             </div>
 
