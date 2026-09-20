@@ -15,6 +15,7 @@ export default function SiteHeader() {
 
   return (
     <header
+      className="talkly-site-header"
       style={{
         position: "sticky",
         top: 0,
@@ -31,12 +32,7 @@ export default function SiteHeader() {
           href="/"
           aria-label="TALKLY 홈"
           onClick={closeMobileMenu}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            width: "fit-content",
-            textDecoration: "none",
-          }}
+          className="talkly-logo-link"
         >
           <Image
             src="/talkly-logo.png"
@@ -45,15 +41,10 @@ export default function SiteHeader() {
             height={110}
             priority
             className="talkly-header-logo"
-            style={{
-              width: "auto",
-              height: "62px",
-              objectFit: "contain",
-            }}
           />
         </Link>
 
-        {/* DESKTOP MAIN NAVIGATION */}
+        {/* DESKTOP NAVIGATION */}
         <nav
           aria-label="TALKLY 주요 메뉴"
           className="talkly-site-nav"
@@ -81,11 +72,7 @@ export default function SiteHeader() {
           <div className="talkly-info-menu">
             <span className="talkly-site-nav-link talkly-info-trigger">
               인포메이션
-              <span
-                style={{
-                  fontSize: "10px",
-                }}
-              >
+              <span className="talkly-info-arrow">
                 ▼
               </span>
             </span>
@@ -106,41 +93,41 @@ export default function SiteHeader() {
           </div>
         </nav>
 
-        {/* LOGIN / MYPAGE */}
-        <div className="talkly-header-actions">
-          <div className="talkly-auth-menu">
-            <HomeAuthMenu />
-          </div>
-
-          {/* MOBILE HAMBURGER */}
-          <button
-            type="button"
-            className="talkly-mobile-menu-button"
-            aria-label={
-              mobileMenuOpen
-                ? "모바일 메뉴 닫기"
-                : "모바일 메뉴 열기"
-            }
-            aria-expanded={mobileMenuOpen}
-            aria-controls="talkly-mobile-menu"
-            onClick={() =>
-              setMobileMenuOpen((current) => !current)
-            }
-          >
-            <span
-              className={
-                mobileMenuOpen
-                  ? "talkly-hamburger talkly-hamburger-open"
-                  : "talkly-hamburger"
-              }
-              aria-hidden="true"
-            >
-              <span />
-              <span />
-              <span />
-            </span>
-          </button>
+        {/* DESKTOP AUTH */}
+        <div className="talkly-desktop-auth">
+          <HomeAuthMenu />
         </div>
+
+        {/* MOBILE HAMBURGER */}
+        <button
+          type="button"
+          className="talkly-mobile-menu-button"
+          aria-label={
+            mobileMenuOpen
+              ? "메뉴 닫기"
+              : "메뉴 열기"
+          }
+          aria-expanded={mobileMenuOpen}
+          aria-controls="talkly-mobile-menu"
+          onClick={() =>
+            setMobileMenuOpen(
+              (current) => !current
+            )
+          }
+        >
+          <span
+            className={
+              mobileMenuOpen
+                ? "talkly-hamburger talkly-hamburger-open"
+                : "talkly-hamburger"
+            }
+            aria-hidden="true"
+          >
+            <span />
+            <span />
+            <span />
+          </span>
+        </button>
       </div>
 
       {/* MOBILE MENU */}
@@ -152,87 +139,111 @@ export default function SiteHeader() {
             : "talkly-mobile-menu"
         }
       >
-        <nav
-          aria-label="TALKLY 모바일 메뉴"
-          className="talkly-mobile-menu-inner"
-        >
-          <MobileNavLink
-            href="/#about"
-            onClick={closeMobileMenu}
+        <div className="talkly-mobile-menu-content">
+          <nav
+            aria-label="TALKLY 모바일 메뉴"
+            className="talkly-mobile-nav"
           >
-            토클리소개
-          </MobileNavLink>
+            <MobileNavLink
+              href="/#about"
+              onClick={closeMobileMenu}
+            >
+              토클리소개
+            </MobileNavLink>
 
-          <MobileNavLink
-            href="/curriculum"
-            onClick={closeMobileMenu}
-          >
-            교육센터
-          </MobileNavLink>
+            <MobileNavLink
+              href="/curriculum"
+              onClick={closeMobileMenu}
+            >
+              교육센터
+            </MobileNavLink>
 
-          <MobileNavLink
-            href="/level-test"
-            onClick={closeMobileMenu}
-          >
-            레벨테스트
-          </MobileNavLink>
+            <MobileNavLink
+              href="/level-test"
+              onClick={closeMobileMenu}
+            >
+              레벨테스트
+            </MobileNavLink>
 
-          <MobileNavLink
-            href="/enroll"
-            onClick={closeMobileMenu}
-          >
-            수강신청
-          </MobileNavLink>
+            <MobileNavLink
+              href="/enroll"
+              onClick={closeMobileMenu}
+            >
+              수강신청
+            </MobileNavLink>
 
-          <MobileNavLink
-            href="/#ai"
-            onClick={closeMobileMenu}
-          >
-            TALKLY AI
-          </MobileNavLink>
+            <MobileNavLink
+              href="/#ai"
+              onClick={closeMobileMenu}
+            >
+              TALKLY AI
+            </MobileNavLink>
 
-          <div className="talkly-mobile-divider" />
+            <div className="talkly-mobile-divider" />
 
-          <div className="talkly-mobile-section-title">
-            인포메이션
+            <div className="talkly-mobile-section-title">
+              INFORMATION
+            </div>
+
+            <MobileNavLink
+              href="/notice"
+              onClick={closeMobileMenu}
+              secondary
+            >
+              공지사항
+            </MobileNavLink>
+
+            <MobileNavLink
+              href="/#reviews"
+              onClick={closeMobileMenu}
+              secondary
+            >
+              수업후기
+            </MobileNavLink>
+
+            <MobileNavLink
+              href="/consultation"
+              onClick={closeMobileMenu}
+              secondary
+            >
+              1:1 상담
+            </MobileNavLink>
+          </nav>
+
+          {/* MOBILE AUTH */}
+          <div className="talkly-mobile-auth">
+            <HomeAuthMenu />
           </div>
-
-          <MobileNavLink
-            href="/notice"
-            onClick={closeMobileMenu}
-            secondary
-          >
-            공지사항
-          </MobileNavLink>
-
-          <MobileNavLink
-            href="/#reviews"
-            onClick={closeMobileMenu}
-            secondary
-          >
-            수업후기
-          </MobileNavLink>
-
-          <MobileNavLink
-            href="/consultation"
-            onClick={closeMobileMenu}
-            secondary
-          >
-            1:1 상담
-          </MobileNavLink>
-        </nav>
+        </div>
       </div>
 
       <style jsx global>{`
         .talkly-header-inner {
-          width: min(1380px, calc(100% - 40px));
+          width: min(
+            1380px,
+            calc(100% - 40px)
+          );
           min-height: 88px;
           margin: 0 auto;
 
           display: grid;
-          grid-template-columns: 220px 1fr auto;
+          grid-template-columns:
+            220px 1fr auto;
           align-items: center;
           gap: 26px;
+        }
+
+        .talkly-logo-link {
+          display: inline-flex;
+          align-items: center;
+          width: fit-content;
+          text-decoration: none;
+        }
+
+        .talkly-header-logo {
+          width: auto;
+          height: 62px;
+          object-fit: contain;
         }
 
         .talkly-site-nav {
@@ -255,29 +266,42 @@ export default function SiteHeader() {
           display: inline-flex;
           min-height: 44px;
           padding: 0 13px;
+
           align-items: center;
           gap: 5px;
+
           border-radius: 9px;
+
           color: #1b2a4a;
+
           font-size: 14px;
           font-weight: 800;
           white-space: nowrap;
+
           cursor: default;
+        }
+
+        .talkly-info-arrow {
+          font-size: 10px;
         }
 
         .talkly-info-dropdown {
           position: absolute;
           top: calc(100% + 6px);
           left: 50%;
-          transform: translateX(-50%);
+
           width: 170px;
           padding: 8px;
+
+          transform: translateX(-50%);
 
           border: 1px solid #e4e7ec;
           border-radius: 12px;
 
           background: #ffffff;
-          box-shadow: 0 18px 45px
+
+          box-shadow:
+            0 18px 45px
             rgba(15, 23, 42, 0.12);
 
           opacity: 0;
@@ -294,13 +318,16 @@ export default function SiteHeader() {
           opacity: 1;
           visibility: visible;
           pointer-events: auto;
-          transform: translateX(-50%)
+
+          transform:
+            translateX(-50%)
             translateY(2px);
         }
 
         .talkly-info-dropdown a {
           display: flex;
           align-items: center;
+
           min-height: 42px;
           padding: 0 12px;
 
@@ -318,13 +345,17 @@ export default function SiteHeader() {
           color: #2f6fed;
         }
 
-        .talkly-header-actions {
+        .talkly-desktop-auth {
           display: flex;
           justify-content: flex-end;
           align-items: center;
-          gap: 10px;
         }
 
+        /*
+         * MOBILE BUTTON
+         *
+         * PC에서는 완전히 숨김
+         */
         .talkly-mobile-menu-button {
           display: none;
 
@@ -335,25 +366,18 @@ export default function SiteHeader() {
           align-items: center;
           justify-content: center;
 
-          border: 1px solid #dfe4ec;
-          border-radius: 11px;
+          border: 1px solid #dce3ed;
+          border-radius: 12px;
 
           background: #ffffff;
-          color: #0a1f44;
 
           cursor: pointer;
         }
 
-        .talkly-mobile-menu-button:hover {
-          background: #f5f8ff;
-          border-color: #cbd5e1;
-        }
-
         .talkly-hamburger {
-          position: relative;
-
           display: flex;
-          width: 20px;
+
+          width: 21px;
           height: 16px;
 
           flex-direction: column;
@@ -363,10 +387,11 @@ export default function SiteHeader() {
         .talkly-hamburger span {
           display: block;
 
-          width: 20px;
+          width: 21px;
           height: 2px;
 
           border-radius: 999px;
+
           background: #0a1f44;
 
           transform-origin: center;
@@ -376,41 +401,87 @@ export default function SiteHeader() {
             opacity 0.18s ease;
         }
 
-        .talkly-hamburger-open span:nth-child(1) {
-          transform: translateY(7px)
+        .talkly-hamburger-open
+          span:nth-child(1) {
+          transform:
+            translateY(7px)
             rotate(45deg);
         }
 
-        .talkly-hamburger-open span:nth-child(2) {
+        .talkly-hamburger-open
+          span:nth-child(2) {
           opacity: 0;
         }
 
-        .talkly-hamburger-open span:nth-child(3) {
-          transform: translateY(-7px)
+        .talkly-hamburger-open
+          span:nth-child(3) {
+          transform:
+            translateY(-7px)
             rotate(-45deg);
         }
 
+        /*
+         * MOBILE MENU
+         */
         .talkly-mobile-menu {
           display: none;
         }
 
+        /*
+         * TABLET / MOBILE
+         */
         @media (max-width: 1050px) {
           .talkly-header-inner {
-            grid-template-columns: 1fr auto;
-            gap: 14px;
+            width: calc(100% - 32px);
+            min-height: 78px;
+
+            display: flex;
+
+            justify-content:
+              space-between;
+
+            align-items: center;
+
+            gap: 16px;
           }
 
+          /*
+           * PC 메뉴 숨김
+           */
           .talkly-site-nav {
             display: none !important;
           }
 
-          .talkly-header-actions {
-            min-width: 0;
+          /*
+           * 핵심:
+           * 모바일 헤더에서는
+           * HomeAuthMenu 자체를 숨긴다.
+           */
+          .talkly-desktop-auth {
+            display: none !important;
           }
 
+          /*
+           * 햄버거 표시
+           */
           .talkly-mobile-menu-button {
-            display: inline-flex;
+            display: inline-flex !important;
             flex: 0 0 auto;
+          }
+
+          /*
+           * 로고가 버튼을 밀어내지 않도록
+           * 최대 폭 제한
+           */
+          .talkly-logo-link {
+            min-width: 0;
+            max-width:
+              calc(100% - 60px);
+          }
+
+          .talkly-header-logo {
+            height: 52px;
+            max-width: 180px;
           }
 
           .talkly-mobile-menu {
@@ -419,38 +490,48 @@ export default function SiteHeader() {
             max-height: 0;
             overflow: hidden;
 
+            border-top:
+              0 solid #eef1f6;
+
             background: #ffffff;
-            border-top: 0 solid #eef1f6;
 
             opacity: 0;
 
             transition:
-              max-height 0.25s ease,
+              max-height 0.28s ease,
               opacity 0.18s ease,
-              border-top-width 0.18s ease;
+              border-top-width
+                0.18s ease;
           }
 
           .talkly-mobile-menu-open {
-            max-height: 650px;
+            max-height: 850px;
+
             border-top-width: 1px;
+
             opacity: 1;
           }
 
-          .talkly-mobile-menu-inner {
+          .talkly-mobile-menu-content {
             width: min(
-              100% - 36px,
-              720px
+              720px,
+              calc(100% - 32px)
             );
 
             margin: 0 auto;
-            padding: 12px 0 20px;
 
+            padding:
+              12px 0 22px;
+          }
+
+          .talkly-mobile-nav {
             display: grid;
-            gap: 4px;
+            gap: 3px;
           }
 
           .talkly-mobile-nav-link {
             display: flex;
+
             min-height: 48px;
             padding: 0 14px;
 
@@ -473,6 +554,7 @@ export default function SiteHeader() {
 
           .talkly-mobile-nav-link-secondary {
             min-height: 44px;
+
             padding-left: 22px;
 
             color: #475467;
@@ -483,58 +565,90 @@ export default function SiteHeader() {
 
           .talkly-mobile-divider {
             height: 1px;
-            margin: 8px 0;
+
+            margin: 9px 0;
 
             background: #eef1f6;
           }
 
           .talkly-mobile-section-title {
-            padding: 7px 14px 5px;
+            padding:
+              7px 14px 5px;
 
             color: #98a2b3;
 
             font-size: 11px;
             font-weight: 900;
+
             letter-spacing: 0.08em;
+          }
+
+          /*
+           * 모바일 로그인 영역
+           */
+          .talkly-mobile-auth {
+            display: flex;
+
+            margin-top: 14px;
+            padding-top: 18px;
+
+            justify-content: center;
+
+            border-top:
+              1px solid #eef1f6;
+          }
+
+          /*
+           * HomeAuthMenu가 가진
+           * 최소 폭도 메뉴 내부에서는
+           * 충분한 공간이 있으므로 그대로 사용
+           */
+          .talkly-mobile-auth > * {
+            max-width: 100%;
           }
         }
 
+        /*
+         * SMARTPHONE
+         */
         @media (max-width: 640px) {
           .talkly-header-inner {
             width: calc(100% - 24px);
             min-height: 72px;
-            gap: 8px;
           }
 
           .talkly-header-logo {
-            height: 46px !important;
-          }
-
-          .talkly-header-actions {
-            gap: 6px;
+            height: 46px;
+            max-width: 145px;
           }
 
           .talkly-mobile-menu-button {
             width: 42px;
             height: 42px;
+
+            border-radius: 11px;
           }
 
-          .talkly-mobile-menu-inner {
+          .talkly-mobile-menu-content {
             width: calc(100% - 24px);
           }
         }
 
-        @media (max-width: 400px) {
+        /*
+         * 아주 작은 스마트폰
+         */
+        @media (max-width: 380px) {
           .talkly-header-inner {
-            width: calc(100% - 18px);
+            width: calc(100% - 20px);
           }
 
           .talkly-header-logo {
-            height: 42px !important;
+            height: 42px;
+            max-width: 132px;
           }
 
-          .talkly-mobile-menu-inner {
-            width: calc(100% - 18px);
+          .talkly-mobile-menu-content {
+            width: calc(100% - 20px);
           }
         }
       `}</style>
@@ -557,7 +671,9 @@ function NavLink({
         display: "inline-flex",
         minHeight: "44px",
         padding: "0 13px",
+
         alignItems: "center",
+
         borderRadius: "9px",
 
         color: "#1b2a4a",
