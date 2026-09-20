@@ -4,6 +4,7 @@ import HomeAuthMenu from "@/components/HomeAuthMenu";
 import HomeEnrollActions from "@/components/HomeEnrollActions";
 import HomeTeachers from "@/components/HomeTeachers";
 import HomeClassMenu from "@/components/HomeClassMenu";
+import HomeMobileMenu from "@/components/HomeMobileMenu";
 
 const reasons = [
   {
@@ -274,7 +275,11 @@ export default function Home() {
             </div>
           </nav>
 
-          <HomeAuthMenu />
+          <div className="talkly-home-desktop-auth">
+            <HomeAuthMenu />
+          </div>
+
+          <HomeMobileMenu />
         </div>
       </header>
 
@@ -1377,10 +1382,17 @@ export default function Home() {
 
         @media (max-width: 1040px) {
           .talkly-main-header {
-            grid-template-columns: 190px 1fr auto !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            gap: 16px !important;
           }
 
           .talkly-desktop-nav {
+            display: none !important;
+          }
+
+          .talkly-home-desktop-auth {
             display: none !important;
           }
 
