@@ -258,9 +258,7 @@ export default function LevelTestRequestForm({
     setErrorMessage("");
     setSuccessMessage("");
 
-    if (
-      !studentName.trim()
-    ) {
+    if (!studentName.trim()) {
       setErrorMessage(
         "학생 이름을 입력해주세요."
       );
@@ -305,321 +303,69 @@ export default function LevelTestRequestForm({
     setLoading(true);
 
     try {
-      const supabase =
-        createClient();
-
-      const {
-        data: { user },
-        error: userError,
-      } =
-        await supabase.auth.getUser();
-
-      if (
-        userError ||
-        !user
-      ) {
-        throw new Error(
-          "로그인 정보를 확인할 수 없습니다."
-        );
-      }
-
-      if (
-        user.id !==
-        currentUserId
-      ) {
-        throw new Error(
-          "현재 로그인한 사용자 정보를 확인할 수 없습니다."
-        );
-      }
-
-      const {
-        data: profile,
-        error: profileError,
-      } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (
-        profileError ||
-        !profile ||
-        (profile.role !== "parent" &&
-          profile.role !== "student")
-      ) {
-        throw new Error(
-          "레벨테스트 이용 권한을 확인할 수 없습니다."
-        );
-      }
-
-      if (profile.role !== userRole) {
-        throw new Error(
-          "로그인 역할 정보가 일치하지 않습니다."
-        );
-      }
-
-      let childIdToSave:
-        | number
-        | null = null;
-
-      let studentUserId:
-        | string
-        | null = null;
-
-      if (
-        studentMode ===
-        "existing"
-      ) {
-        if (!selectedChild) {
-          throw new Error(
-            "등록된 자녀를 선택해주세요."
-          );
-        }
-
-        let childQuery = supabase
-          .from("children")
-          .select(`
-            id,
-            parent_user_id,
-            student_user_id,
-            linked_student_user_id,
-            is_active
-          `)
-          .eq(
-            "id",
-            selectedChild.id
-          )
-          .eq(
-            "is_active",
-            true
-          );
-
-        if (userRole === "parent") {
-          childQuery = childQuery.eq(
-            "parent_user_id",
-            parentUserId
-          );
-        }
-
-        if (userRole === "student") {
-          childQuery = childQuery.or(
-            `student_user_id.eq.${currentUserId},linked_student_user_id.eq.${currentUserId}`
-          );
-        }
-
-        const {
-          data: childCheck,
-          error: childCheckError,
-        } = await childQuery.maybeSingle();
-
-        if (
-          childCheckError ||
-          !childCheck
-        ) {
-          throw new Error(
-            "학생 정보를 확인할 수 없습니다."
-          );
-        }
-
-        if (
-          childCheck.parent_user_id !==
-          parentUserId
-        ) {
-          throw new Error(
-            "연결된 학부모 정보를 확인할 수 없습니다."
-          );
-        }
-
-        childIdToSave =
-          childCheck.id;
-
-        studentUserId =
-          userRole === "student"
-            ? currentUserId
-            : childCheck.student_user_id ||
-              childCheck.linked_student_user_id ||
-              null;
-      }
-
-      if (
-        userRole === "student" &&
-        studentMode === "direct"
-      ) {
-        studentUserId = currentUserId;
-      }
-
-      /*
-       * 동일 학부모가 동일 학생명으로
-       * 진행 중인 레벨테스트가 있는지 확인
-       */
-      let existingQuery =
-        supabase
-          .from(
-            "level_tests"
-          )
-          .select(`
-            id,
-            status
-          `)
-          .eq(
-            "parent_user_id",
-            parentUserId
-          )
-          .not(
-            "status",
-            "eq",
-            "completed"
-          )
-          .order(
-            "created_at",
-            {
-              ascending: false,
-            }
-          )
-          .limit(1);
-
-      if (
-        childIdToSave !==
-        null
-      ) {
-        existingQuery =
-          existingQuery.eq(
-            "child_id",
-            childIdToSave
-          );
-      } else {
-        existingQuery =
-          existingQuery.eq(
-            "student_name",
-            studentName.trim()
-          );
-      }
-
-      const {
-        data:
-          existingTest,
-        error:
-          existingTestError,
-      } =
-        await existingQuery.maybeSingle();
-
-      if (
-        existingTestError
-      ) {
-        throw new Error(
-          `기존 레벨테스트 확인 실패: ${existingTestError.message}`
-        );
-      }
-
-      if (existingTest) {
-        router.push(
-          `/parent/level-tests/${existingTest.id}`
-        );
-        return;
-      }
-
-      const now =
-        new Date().toISOString();
-
-      const parsedAge =
-        age.trim()
-          ? Number(age)
-          : birthDate
-          ? calculateAge(
-              birthDate
-            )
-          : null;
-
-      const {
-        data:
-          createdTest,
-        error:
-          createError,
-      } = await supabase
-        .from(
-          "level_tests"
-        )
-        .insert({
-          child_id:
-            childIdToSave,
-
-          student_user_id:
-            studentUserId,
-
-          parent_user_id:
-            parentUserId,
-
-          student_name:
-            studentName.trim(),
-
-          student_birth_date:
-            birthDate || null,
-
-          student_age:
-            parsedAge,
-
-          school_name:
-            schoolName.trim() ||
-            null,
-
-          grade:
-            grade.trim(),
-
-          learning_history:
-            learningHistory.trim() ||
-            null,
-
-          learning_goal:
-            learningGoal.trim() ||
-            null,
-
-          status:
-            "requested",
-
-          test_type:
-            "ai",
-
-          target_group:
+      const response = await fetch(
+        "/api/level-tests/request",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            studentMode,
+            childId:
+              studentMode === "existing" &&
+              childId
+                ? Number(childId)
+                : null,
+            studentName:
+              studentName.trim(),
+            birthDate:
+              birthDate || null,
+            age: age.trim()
+              ? Number(age)
+              : null,
+            grade: grade.trim(),
+            schoolName:
+              schoolName.trim() || null,
+            learningHistory:
+              learningHistory.trim() ||
+              null,
+            learningGoal:
+              learningGoal.trim() || null,
             targetGroup,
+          }),
+        }
+      );
 
-          ai_status:
-            "pending",
+      const result = (await response.json()) as {
+        success?: boolean;
+        levelTestId?: number;
+        existing?: boolean;
+        role?: "parent" | "student";
+        error?: string;
+      };
 
-          interview_required:
-            false,
-
-          interview_status:
-            null,
-
-          created_at:
-            now,
-
-          updated_at:
-            now,
-        })
-        .select("id")
-        .maybeSingle();
-
-      if (createError) {
+      if (
+        !response.ok ||
+        !result.levelTestId
+      ) {
         throw new Error(
-          `레벨테스트 신청 실패: ${createError.message} / code: ${createError.code}`
-        );
-      }
-
-      if (!createdTest) {
-        throw new Error(
-          "신청은 처리되었지만 생성된 레벨테스트 정보를 확인할 수 없습니다."
+          result.error ||
+            "레벨테스트 신청에 실패했습니다."
         );
       }
 
       setSuccessMessage(
-        "AI 레벨테스트 신청이 완료되었습니다."
+        result.existing
+          ? "진행 중인 AI 레벨테스트로 이동합니다."
+          : "AI 레벨테스트 신청이 완료되었습니다."
       );
 
       router.push(
-        userRole === "student"
-          ? `/parent/level-tests/${createdTest.id}?studentMode=1`
-          : `/parent/level-tests/${createdTest.id}`
+        result.role === "student"
+          ? `/parent/level-tests/${result.levelTestId}?studentMode=1`
+          : `/parent/level-tests/${result.levelTestId}`
       );
     } catch (error) {
       console.error(
