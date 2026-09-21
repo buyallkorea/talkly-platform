@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: [
     "pdf-to-img",
     "pdfjs-dist",
+    "@napi-rs/canvas",
   ],
 };
 
