@@ -1,6 +1,6 @@
 export default function EbookTestPage() {
   const ebookUrl =
-    "https://www.esmartcampus.co.kr/ebook/efutureDiscovery_1_1/index.jsp";
+  "https://www.alist.co.kr/ebook/ebook_index.asp?bcode=01HF0002SB";
 
   return (
     <main
