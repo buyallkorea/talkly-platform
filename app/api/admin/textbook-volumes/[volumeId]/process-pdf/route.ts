@@ -4,10 +4,6 @@ import {
 } from "next/server";
 
 import {
-  pdf,
-} from "pdf-to-img";
-
-import {
   createClient,
 } from "@/lib/supabase-server";
 
@@ -15,8 +11,7 @@ import {
   createAdminClient,
 } from "@/lib/supabase-admin";
 
-export const runtime =
-  "nodejs";
+export const runtime = "nodejs";
 
 type RouteContext = {
   params: Promise<{
@@ -32,6 +27,53 @@ type TextbookPageRow = {
   page_width: number | null;
   page_height: number | null;
 };
+
+type CanvasModule =
+  typeof import("@napi-rs/canvas");
+
+/*
+ * =============================================================
+ * PDF.js Node Canvas 환경 구성
+ *
+ * 중요:
+ * pdfjs-dist를 import하기 전에
+ * DOMMatrix / ImageData / Path2D를 등록해야 합니다.
+ * =============================================================
+ */
+function installCanvasGlobals(
+  canvasModule: CanvasModule
+) {
+  const globalObject =
+    globalThis as unknown as {
+      DOMMatrix?: unknown;
+      ImageData?: unknown;
+      Path2D?: unknown;
+    };
+
+  if (
+    typeof globalObject.DOMMatrix ===
+    "undefined"
+  ) {
+    globalObject.DOMMatrix =
+      canvasModule.DOMMatrix as unknown;
+  }
+
+  if (
+    typeof globalObject.ImageData ===
+    "undefined"
+  ) {
+    globalObject.ImageData =
+      canvasModule.ImageData as unknown;
+  }
+
+  if (
+    typeof globalObject.Path2D ===
+    "undefined"
+  ) {
+    globalObject.Path2D =
+      canvasModule.Path2D as unknown;
+  }
+}
 
 export async function POST(
   request: NextRequest,
@@ -81,8 +123,7 @@ export async function POST(
     if (
       profileError ||
       !profile ||
-      profile.role !==
-        "admin"
+      profile.role !== "admin"
     ) {
       return NextResponse.json(
         {
@@ -98,7 +139,7 @@ export async function POST(
 
     /*
      * =========================================================
-     * 2. Volume ID
+     * 2. Volume ID 확인
      * =========================================================
      */
     const {
@@ -107,9 +148,7 @@ export async function POST(
       await context.params;
 
     const volumeId =
-      Number(
-        volumeIdParam
-      );
+      Number(volumeIdParam);
 
     if (
       !Number.isInteger(
@@ -131,13 +170,11 @@ export async function POST(
 
     /*
      * =========================================================
-     * 3. 요청값
+     * 3. 요청값 확인
      *
-     * PDF 자체를 API로 보내지 않습니다.
-     * 브라우저가 먼저 Storage에 올리고,
-     * 여기에는 Storage path만 전달합니다.
-     *
-     * 대용량 PDF의 Vercel payload 제한을 피하기 위한 구조입니다.
+     * PDF 파일 자체는 이 API로 보내지 않습니다.
+     * 브라우저에서 Storage에 직접 업로드한 뒤
+     * Storage path만 전달합니다.
      * =========================================================
      */
     const body =
@@ -186,7 +223,7 @@ export async function POST(
     }
 
     /*
-     * 우리가 사용하는 Volume 전용 Storage 경로인지 확인
+     * Volume 전용 Storage 경로인지 검증
      */
     const expectedPrefix =
       `textbooks/${textbookId}/volumes/${volumeId}/original/`;
@@ -230,7 +267,9 @@ export async function POST(
 
     /*
      * =========================================================
-     * 4. Volume 조회 및 대표교재 소속 검증
+     * 4. Volume 조회
+     *
+     * volumeId가 실제로 해당 대표교재에 속하는지 확인합니다.
      * =========================================================
      */
     const {
@@ -252,7 +291,10 @@ export async function POST(
           status,
           is_active
         `)
-        .eq("id", volumeId)
+        .eq(
+          "id",
+          volumeId
+        )
         .eq(
           "textbook_id",
           textbookId
@@ -277,14 +319,12 @@ export async function POST(
 
     /*
      * =========================================================
-     * 5. 현재 Volume 페이지 확인
+     * 5. 기존 페이지 확인
      *
-     * 이번 단계에서는 최초 등록만 허용합니다.
+     * 현재 단계에서는 최초 PDF 등록만 허용합니다.
      *
-     * 이미 페이지와 Hotspot이 존재하는 교재를 무심코
-     * 재처리하여 수업자료가 깨지는 것을 막습니다.
-     *
-     * 추후 'PDF 교체' 기능은 별도의 안전한 흐름으로 만듭니다.
+     * 이미 페이지가 만들어진 Volume을 다시 처리하면
+     * 이후 Audio Hotspot 등이 깨질 수 있으므로 차단합니다.
      * =========================================================
      */
     const {
@@ -297,10 +337,13 @@ export async function POST(
         .from(
           "textbook_pages"
         )
-        .select("id", {
-          count: "exact",
-          head: true,
-        })
+        .select(
+          "id",
+          {
+            count: "exact",
+            head: true,
+          }
+        )
         .eq(
           "volume_id",
           volumeId
@@ -339,7 +382,7 @@ export async function POST(
 
     /*
      * =========================================================
-     * 6. Storage PDF 다운로드
+     * 6. Private Storage에서 PDF 다운로드
      * =========================================================
      */
     const {
@@ -374,138 +417,66 @@ export async function POST(
     const arrayBuffer =
       await fileData.arrayBuffer();
 
-    const pdfBuffer =
-      Buffer.from(
+    const pdfBytes =
+      new Uint8Array(
         arrayBuffer
       );
 
     /*
      * =========================================================
-     * 7. PDF 렌더링
+     * 7. @napi-rs/canvas 먼저 로드
+     *
+     * pdfjs-dist보다 반드시 먼저 실행되어야 합니다.
      * =========================================================
      */
-    const document =
-      await pdf(
-        pdfBuffer,
-        {
-          scale: 1.5,
-        }
+    const canvasModule =
+      await import(
+        "@napi-rs/canvas"
       );
 
-    let pageCount = 0;
-
-    const pageRows:
-      TextbookPageRow[] =
-      [];
-
-    const uploadedPaths:
-      string[] = [];
+    installCanvasGlobals(
+      canvasModule
+    );
 
     /*
      * =========================================================
-     * 8. 각 페이지를 PNG로 변환하여 Storage 저장
+     * 8. Canvas globals 구성 후 PDF.js 로드
      *
-     * 대표교재 단위가 아니라
-     * textbookId / volumeId 단위로 완전히 분리합니다.
+     * 정적 import를 사용하면 pdfjs-dist가 먼저 평가되어
+     * DOMMatrix is not defined 오류가 발생할 수 있습니다.
      * =========================================================
      */
-    for await (
-      const image of document
-    ) {
-      pageCount += 1;
-
-      const filename =
-        `page-${String(
-          pageCount
-        ).padStart(
-          3,
-          "0"
-        )}.png`;
-
-      const pageStoragePath =
-        `textbooks/${textbookId}/volumes/${volumeId}/pages/${filename}`;
-
-      const {
-        error:
-          uploadError,
-      } =
-        await adminClient.storage
-          .from(
-            "textbook-pages"
-          )
-          .upload(
-            pageStoragePath,
-            image,
-            {
-              contentType:
-                "image/png",
-
-              cacheControl:
-                "3600",
-
-              upsert:
-                true,
-            }
-          );
-
-      if (uploadError) {
-        /*
-         * 중간 실패 시 이번 처리에서 생성한
-         * 페이지 이미지만 정리합니다.
-         */
-        if (
-          uploadedPaths.length >
-          0
-        ) {
-          await adminClient.storage
-            .from(
-              "textbook-pages"
-            )
-            .remove(
-              uploadedPaths
-            );
-        }
-
-        return NextResponse.json(
-          {
-            success: false,
-            error:
-              `${pageCount}페이지 이미지 업로드 실패: ${uploadError.message}`,
-          },
-          {
-            status: 500,
-          }
-        );
-      }
-
-      uploadedPaths.push(
-        pageStoragePath
+    const pdfjs =
+      await import(
+        "pdfjs-dist/legacy/build/pdf.mjs"
       );
 
-      pageRows.push({
-        textbook_id:
-          textbookId,
-
-        volume_id:
-          volumeId,
-
-        page_number:
-          pageCount,
-
-        page_image_url:
-          pageStoragePath,
-
-        page_width:
-          null,
-
-        page_height:
-          null,
+    /*
+     * =========================================================
+     * 9. PDF 문서 로드
+     * =========================================================
+     */
+    const loadingTask =
+      pdfjs.getDocument({
+        data: pdfBytes,
+        disableFontFace:
+          false,
+        useSystemFonts:
+          true,
       });
-    }
+
+    const pdfDocument =
+      await loadingTask.promise;
+
+    const pageCount =
+      pdfDocument.numPages;
 
     if (
-      pageCount === 0
+      !pageCount ||
+      pageCount <= 0
     ) {
+      await pdfDocument.destroy();
+
       return NextResponse.json(
         {
           success: false,
@@ -520,13 +491,215 @@ export async function POST(
 
     /*
      * =========================================================
-     * 9. textbook_pages 저장
+     * 10. 페이지 렌더링 준비
+     * =========================================================
+     */
+    const pageRows:
+      TextbookPageRow[] =
+      [];
+
+    const uploadedPaths:
+      string[] =
+      [];
+
+    try {
+      /*
+       * =======================================================
+       * 11. PDF 페이지 → PNG
+       * =======================================================
+       */
+      for (
+        let pageNumber = 1;
+        pageNumber <=
+        pageCount;
+        pageNumber += 1
+      ) {
+        const page =
+          await pdfDocument.getPage(
+            pageNumber
+          );
+
+        /*
+         * 기존 TALKLY PDF 처리와 동일하게
+         * scale 1.5를 사용합니다.
+         */
+        const viewport =
+          page.getViewport({
+            scale: 1.5,
+          });
+
+        const width =
+          Math.ceil(
+            viewport.width
+          );
+
+        const height =
+          Math.ceil(
+            viewport.height
+          );
+
+        /*
+         * Node Native Canvas 생성
+         */
+        const canvas =
+          canvasModule.createCanvas(
+            width,
+            height
+          );
+
+        const context2d =
+          canvas.getContext(
+            "2d"
+          );
+
+        /*
+         * =====================================================
+         * pdfjs-dist 5.6.205 RenderParameters
+         *
+         * canvas와 canvasContext를 모두 전달합니다.
+         *
+         * PDF.js TypeScript 타입은 Browser Canvas를 기준으로
+         * 작성되어 있지만 실제 런타임에서는
+         * @napi-rs/canvas를 사용합니다.
+         * =====================================================
+         */
+        await page.render({
+          canvas:
+            canvas as never,
+
+          canvasContext:
+            context2d as never,
+
+          viewport,
+        }).promise;
+
+        /*
+         * PNG Buffer 생성
+         */
+        const imageBuffer =
+          canvas.toBuffer(
+            "image/png"
+          );
+
+        const filename =
+          `page-${String(
+            pageNumber
+          ).padStart(
+            3,
+            "0"
+          )}.png`;
+
+        /*
+         * Volume별로 Storage 경로를 완전히 분리합니다.
+         */
+        const pageStoragePath =
+          `textbooks/${textbookId}/volumes/${volumeId}/pages/${filename}`;
+
+        /*
+         * =====================================================
+         * 12. PNG Storage 업로드
+         * =====================================================
+         */
+        const {
+          error:
+            uploadError,
+        } =
+          await adminClient.storage
+            .from(
+              "textbook-pages"
+            )
+            .upload(
+              pageStoragePath,
+              imageBuffer,
+              {
+                contentType:
+                  "image/png",
+
+                cacheControl:
+                  "3600",
+
+                upsert:
+                  true,
+              }
+            );
+
+        if (
+          uploadError
+        ) {
+          throw new Error(
+            `${pageNumber}페이지 이미지 업로드 실패: ${uploadError.message}`
+          );
+        }
+
+        uploadedPaths.push(
+          pageStoragePath
+        );
+
+        pageRows.push({
+          textbook_id:
+            textbookId,
+
+          volume_id:
+            volumeId,
+
+          page_number:
+            pageNumber,
+
+          page_image_url:
+            pageStoragePath,
+
+          page_width:
+            width,
+
+          page_height:
+            height,
+        });
+
+        /*
+         * PDF.js 페이지 리소스 정리
+         */
+        page.cleanup();
+      }
+    } catch (
+      renderError
+    ) {
+      /*
+       * 렌더링 또는 Storage 업로드 도중 실패한 경우
+       * 이번 작업에서 생성한 페이지 이미지만 제거합니다.
+       */
+      if (
+        uploadedPaths.length >
+        0
+      ) {
+        await adminClient.storage
+          .from(
+            "textbook-pages"
+          )
+          .remove(
+            uploadedPaths
+          );
+      }
+
+      await pdfDocument.destroy();
+
+      throw renderError;
+    }
+
+    /*
+     * PDF 리소스 해제
+     */
+    await pdfDocument.destroy();
+
+    /*
+     * =========================================================
+     * 13. textbook_pages DB 저장
+     *
+     * 현재 DB:
+     *
+     * UNIQUE (volume_id, page_number)
+     * WHERE volume_id IS NOT NULL
      *
      * Volume 최초 등록만 허용하므로 INSERT를 사용합니다.
-     *
-     * UNIQUE:
-     * (volume_id, page_number)
-     * WHERE volume_id IS NOT NULL
      * =========================================================
      */
     const {
@@ -553,8 +726,8 @@ export async function POST(
       pageInsertError
     ) {
       /*
-       * DB 저장 실패 시
-       * 이번에 생성한 페이지 이미지 제거
+       * DB 저장 실패 시 이번 작업에서 만든
+       * Storage 페이지 이미지를 정리합니다.
        */
       if (
         uploadedPaths.length >
@@ -583,9 +756,10 @@ export async function POST(
 
     /*
      * =========================================================
-     * 10. Volume 정보 업데이트
+     * 14. textbook_volumes 업데이트
      *
-     * 대표 textbooks.page_count는 건드리지 않습니다.
+     * 중요:
+     * 대표 textbooks.page_count는 변경하지 않습니다.
      * =========================================================
      */
     const {
@@ -639,14 +813,15 @@ export async function POST(
       volumeUpdateError
     ) {
       /*
-       * 여기까지 왔으면 페이지 DB가 생성됐으므로
-       * 무조건 자동 삭제하지 않습니다.
+       * 여기까지 왔으면 textbook_pages가 이미 정상 생성됐습니다.
        *
-       * 데이터 손실보다 관리자 확인이 안전합니다.
+       * 데이터 손실 방지를 위해 페이지를 자동 삭제하지 않고
+       * 오류만 반환합니다.
        */
       return NextResponse.json(
         {
           success: false,
+
           error:
             `페이지 생성은 완료되었지만 Volume 정보 업데이트에 실패했습니다: ${volumeUpdateError.message}`,
 
@@ -664,7 +839,7 @@ export async function POST(
 
     /*
      * =========================================================
-     * 11. 완료
+     * 15. 완료
      * =========================================================
      */
     return NextResponse.json({
