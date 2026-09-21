@@ -13,6 +13,8 @@ import {
   createAdminClient,
 } from "@/lib/supabase-admin";
 
+import VolumePdfManager from "./VolumePdfManager";
+
 type PageProps = {
   params: Promise<{
     id: string;
@@ -83,14 +85,14 @@ export default async function TextbookVolumePage({
     redirect("/");
   }
 
-  /*
-   * =========================================================
-   * 대표교재 + Volume 조회
-   * =========================================================
-   */
   const adminClient =
     createAdminClient();
 
+  /*
+   * =========================================================
+   * 대표교재 / Volume / 페이지 조회
+   * =========================================================
+   */
   const [
     textbookResult,
     volumeResult,
@@ -192,6 +194,10 @@ export default async function TextbookVolumePage({
     notFound();
   }
 
+  const actualPageCount =
+    pageCountResult.count ??
+    0;
+
   return (
     <main
       style={{
@@ -224,66 +230,112 @@ export default async function TextbookVolumePage({
         style={{
           marginTop:
             "22px",
+          display:
+            "flex",
+          justifyContent:
+            "space-between",
+          alignItems:
+            "flex-start",
+          gap: "20px",
+          flexWrap:
+            "wrap",
         }}
       >
-        <div
-          style={{
-            color:
-              "#2f6fed",
-            fontSize:
-              "12px",
-            fontWeight:
-              900,
-            letterSpacing:
-              "0.08em",
-          }}
-        >
-          TEXTBOOK VOLUME
-        </div>
-
-        <h1
-          style={{
-            margin:
-              "10px 0 0",
-            color:
-              "#101828",
-            fontSize:
-              "36px",
-            lineHeight:
-              1.2,
-            letterSpacing:
-              "-0.04em",
-          }}
-        >
-          {
-            volume.display_title
-          }
-        </h1>
-
-        <p
-          style={{
-            margin:
-              "13px 0 0",
-            color:
-              "#667085",
-            fontSize:
-              "14px",
-            lineHeight:
-              1.7,
-          }}
-        >
-          대표 교재{" "}
-          <strong
+        <div>
+          <div
             style={{
               color:
-                "#344054",
+                "#2f6fed",
+              fontSize:
+                "12px",
+              fontWeight:
+                900,
+              letterSpacing:
+                "0.08em",
             }}
           >
-            {textbook.title}
-          </strong>
-          의 권별 수업자료를
-          관리합니다.
-        </p>
+            TEXTBOOK VOLUME
+          </div>
+
+          <h1
+            style={{
+              margin:
+                "10px 0 0",
+              color:
+                "#101828",
+              fontSize:
+                "36px",
+              lineHeight:
+                1.2,
+              letterSpacing:
+                "-0.04em",
+            }}
+          >
+            {
+              volume.display_title
+            }
+          </h1>
+
+          <p
+            style={{
+              margin:
+                "13px 0 0",
+              color:
+                "#667085",
+              fontSize:
+                "14px",
+              lineHeight:
+                1.7,
+            }}
+          >
+            대표 교재{" "}
+            <strong
+              style={{
+                color:
+                  "#344054",
+              }}
+            >
+              {textbook.title}
+            </strong>
+            의 실제 수업용
+            자료를 권별로
+            관리합니다.
+          </p>
+        </div>
+
+        <span
+          style={{
+            minHeight:
+              "28px",
+            padding:
+              "0 10px",
+            display:
+              "inline-flex",
+            alignItems:
+              "center",
+            borderRadius:
+              "999px",
+            background:
+              volume.status ===
+              "ready"
+                ? "#ecfdf3"
+                : "#fff7ed",
+            color:
+              volume.status ===
+              "ready"
+                ? "#027a48"
+                : "#b54708",
+            fontSize:
+              "11px",
+            fontWeight:
+              900,
+          }}
+        >
+          {volume.status ===
+          "ready"
+            ? "사용 가능"
+            : "작업 중"}
+        </span>
       </div>
 
       <section
@@ -305,7 +357,7 @@ export default async function TextbookVolumePage({
             display:
               "grid",
             gridTemplateColumns:
-              "repeat(auto-fit, minmax(160px, 1fr))",
+              "repeat(auto-fit, minmax(150px, 1fr))",
             gap: "12px",
           }}
         >
@@ -326,13 +378,13 @@ export default async function TextbookVolumePage({
           />
 
           <InfoCard
-            label="페이지"
+            label="DB 페이지"
             value={`${volume.page_count}페이지`}
           />
 
           <InfoCard
-            label="페이지 데이터"
-            value={`${pageCountResult.count ?? 0}건`}
+            label="실제 페이지 데이터"
+            value={`${actualPageCount}건`}
           />
 
           <InfoCard
@@ -346,6 +398,24 @@ export default async function TextbookVolumePage({
           />
         </div>
       </section>
+
+      <VolumePdfManager
+        textbookId={
+          textbook.id
+        }
+        volumeId={
+          volume.id
+        }
+        displayTitle={
+          volume.display_title
+        }
+        originalFileUrl={
+          volume.original_file_url
+        }
+        pageCount={
+          actualPageCount
+        }
+      />
 
       <section
         style={{
@@ -370,7 +440,7 @@ export default async function TextbookVolumePage({
               "18px",
           }}
         >
-          수업자료 관리
+          교재 오디오
         </h2>
 
         <p
@@ -385,78 +455,36 @@ export default async function TextbookVolumePage({
               1.7,
           }}
         >
-          다음 단계에서 이
-          화면에 권별 PDF 등록,
-          페이지 생성, MP3 ZIP
-          등록 및 Hotspot 자동
-          매칭 기능을 연결합니다.
+          MP3 ZIP과 Audio
+          Hotspot 자동 매칭은
+          PDF 페이지 구조가
+          정상적으로 생성되는
+          것을 확인한 다음
+          연결합니다.
         </p>
 
         <div
           style={{
             marginTop:
-              "20px",
-            padding:
               "18px",
+            padding:
+              "16px",
             border:
               "1px dashed #d0d5dd",
             borderRadius:
-              "11px",
+              "10px",
             background:
               "#f9fafb",
             color:
-              "#667085",
+              "#98a2b3",
             fontSize:
               "12px",
-            lineHeight:
-              1.8,
+            fontWeight:
+              800,
           }}
         >
-          <strong
-            style={{
-              color:
-                "#344054",
-            }}
-          >
-            현재 단계
-          </strong>
-          <br />
-          PDF 업로드: 다음 단계
-          <br />
-          MP3 ZIP 업로드: 다음 단계
-          <br />
-          E-Book 페이지 생성: 다음 단계
-          <br />
-          Audio Hotspot 자동 매칭: 다음 단계
+          MP3 ZIP 등록 — 다음 단계
         </div>
-
-        {volume.original_file_url && (
-          <div
-            style={{
-              marginTop:
-                "16px",
-              padding:
-                "12px",
-              borderRadius:
-                "9px",
-              background:
-                "#f8fafc",
-              color:
-                "#667085",
-              fontSize:
-                "10px",
-              lineHeight:
-                1.6,
-              wordBreak:
-                "break-all",
-            }}
-          >
-            Storage path:{" "}
-            {
-              volume.original_file_url
-            }
-          </div>
-        )}
       </section>
     </main>
   );
