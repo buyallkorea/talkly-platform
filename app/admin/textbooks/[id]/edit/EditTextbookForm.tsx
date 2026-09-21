@@ -49,6 +49,19 @@ type CurriculumLevel = {
   is_active: boolean;
 };
 
+type TextbookVolume = {
+  id: number;
+  textbook_id: number;
+  volume_code: string;
+  display_title: string;
+  sort_order: number;
+  original_file_url: string | null;
+  original_file_type: string | null;
+  page_count: number;
+  status: string;
+  is_active: boolean;
+};
+
 type Props = {
   textbook: Textbook;
   pageDataCount: number;
@@ -59,6 +72,7 @@ type Props = {
   coverImagePreviewUrl:
     | string
     | null;
+  volumes: TextbookVolume[];
 };
 
 const CATEGORY_OPTIONS = [
@@ -161,6 +175,7 @@ export default function EditTextbookForm({
   curriculumLevels,
   selectedCurriculumLevelIds,
   coverImagePreviewUrl,
+  volumes,
 }: Props) {
   const router =
     useRouter();
@@ -409,12 +424,6 @@ export default function EditTextbookForm({
       const supabase =
         createClient();
 
-      /*
-       * =====================================================
-       * 새 표지 이미지가 선택되었다면
-       * 먼저 Storage에 업로드
-       * =====================================================
-       */
       if (coverFile) {
         const uploadId =
           crypto.randomUUID();
@@ -456,11 +465,6 @@ export default function EditTextbookForm({
         }
       }
 
-      /*
-       * =====================================================
-       * DB 수정은 관리자 API에서 처리
-       * =====================================================
-       */
       const response =
         await fetch(
           `/api/admin/textbooks/${textbook.id}`,
@@ -505,10 +509,6 @@ export default function EditTextbookForm({
                   externalPurchaseUrl.trim() ||
                   null,
 
-                /*
-                 * 새 표지를 올리지 않았다면
-                 * 기존 path를 유지합니다.
-                 */
                 coverImageUrl:
                   newCoverPath ??
                   textbook.cover_image_url,
@@ -541,11 +541,6 @@ export default function EditTextbookForm({
       }
 
       if (!response.ok) {
-        /*
-         * DB 수정 실패 시
-         * 이번 요청에서 새로 업로드한
-         * 표지 파일만 정리합니다.
-         */
         if (newCoverPath) {
           await supabase.storage
             .from(
@@ -566,11 +561,6 @@ export default function EditTextbookForm({
         "교재 정보가 정상적으로 수정되었습니다."
       );
 
-      /*
-       * 새 표지 업로드 직후에는
-       * 브라우저 로컬 Preview를
-       * 그대로 보여줍니다.
-       */
       router.refresh();
     } catch (error) {
       console.error(
@@ -630,10 +620,11 @@ export default function EditTextbookForm({
               1.7,
           }}
         >
-          교재 기본정보,
+          대표 교재의 기본정보,
           표지 이미지,
-          커리큘럼 Grade와
-          판매정보를 관리합니다.
+          커리큘럼 Grade,
+          판매정보와 권별
+          수업자료를 관리합니다.
         </p>
       </div>
 
@@ -651,9 +642,6 @@ export default function EditTextbookForm({
           gap: "24px",
         }}
       >
-        {/* =================================================
-            기본정보
-        ================================================== */}
         <SectionBox
           title="기본 정보"
           description="교재명, 출판사 및 교재 분야를 관리합니다."
@@ -685,8 +673,7 @@ export default function EditTextbookForm({
                   event
                 ) => {
                   setTitle(
-                    event
-                      .target
+                    event.target
                       .value
                   );
                   setSuccessMessage(
@@ -722,8 +709,7 @@ export default function EditTextbookForm({
                   event
                 ) => {
                   setPublisher(
-                    event
-                      .target
+                    event.target
                       .value
                   );
                   setSuccessMessage(
@@ -759,8 +745,7 @@ export default function EditTextbookForm({
                   event
                 ) => {
                   setCategory(
-                    event
-                      .target
+                    event.target
                       .value
                   );
                   setSuccessMessage(
@@ -812,8 +797,7 @@ export default function EditTextbookForm({
                   event
                 ) => {
                   setStatus(
-                    event
-                      .target
+                    event.target
                       .value
                   );
                   setSuccessMessage(
@@ -935,12 +919,9 @@ export default function EditTextbookForm({
           </label>
         </SectionBox>
 
-        {/* =================================================
-            표지 이미지
-        ================================================== */}
         <SectionBox
           title="교재 표지 이미지"
-          description="학부모·학생 및 관리자 화면에서 보여줄 대표 이미지를 별도로 등록합니다."
+          description="대표 교재 소개에 사용할 표지 이미지입니다. 권별로 별도 표지를 등록할 필요는 없습니다."
         >
           <div
             style={{
@@ -1032,8 +1013,7 @@ export default function EditTextbookForm({
                   event
                 ) => {
                   const file =
-                    event
-                      .target
+                    event.target
                       .files?.[0] ??
                     null;
 
@@ -1071,9 +1051,10 @@ export default function EditTextbookForm({
                 }
               >
                 JPG, PNG, WEBP
-                권장. 교재 원본
-                PDF와는 별도로
-                저장됩니다.
+                권장. 기존에
+                등록한 대표 표지를
+                그대로 사용할 수
+                있습니다.
               </p>
 
               <div
@@ -1094,24 +1075,18 @@ export default function EditTextbookForm({
                     1.7,
                 }}
               >
-                원본 교재의 첫
-                페이지를 표지로
-                강제 사용하지
-                않습니다. 표지가
-                없는 경우에는
-                나중에 PDF 첫
-                페이지로 자동
-                생성하는 보조
-                기능을 추가할 수
-                있습니다.
+                권별 PDF와 MP3는
+                아래의 권별
+                수업자료에서
+                별도로 관리합니다.
+                대표 표지는 기존
+                교재 단위로
+                유지합니다.
               </div>
             </div>
           </div>
         </SectionBox>
 
-        {/* =================================================
-            TALKLY Grade
-        ================================================== */}
         <SectionBox
           title="적용 TALKLY Grade"
           description="실제 학교 학년이 아니라 영어 수준에 따라 이 교재를 사용할 수 있는 커리큘럼 Grade를 선택합니다."
@@ -1235,9 +1210,6 @@ export default function EditTextbookForm({
           </p>
         </SectionBox>
 
-        {/* =================================================
-            판매
-        ================================================== */}
         <SectionBox
           title="교재 판매"
           description="수강료와 별도로 결제되는 TALKLY 교재 판매 정보를 관리합니다."
@@ -1325,8 +1297,7 @@ export default function EditTextbookForm({
                 ) =>
                   setSalePrice(
                     formatPriceInput(
-                      event
-                        .target
+                      event.target
                         .value
                     )
                   )
@@ -1403,67 +1374,213 @@ export default function EditTextbookForm({
           </div>
         </SectionBox>
 
-        {/* =================================================
-            원본 콘텐츠
-        ================================================== */}
         <SectionBox
-          title="수업용 원본 콘텐츠"
-          description="현재 연결된 원본 파일 상태입니다. 이번 단계에서는 기존 원본 파일을 안전하게 유지합니다."
+          title="권별 수업자료"
+          description={`이 대표 교재에 등록된 ${volumes.length}권의 실제 수업용 PDF·오디오 자료를 권별로 관리합니다.`}
         >
-          <div
-            style={{
-              display:
-                "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit, minmax(160px, 1fr))",
-              gap: "12px",
-            }}
-          >
-            <FileInfo
-              label="파일 유형"
-              value={
-                textbook.original_file_type
-                  ? textbook.original_file_type.toUpperCase()
-                  : "-"
-              }
-            />
-
-            <FileInfo
-              label="교재 페이지"
-              value={`${textbook.page_count ?? 0}페이지`}
-            />
-
-            <FileInfo
-              label="페이지 데이터"
-              value={`${pageDataCount}건`}
-            />
-          </div>
-
-          {textbook.original_file_url && (
+          {volumes.length ===
+          0 ? (
             <div
               style={{
-                marginTop:
-                  "15px",
                 padding:
-                  "12px",
+                  "22px",
+                border:
+                  "1px dashed #d0d5dd",
                 borderRadius:
-                  "9px",
+                  "10px",
                 background:
-                  "#f8fafc",
+                  "#f9fafb",
                 color:
                   "#667085",
                 fontSize:
-                  "10px",
+                  "12px",
                 lineHeight:
-                  1.6,
-                wordBreak:
-                  "break-all",
+                  1.7,
+                textAlign:
+                  "center",
               }}
             >
-              Storage path:{" "}
-              {
-                textbook.original_file_url
-              }
+              등록된 권별 교재가
+              없습니다.
+            </div>
+          ) : (
+            <div
+              style={{
+                display:
+                  "flex",
+                flexDirection:
+                  "column",
+                gap: "10px",
+              }}
+            >
+              {volumes.map(
+                (volume) => (
+                  <div
+                    key={
+                      volume.id
+                    }
+                    style={{
+                      padding:
+                        "15px 16px",
+                      border:
+                        "1px solid #e4e7ec",
+                      borderRadius:
+                        "11px",
+                      background:
+                        "#ffffff",
+                      display:
+                        "flex",
+                      justifyContent:
+                        "space-between",
+                      alignItems:
+                        "center",
+                      gap: "16px",
+                      flexWrap:
+                        "wrap",
+                    }}
+                  >
+                    <div
+                      style={{
+                        minWidth:
+                          "220px",
+                        flex:
+                          "1 1 360px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display:
+                            "flex",
+                          alignItems:
+                            "center",
+                          gap: "8px",
+                          flexWrap:
+                            "wrap",
+                        }}
+                      >
+                        <strong
+                          style={{
+                            color:
+                              "#101828",
+                            fontSize:
+                              "14px",
+                          }}
+                        >
+                          {
+                            volume.display_title
+                          }
+                        </strong>
+
+                        <VolumeStatusBadge
+                          status={
+                            volume.status
+                          }
+                        />
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop:
+                            "8px",
+                          display:
+                            "flex",
+                          gap: "12px",
+                          flexWrap:
+                            "wrap",
+                          color:
+                            "#667085",
+                          fontSize:
+                            "11px",
+                          lineHeight:
+                            1.5,
+                        }}
+                      >
+                        <span>
+                          PDF{" "}
+                          <strong
+                            style={{
+                              color:
+                                volume.original_file_url
+                                  ? "#027a48"
+                                  : "#b54708",
+                            }}
+                          >
+                            {volume.original_file_url
+                              ? "등록"
+                              : "미등록"}
+                          </strong>
+                        </span>
+
+                        <span>
+                          페이지{" "}
+                          <strong
+                            style={{
+                              color:
+                                "#344054",
+                            }}
+                          >
+                            {
+                              volume.page_count
+                            }
+                          </strong>
+                        </span>
+
+                        <span>
+                          유형{" "}
+                          <strong
+                            style={{
+                              color:
+                                "#344054",
+                            }}
+                          >
+                            {volume.original_file_type
+                              ? volume.original_file_type.toUpperCase()
+                              : "-"}
+                          </strong>
+                        </span>
+
+                        <span>
+                          {volume.is_active
+                            ? "활성"
+                            : "비활성"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Link
+                      href={`/admin/textbooks/${textbook.id}/volumes/${volume.id}`}
+                      style={{
+                        minHeight:
+                          "40px",
+                        padding:
+                          "0 15px",
+                        display:
+                          "inline-flex",
+                        alignItems:
+                          "center",
+                        justifyContent:
+                          "center",
+                        borderRadius:
+                          "9px",
+                        background:
+                          "#0A1F44",
+                        color:
+                          "#ffffff",
+                        textDecoration:
+                          "none",
+                        fontSize:
+                          "12px",
+                        fontWeight:
+                          900,
+                        whiteSpace:
+                          "nowrap",
+                      }}
+                    >
+                      자료 관리
+                    </Link>
+                  </div>
+                )
+              )}
             </div>
           )}
 
@@ -1487,18 +1604,48 @@ export default function EditTextbookForm({
                 1.7,
             }}
           >
-            원본 PDF/eBook을
-            교체하면 기존
-            textbook_pages와
-            수업용 Viewer에
-            영향을 줄 수
-            있으므로, 이번
-            수정에서는 원본
-            파일을 변경하지
-            않습니다. 별도의
-            안전한 원본 교체
-            기능으로 추가합니다.
+            기존 대표교재에
+            연결된 원본 콘텐츠는
+            이번 단계에서
+            삭제하거나 이동하지
+            않습니다. 앞으로
+            실제 수업용 PDF와
+            MP3는 각 권의
+            자료 관리 화면에서
+            등록합니다.
           </div>
+
+          {textbook.original_file_url && (
+            <div
+              style={{
+                marginTop:
+                  "12px",
+                padding:
+                  "12px",
+                borderRadius:
+                  "9px",
+                background:
+                  "#f8fafc",
+                color:
+                  "#667085",
+                fontSize:
+                  "10px",
+                lineHeight:
+                  1.6,
+                wordBreak:
+                  "break-all",
+              }}
+            >
+              기존 대표교재 원본
+              Storage path:{" "}
+              {
+                textbook.original_file_url
+              }
+              {" · "}
+              기존 페이지 데이터{" "}
+              {pageDataCount}건
+            </div>
+          )}
         </SectionBox>
 
         {errorMessage && (
@@ -1696,54 +1843,47 @@ function SectionBox({
   );
 }
 
-function FileInfo({
-  label,
-  value,
+function VolumeStatusBadge({
+  status,
 }: {
-  label: string;
-  value: string;
+  status: string;
 }) {
+  const ready =
+    status === "ready";
+
   return (
-    <div
+    <span
       style={{
+        minHeight:
+          "22px",
         padding:
-          "13px",
-        border:
-          "1px solid #e4e7ec",
+          "0 8px",
+        display:
+          "inline-flex",
+        alignItems:
+          "center",
         borderRadius:
-          "9px",
+          "999px",
         background:
-          "#f9fafb",
+          ready
+            ? "#ecfdf3"
+            : "#fff7ed",
+        color:
+          ready
+            ? "#027a48"
+            : "#b54708",
+        fontSize:
+          "10px",
+        fontWeight:
+          900,
       }}
     >
-      <div
-        style={{
-          color:
-            "#98a2b3",
-          fontSize:
-            "10px",
-          fontWeight:
-            800,
-        }}
-      >
-        {label}
-      </div>
-
-      <div
-        style={{
-          marginTop:
-            "6px",
-          color:
-            "#344054",
-          fontSize:
-            "13px",
-          fontWeight:
-            900,
-        }}
-      >
-        {value}
-      </div>
-    </div>
+      {ready
+        ? "사용 가능"
+        : status === "draft"
+          ? "작업 중"
+          : status}
+    </span>
   );
 }
 

@@ -35,6 +35,19 @@ type CurriculumMapping = {
   is_active: boolean;
 };
 
+type TextbookVolume = {
+  id: number;
+  textbook_id: number;
+  volume_code: string;
+  display_title: string;
+  sort_order: number;
+  original_file_url: string | null;
+  original_file_type: string | null;
+  page_count: number;
+  status: string;
+  is_active: boolean;
+};
+
 export default async function EditTextbookPage({
   params,
 }: PageProps) {
@@ -101,6 +114,7 @@ export default async function EditTextbookPage({
     pageCountResult,
     levelsResult,
     mappingsResult,
+    volumesResult,
   ] =
     await Promise.all([
       adminClient
@@ -175,6 +189,33 @@ export default async function EditTextbookPage({
           "textbook_id",
           textbookId
         ),
+
+      adminClient
+        .from(
+          "textbook_volumes"
+        )
+        .select(`
+          id,
+          textbook_id,
+          volume_code,
+          display_title,
+          sort_order,
+          original_file_url,
+          original_file_type,
+          page_count,
+          status,
+          is_active
+        `)
+        .eq(
+          "textbook_id",
+          textbookId
+        )
+        .order(
+          "sort_order",
+          {
+            ascending: true,
+          }
+        ),
     ]);
 
   if (
@@ -209,6 +250,14 @@ export default async function EditTextbookPage({
     );
   }
 
+  if (
+    volumesResult.error
+  ) {
+    throw new Error(
+      volumesResult.error.message
+    );
+  }
+
   const textbook =
     textbookResult.data;
 
@@ -227,6 +276,12 @@ export default async function EditTextbookPage({
       mappingsResult.data ??
       []
     ) as CurriculumMapping[];
+
+  const volumes =
+    (
+      volumesResult.data ??
+      []
+    ) as TextbookVolume[];
 
   /*
    * 현재 활성화된 Grade 연결
@@ -352,8 +407,9 @@ export default async function EditTextbookPage({
               {textbook.title}
             </strong>{" "}
             교재의 기본정보,
-            표지, 판매정보 및
-            커리큘럼 연결을
+            표지, 판매정보,
+            커리큘럼 연결 및
+            권별 수업자료를
             관리합니다.
           </p>
         </div>
@@ -379,9 +435,9 @@ export default async function EditTextbookPage({
             }
           />
 
-          <FileTypeBadge
-            type={
-              textbook.original_file_type
+          <VolumeBadge
+            count={
+              volumes.length
             }
           />
         </div>
@@ -420,22 +476,18 @@ export default async function EditTextbookPage({
           }}
         >
           <InfoCard
-            label="DB 페이지 수"
+            label="대표교재 기존 페이지"
             value={`${textbook.page_count ?? 0}`}
           />
 
           <InfoCard
-            label="페이지 데이터"
+            label="기존 페이지 데이터"
             value={`${pageCountResult.count ?? 0}`}
           />
 
           <InfoCard
-            label="파일 유형"
-            value={
-              textbook.original_file_type
-                ? textbook.original_file_type.toUpperCase()
-                : "-"
-            }
+            label="권별 교재"
+            value={`${volumes.length}권`}
           />
 
           <InfoCard
@@ -480,6 +532,9 @@ export default async function EditTextbookPage({
         }
         coverImagePreviewUrl={
           coverImagePreviewUrl
+        }
+        volumes={
+          volumes
         }
       />
     </main>
@@ -598,10 +653,10 @@ function ActiveBadge({
   );
 }
 
-function FileTypeBadge({
-  type,
+function VolumeBadge({
+  count,
 }: {
-  type: string | null;
+  count: number;
 }) {
   return (
     <span
@@ -620,8 +675,7 @@ function FileTypeBadge({
         fontWeight: 900,
       }}
     >
-      {type?.toUpperCase() ||
-        "NO FILE"}
+      {count}권
     </span>
   );
 }
