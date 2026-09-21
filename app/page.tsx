@@ -221,7 +221,6 @@ export default function Home() {
               <div className="talkly-dropdown">
                 <a href="#greeting">인사말</a>
                 <a href="#why">Why TALKLY?</a>
-                <a href="#programs">프로그램</a>
                 <a href="#business-areas">사업영역</a>
               </div>
             </div>
@@ -1170,7 +1169,7 @@ export default function Home() {
 
             <FooterColumn
               title="토클리소개"
-              items={["인사말", "Why TALKLY?", "프로그램", "사업영역"]}
+              items={["인사말", "Why TALKLY?", "사업영역"]}
             />
             <FooterColumn
               title="교육센터"
@@ -1583,13 +1582,38 @@ function FooterColumn({
             const introLinks: Record<string, string> = {
               인사말: "#greeting",
               "Why TALKLY?": "#why",
-              프로그램: "#programs",
               사업영역: "#business-areas",
             };
 
             if (introLinks[item]) {
               return (
                 <a key={item} href={introLinks[item]} style={footerLinkStyle}>
+                  {item}
+                </a>
+              );
+            }
+          }
+
+          if (title === "교육센터") {
+            const educationLinks: Record<string, string> = {
+              프로그램소개: "#programs",
+              "커리큘럼/교재": "/curriculum",
+              교사소개: "#teachers",
+            };
+
+            if (educationLinks[item]) {
+              const href = educationLinks[item];
+
+              if (href.startsWith("/")) {
+                return (
+                  <Link key={item} href={href} style={footerLinkStyle}>
+                    {item}
+                  </Link>
+                );
+              }
+
+              return (
+                <a key={item} href={href} style={footerLinkStyle}>
                   {item}
                 </a>
               );

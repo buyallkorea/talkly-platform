@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import HomeAuthMenu from "@/components/HomeAuthMenu";
+import HomeClassMenu from "@/components/HomeClassMenu";
 
 export default function HomeMobileMenu() {
   const [open, setOpen] = useState(false);
@@ -51,12 +52,11 @@ export default function HomeMobileMenu() {
             <MobileLink href="#greeting" onClick={closeMenu}>
               인사말
             </MobileLink>
+
             <MobileLink href="#why" onClick={closeMenu}>
               Why TALKLY?
             </MobileLink>
-            <MobileLink href="#programs" onClick={closeMenu}>
-              프로그램
-            </MobileLink>
+
             <MobileLink href="#business-areas" onClick={closeMenu}>
               사업영역
             </MobileLink>
@@ -66,9 +66,11 @@ export default function HomeMobileMenu() {
             <MobileLink href="#programs" onClick={closeMenu}>
               프로그램소개
             </MobileLink>
+
             <MobileLink href="/curriculum" onClick={closeMenu}>
               커리큘럼/교재
             </MobileLink>
+
             <MobileLink href="#teachers" onClick={closeMenu}>
               교사소개
             </MobileLink>
@@ -78,12 +80,15 @@ export default function HomeMobileMenu() {
             <MobileLink href="#ai" onClick={closeMenu}>
               AI 수업리포트
             </MobileLink>
+
             <MobileLink href="#ai" onClick={closeMenu}>
               AI 성장리포트
             </MobileLink>
+
             <MobileLink href="#ai" onClick={closeMenu}>
               AI Writing
             </MobileLink>
+
             <MobileLink href="#ai" onClick={closeMenu}>
               강사 AI Brief
             </MobileLink>
@@ -94,19 +99,31 @@ export default function HomeMobileMenu() {
               레벨테스트
               <span>›</span>
             </Link>
+
             <Link href="/enroll" onClick={closeMenu}>
               수강신청
               <span>›</span>
             </Link>
           </div>
 
+          <MobileSection title="내 수업">
+            <div
+              className="talkly-home-mobile-class-links"
+              onClick={closeMenu}
+            >
+              <HomeClassMenu />
+            </div>
+          </MobileSection>
+
           <MobileSection title="인포메이션">
             <MobileLink href="/notice" onClick={closeMenu}>
               공지사항
             </MobileLink>
+
             <MobileLink href="#reviews" onClick={closeMenu}>
               수업후기
             </MobileLink>
+
             <MobileLink href="/consultation" onClick={closeMenu}>
               1:1 상담
             </MobileLink>
@@ -148,7 +165,9 @@ export default function HomeMobileMenu() {
           border-radius: 999px;
           background: #0a1f44;
           transform-origin: center;
-          transition: transform 0.18s ease, opacity 0.18s ease;
+          transition:
+            transform 0.18s ease,
+            opacity 0.18s ease;
         }
 
         .talkly-home-hamburger-open span:nth-child(1) {
@@ -275,6 +294,28 @@ export default function HomeMobileMenu() {
             font-weight: 400;
           }
 
+          .talkly-home-mobile-class-links {
+            display: contents;
+          }
+
+          .talkly-home-mobile-class-links a {
+            display: flex;
+            min-height: 40px;
+            padding: 0 12px;
+            align-items: center;
+            border-radius: 9px;
+            color: #697386;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 700;
+          }
+
+          .talkly-home-mobile-class-links a:hover,
+          .talkly-home-mobile-class-links a:active {
+            background: #f1f5ff;
+            color: #2f6fed;
+          }
+
           .talkly-home-mobile-auth {
             display: flex;
             justify-content: center;
@@ -315,6 +356,7 @@ function MobileSection({
       <div className="talkly-home-mobile-section-title">
         {title}
       </div>
+
       <div className="talkly-home-mobile-section-links">
         {children}
       </div>
