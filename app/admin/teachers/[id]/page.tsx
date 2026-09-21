@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
+import DeleteTeacherButton from "./DeleteTeacherButton";
 
 type PageProps = {
   params: Promise<{
@@ -688,6 +689,15 @@ export default async function TeacherDetailPage({
           >
             강사정보 수정
           </Link>
+
+          <DeleteTeacherButton
+            teacherId={teacher.user_id}
+            teacherName={
+              teacher.display_name ||
+              teacherProfile?.name ||
+              "강사"
+            }
+          />
         </div>
       </div>
 
