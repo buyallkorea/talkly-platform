@@ -1,6 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 type Props = {
   sessionId: number;
@@ -25,8 +30,11 @@ export default function ClassSessionControls({
   initialStartedAt,
   initialEndedAt,
 }: Props) {
-  const [startedAt, setStartedAt] = useState(initialStartedAt);
-  const [endedAt, setEndedAt] = useState(initialEndedAt);
+  const [startedAt, setStartedAt] =
+    useState(initialStartedAt);
+
+  const [endedAt, setEndedAt] =
+    useState(initialEndedAt);
 
   const [effectiveStatus, setEffectiveStatus] =
     useState<SessionStatus>(
@@ -47,77 +55,189 @@ export default function ClassSessionControls({
    * not_held로 자동마감하기 전까지 Start 버튼이 순간적으로
    * 노출되는 것을 방지합니다.
    */
-  const [statusLoaded, setStatusLoaded] = useState(
-    Boolean(initialStartedAt || initialEndedAt)
-  );
+  const [statusLoaded, setStatusLoaded] =
+    useState(
+      Boolean(
+        initialStartedAt ||
+          initialEndedAt
+      )
+    );
 
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [busy, setBusy] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  /*
+   * 상대방이 수업을 종료했을 때
+   * 중복 reload가 발생하지 않도록 보호합니다.
+   */
+  const reloadingRef =
+    useRef(false);
 
   const canControl =
-    viewerRole === "teacher" || viewerRole === "admin";
+    viewerRole === "teacher" ||
+    viewerRole === "admin";
 
-  const refreshStatus = useCallback(async () => {
-    try {
-      const response = await fetch(
-        `/api/classroom/session-status?sessionId=${sessionId}`,
-        { cache: "no-store" }
-      );
+  const refreshStatus =
+    useCallback(async () => {
+      if (reloadingRef.current) {
+        return;
+      }
 
-      const data = await response.json();
+      try {
+        const response =
+          await fetch(
+            `/api/classroom/session-status?sessionId=${sessionId}`,
+            {
+              cache: "no-store",
+            }
+          );
 
-      if (response.ok && data.success) {
-        setStartedAt(data.session.startedAt ?? null);
-        setEndedAt(data.session.endedAt ?? null);
+        const data =
+          await response.json();
 
         if (
-          typeof data.session.effectiveStatus === "string" &&
-          data.session.effectiveStatus
+          !response.ok ||
+          !data.success
         ) {
-          setEffectiveStatus(data.session.effectiveStatus);
-        } else {
-          setEffectiveStatus(
-            data.session.endedAt
-              ? "completed"
-              : data.session.startedAt
-                ? "in_progress"
-                : "scheduled"
-          );
+          return;
         }
 
+        const nextStartedAt =
+          data.session.startedAt ??
+          null;
+
+        const nextEndedAt =
+          data.session.endedAt ??
+          null;
+
+        let nextEffectiveStatus:
+          SessionStatus;
+
+        if (
+          typeof data.session
+            .effectiveStatus ===
+            "string" &&
+          data.session.effectiveStatus
+        ) {
+          nextEffectiveStatus =
+            data.session
+              .effectiveStatus;
+        } else {
+          nextEffectiveStatus =
+            nextEndedAt
+              ? "completed"
+              : nextStartedAt
+                ? "in_progress"
+                : "scheduled";
+        }
+
+        setStartedAt(
+          nextStartedAt
+        );
+
+        setEndedAt(
+          nextEndedAt
+        );
+
+        setEffectiveStatus(
+          nextEffectiveStatus
+        );
+
         setStatusLoaded(true);
+
+        /*
+         * 기존 ClassSessionEndWatcher가 담당하던 기능입니다.
+         *
+         * 강사 또는 관리자가 다른 브라우저에서 수업을 종료했거나,
+         * 상대방의 종료 처리가 DB에 반영된 것을 확인하면
+         * 현재 교실 페이지를 한 번 새로고침합니다.
+         *
+         * 이렇게 하면 별도의 2초 polling 컴포넌트가 필요 없습니다.
+         */
+        if (
+          nextEffectiveStatus ===
+            "completed" &&
+          !reloadingRef.current
+        ) {
+          reloadingRef.current =
+            true;
+
+          window.location.reload();
+        }
+      } catch {
+        /*
+         * 일시적인 네트워크 오류는
+         * 다음 확인 주기에서 다시 시도합니다.
+         */
       }
-    } catch {}
-  }, [sessionId]);
+    }, [sessionId]);
 
   useEffect(() => {
     /*
      * 페이지 진입 즉시 한 번 확인합니다.
-     * 이후 2초마다 서버 상태를 동기화합니다.
+     *
+     * 현재 1단계에서는 기존 동작 안정성을 유지하기 위해
+     * 2초 polling 자체는 유지합니다.
+     *
+     * 단, ClassSessionEndWatcher의 중복 polling을 제거하여
+     * 수업 진행 중 동일 API 호출을 절반 수준으로 줄입니다.
+     *
+     * 다음 단계에서 Supabase Realtime + 느린 fallback polling
+     * 구조로 변경할 예정입니다.
      */
     void refreshStatus();
 
-    const timer = window.setInterval(refreshStatus, 2000);
+    const timer =
+      window.setInterval(
+        refreshStatus,
+        2000
+      );
 
-    return () => window.clearInterval(timer);
+    return () =>
+      window.clearInterval(
+        timer
+      );
   }, [refreshStatus]);
 
-  async function changeStatus(action: "start" | "end") {
-    if (busy) return;
+  async function changeStatus(
+    action: "start" | "end"
+  ) {
+    if (busy) {
+      return;
+    }
 
     setBusy(true);
     setError("");
 
     try {
-      const response = await fetch("/api/classroom/session-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, action }),
-      });
+      const response =
+        await fetch(
+          "/api/classroom/session-status",
+          {
+            method: "POST",
 
-      const data = await response.json();
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
 
-      if (!response.ok || !data.success) {
+            body: JSON.stringify({
+              sessionId,
+              action,
+            }),
+          }
+        );
+
+      const data =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
         /*
          * Start 요청 순간에 scheduled_end가 지났다면
          * 서버가 not_held로 마감하고 409를 반환할 수 있습니다.
@@ -126,33 +246,60 @@ export default function ClassSessionControls({
         await refreshStatus();
 
         throw new Error(
-          typeof data.error === "string"
+          typeof data.error ===
+            "string"
             ? data.error
             : "수업 상태를 변경하지 못했습니다."
         );
       }
 
-      setStartedAt(data.session.startedAt ?? null);
-      setEndedAt(data.session.endedAt ?? null);
+      const nextStartedAt =
+        data.session.startedAt ??
+        null;
+
+      const nextEndedAt =
+        data.session.endedAt ??
+        null;
+
+      let nextEffectiveStatus:
+        SessionStatus;
 
       if (
-        typeof data.session.effectiveStatus === "string" &&
+        typeof data.session
+          .effectiveStatus ===
+          "string" &&
         data.session.effectiveStatus
       ) {
-        setEffectiveStatus(data.session.effectiveStatus);
+        nextEffectiveStatus =
+          data.session
+            .effectiveStatus;
       } else {
-        setEffectiveStatus(
-          data.session.endedAt
+        nextEffectiveStatus =
+          nextEndedAt
             ? "completed"
-            : data.session.startedAt
+            : nextStartedAt
               ? "in_progress"
-              : "scheduled"
-        );
+              : "scheduled";
       }
+
+      setStartedAt(
+        nextStartedAt
+      );
+
+      setEndedAt(
+        nextEndedAt
+      );
+
+      setEffectiveStatus(
+        nextEffectiveStatus
+      );
 
       setStatusLoaded(true);
 
       if (action === "end") {
+        reloadingRef.current =
+          true;
+
         window.location.reload();
       }
     } catch (error) {
@@ -185,7 +332,8 @@ export default function ClassSessionControls({
       primary: "LIVE",
       secondary: "수업 진행 중",
       dot: "#35d07f",
-      glow: "0 0 0 4px rgba(53,208,127,.10)",
+      glow:
+        "0 0 0 4px rgba(53,208,127,.10)",
     },
 
     completed: {
@@ -220,11 +368,19 @@ export default function ClassSessionControls({
   };
 
   const currentStatus =
-    statusText[effectiveStatus] ?? {
-      primary: String(effectiveStatus || "STATUS")
+    statusText[
+      effectiveStatus
+    ] ?? {
+      primary: String(
+        effectiveStatus ||
+          "STATUS"
+      )
         .replaceAll("_", " ")
         .toUpperCase(),
-      secondary: "수업 상태",
+
+      secondary:
+        "수업 상태",
+
       dot: "#94a3b8",
     };
 
@@ -345,33 +501,48 @@ export default function ClassSessionControls({
           <span
             className="talkly-session-status-dot"
             style={{
-              background: currentStatus.dot,
-              boxShadow: currentStatus.glow ?? "none",
+              background:
+                currentStatus.dot,
+
+              boxShadow:
+                currentStatus.glow ??
+                "none",
             }}
           />
 
           <span className="talkly-session-status-copy">
             <span className="talkly-session-status-primary">
-              {currentStatus.primary}
+              {
+                currentStatus.primary
+              }
             </span>
 
             <span className="talkly-session-status-secondary">
-              {currentStatus.secondary}
+              {
+                currentStatus.secondary
+              }
             </span>
           </span>
         </div>
 
         {canControl &&
           statusLoaded &&
-          effectiveStatus === "scheduled" && (
+          effectiveStatus ===
+            "scheduled" && (
             <button
               type="button"
               disabled={busy}
-              onClick={() => changeStatus("start")}
+              onClick={() =>
+                changeStatus(
+                  "start"
+                )
+              }
               className="talkly-session-action"
             >
               <span className="talkly-session-action-main">
-                {busy ? "Starting..." : "Start Class"}
+                {busy
+                  ? "Starting..."
+                  : "Start Class"}
               </span>
 
               <span className="talkly-session-action-sub">
@@ -381,15 +552,22 @@ export default function ClassSessionControls({
           )}
 
         {canControl &&
-          effectiveStatus === "in_progress" && (
+          effectiveStatus ===
+            "in_progress" && (
             <button
               type="button"
               disabled={busy}
-              onClick={() => changeStatus("end")}
+              onClick={() =>
+                changeStatus(
+                  "end"
+                )
+              }
               className="talkly-session-action end"
             >
               <span className="talkly-session-action-main">
-                {busy ? "Ending..." : "End Class"}
+                {busy
+                  ? "Ending..."
+                  : "End Class"}
               </span>
 
               <span className="talkly-session-action-sub">
