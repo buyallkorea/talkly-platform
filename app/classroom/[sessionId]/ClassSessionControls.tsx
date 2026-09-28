@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createClient } from "@/lib/supabase-browser";
 
 type Props = {
   sessionId: number;
@@ -24,12 +25,23 @@ type SessionStatus =
   | "not_held"
   | string;
 
+type RealtimeSessionRow = {
+  id?: number;
+  status?: string | null;
+  started_at?: string | null;
+  ended_at?: string | null;
+};
+
+const FALLBACK_POLL_INTERVAL_MS = 60_000;
+
 export default function ClassSessionControls({
   sessionId,
   viewerRole,
   initialStartedAt,
   initialEndedAt,
 }: Props) {
+  const [supabase] = useState(() => createClient());
+
   const [startedAt, setStartedAt] =
     useState(initialStartedAt);
 
@@ -79,6 +91,55 @@ export default function ClassSessionControls({
   const canControl =
     viewerRole === "teacher" ||
     viewerRole === "admin";
+
+  const applySessionState =
+    useCallback(
+      ({
+        nextStartedAt,
+        nextEndedAt,
+        nextEffectiveStatus,
+      }: {
+        nextStartedAt: string | null;
+        nextEndedAt: string | null;
+        nextEffectiveStatus: SessionStatus;
+      }) => {
+        setStartedAt(
+          nextStartedAt
+        );
+
+        setEndedAt(
+          nextEndedAt
+        );
+
+        setEffectiveStatus(
+          nextEffectiveStatus
+        );
+
+        setStatusLoaded(true);
+
+        /*
+         * 강사/관리자 또는 다른 브라우저에서 수업 종료가
+         * 반영되면 현재 교실을 한 번 새로고침합니다.
+         *
+         * 종료 이후 서버 페이지가 담당하는 기존 이동/종료 UI를
+         * 그대로 사용하기 위해 현재 라우팅 구조는 변경하지 않습니다.
+         */
+        if (
+          (
+            nextEffectiveStatus ===
+              "completed" ||
+            Boolean(nextEndedAt)
+          ) &&
+          !reloadingRef.current
+        ) {
+          reloadingRef.current =
+            true;
+
+          window.location.reload();
+        }
+      },
+      []
+    );
 
   const refreshStatus =
     useCallback(async () => {
@@ -134,73 +195,130 @@ export default function ClassSessionControls({
                 : "scheduled";
         }
 
-        setStartedAt(
-          nextStartedAt
-        );
-
-        setEndedAt(
-          nextEndedAt
-        );
-
-        setEffectiveStatus(
-          nextEffectiveStatus
-        );
-
-        setStatusLoaded(true);
-
-        /*
-         * 기존 ClassSessionEndWatcher가 담당하던 기능입니다.
-         *
-         * 강사 또는 관리자가 다른 브라우저에서 수업을 종료했거나,
-         * 상대방의 종료 처리가 DB에 반영된 것을 확인하면
-         * 현재 교실 페이지를 한 번 새로고침합니다.
-         *
-         * 이렇게 하면 별도의 2초 polling 컴포넌트가 필요 없습니다.
-         */
-        if (
-          nextEffectiveStatus ===
-            "completed" &&
-          !reloadingRef.current
-        ) {
-          reloadingRef.current =
-            true;
-
-          window.location.reload();
-        }
+        applySessionState({
+          nextStartedAt,
+          nextEndedAt,
+          nextEffectiveStatus,
+        });
       } catch {
         /*
-         * 일시적인 네트워크 오류는
-         * 다음 확인 주기에서 다시 시도합니다.
+         * 일시적인 네트워크 오류는 Realtime 또는
+         * 다음 fallback 확인 주기에서 다시 복구합니다.
          */
       }
-    }, [sessionId]);
+    }, [
+      applySessionState,
+      sessionId,
+    ]);
 
   useEffect(() => {
     /*
-     * 페이지 진입 즉시 한 번 확인합니다.
+     * 페이지 진입 직후 서버 API를 한 번 호출합니다.
      *
-     * 현재 1단계에서는 기존 동작 안정성을 유지하기 위해
-     * 2초 polling 자체는 유지합니다.
-     *
-     * 단, ClassSessionEndWatcher의 중복 polling을 제거하여
-     * 수업 진행 중 동일 API 호출을 절반 수준으로 줄입니다.
-     *
-     * 다음 단계에서 Supabase Realtime + 느린 fallback polling
-     * 구조로 변경할 예정입니다.
+     * 이 호출은 단순 상태 조회뿐 아니라 기존 session-status API의
+     * scheduled_end 검사 / not_held 자동마감 로직을 계속 보존하기
+     * 위해 유지합니다.
      */
     void refreshStatus();
 
-    const timer =
+    /*
+     * class_sessions 변경은 Supabase Realtime으로 즉시 수신합니다.
+     *
+     * 채널은 sessionId별로 분리하여 다른 수업의 상태 변경이
+     * 현재 교실에 영향을 주지 않도록 합니다.
+     */
+    const channel =
+      supabase
+        .channel(
+          `class-session-status-${sessionId}`
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "class_sessions",
+            filter: `id=eq.${sessionId}`,
+          },
+          (payload) => {
+            if (
+              reloadingRef.current
+            ) {
+              return;
+            }
+
+            const nextRow =
+              payload.new as RealtimeSessionRow;
+
+            const nextStartedAt =
+              nextRow.started_at ??
+              null;
+
+            const nextEndedAt =
+              nextRow.ended_at ??
+              null;
+
+            let nextEffectiveStatus:
+              SessionStatus;
+
+            if (
+              typeof nextRow.status ===
+                "string" &&
+              nextRow.status
+            ) {
+              nextEffectiveStatus =
+                nextRow.status;
+            } else {
+              nextEffectiveStatus =
+                nextEndedAt
+                  ? "completed"
+                  : nextStartedAt
+                    ? "in_progress"
+                    : "scheduled";
+            }
+
+            applySessionState({
+              nextStartedAt,
+              nextEndedAt,
+              nextEffectiveStatus,
+            });
+          }
+        )
+        .subscribe();
+
+    /*
+     * Realtime 연결 누락/일시 장애 및 scheduled_end 자동마감
+     * 보조용 fallback입니다.
+     *
+     * 기존 2초 polling:
+     *   사용자 1명당 분당 30회
+     *
+     * 변경 후:
+     *   사용자 1명당 분당 1회
+     *
+     * 수업 Start/End 자체는 Realtime으로 즉시 반영됩니다.
+     */
+    const fallbackTimer =
       window.setInterval(
         refreshStatus,
-        2000
+        FALLBACK_POLL_INTERVAL_MS
       );
 
-    return () =>
+    return () => {
       window.clearInterval(
-        timer
+        fallbackTimer
       );
-  }, [refreshStatus]);
+
+      void supabase.removeChannel(
+        channel
+      );
+    };
+  }, [
+    applySessionState,
+    refreshStatus,
+    sessionId,
+    supabase,
+  ]);
 
   async function changeStatus(
     action: "start" | "end"
@@ -282,21 +400,16 @@ export default function ClassSessionControls({
               : "scheduled";
       }
 
-      setStartedAt(
-        nextStartedAt
-      );
+      applySessionState({
+        nextStartedAt,
+        nextEndedAt,
+        nextEffectiveStatus,
+      });
 
-      setEndedAt(
-        nextEndedAt
-      );
-
-      setEffectiveStatus(
-        nextEffectiveStatus
-      );
-
-      setStatusLoaded(true);
-
-      if (action === "end") {
+      if (
+        action === "end" &&
+        !reloadingRef.current
+      ) {
         reloadingRef.current =
           true;
 
