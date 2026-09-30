@@ -338,7 +338,7 @@ export default function Home() {
             Anytime, Anywhere,
             <br />
             <span style={{ color: "#7fe0cf" }}>
-              AI Real English
+              Real English
             </span>{" "}
             - {" "}
             <span style={{ color: "#8fb4ff" }}>
@@ -356,8 +356,9 @@ export default function Home() {
               textShadow: "0 2px 8px rgba(0,0,0,.35)",
             }}
           >
-            세상은 이미 온라인과 AI로 연결되어 있습니다. 어린이부터
-            성인까지 실시간으로 원어민 강사와 즐겁게 영어를 배워요!
+            원어민 강사와 실시간으로 만나 배우는 1:1 화상영어.
+          <br />
+            TALKLY AI가 수업을 분석하고 학습 성장을 체계적으로 관리합니다.
           </p>
 
           <div
