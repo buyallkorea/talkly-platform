@@ -13,7 +13,7 @@ import {
 import { createClient } from "@/lib/supabase-browser";
 
 const ADMIN_EMAIL =
-  "alwaly.talkly@gmail.com";
+  "always.talkly@gmail.com";
 
 function LoginPageContent() {
   const router = useRouter();
@@ -777,6 +777,25 @@ function LoginPageContent() {
                       "none",
                   }}
                 />
+              </div>
+              <div
+                style={{
+                  marginTop: "-6px",
+                  marginBottom: "18px",
+                  textAlign: "right",
+                }}
+              >
+                <Link
+                  href="/forgot-password"
+                  style={{
+                    color: "#3f75dc",
+                    textDecoration: "none",
+                    fontSize: "13px",
+                    fontWeight: 800,
+                  }}
+                >
+                  비밀번호를 잊으셨나요?
+                </Link>
               </div>
 
               {errorMessage && (
