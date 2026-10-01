@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { sendEmail } from "@/lib/email";
 
 const SEOUL_TIME_ZONE = "Asia/Seoul";
 const INTERVIEW_DURATION_MINUTES = 20;
@@ -111,9 +113,7 @@ export async function POST(
 
     const start = new Date(scheduledAt);
 
-    if (
-      Number.isNaN(start.getTime())
-    ) {
+    if (Number.isNaN(start.getTime())) {
       return NextResponse.json(
         {
           error: "테스트 일시가 올바르지 않습니다.",
@@ -148,6 +148,9 @@ export async function POST(
       .from("level_tests")
       .select(`
         id,
+        child_id,
+        student_user_id,
+        parent_user_id,
         interview_required,
         status
       `)
@@ -610,28 +613,32 @@ export async function POST(
       new Date().toISOString();
 
     const {
-  data: existingInterview,
-  error: existingError,
-} = await admin
-  .from("level_test_interviews")
-  .select(`
-    id,
-    status,
-    scheduled_at,
-    created_at
-  `)
-  .eq(
-    "level_test_id",
-    levelTestId
-  )
-  .order(
-    "created_at",
-    {
-      ascending: false,
-    }
-  )
-  .limit(1)
-  .maybeSingle();
+      data: existingInterview,
+      error: existingError,
+    } = await admin
+      .from("level_test_interviews")
+      .select(`
+        id,
+        status,
+        scheduled_at,
+        tester_user_id,
+        duration_minutes,
+        meeting_provider,
+        meeting_url,
+        created_at
+      `)
+      .eq(
+        "level_test_id",
+        levelTestId
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        }
+      )
+      .limit(1)
+      .maybeSingle();
 
     if (existingError) {
       return NextResponse.json(
@@ -720,17 +727,465 @@ export async function POST(
       );
     }
 
+    /*
+     * DB 저장 완료 후 이메일 발송 여부 결정
+     *
+     * - 최초 일정 저장: 발송
+     * - 시간/강사/접속정보 변경: 발송
+     * - 동일한 내용을 다시 저장: 중복 발송 안 함
+     */
+    const shouldSendScheduleEmail =
+      !existingInterview?.id ||
+      existingInterview.scheduled_at !==
+        start.toISOString() ||
+      existingInterview.tester_user_id !==
+        testerUserId ||
+      (existingInterview.meeting_provider ??
+        null) !== meetingProvider ||
+      (existingInterview.meeting_url ??
+        null) !== meetingUrl ||
+      (existingInterview.duration_minutes ??
+        INTERVIEW_DURATION_MINUTES) !==
+        INTERVIEW_DURATION_MINUTES;
+
+    let emailStatus:
+      | "sent"
+      | "skipped"
+      | "failed" = "skipped";
+
+    if (shouldSendScheduleEmail) {
+      try {
+        /*
+         * 학부모 신청:
+         * parent_user_id의 이메일로 발송
+         *
+         * 직접 학생 신청:
+         * student_user_id의 이메일로 발송
+         */
+        const recipientUserId =
+          levelTest.parent_user_id ||
+          levelTest.student_user_id ||
+          null;
+
+        if (!recipientUserId) {
+          throw new Error(
+            "일정 안내 이메일 수신자 계정을 확인할 수 없습니다."
+          );
+        }
+
+        const {
+          data: recipientProfile,
+          error: recipientProfileError,
+        } = await admin
+          .from("profiles")
+          .select(
+            "id, name, email"
+          )
+          .eq(
+            "id",
+            recipientUserId
+          )
+          .maybeSingle();
+
+        if (recipientProfileError) {
+          throw recipientProfileError;
+        }
+
+        const recipientEmail =
+          recipientProfile?.email?.trim() ||
+          "";
+
+        if (!recipientEmail) {
+          throw new Error(
+            "일정 안내 이메일 주소를 확인할 수 없습니다."
+          );
+        }
+
+        /*
+         * 학생 이름
+         *
+         * 학부모 자녀:
+         * children.name
+         *
+         * 직접 가입 학생:
+         * profiles.name
+         */
+        let studentName = "학생";
+
+        if (levelTest.child_id) {
+          const {
+            data: child,
+            error: childError,
+          } = await admin
+            .from("children")
+            .select("name")
+            .eq(
+              "id",
+              levelTest.child_id
+            )
+            .maybeSingle();
+
+          if (childError) {
+            throw childError;
+          }
+
+          studentName =
+            child?.name?.trim() ||
+            "학생";
+        } else if (
+          levelTest.student_user_id
+        ) {
+          const {
+            data: studentProfile,
+            error: studentProfileError,
+          } = await admin
+            .from("profiles")
+            .select("name")
+            .eq(
+              "id",
+              levelTest.student_user_id
+            )
+            .maybeSingle();
+
+          if (studentProfileError) {
+            throw studentProfileError;
+          }
+
+          studentName =
+            studentProfile?.name?.trim() ||
+            "학생";
+        }
+
+        const isReschedule =
+          Boolean(
+            existingInterview?.id
+          );
+
+        const scheduleLabel =
+          formatSeoulSchedule(start);
+
+        const teacherName =
+          teacher.display_name?.trim() ||
+          "TALKLY Teacher";
+
+        const safeStudentName =
+          escapeHtml(studentName);
+
+        const safeTeacherName =
+          escapeHtml(teacherName);
+
+        const safeScheduleLabel =
+          escapeHtml(scheduleLabel);
+
+        const safeMeetingUrl =
+          meetingUrl
+            ? escapeHtml(meetingUrl)
+            : null;
+
+        const subject =
+          isReschedule
+            ? `[TALKLY] ${studentName} 학생 원어민 화상 레벨테스트 일정 변경 안내`
+            : `[TALKLY] ${studentName} 학생 원어민 화상 레벨테스트 일정 확정 안내`;
+
+        const accessHtml =
+          safeMeetingUrl
+            ? `
+              <a
+                href="${safeMeetingUrl}"
+                style="
+                  display:inline-block;
+                  padding:12px 18px;
+                  border-radius:8px;
+                  background:#0a1f44;
+                  color:#ffffff;
+                  text-decoration:none;
+                  font-weight:700;
+                "
+              >
+                화상 레벨테스트 접속하기
+              </a>
+
+              <p
+                style="
+                  margin:12px 0 0;
+                  color:#667085;
+                  font-size:13px;
+                  word-break:break-all;
+                "
+              >
+                ${safeMeetingUrl}
+              </p>
+            `
+            : `
+              <p
+                style="
+                  margin:0;
+                  color:#475467;
+                "
+              >
+                화상 접속 정보는 TALKLY에서 별도로 안내드리겠습니다.
+              </p>
+            `;
+
+        const accessText =
+          meetingUrl
+            ? `화상 접속 링크: ${meetingUrl}`
+            : "화상 접속 정보는 TALKLY에서 별도로 안내드리겠습니다.";
+
+        await sendEmail({
+          to: recipientEmail,
+          subject,
+
+          html: `
+            <div
+              style="
+                margin:0;
+                padding:32px 16px;
+                background:#f6f8fb;
+                font-family:Arial,'Noto Sans KR',sans-serif;
+                color:#172033;
+              "
+            >
+              <div
+                style="
+                  max-width:620px;
+                  margin:0 auto;
+                  background:#ffffff;
+                  border:1px solid #e5eaf1;
+                  border-radius:14px;
+                  overflow:hidden;
+                "
+              >
+                <div
+                  style="
+                    padding:24px 28px;
+                    background:#0a1f44;
+                    color:#ffffff;
+                  "
+                >
+                  <div
+                    style="
+                      font-size:24px;
+                      font-weight:800;
+                    "
+                  >
+                    TALKLY
+                  </div>
+
+                  <div
+                    style="
+                      margin-top:6px;
+                      font-size:14px;
+                      opacity:0.88;
+                    "
+                  >
+                    원어민 화상 레벨테스트 ${
+                      isReschedule
+                        ? "일정 변경"
+                        : "일정 확정"
+                    } 안내
+                  </div>
+                </div>
+
+                <div
+                  style="
+                    padding:28px;
+                  "
+                >
+                  <p
+                    style="
+                      margin:0 0 20px;
+                      line-height:1.7;
+                    "
+                  >
+                    안녕하세요.<br />
+                    <strong>
+                      ${safeStudentName}
+                    </strong>
+                    학생의 원어민 화상 레벨테스트 ${
+                      isReschedule
+                        ? "일정이 변경되었습니다."
+                        : "일정이 확정되었습니다."
+                    }
+                  </p>
+
+                  <table
+                    style="
+                      width:100%;
+                      border-collapse:collapse;
+                      margin:0 0 24px;
+                      font-size:14px;
+                    "
+                  >
+                    <tbody>
+                      <tr>
+                        <td
+                          style="
+                            width:120px;
+                            padding:11px 12px;
+                            background:#f8fafc;
+                            border-bottom:1px solid #e5eaf1;
+                            font-weight:700;
+                          "
+                        >
+                          학생
+                        </td>
+
+                        <td
+                          style="
+                            padding:11px 12px;
+                            border-bottom:1px solid #e5eaf1;
+                          "
+                        >
+                          ${safeStudentName}
+                        </td>
+                      </tr>
+
+                      <tr>
+                        <td
+                          style="
+                            padding:11px 12px;
+                            background:#f8fafc;
+                            border-bottom:1px solid #e5eaf1;
+                            font-weight:700;
+                          "
+                        >
+                          일시
+                        </td>
+
+                        <td
+                          style="
+                            padding:11px 12px;
+                            border-bottom:1px solid #e5eaf1;
+                          "
+                        >
+                          ${safeScheduleLabel}
+                        </td>
+                      </tr>
+
+                      <tr>
+                        <td
+                          style="
+                            padding:11px 12px;
+                            background:#f8fafc;
+                            border-bottom:1px solid #e5eaf1;
+                            font-weight:700;
+                          "
+                        >
+                          소요시간
+                        </td>
+
+                        <td
+                          style="
+                            padding:11px 12px;
+                            border-bottom:1px solid #e5eaf1;
+                          "
+                        >
+                          약 ${INTERVIEW_DURATION_MINUTES}분
+                        </td>
+                      </tr>
+
+                      <tr>
+                        <td
+                          style="
+                            padding:11px 12px;
+                            background:#f8fafc;
+                            border-bottom:1px solid #e5eaf1;
+                            font-weight:700;
+                          "
+                        >
+                          담당 강사
+                        </td>
+
+                        <td
+                          style="
+                            padding:11px 12px;
+                            border-bottom:1px solid #e5eaf1;
+                          "
+                        >
+                          ${safeTeacherName}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div
+                    style="
+                      padding:18px;
+                      border-radius:10px;
+                      background:#f8fafc;
+                    "
+                  >
+                    ${accessHtml}
+                  </div>
+
+                  <p
+                    style="
+                      margin:24px 0 0;
+                      color:#667085;
+                      font-size:13px;
+                      line-height:1.7;
+                    "
+                  >
+                    테스트 시작 전 인터넷 연결과
+                    카메라·마이크 상태를 확인해주세요.
+                    <br />
+                    감사합니다.
+                    <br />
+                    TALKLY
+                  </p>
+                </div>
+              </div>
+            </div>
+          `,
+
+          text: [
+            "TALKLY 원어민 화상 레벨테스트 안내",
+            `학생: ${studentName}`,
+            `일시: ${scheduleLabel}`,
+            `소요시간: 약 ${INTERVIEW_DURATION_MINUTES}분`,
+            `담당 강사: ${teacherName}`,
+            accessText,
+          ].join("\n"),
+        });
+
+        emailStatus = "sent";
+      } catch (emailError) {
+        /*
+         * 이메일 실패 때문에 이미 저장된
+         * 레벨테스트 일정을 되돌리지 않습니다.
+         */
+        emailStatus = "failed";
+
+        console.error(
+          "LEVEL TEST INTERVIEW SCHEDULE EMAIL ERROR:",
+          emailError instanceof Error
+            ? emailError.message
+            : emailError
+        );
+      }
+    }
+
     return NextResponse.json({
       ok: true,
+
       message:
-        "원어민 화상 레벨테스트 일정이 저장되었습니다.",
+        emailStatus === "failed"
+          ? "원어민 화상 레벨테스트 일정은 저장되었지만 안내 이메일 발송에 실패했습니다."
+          : "원어민 화상 레벨테스트 일정이 저장되었습니다.",
+
       scheduledAt:
         start.toISOString(),
+
       durationMinutes:
         INTERVIEW_DURATION_MINUTES,
+
+      emailStatus,
+
       teacher: {
         userId:
           teacher.user_id,
+
         displayName:
           teacher.display_name,
       },
@@ -753,6 +1208,37 @@ export async function POST(
   }
 }
 
+function formatSeoulSchedule(
+  date: Date
+) {
+  return new Intl.DateTimeFormat(
+    "ko-KR",
+    {
+      timeZone:
+        SEOUL_TIME_ZONE,
+
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }
+  ).format(date);
+}
+
+function escapeHtml(
+  value: string
+) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function pad(value: number) {
   return String(value).padStart(
     2,
@@ -769,6 +1255,7 @@ function getSeoulDateParts(
       {
         timeZone:
           SEOUL_TIME_ZONE,
+
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
@@ -809,6 +1296,7 @@ function getSeoulDayOfWeek(
       {
         timeZone:
           SEOUL_TIME_ZONE,
+
         weekday: "short",
       }
     ).format(date);
