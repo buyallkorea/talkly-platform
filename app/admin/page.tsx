@@ -461,10 +461,15 @@ export default async function AdminDashboardPage() {
     recentEnrollmentsResult.error;
 
   if (firstError) {
-    throw new Error(
-      firstError.message
-    );
-  }
+  console.error("[ADMIN DASHBOARD QUERY ERROR]", {
+    code: firstError.code,
+    message: firstError.message,
+    details: firstError.details,
+    hint: firstError.hint,
+  });
+
+  throw new Error("Admin dashboard data query failed.");
+}
 
   const recentSessions =
     (recentSessionsResult.data ??
