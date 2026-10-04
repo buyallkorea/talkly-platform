@@ -2,6 +2,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import DeleteTeacherButton from "./DeleteTeacherButton";
+import {
+  getTeacherEvaluationRequirements,
+  getTeacherEvaluationLabel,
+  type TeacherEvaluationRequirement,
+} from "@/lib/teacher-evaluations";
 
 type PageProps = {
   params: Promise<{
@@ -161,6 +166,7 @@ export default async function TeacherDetailPage({
         status,
         start_date,
         end_date,
+        total_lessons,
         created_at
       `)
       .eq("teacher_user_id", id)
@@ -282,6 +288,8 @@ export default async function TeacherDetailPage({
   let evaluations: {
     id: number;
     class_session_id: number;
+    evaluation_type: string | null;
+    period_number: number | null;
   }[] = [];
 
   if (sessionIds.length > 0) {
@@ -294,7 +302,7 @@ export default async function TeacherDetailPage({
 
         supabase
           .from("evaluations")
-          .select("id, class_session_id")
+          .select("id, class_session_id, evaluation_type, period_number")
           .in("class_session_id", sessionIds),
       ]);
 
@@ -315,6 +323,39 @@ export default async function TeacherDetailPage({
 
   const evaluationSet = new Set(
     evaluations.map((item) => item.class_session_id)
+  );
+
+  // The same 28-day and final-lesson rules are used by the teacher form and API.
+  const evaluationRequirements: TeacherEvaluationRequirement[] =
+    enrollments.flatMap((enrollment) =>
+      getTeacherEvaluationRequirements({
+        enrollmentId: enrollment.id,
+        startDate: enrollment.start_date,
+        totalLessons: enrollment.total_lessons,
+        sessions: sessions.filter(
+          (session) => session.enrollment_id === enrollment.id
+        ),
+        existingEvaluations: evaluations.filter((evaluation) =>
+          sessions.some(
+            (session) =>
+              session.id === evaluation.class_session_id &&
+              session.enrollment_id === enrollment.id
+          )
+        ),
+      })
+    );
+
+  const completedEvaluationRequirements = evaluationRequirements.filter(
+    (requirement) => evaluationSet.has(requirement.sessionId)
+  );
+  const pendingEvaluationRequirements = evaluationRequirements.filter(
+    (requirement) => !evaluationSet.has(requirement.sessionId)
+  );
+  const evaluationRequirementBySessionId = new Map(
+    evaluationRequirements.map((requirement) => [
+      requirement.sessionId,
+      requirement,
+    ])
   );
 
   const [teacherReviewSummaryResult, teacherReviewsResult] =
@@ -416,9 +457,7 @@ export default async function TeacherDetailPage({
     (session) => attendanceMap.has(session.id)
   ).length;
 
-  const evaluationCompletedCount = sessions.filter(
-    (session) => evaluationSet.has(session.id)
-  ).length;
+  const evaluationCompletedCount = completedEvaluationRequirements.length;
 
   const attendanceRate =
     completedSessions.length > 0
@@ -432,12 +471,10 @@ export default async function TeacherDetailPage({
       : 0;
 
   const evaluationRate =
-    completedSessions.length > 0
+    evaluationRequirements.length > 0
       ? Math.round(
-          (completedSessions.filter((session) =>
-            evaluationSet.has(session.id)
-          ).length /
-            completedSessions.length) *
+          (completedEvaluationRequirements.length /
+            evaluationRequirements.length) *
             100
         )
       : 0;
@@ -718,6 +755,7 @@ export default async function TeacherDetailPage({
           ["전체 수업", sessions.length],
           ["출결 처리", attendanceCompletedCount],
           ["평가 작성", evaluationCompletedCount],
+          ["평가 미작성", pendingEvaluationRequirements.length],
           ["강사 평가", teacherReviewSummary?.review_count ?? 0],
           [
             "강사 평점",
@@ -1011,7 +1049,7 @@ export default async function TeacherDetailPage({
                   gap: "12px",
                 }}
               >
-                <span>평가 작성률</span>
+                <span>월간·최종평가 작성률</span>
                 <strong>{evaluationRate}%</strong>
               </div>
 
@@ -1036,6 +1074,74 @@ export default async function TeacherDetailPage({
             </div>
           </div>
         </div>
+      </section>
+
+      <section
+        style={{
+          marginTop: "18px",
+          padding: "24px",
+          border: "1px solid #e4e7ec",
+          borderRadius: "14px",
+          background: "#ffffff",
+        }}
+      >
+        <h2 style={{ marginTop: 0 }}>강사 월간·최종평가 현황</h2>
+        <p style={{ color: "#667085", fontSize: "13px", lineHeight: 1.7 }}>
+          수강 시작일부터 28일마다 도래한 월간평가와 마지막 수업의 최종평가만
+          작성 대상으로 계산합니다. 평가 대상 수업이 완료된 후 작성할 수 있습니다.
+        </p>
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", margin: "16px 0" }}>
+          <strong>작성 대상 {evaluationRequirements.length}건</strong>
+          <span>·</span>
+          <strong style={{ color: "#027a48" }}>작성 완료 {completedEvaluationRequirements.length}건</strong>
+          <span>·</span>
+          <strong style={{ color: "#b54708" }}>미작성 {pendingEvaluationRequirements.length}건</strong>
+        </div>
+        {evaluationRequirements.length === 0 ? (
+          <div style={{ padding: "20px", border: "1px dashed #d0d5dd", borderRadius: "10px", color: "#667085" }}>
+            현재 작성 대상인 월간·최종평가가 없습니다.
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: "10px" }}>
+            {[...pendingEvaluationRequirements, ...completedEvaluationRequirements].map((requirement) => {
+              const label = getTeacherEvaluationLabel(requirement);
+              const session = sessions.find((item) => item.id === requirement.sessionId);
+              const completed = evaluationSet.has(requirement.sessionId);
+              return (
+                <Link
+                  key={`${requirement.type}-${requirement.enrollmentId}-${requirement.periodNumber ?? "final"}-${requirement.sessionId}`}
+                  href={`/admin/enrollments/${requirement.enrollmentId}/lessons/${requirement.sessionId}`}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "12px",
+                    flexWrap: "wrap",
+                    padding: "16px",
+                    border: "1px solid #e4e7ec",
+                    borderRadius: "10px",
+                    color: "inherit",
+                    textDecoration: "none",
+                  }}
+                >
+                  <div>
+                    <strong>{getStudentName(requirement.enrollmentId)}</strong>
+                    <div style={{ marginTop: "5px", fontSize: "13px", color: "#475467" }}>
+                      {getCourseName(requirement.enrollmentId)} · {label.ko}
+                    </div>
+                    <div style={{ marginTop: "4px", fontSize: "12px", color: "#667085" }}>
+                      {label.en} · {requirement.lessonNumber}회차
+                      {session ? ` · ${formatDateTime(session.scheduled_start)}` : ""}
+                    </div>
+                  </div>
+                  <strong style={{ color: completed ? "#027a48" : "#b54708" }}>
+                    {completed ? "작성 완료" : "미작성"}
+                  </strong>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <section
@@ -1282,8 +1388,10 @@ export default async function TeacherDetailPage({
               const attendanceItem =
                 attendanceMap.get(session.id);
 
+              const requiredEvaluation =
+                evaluationRequirementBySessionId.get(session.id);
               const hasEvaluation =
-                evaluationSet.has(session.id);
+                requiredEvaluation != null && evaluationSet.has(session.id);
 
               return (
                 <Link
@@ -1332,9 +1440,11 @@ export default async function TeacherDetailPage({
                   </div>
 
                   <div>
-                    {hasEvaluation
-                      ? "평가 완료"
-                      : "평가 미작성"}
+                    {!requiredEvaluation
+                      ? "평가 대상 아님"
+                      : hasEvaluation
+                        ? `${getTeacherEvaluationLabel(requiredEvaluation).ko} 완료`
+                        : `${getTeacherEvaluationLabel(requiredEvaluation).ko} 미작성`}
                   </div>
 
                   <div

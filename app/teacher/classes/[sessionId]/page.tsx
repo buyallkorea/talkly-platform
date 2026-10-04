@@ -4,6 +4,12 @@ import { createClient } from "@/lib/supabase-server";
 import CompleteClassButton from "./CompleteClassButton";
 import TeacherNoteForm from "./TeacherNoteForm";
 import EvaluationForm from "./EvaluationForm";
+import {
+  getTeacherEvaluationRequirementForSession,
+  getTeacherEvaluationLabel,
+  type TeacherEvaluationSession,
+  type ExistingTeacherEvaluation,
+} from "@/lib/teacher-evaluations";
 
 type PageProps = {
   params: Promise<{
@@ -72,7 +78,8 @@ export default async function TeacherClassDetailPage({
         course_id,
         teacher_user_id,
         status,
-        total_lessons
+        total_lessons,
+        start_date
       `)
       .eq("id", session.enrollment_id)
       .eq("teacher_user_id", user.id)
@@ -156,28 +163,57 @@ export default async function TeacherClassDetailPage({
     throw new Error(holdError.message);
   }
 
-  const { data: lastSessionData, error: lastSessionError } =
-    await supabase
-      .from("class_sessions")
-      .select("lesson_number")
-      .eq("enrollment_id", enrollment.id)
-      .order("lesson_number", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+  const { data: allSessions, error: allSessionsError } = await supabase
+    .from("class_sessions")
+    .select("id, enrollment_id, lesson_number, scheduled_start, status")
+    .eq("enrollment_id", enrollment.id)
+    .order("scheduled_start", { ascending: true });
 
-  if (lastSessionError) {
-    throw new Error(lastSessionError.message);
+  if (allSessionsError) {
+    throw new Error(allSessionsError.message);
   }
 
+  const evaluationSessions = (allSessions ?? []) as TeacherEvaluationSession[];
+  const evaluationSessionIds = evaluationSessions.map((item) => item.id);
+
+  let existingEvaluations: ExistingTeacherEvaluation[] = [];
+
+  if (evaluationSessionIds.length > 0) {
+    const { data: evaluationMetadata, error: evaluationMetadataError } =
+      await supabase
+        .from("evaluations")
+        .select("class_session_id, evaluation_type, period_number")
+        .in("class_session_id", evaluationSessionIds);
+
+    if (evaluationMetadataError) {
+      throw new Error(evaluationMetadataError.message);
+    }
+
+    existingEvaluations = (evaluationMetadata ?? []) as ExistingTeacherEvaluation[];
+  }
+
+  const evaluationRequirement = getTeacherEvaluationRequirementForSession({
+    sessionId: session.id,
+    enrollmentId: enrollment.id,
+    startDate: enrollment.start_date,
+    totalLessons: enrollment.total_lessons,
+    sessions: evaluationSessions,
+    existingEvaluations,
+  });
+
+  const evaluationLabel = evaluationRequirement
+    ? getTeacherEvaluationLabel(evaluationRequirement)
+    : null;
+
   const finalLessonNumber =
-    typeof enrollment.total_lessons === "number" &&
-    enrollment.total_lessons > 0
-      ? enrollment.total_lessons
-      : lastSessionData?.lesson_number ?? null;
+  typeof enrollment.total_lessons === "number" &&
+  Number.isInteger(enrollment.total_lessons) &&
+  enrollment.total_lessons > 0
+    ? enrollment.total_lessons
+    : null;
 
   const isFinalLesson =
-    finalLessonNumber !== null &&
-    session.lesson_number === finalLessonNumber;
+    finalLessonNumber !== null && session.lesson_number === finalLessonNumber;
 
   let evaluation: {
     id: number;
@@ -191,23 +227,22 @@ export default async function TeacherClassDetailPage({
     teacher_comment: string | null;
   } | null = null;
 
-  if (isFinalLesson) {
-    const { data: evaluationData, error: evaluationError } =
-      await supabase
-        .from("evaluations")
-        .select(`
-          id,
-          participation_score,
-          comprehension_score,
-          speaking_score,
-          pronunciation_score,
-          strengths,
-          improvements,
-          homework,
-          teacher_comment
-        `)
-        .eq("class_session_id", session.id)
-        .maybeSingle();
+  if (evaluationRequirement) {
+    const { data: evaluationData, error: evaluationError } = await supabase
+      .from("evaluations")
+      .select(`
+        id,
+        participation_score,
+        comprehension_score,
+        speaking_score,
+        pronunciation_score,
+        strengths,
+        improvements,
+        homework,
+        teacher_comment
+      `)
+      .eq("class_session_id", session.id)
+      .maybeSingle();
 
     if (evaluationError) {
       throw new Error(evaluationError.message);
@@ -1006,78 +1041,44 @@ export default async function TeacherClassDetailPage({
             marginBottom: "4px",
           }}
         >
-          {isFinalLesson
-            ? "Final Teacher Evaluation"
-            : "AI Lesson Evaluation"}
+          {evaluationLabel?.en ?? (isFinalLesson ? "Final Teacher Evaluation" : "AI Lesson Evaluation")}
         </h2>
 
-        <div
-          style={{
-            fontSize: "13px",
-            opacity: 0.6,
-          }}
-        >
-          {isFinalLesson
+        <div style={{ fontSize: "13px", opacity: 0.6 }}>
+          {evaluationLabel?.ko ?? (isFinalLesson
             ? "최종 강사 종합평가"
-            : "회차별 평가는 TALKLY AI가 분석합니다."}
+            : "회차별 평가는 TALKLY AI가 분석합니다.")}
         </div>
 
-        {!isFinalLesson ? (
-          <div
-            style={{
-              marginTop: "20px",
-              padding: "18px",
-              border: "1px dashed #cbd5e1",
-              borderRadius: "10px",
-              background: "#f8fbff",
-              lineHeight: 1.7,
-            }}
-          >
-            <strong>
-              No teacher evaluation is required for this lesson.
-            </strong>
-            <div
-              style={{
-                marginTop: "6px",
-                fontSize: "12px",
-                opacity: 0.65,
-              }}
-            >
-              매 회차 수업은 TALKLY AI가 문법·어휘·표현·발음·유창성 등을
-              분석합니다. 강사의 학생 종합평가는 마지막 수업 종료 후 한 번만
-              작성합니다.
-            </div>
-          </div>
-        ) : session.status !== "completed" ? (
-          <div
-            style={{
-              marginTop: "20px",
-              padding: "18px",
-              border: "1px dashed #cbd5e1",
-              borderRadius: "10px",
-              background: "#fffdf7",
-              lineHeight: 1.7,
-            }}
-          >
-            <strong>
-              Final evaluation will be available after the last class is completed.
-            </strong>
-            <div
-              style={{
-                marginTop: "6px",
-                fontSize: "12px",
-                opacity: 0.65,
-              }}
-            >
-              마지막 수업을 완료한 뒤 전체 수강기간을 기준으로 종합평가를
-              작성해 주세요.
-            </div>
-          </div>
-        ) : (
+        {evaluationRequirement && session.status === "completed" ? (
           <EvaluationForm
             sessionId={session.id}
+            evaluationType={evaluationRequirement.type}
+            periodNumber={evaluationRequirement.periodNumber}
             initialEvaluation={evaluation}
           />
+        ) : (
+          <div
+            style={{
+              marginTop: "20px",
+              padding: "18px",
+              border: "1px dashed #cbd5e1",
+              borderRadius: "10px",
+              background: isFinalLesson ? "#fffdf7" : "#f8fbff",
+              lineHeight: 1.7,
+            }}
+          >
+            <strong>
+              {isFinalLesson && session.status !== "completed"
+                ? "Final evaluation will be available after the last class is completed."
+                : "No teacher evaluation is required for this lesson."}
+            </strong>
+            <div style={{ marginTop: "6px", fontSize: "12px", opacity: 0.65 }}>
+              {isFinalLesson && session.status !== "completed"
+                ? "마지막 수업 완료 후 최종 종합평가를 작성해 주세요."
+                : "회차별 수업은 TALKLY AI가 분석하며, 강사 평가는 수강 시작일 기준 4주마다 및 최종 수업 완료 시 작성합니다."}
+            </div>
+          </div>
         )}
       </section>
     </main>

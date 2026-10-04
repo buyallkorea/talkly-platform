@@ -358,7 +358,7 @@ export default function Home() {
           >
             원어민 강사와 실시간으로 만나 배우는 1:1 화상영어.
           <br />
-            TALKLY AI가 수업을 분석하고 학습 성장을 체계적으로 관리합니다.
+            원어민 강사와 TAlKLY AI가 수업을 분석하고 학습 성장을 체계적으로 관리합니다.
           </p>
 
           <div

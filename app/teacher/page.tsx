@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { createClient } from "@/lib/supabase-server";
+import { getTeacherEvaluationRequirements, getTeacherEvaluationLabel, type ExistingTeacherEvaluation } from "@/lib/teacher-evaluations";
 
 type PageProps = {
   searchParams: Promise<{
@@ -17,6 +18,7 @@ type EnrollmentRow = {
   teacher_user_id: string | null;
   status: string;
   total_lessons: number | null;
+  start_date: string | null;
 };
 
 type SessionRow = {
@@ -274,7 +276,8 @@ export default async function TeacherPage({
       course_id,
       teacher_user_id,
       status,
-      total_lessons
+      total_lessons,
+      start_date
     `)
     .eq("teacher_user_id", user.id)
     .in("status", [
@@ -695,89 +698,47 @@ export default async function TeacherPage({
         ).startsWith(monthPrefix)
     );
 
-  const finalCompletedSessions =
-    sessions.filter((session) => {
-      if (
-        session.status !== "completed"
-      ) {
-        return false;
-      }
+  // The same eligibility rules are used by the lesson page and save API.
+  const allSessionIds = sessions.map((item) => item.id);
+  let existingEvaluations: ExistingTeacherEvaluation[] = [];
 
-      const enrollment =
-        getEnrollment(
-          session.enrollment_id
-        );
-
-      if (!enrollment) {
-        return false;
-      }
-
-      const enrollmentSessions =
-        sessions.filter(
-          (item) =>
-            item.enrollment_id ===
-            enrollment.id
-        );
-
-      const finalLessonNumber =
-        typeof enrollment.total_lessons ===
-          "number" &&
-        enrollment.total_lessons > 0
-          ? enrollment.total_lessons
-          : Math.max(
-              ...enrollmentSessions.map(
-                (item) =>
-                  item.lesson_number
-              )
-            );
-
-      return (
-        session.lesson_number ===
-        finalLessonNumber
-      );
-    });
-
-  let evaluatedFinalSessionIds =
-    new Set<number>();
-
-  if (
-    finalCompletedSessions.length > 0
-  ) {
-    const {
-      data: evaluationData,
-      error: evaluationError,
-    } = await admin
+  if (allSessionIds.length > 0) {
+    const { data, error } = await admin
       .from("evaluations")
-      .select("class_session_id")
-      .in(
-        "class_session_id",
-        finalCompletedSessions.map(
-          (item) => item.id
-        )
-      );
+      .select("class_session_id, evaluation_type, period_number")
+      .in("class_session_id", allSessionIds);
 
-    if (evaluationError) {
-      throw new Error(
-        evaluationError.message
-      );
-    }
-
-    evaluatedFinalSessionIds =
-      new Set(
-        (evaluationData ?? []).map(
-          (item) =>
-            item.class_session_id
-        )
-      );
+    if (error) throw new Error(error.message);
+    existingEvaluations = (data ?? []) as ExistingTeacherEvaluation[];
   }
 
-  const pendingFinalEvaluations =
-    finalCompletedSessions.filter(
-      (session) =>
-        !evaluatedFinalSessionIds.has(
-          session.id
-        )
+  const submittedSessionIds = new Set(
+    existingEvaluations.map((item) => item.class_session_id)
+  );
+
+  const pendingTeacherEvaluations = enrollments.flatMap((enrollment) => {
+    const enrollmentSessions = sessions.filter(
+      (item) => item.enrollment_id === enrollment.id
     );
+    const enrollmentSessionIds = new Set(enrollmentSessions.map((item) => item.id));
+    const requirements = getTeacherEvaluationRequirements({
+      enrollmentId: enrollment.id,
+      startDate: enrollment.start_date,
+      totalLessons: enrollment.total_lessons,
+      sessions: enrollmentSessions,
+      existingEvaluations: existingEvaluations.filter(
+        (item) => enrollmentSessionIds.has(item.class_session_id)
+      ),
+    });
+    return requirements
+      .filter((item) => !submittedSessionIds.has(item.sessionId))
+      .map((requirement) => ({
+        ...requirement,
+        studentName: getStudentName(enrollment.id),
+        courseName: getCourseName(enrollment.id),
+        label: getTeacherEvaluationLabel(requirement),
+      }));
+  });
 
   const visibleSessions =
     requestedView === "week"
@@ -838,7 +799,7 @@ export default async function TeacherPage({
           };
 
   const actionRequiredCount =
-    pendingFinalEvaluations.length;
+    pendingTeacherEvaluations.length;
 
   return (
     <main
@@ -900,7 +861,7 @@ export default async function TeacherPage({
           >
             Check today&apos;s teaching tasks first.
             Your regular classes, assigned level tests,
-            and any final student evaluations that still
+            and any monthly or final student evaluations that still
             need your attention are collected here.
           </p>
 
@@ -913,7 +874,7 @@ export default async function TeacherPage({
                 "rgba(255,255,255,0.58)",
             }}
           >
-            오늘 해야 할 수업·레벨테스트·최종 학생평가를 우선 확인합니다.
+            오늘 해야 할 수업·레벨테스트·월간 및 최종 학생평가를 우선 확인합니다.
           </div>
         </section>
 
@@ -940,7 +901,7 @@ export default async function TeacherPage({
             [
               "Action Required",
               actionRequiredCount,
-              "Final evaluations pending",
+              "Monthly & final evaluations pending",
             ],
             [
               "This Week",
@@ -996,7 +957,7 @@ export default async function TeacherPage({
           )}
         </section>
 
-        {pendingFinalEvaluations.length >
+        {pendingTeacherEvaluations.length >
           0 && (
           <section
             style={{
@@ -1025,7 +986,7 @@ export default async function TeacherPage({
                 fontSize: "24px",
               }}
             >
-              Final Teacher Evaluation
+              Teacher Evaluations
             </h2>
 
             <p
@@ -1036,11 +997,9 @@ export default async function TeacherPage({
                 fontSize: "13px",
               }}
             >
-              These students have completed their final
-              class. Please submit one overall evaluation
-              for the full course. You do not need to
-              write a teacher evaluation after every
-              lesson.
+              Please complete the monthly (every four weeks) or final
+              evaluations listed below. Individual lessons are analyzed
+              separately by TALKLY AI.
             </p>
 
             <div
@@ -1050,11 +1009,11 @@ export default async function TeacherPage({
                 gap: "10px",
               }}
             >
-              {pendingFinalEvaluations.map(
-                (session) => (
+              {pendingTeacherEvaluations.map(
+                (requirement) => (
                   <Link
-                    key={session.id}
-                    href={`/teacher/classes/${session.id}`}
+                    key={`${requirement.enrollmentId}-${requirement.sessionId}`}
+                    href={`/teacher/classes/${requirement.sessionId}`}
                     style={{
                       display: "flex",
                       justifyContent:
@@ -1077,9 +1036,7 @@ export default async function TeacherPage({
                           fontSize: "16px",
                         }}
                       >
-                        {getStudentName(
-                          session.enrollment_id
-                        )}
+                        {requirement.studentName}
                       </strong>
 
                       <div
@@ -1089,11 +1046,11 @@ export default async function TeacherPage({
                           fontSize: "12px",
                         }}
                       >
-                        {getCourseName(
-                          session.enrollment_id
-                        )}{" "}
-                        · Final Lesson{" "}
-                        {session.lesson_number}
+                        {requirement.courseName}{" "}
+                        · {requirement.label.en} · Lesson {requirement.lessonNumber}
+                        <div style={{ marginTop: 4, fontSize: 11, color: "#667085" }}>
+                          {requirement.label.ko}
+                        </div>
                       </div>
                     </div>
 
