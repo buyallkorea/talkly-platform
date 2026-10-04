@@ -1031,3 +1031,169 @@ img {
   }
 }
 
+
+/* TALKLY TEACHER PORTAL */
+
+.talkly-teacher-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  background: #f5f7fb;
+  color: #101828;
+}
+
+.talkly-teacher-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 26px 18px 22px;
+  background: linear-gradient(180deg, #0a1f44, #0c2855);
+  color: white;
+}
+
+.talkly-teacher-brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 22px;
+  color: white;
+  text-decoration: none;
+}
+
+.talkly-teacher-brand-main {
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.talkly-teacher-brand-badge {
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: rgba(255,255,255,.13);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.talkly-teacher-brand-sub {
+  width: 100%;
+  color: rgba(255,255,255,.6);
+  font-size: 12px;
+}
+
+.talkly-teacher-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 23px;
+}
+
+.talkly-teacher-nav-title {
+  padding: 0 10px 8px;
+  color: rgba(255,255,255,.5);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.talkly-teacher-nav-items {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.talkly-teacher-nav-link {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  color: rgba(255,255,255,.78);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.talkly-teacher-nav-link:hover {
+  background: rgba(255,255,255,.08);
+  color: white;
+}
+
+.talkly-teacher-nav-link-active,
+.talkly-teacher-nav-link-active:hover {
+  background: white;
+  color: #0a1f44;
+}
+
+.talkly-teacher-sidebar-footer {
+  margin-top: 28px;
+  padding: 16px 10px 0;
+  border-top: 1px solid rgba(255,255,255,.1);
+  color: rgba(255,255,255,.6);
+  font-size: 11px;
+}
+
+.talkly-teacher-workspace {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.talkly-teacher-header {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  min-height: 78px;
+  padding: 14px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: rgba(255,255,255,.94);
+  border-bottom: 1px solid #e5e9f0;
+}
+
+.talkly-teacher-header-eyebrow {
+  color: #3f75dc;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.talkly-teacher-header-user {
+  color: #0a1f44;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.talkly-teacher-content {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 34px;
+}
+
+@media (max-width: 1000px) {
+  .talkly-teacher-shell {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .talkly-teacher-shell {
+    display: block;
+  }
+
+  .talkly-teacher-sidebar {
+    position: relative;
+    width: 100%;
+    height: auto;
+  }
+
+  .talkly-teacher-header {
+    position: relative;
+    padding: 14px 16px;
+  }
+
+  .talkly-teacher-content {
+    padding: 22px 16px 50px;
+  }
+}
