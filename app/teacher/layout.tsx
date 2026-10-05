@@ -72,7 +72,7 @@ export default async function TeacherLayout({
           </div>
 
           <div className="talkly-teacher-header-actions">
-            <LogoutButton />
+            <LogoutButton label="Log Out" />
           </div>
         </header>
 

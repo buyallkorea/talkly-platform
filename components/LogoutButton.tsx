@@ -3,7 +3,13 @@
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 
-export default function LogoutButton() {
+type LogoutButtonProps = {
+  label?: string;
+};
+
+export default function LogoutButton({
+  label = "로그아웃",
+}: LogoutButtonProps) {
   const router = useRouter();
 
   async function handleLogout() {
@@ -37,7 +43,7 @@ export default function LogoutButton() {
         cursor: "pointer",
       }}
     >
-      로그아웃
+      {label}
     </button>
   );
 }

@@ -910,9 +910,22 @@ export default async function TeacherPage({
             ],
           ].map(
             ([label, value, caption]) => (
-              <div
+              <Link
                 key={String(label)}
+                href={
+                  label === "Level Tests"
+                    ? "/teacher/level-tests"
+                    : label === "Action Required"
+                      ? "/teacher/reviews"
+                      : label === "This Week"
+                        ? "/teacher?view=week#teacher-schedule"
+                        : "/teacher#teacher-schedule"
+                }
                 style={{
+                  display: "block",
+                  color: "inherit",
+                  textDecoration: "none",
+                  cursor: "pointer",
                   padding: "20px",
                   border:
                     "1px solid #e4e7ec",
@@ -952,7 +965,7 @@ export default async function TeacherPage({
                 >
                   {caption}
                 </div>
-              </div>
+              </Link>
             )
           )}
         </section>
@@ -1070,8 +1083,10 @@ export default async function TeacherPage({
         )}
 
         <section
+          id="teacher-schedule"
           style={{
             marginTop: "28px",
+            scrollMarginTop: "24px",
           }}
         >
           <div
