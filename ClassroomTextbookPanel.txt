@@ -1,10 +1,9 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+﻿import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import ClassroomTextbookPanelClient from "./ClassroomTextbookPanelClient";
 
 type Props = {
   textbookId: number;
   sessionId: number;
-  enrollmentId: number;
   viewerRole: string;
 };
 
@@ -25,7 +24,6 @@ type HotspotRow = {
 export default async function ClassroomTextbookPanel({
   textbookId,
   sessionId,
-  enrollmentId,
   viewerRole,
 }: Props) {
   const supabaseUrl =
@@ -219,41 +217,12 @@ export default async function ClassroomTextbookPanel({
     })
   );
 
-  // 해당 수강등록에 배정된 교재의 마지막 진도를 조회합니다.
-  // 진도 조회에 실패해도 기존 교재 표시 기능은 유지합니다.
-  const { data: progress, error: progressError } = await adminSupabase
-    .from("enrollment_textbooks")
-    .select("last_page_id, last_page_number")
-    .eq("enrollment_id", enrollmentId)
-    .eq("textbook_id", textbookId)
-    .is("ended_at", null)
-    .limit(1)
-    .maybeSingle();
-
-  if (progressError) {
-    console.error("[TALKLY TEXTBOOK] progress load failed", progressError.message);
-  }
-
-  const savedPageIndexById = progress?.last_page_id != null
-    ? pages.findIndex((page) => page.id === progress.last_page_id)
-    : -1;
-  const savedPageIndexByNumber = progress?.last_page_number != null
-    ? pages.findIndex((page) => page.pageNumber === progress.last_page_number)
-    : -1;
-  const initialPageIndex = savedPageIndexById >= 0
-    ? savedPageIndexById
-    : savedPageIndexByNumber >= 0
-      ? savedPageIndexByNumber
-      : 0;
-
   return (
     <ClassroomTextbookPanelClient
       title={textbook.title}
       pages={pages}
       textbookId={textbookId}
       sessionId={sessionId}
-      enrollmentId={enrollmentId}
-      initialPageIndex={initialPageIndex}
       viewerRole={viewerRole}
     />
   );

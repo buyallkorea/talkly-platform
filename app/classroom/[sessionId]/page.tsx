@@ -1140,9 +1140,10 @@ export default async function ClassroomPage({
 
           <section className="talkly-classroom-panel talkly-classroom-textbook">
             <ClassroomTextbookPanel
-              textbookId={4}
-              sessionId={session.id}
-              viewerRole={profile.role}
+             textbookId={4}
+             sessionId={session.id}
+             enrollmentId={enrollment.id}
+             viewerRole={profile.role}
             />
           </section>
         </div>

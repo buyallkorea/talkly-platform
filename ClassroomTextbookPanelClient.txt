@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useEffect,
@@ -32,8 +32,6 @@ type Props = {
   pages: ViewerPage[];
   textbookId: number;
   sessionId: number;
-  enrollmentId: number;
-  initialPageIndex: number;
   viewerRole: string;
 };
 
@@ -55,17 +53,14 @@ export default function ClassroomTextbookPanelClient({
   pages,
   textbookId,
   sessionId,
-  enrollmentId,
-  initialPageIndex,
   viewerRole,
 }: Props) {
   const isController =
     viewerRole === "teacher" ||
     viewerRole === "admin";
 
-  const startingIndex = Math.min(Math.max(initialPageIndex, 0), Math.max(pages.length - 1, 0));
   const [currentIndex, setCurrentIndex] =
-    useState(startingIndex);
+    useState(0);
   const [zoom, setZoom] =
     useState(100);
   const [showThumbnails, setShowThumbnails] =
@@ -101,9 +96,7 @@ export default function ClassroomTextbookPanelClient({
   const subscribedRef =
     useRef(false);
   const currentIndexRef =
-    useRef(startingIndex);
-  const pendingSaveRef = useRef<number | null>(null);
-  const savingRef = useRef(false);
+    useRef(0);
 
   const compactInitializedRef =
     useRef(false);
@@ -185,40 +178,6 @@ export default function ClassroomTextbookPanelClient({
     );
   }
 
-  // 페이지 변경은 순차 저장하여 느린 이전 요청이 최신 진도를 덮지 않게 합니다.
-  async function saveProgress() {
-    if (savingRef.current) return;
-    savingRef.current = true;
-    try {
-      while (pendingSaveRef.current !== null) {
-        const index = pendingSaveRef.current;
-        pendingSaveRef.current = null;
-        const page = pages[index];
-        if (!page) continue;
-        try {
-          const response = await fetch("/api/classroom/textbook-progress", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sessionId,
-              enrollmentId,
-              textbookId,
-              pageId: page.id,
-              pageNumber: page.pageNumber,
-            }),
-          });
-          if (!response.ok) {
-            console.error("[TALKLY TEXTBOOK] progress save failed", response.status);
-          }
-        } catch (error) {
-          console.error("[TALKLY TEXTBOOK] progress save error", error);
-        }
-      }
-    } finally {
-      savingRef.current = false;
-    }
-  }
-
   function moveToPage(index: number) {
     const nextIndex = Math.min(
       Math.max(index, 0),
@@ -228,8 +187,6 @@ export default function ClassroomTextbookPanelClient({
     applyPage(nextIndex);
 
     if (isController) {
-      pendingSaveRef.current = nextIndex;
-      void saveProgress();
       void sendPageState(
         nextIndex,
         "page-change"
