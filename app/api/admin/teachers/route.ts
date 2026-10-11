@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
-
 function normalizeText(value: unknown) {
   return typeof value === "string"
     ? value.trim()
     : "";
 }
-
 function normalizeOptionalNumber(
   value: unknown
 ) {
@@ -18,24 +16,20 @@ function normalizeOptionalNumber(
   ) {
     return null;
   }
-
   const numberValue =
     Number(value);
-
   return Number.isFinite(
     numberValue
   )
     ? numberValue
     : null;
 }
-
 export async function POST(
   request: Request
 ) {
   let teacherUserId:
     | string
     | null = null;
-
   try {
     /*
      * =====================================================
@@ -44,13 +38,11 @@ export async function POST(
      */
     const supabase =
       await createClient();
-
     const {
       data: { user },
       error: userError,
     } =
       await supabase.auth.getUser();
-
     if (
       userError ||
       !user
@@ -65,7 +57,6 @@ export async function POST(
         }
       );
     }
-
     /*
      * =====================================================
      * 2. 관리자 권한 확인
@@ -83,7 +74,6 @@ export async function POST(
           user.id
         )
         .maybeSingle();
-
     if (
       profileError ||
       !profile ||
@@ -100,7 +90,6 @@ export async function POST(
         }
       );
     }
-
     /*
      * =====================================================
      * 3. 요청 데이터
@@ -108,47 +97,45 @@ export async function POST(
      */
     const body =
       await request.json();
+    const registrationMode = body.registrationMode === "direct" ? "direct" : "invite";
+    const initialPassword = typeof body.initialPassword === "string" ? body.initialPassword : "";
+
+    if (registrationMode === "direct" && initialPassword.length < 8) {
+      return NextResponse.json({ error: "직접 등록 비밀번호는 8자 이상이어야 합니다." }, { status: 400 });
+    }
 
     const email =
       normalizeText(
         body.email
       ).toLowerCase();
-
     const name =
       normalizeText(
         body.name
       );
-
     const phone =
       normalizeText(
         body.phone
       );
-
     const displayName =
       normalizeText(
         body.displayName
       );
-
     const nationality =
       normalizeText(
         body.nationality
       );
-
     const bio =
       normalizeText(
         body.bio
       );
-
     const education =
       normalizeText(
         body.education
       );
-
     const certifications =
       normalizeText(
         body.certifications
       );
-
     const specialties:
       string[] =
       Array.isArray(
@@ -178,17 +165,14 @@ export async function POST(
                 0
             )
         : [];
-
     const yearsExperience =
       normalizeOptionalNumber(
         body.yearsExperience
       );
-
     const hourlyRate =
       normalizeOptionalNumber(
         body.hourlyRate
       );
-
     /*
      * =====================================================
      * 4. 입력 검증
@@ -208,7 +192,6 @@ export async function POST(
         }
       );
     }
-
     if (!nationality) {
       return NextResponse.json(
         {
@@ -220,7 +203,6 @@ export async function POST(
         }
       );
     }
-
     if (
       yearsExperience !==
         null &&
@@ -236,7 +218,6 @@ export async function POST(
         }
       );
     }
-
     if (
       hourlyRate !==
         null &&
@@ -252,7 +233,6 @@ export async function POST(
         }
       );
     }
-
     /*
      * =====================================================
      * 5. Admin Client
@@ -260,7 +240,6 @@ export async function POST(
      */
     const adminClient =
       createAdminClient();
-
     /*
      * =====================================================
      * 6. 강사 계정 설정 복귀 URL
@@ -271,12 +250,10 @@ export async function POST(
         process.env
           .NEXT_PUBLIC_SITE_URL
       );
-
     const requestOrigin =
       new URL(
         request.url
       ).origin;
-
     const siteUrl =
       (
         configuredSiteUrl ||
@@ -285,15 +262,12 @@ export async function POST(
         /\/+$/,
         ""
       );
-
     const nextPath =
       "/account/teacher-setup";
-
     const redirectTo =
       `${siteUrl}/auth/callback?next=${encodeURIComponent(
         nextPath
       )}`;
-
     /*
      * =====================================================
      * 7. Auth 강사 계정 생성 + 등록메일 발송
@@ -302,49 +276,37 @@ export async function POST(
      * 내부적으로는 Supabase invitation 방식을 사용합니다.
      * =====================================================
      */
-    const {
-      data: inviteData,
-      error: inviteError,
-    } =
-      await adminClient.auth.admin
-        .inviteUserByEmail(
+    const authResult = registrationMode === "direct"
+      ? await adminClient.auth.admin.createUser({
           email,
-          {
-            redirectTo,
+          password: initialPassword,
+          email_confirm: true,
+          user_metadata: {
+            name,
+            role: "teacher",
+            teacher_invited: false,
+            teacher_account_ready: true,
+            teacher_account_ready_at: new Date().toISOString(),
+          },
+        })
+      : await adminClient.auth.admin.inviteUserByEmail(email, {
+          redirectTo,
+          data: {
+            name,
+            role: "teacher",
+            teacher_invited: true,
+            teacher_account_ready: false,
+          },
+        });
 
-            data: {
-              name,
-
-              role:
-                "teacher",
-
-              teacher_invited:
-                true,
-
-              teacher_account_ready:
-                false,
-            },
-          }
-        );
-
-    if (
-      inviteError ||
-      !inviteData.user
-    ) {
+    if (authResult.error || !authResult.data.user) {
       return NextResponse.json(
-        {
-          error:
-            inviteError?.message ||
-            "강사 계정 생성 또는 등록메일 발송에 실패했습니다.",
-        },
-        {
-          status: 400,
-        }
+        { error: authResult.error?.message || "강사 계정 생성에 실패했습니다." },
+        { status: 400 }
       );
     }
 
-    teacherUserId =
-      inviteData.user.id;
+    teacherUserId = authResult.data.user.id;
 
     /*
      * =====================================================
@@ -361,16 +323,12 @@ export async function POST(
           {
             id:
               teacherUserId,
-
             role:
               "teacher",
-
             name,
-
             phone:
               phone ||
               null,
-
             updated_at:
               new Date()
                 .toISOString(),
@@ -380,7 +338,6 @@ export async function POST(
               "id",
           }
         );
-
     if (
       commonProfileError
     ) {
@@ -388,10 +345,8 @@ export async function POST(
         .deleteUser(
           teacherUserId
         );
-
       teacherUserId =
         null;
-
       return NextResponse.json(
         {
           error:
@@ -402,7 +357,6 @@ export async function POST(
         }
       );
     }
-
     /*
      * =====================================================
      * 9. teacher_profiles 생성
@@ -419,33 +373,24 @@ export async function POST(
         .insert({
           user_id:
             teacherUserId,
-
           display_name:
             displayName ||
             name,
-
           nationality,
-
           bio:
             bio ||
             null,
-
           specialties,
-
           years_experience:
             yearsExperience,
-
           education:
             education ||
             null,
-
           certifications:
             certifications ||
             null,
-
           hourly_rate:
             hourlyRate,
-
           /*
            * 관리자에게 등록된 강사는
            * 기본적으로 활성 대상입니다.
@@ -457,7 +402,6 @@ export async function POST(
           is_active:
             true,
         });
-
     if (
       teacherProfileError
     ) {
@@ -468,15 +412,12 @@ export async function POST(
           "id",
           teacherUserId
         );
-
       await adminClient.auth.admin
         .deleteUser(
           teacherUserId
         );
-
       teacherUserId =
         null;
-
       return NextResponse.json(
         {
           error:
@@ -487,7 +428,6 @@ export async function POST(
         }
       );
     }
-
     /*
      * =====================================================
      * 10. 완료
@@ -496,15 +436,14 @@ export async function POST(
     return NextResponse.json(
       {
         success: true,
-
         userId:
           teacherUserId,
-
         registeredEmail:
           email,
-
         message:
-          "강사등록이 완료되었습니다. 등록된 이메일로 계정 설정 안내메일을 발송했습니다.",
+          registrationMode === "direct"
+            ? "강사 계정을 직접 등록했습니다. 초청메일은 발송하지 않았습니다."
+            : "강사등록이 완료되었습니다. 등록된 이메일로 계정 설정 안내메일을 발송했습니다.",
       },
       {
         status: 201,
@@ -515,7 +454,6 @@ export async function POST(
       "CREATE TEACHER REGISTRATION ERROR:",
       error
     );
-
     /*
      * 중간 오류가 발생하면
      * 불완전 계정이 남지 않도록 정리합니다.
@@ -524,7 +462,6 @@ export async function POST(
       try {
         const adminClient =
           createAdminClient();
-
         await adminClient
           .from(
             "teacher_profiles"
@@ -534,7 +471,6 @@ export async function POST(
             "user_id",
             teacherUserId
           );
-
         await adminClient
           .from("profiles")
           .delete()
@@ -542,7 +478,6 @@ export async function POST(
             "id",
             teacherUserId
           );
-
         await adminClient.auth.admin
           .deleteUser(
             teacherUserId
@@ -556,7 +491,6 @@ export async function POST(
         );
       }
     }
-
     return NextResponse.json(
       {
         error:

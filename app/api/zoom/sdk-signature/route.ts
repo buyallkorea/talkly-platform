@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase-server";
 type SignatureRequestBody = {
   meetingNumber: string;
   role: 0 | 1;
+  sessionId: number;
 };
 
 function base64UrlEncode(input: Buffer | string) {
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
       body.meetingNumber || ""
     ).trim();
     const role = Number(body.role);
+    const sessionId = Number(body.sessionId);
 
     if (!meetingNumber) {
       return NextResponse.json(
@@ -88,6 +90,61 @@ export async function POST(request: Request) {
           success: false,
           error: "호스트 권한은 강사 또는 관리자만 사용할 수 있습니다.",
         },
+        { status: 403 }
+      );
+    }
+
+    if (!Number.isSafeInteger(sessionId) || sessionId <= 0 || !/^\d+$/.test(meetingNumber)) {
+      return NextResponse.json(
+        { success: false, error: "올바른 수업 ID와 회의 번호가 필요합니다." },
+        { status: 400 }
+      );
+    }
+
+    const { data: session, error: sessionError } = await supabase
+      .from("class_sessions")
+      .select("id, enrollment_id, meeting_id")
+      .eq("id", sessionId)
+      .maybeSingle();
+
+    if (sessionError || !session || String(session.meeting_id ?? "").trim() !== meetingNumber) {
+      return NextResponse.json(
+        { success: false, error: "해당 수업의 Zoom 회의를 확인할 수 없습니다." },
+        { status: 403 }
+      );
+    }
+
+    const { data: enrollment, error: enrollmentError } = await supabase
+      .from("enrollments")
+      .select("id, child_id, student_user_id, teacher_user_id")
+      .eq("id", session.enrollment_id)
+      .maybeSingle();
+
+    if (enrollmentError || !enrollment) {
+      return NextResponse.json(
+        { success: false, error: "수강정보를 확인할 수 없습니다." },
+        { status: 403 }
+      );
+    }
+
+    let allowed = profile.role === "admin" ||
+      (profile.role === "teacher" && enrollment.teacher_user_id === user.id) ||
+      (profile.role === "student" && enrollment.student_user_id === user.id);
+
+    if (!allowed && profile.role === "parent" && enrollment.child_id) {
+      const { data: child } = await supabase
+        .from("children")
+        .select("id")
+        .eq("id", enrollment.child_id)
+        .eq("parent_user_id", user.id)
+        .maybeSingle();
+      allowed = Boolean(child);
+    }
+
+    if (!allowed || (role === 1 && profile.role !== "admin" &&
+      !(profile.role === "teacher" && enrollment.teacher_user_id === user.id))) {
+      return NextResponse.json(
+        { success: false, error: "이 수업의 Zoom 서명 발급 권한이 없습니다." },
         { status: 403 }
       );
     }
@@ -150,10 +207,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Meeting SDK 서명 생성 중 오류가 발생했습니다.",
+        error: "Meeting SDK 서명 생성 중 오류가 발생했습니다.",
       },
       { status: 500 }
     );

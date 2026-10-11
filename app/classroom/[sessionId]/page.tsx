@@ -9,6 +9,7 @@ import ClassroomWaitingRoom from "./ClassroomWaitingRoom";
 import ClassSessionEndWatcher from "./ClassSessionEndWatcher";
 import StudentAttendanceRecorder from "./StudentAttendanceRecorder";
 import ClassroomChat from "./ClassroomChat";
+import ClassroomTextbookSelectorRefresh from "./ClassroomTextbookSelectorRefresh";
 
 type PageProps = {
   params: Promise<{
@@ -183,7 +184,12 @@ export default async function ClassroomPage({
       meeting_id,
       meeting_url,
       started_at,
-      ended_at
+      ended_at,
+      selected_textbook_id,
+      teacher_user_id,
+      original_teacher_user_id,
+      is_external_teacher
+    
     `)
     .eq(
       "id",
@@ -251,14 +257,17 @@ export default async function ClassroomPage({
   ) {
     hasAccess =
       true;
+  
   } else if (
-    profile.role ===
-      "teacher" &&
-    enrollment.teacher_user_id ===
-      user.id
+    profile.role === "teacher" &&
+    session.is_external_teacher !== true &&
+    (
+      session.teacher_user_id ??
+      enrollment.teacher_user_id
+    ) === user.id
   ) {
-    hasAccess =
-      true;
+    hasAccess = true;
+
   } else if (
     profile.role ===
       "student" &&
@@ -300,6 +309,36 @@ export default async function ClassroomPage({
 
   if (!hasAccess) {
     notFound();
+  }
+  
+  /*
+   * =====================================================
+   * 학생에게 배정된 수업 교재 목록
+   * =====================================================
+   */
+  const {
+    data: assignedTextbooks,
+    error: assignedTextbooksError,
+  } = await supabase
+    .from("enrollment_textbooks")
+    .select(`
+      id,
+      textbook_id,
+      status,
+      textbooks (
+        id,
+        title
+      )
+    `)
+   .eq("enrollment_id", enrollment.id)
+   .in("status", ["assigned", "in_use"])
+   .is("ended_at", null)
+   .order("assigned_at", { ascending: true });
+
+  if (assignedTextbooksError) {
+    throw new Error(
+      `교재 배정 목록 조회 실패: ${assignedTextbooksError.message}`
+    );
   }
 
   /*
@@ -1138,14 +1177,64 @@ export default async function ClassroomPage({
             />
           </section>
 
-          <section className="talkly-classroom-panel talkly-classroom-textbook">
-            <ClassroomTextbookPanel
-             textbookId={4}
-             sessionId={session.id}
-             enrollmentId={enrollment.id}
-             viewerRole={profile.role}
-            />
-          </section>
+          
+
+<section className="talkly-classroom-panel talkly-classroom-textbook">
+  <ClassroomTextbookSelectorRefresh
+    sessionId={session.id}
+    selectedTextbookId={session.selected_textbook_id}
+    textbooks={(assignedTextbooks ?? []).flatMap((item) => {
+      const textbook = item.textbooks;
+
+      if (!textbook) {
+        return [];
+      }
+
+      const book = Array.isArray(textbook)
+        ? textbook[0]
+        : textbook;
+
+      if (!book) {
+        return [];
+      }
+
+      return [
+        {
+          id: book.id,
+          title: book.title,
+        },
+      ];
+    })}
+    canControl={
+      profile.role === "admin" ||
+      profile.role === "teacher"
+    }
+  />
+
+  {session.selected_textbook_id ? (
+    <ClassroomTextbookPanel
+      key={session.selected_textbook_id}
+      textbookId={session.selected_textbook_id}
+      sessionId={session.id}
+      enrollmentId={enrollment.id}
+      viewerRole={profile.role}
+    />
+  ) : (
+    <div className="flex h-full min-h-[320px] items-center justify-center p-6 text-center">
+      <div>
+        <p className="text-base font-semibold text-slate-700">
+          수업 교재가 선택되지 않았습니다.
+        </p>
+
+        <p className="mt-2 text-sm text-slate-500">
+          담당 강사가 교재를 선택하면 이곳에 표시됩니다.
+        </p>
+      </div>
+    </div>
+  )}
+</section>
+
+
         </div>
 
         <ClassroomChat

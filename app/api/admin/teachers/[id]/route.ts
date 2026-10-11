@@ -376,3 +376,186 @@ export async function DELETE(
     );
   }
 }
+
+
+export async function PATCH(
+  request: Request,
+  context: RouteContext
+) {
+  try {
+    const { id } = await context.params;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "강사 ID가 필요합니다." },
+        { status: 400 }
+      );
+    }
+
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: "로그인이 필요합니다." },
+        { status: 401 }
+      );
+    }
+
+    const { data: adminProfile, error: adminError } =
+      await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+
+    if (
+      adminError ||
+      !adminProfile ||
+      adminProfile.role !== "admin"
+    ) {
+      return NextResponse.json(
+        { error: "관리자 권한이 필요합니다." },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const email =
+      typeof body.email === "string"
+        ? body.email.trim().toLowerCase()
+        : "";
+
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ) {
+      return NextResponse.json(
+        { error: "올바른 이메일 주소를 입력해주세요." },
+        { status: 400 }
+      );
+    }
+
+    const adminClient = createAdminClient();
+
+    const { data: profile, error: profileError } =
+      await adminClient
+        .from("profiles")
+        .select("id, role, email")
+        .eq("id", id)
+        .maybeSingle();
+
+    if (profileError || !profile || profile.role !== "teacher") {
+      return NextResponse.json(
+        { error: "올바른 강사 계정이 아닙니다." },
+        { status: 404 }
+      );
+    }
+
+    const { data: authData, error: authError } =
+      await adminClient.auth.admin.getUserById(id);
+
+    if (authError || !authData.user) {
+      return NextResponse.json(
+        { error: "강사 로그인 계정을 확인할 수 없습니다." },
+        { status: 404 }
+      );
+    }
+
+    const previousEmail =
+      authData.user.email?.toLowerCase() || "";
+
+    if (previousEmail === email) {
+      return NextResponse.json({
+        success: true,
+        email,
+        message: "이메일 주소에 변경사항이 없습니다.",
+      });
+    }
+
+    const { error: updateAuthError } =
+      await adminClient.auth.admin.updateUserById(
+        id,
+        {
+          email,
+          email_confirm: true,
+        }
+      );
+
+    if (updateAuthError) {
+      return NextResponse.json(
+        {
+          error:
+            `로그인 이메일 변경 실패: ${updateAuthError.message}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const { error: updateProfileError } =
+      await adminClient
+        .from("profiles")
+        .update({
+          email,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+
+    if (updateProfileError) {
+      // Auth 변경 후 DB 저장에 실패하면 이전 이메일로 복구
+      const { error: rollbackError } =
+        await adminClient.auth.admin.updateUserById(
+          id,
+          {
+            email: previousEmail,
+            email_confirm: true,
+          }
+        );
+
+      if (rollbackError) {
+        console.error(
+          "TEACHER EMAIL ROLLBACK ERROR:",
+          rollbackError
+        );
+
+        return NextResponse.json(
+          {
+            error:
+              "프로필 이메일 저장에 실패했고 로그인 이메일 복구도 실패했습니다. " +
+              "관리자가 Supabase Auth와 profiles 이메일을 확인해야 합니다.",
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          error:
+            `이메일 변경이 취소되었습니다: ${updateProfileError.message}`,
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      email,
+      message: "강사 로그인 이메일이 변경되었습니다.",
+    });
+  } catch (error) {
+    console.error("UPDATE TEACHER EMAIL ERROR:", error);
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "이메일 변경 중 오류가 발생했습니다.",
+      },
+      { status: 500 }
+    );
+  }
+}

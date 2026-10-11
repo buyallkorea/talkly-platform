@@ -1,5 +1,4 @@
 "use client";
-
 import {
   ChangeEvent,
   FormEvent,
@@ -7,7 +6,6 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
-
 const NATIONALITIES = [
   "미국",
   "영국",
@@ -18,71 +16,60 @@ const NATIONALITIES = [
   "캐나다",
   "기타",
 ] as const;
-
 export default function TeacherForm() {
   const router =
     useRouter();
+  const [registrationMode, setRegistrationMode] = useState<"invite" | "direct">("invite");
+  const [initialPassword, setInitialPassword] = useState("");
 
   const [
     email,
     setEmail,
   ] = useState("");
-
   const [
     name,
     setName,
   ] = useState("");
-
   const [
     phone,
     setPhone,
   ] = useState("");
-
   const [
     displayName,
     setDisplayName,
   ] = useState("");
-
   const [
     nationality,
     setNationality,
   ] = useState("");
-
   const [
     customNationality,
     setCustomNationality,
   ] = useState("");
-
   const [
     bio,
     setBio,
   ] = useState("");
-
   const [
     specialties,
     setSpecialties,
   ] = useState("");
-
   const [
     yearsExperience,
     setYearsExperience,
   ] = useState("");
-
   const [
     education,
     setEducation,
   ] = useState("");
-
   const [
     certifications,
     setCertifications,
   ] = useState("");
-
   const [
     hourlyRate,
     setHourlyRate,
   ] = useState("");
-
   const [
     imageFile,
     setImageFile,
@@ -90,47 +77,38 @@ export default function TeacherForm() {
     useState<File | null>(
       null
     );
-
   const [
     imagePreview,
     setImagePreview,
   ] = useState("");
-
   const [
     loading,
     setLoading,
   ] = useState(false);
-
   const [
     errorMessage,
     setErrorMessage,
   ] = useState("");
-
   const [
     successMessage,
     setSuccessMessage,
   ] = useState("");
-
   function handleImageChange(
     event:
       ChangeEvent<HTMLInputElement>
   ) {
     const file =
       event.target.files?.[0];
-
     setErrorMessage("");
     setSuccessMessage("");
-
     if (!file) {
       return;
     }
-
     const allowedTypes = [
       "image/jpeg",
       "image/png",
       "image/webp",
     ];
-
     if (
       !allowedTypes.includes(
         file.type
@@ -139,13 +117,10 @@ export default function TeacherForm() {
       setErrorMessage(
         "프로필 사진은 JPG, PNG, WEBP 형식만 등록할 수 있습니다."
       );
-
       event.target.value =
         "";
-
       return;
     }
-
     if (
       file.size >
       5 * 1024 * 1024
@@ -153,59 +128,45 @@ export default function TeacherForm() {
       setErrorMessage(
         "프로필 사진은 5MB 이하만 등록할 수 있습니다."
       );
-
       event.target.value =
         "";
-
       return;
     }
-
     setImageFile(file);
-
     setImagePreview(
       URL.createObjectURL(
         file
       )
     );
   }
-
   async function handleSubmit(
     event:
       FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
-
     if (loading) {
       return;
     }
-
     setErrorMessage("");
     setSuccessMessage("");
-
     if (!email.trim()) {
       setErrorMessage(
         "이메일을 입력해주세요."
       );
-
       return;
     }
-
     if (!name.trim()) {
       setErrorMessage(
         "강사 이름을 입력해주세요."
       );
-
       return;
     }
-
     if (!nationality) {
       setErrorMessage(
         "강사 국적을 선택해주세요."
       );
-
       return;
     }
-
     if (
       nationality ===
         "기타" &&
@@ -214,10 +175,8 @@ export default function TeacherForm() {
       setErrorMessage(
         "기타 국적을 직접 입력해주세요."
       );
-
       return;
     }
-
     if (
       yearsExperience &&
       Number(
@@ -227,10 +186,8 @@ export default function TeacherForm() {
       setErrorMessage(
         "강사 경력을 확인해주세요."
       );
-
       return;
     }
-
     if (
       hourlyRate &&
       Number(
@@ -240,12 +197,14 @@ export default function TeacherForm() {
       setErrorMessage(
         "시간당 수업료를 확인해주세요."
       );
-
+      return;
+    }
+    if (registrationMode === "direct" && initialPassword.length < 8) {
+      setErrorMessage("직접 등록 비밀번호는 8자 이상이어야 합니다.");
       return;
     }
 
     setLoading(true);
-
     try {
       const specialtyArray =
         specialties
@@ -254,98 +213,78 @@ export default function TeacherForm() {
             item.trim()
           )
           .filter(Boolean);
-
       const finalNationality =
         nationality ===
         "기타"
           ? customNationality.trim()
           : nationality;
-
       const response =
         await fetch(
           "/api/admin/teachers",
           {
             method: "POST",
-
             headers: {
               "Content-Type":
                 "application/json",
             },
-
             body:
               JSON.stringify({
+                registrationMode,
+                initialPassword: registrationMode === "direct" ? initialPassword : undefined,
+
                 email:
                   email
                     .trim()
                     .toLowerCase(),
-
                 name:
                   name.trim(),
-
                 phone:
                   phone.trim(),
-
                 displayName:
                   displayName.trim(),
-
                 nationality:
                   finalNationality,
-
                 bio:
                   bio.trim(),
-
                 specialties:
                   specialtyArray,
-
                 yearsExperience,
-
                 education:
                   education.trim(),
-
                 certifications:
                   certifications.trim(),
-
                 hourlyRate,
               }),
           }
         );
-
       const result =
         await response.json();
-
       if (!response.ok) {
         setErrorMessage(
           result.error ||
             "강사등록에 실패했습니다."
         );
-
         return;
       }
-
       const teacherUserId =
         typeof result.userId ===
         "string"
           ? result.userId
           : "";
-
       if (!teacherUserId) {
         setErrorMessage(
           "생성된 강사 ID를 확인할 수 없습니다."
         );
-
         return;
       }
-
       /*
        * 기존 프로필 사진 등록 기능 유지
        */
       if (imageFile) {
         const supabase =
           createClient();
-
         const imagePath =
           `${teacherUserId}/profile-image`;
-
         const {
           error:
             uploadError,
@@ -360,25 +299,20 @@ export default function TeacherForm() {
               {
                 upsert:
                   true,
-
                 contentType:
                   imageFile.type,
-
                 cacheControl:
                   "3600",
               }
             );
-
         if (
           uploadError
         ) {
           setErrorMessage(
             `강사등록은 완료되었지만 프로필 사진 업로드에 실패했습니다: ${uploadError.message}`
           );
-
           return;
         }
-
         const {
           data:
             publicUrlData,
@@ -390,10 +324,8 @@ export default function TeacherForm() {
             .getPublicUrl(
               imagePath
             );
-
         const profileImageUrl =
           `${publicUrlData.publicUrl}?v=${Date.now()}`;
-
         const {
           error:
             profileImageError,
@@ -403,7 +335,6 @@ export default function TeacherForm() {
             .update({
               profile_image_url:
                 profileImageUrl,
-
               updated_at:
                 new Date()
                   .toISOString(),
@@ -412,31 +343,26 @@ export default function TeacherForm() {
               "id",
               teacherUserId
             );
-
         if (
           profileImageError
         ) {
           setErrorMessage(
             `강사등록은 완료되었지만 프로필 사진 정보 저장에 실패했습니다: ${profileImageError.message}`
           );
-
           return;
         }
       }
-
       setSuccessMessage(
         typeof result.message ===
         "string"
           ? result.message
-          : "강사등록이 완료되었습니다. 계정 설정 안내메일을 발송했습니다."
+          : registrationMode === "direct" ? "강사 계정이 등록되었습니다. 초청메일은 발송하지 않았습니다." : "강사등록이 완료되었습니다. 계정 설정 안내메일을 발송했습니다."
       );
-
       window.setTimeout(
         () => {
           router.push(
             `/admin/teachers/${teacherUserId}`
           );
-
           router.refresh();
         },
         900
@@ -446,7 +372,6 @@ export default function TeacherForm() {
         "TEACHER REGISTRATION ERROR:",
         error
       );
-
       setErrorMessage(
         error instanceof Error
           ? `강사등록 오류: ${error.message}`
@@ -456,13 +381,11 @@ export default function TeacherForm() {
       setLoading(false);
     }
   }
-
   const labelStyle = {
     display: "block",
     marginBottom: "8px",
     fontWeight: 700,
   };
-
   const fieldStyle = {
     width: "100%",
     boxSizing:
@@ -482,7 +405,6 @@ export default function TeacherForm() {
     outline:
       "none",
   };
-
   const sectionStyle = {
     padding: "24px",
     border:
@@ -498,7 +420,6 @@ export default function TeacherForm() {
       "column" as const,
     gap: "18px",
   };
-
   return (
     <form
       onSubmit={
@@ -527,7 +448,6 @@ export default function TeacherForm() {
           >
             프로필 사진
           </h2>
-
           <p
             style={{
               marginTop:
@@ -544,7 +464,6 @@ export default function TeacherForm() {
             표시될 사진입니다.
           </p>
         </div>
-
         <div
           style={{
             display:
@@ -607,7 +526,6 @@ export default function TeacherForm() {
               </span>
             )}
           </div>
-
           <div
             style={{
               flex: 1,
@@ -623,7 +541,6 @@ export default function TeacherForm() {
             >
               사진 선택
             </label>
-
             <input
               id="profileImage"
               type="file"
@@ -640,7 +557,6 @@ export default function TeacherForm() {
                   "7px",
               }}
             />
-
             <p
               style={{
                 marginTop:
@@ -661,7 +577,6 @@ export default function TeacherForm() {
           </div>
         </div>
       </section>
-
       <section
         style={
           sectionStyle
@@ -675,7 +590,6 @@ export default function TeacherForm() {
           >
             로그인 정보
           </h2>
-
           <p
             style={{
               marginBottom:
@@ -686,12 +600,30 @@ export default function TeacherForm() {
                 1.65,
             }}
           >
-            강사의 이메일을 입력하면
-            강사등록과 동시에 계정 설정
-            안내메일이 발송됩니다. 강사의
-            비밀번호는 관리자가 정하지 않습니다.
+            이메일 초청 또는 관리자 직접 등록 방식을 선택할 수 있습니다.
           </p>
         </div>
+        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+          <label>
+            <input type="radio" name="registrationMode" checked={registrationMode === "invite"}
+              onChange={() => setRegistrationMode("invite")} disabled={loading} />
+            {" "}이메일 초청 등록
+          </label>
+          <label>
+            <input type="radio" name="registrationMode" checked={registrationMode === "direct"}
+              onChange={() => setRegistrationMode("direct")} disabled={loading} />
+            {" "}관리자 직접 등록
+          </label>
+        </div>
+        {registrationMode === "direct" && (
+          <div>
+            <label htmlFor="initialPassword" style={labelStyle}>초기 비밀번호 (8자 이상) *</label>
+            <input id="initialPassword" type="password" autoComplete="new-password"
+              value={initialPassword} onChange={(event) => setInitialPassword(event.target.value)}
+              minLength={8} required disabled={loading} style={fieldStyle} />
+            <small>관리자가 지정한 비밀번호로 즉시 로그인할 수 있으며 초청메일은 발송되지 않습니다.</small>
+          </div>
+        )}
 
         <div>
           <label
@@ -702,7 +634,6 @@ export default function TeacherForm() {
           >
             이메일 *
           </label>
-
           <input
             id="email"
             type="email"
@@ -728,7 +659,6 @@ export default function TeacherForm() {
             }
           />
         </div>
-
         <div
           style={{
             padding:
@@ -747,14 +677,9 @@ export default function TeacherForm() {
               1.65,
           }}
         >
-          등록 직후에는 관리자 강사관리에서
-          <strong> 등록 대기</strong>로 표시됩니다.
-          강사가 이메일에서 비밀번호 설정을
-          완료하면 자동으로
-          <strong> 활동중</strong>으로 변경됩니다.
+          {registrationMode === "invite" ? "초청 등록 시 비밀번호 설정 전에는 등록 대기로 표시됩니다." : "직접 등록 시 계정이 즉시 활성화되며 초청메일은 발송되지 않습니다."}
         </div>
       </section>
-
       <section
         style={
           sectionStyle
@@ -767,7 +692,6 @@ export default function TeacherForm() {
         >
           기본 정보
         </h2>
-
         <div>
           <label
             htmlFor="name"
@@ -777,7 +701,6 @@ export default function TeacherForm() {
           >
             강사 이름 *
           </label>
-
           <input
             id="name"
             value={name}
@@ -799,7 +722,6 @@ export default function TeacherForm() {
             }
           />
         </div>
-
         <div>
           <label
             htmlFor="displayName"
@@ -809,7 +731,6 @@ export default function TeacherForm() {
           >
             표시 이름
           </label>
-
           <input
             id="displayName"
             value={
@@ -831,13 +752,11 @@ export default function TeacherForm() {
               fieldStyle
             }
           />
-
           <small>
             비워두면 강사 이름이 자동으로
             사용됩니다.
           </small>
         </div>
-
         <div>
           <label
             htmlFor="nationality"
@@ -847,7 +766,6 @@ export default function TeacherForm() {
           >
             국적 *
           </label>
-
           <select
             id="nationality"
             value={
@@ -859,11 +777,9 @@ export default function TeacherForm() {
               const value =
                 event.target
                   .value;
-
               setNationality(
                 value
               );
-
               if (
                 value !==
                 "기타"
@@ -884,7 +800,6 @@ export default function TeacherForm() {
             <option value="">
               국적을 선택해주세요
             </option>
-
             {NATIONALITIES.map(
               (item) => (
                 <option
@@ -901,7 +816,6 @@ export default function TeacherForm() {
             )}
           </select>
         </div>
-
         {nationality ===
           "기타" && (
           <div>
@@ -913,7 +827,6 @@ export default function TeacherForm() {
             >
               기타 국적 *
             </label>
-
             <input
               id="customNationality"
               type="text"
@@ -939,7 +852,6 @@ export default function TeacherForm() {
             />
           </div>
         )}
-
         <div>
           <label
             htmlFor="phone"
@@ -949,7 +861,6 @@ export default function TeacherForm() {
           >
             연락처
           </label>
-
           <input
             id="phone"
             value={
@@ -973,7 +884,6 @@ export default function TeacherForm() {
           />
         </div>
       </section>
-
       <section
         style={
           sectionStyle
@@ -986,7 +896,6 @@ export default function TeacherForm() {
         >
           강사 프로필
         </h2>
-
         <div>
           <label
             htmlFor="bio"
@@ -996,7 +905,6 @@ export default function TeacherForm() {
           >
             강사 소개
           </label>
-
           <textarea
             id="bio"
             value={
@@ -1022,7 +930,6 @@ export default function TeacherForm() {
             }}
           />
         </div>
-
         <div>
           <label
             htmlFor="specialties"
@@ -1032,7 +939,6 @@ export default function TeacherForm() {
           >
             전문분야
           </label>
-
           <input
             id="specialties"
             value={
@@ -1054,13 +960,11 @@ export default function TeacherForm() {
               fieldStyle
             }
           />
-
           <small>
             여러 분야는 쉼표(,)로
             구분해주세요.
           </small>
         </div>
-
         <div>
           <label
             htmlFor="yearsExperience"
@@ -1070,7 +974,6 @@ export default function TeacherForm() {
           >
             경력(년)
           </label>
-
           <input
             id="yearsExperience"
             type="number"
@@ -1095,7 +998,6 @@ export default function TeacherForm() {
             }
           />
         </div>
-
         <div>
           <label
             htmlFor="education"
@@ -1105,7 +1007,6 @@ export default function TeacherForm() {
           >
             학력
           </label>
-
           <textarea
             id="education"
             value={
@@ -1131,7 +1032,6 @@ export default function TeacherForm() {
             }}
           />
         </div>
-
         <div>
           <label
             htmlFor="certifications"
@@ -1141,7 +1041,6 @@ export default function TeacherForm() {
           >
             자격 및 인증
           </label>
-
           <textarea
             id="certifications"
             value={
@@ -1167,7 +1066,6 @@ export default function TeacherForm() {
             }}
           />
         </div>
-
         <div>
           <label
             htmlFor="hourlyRate"
@@ -1177,7 +1075,6 @@ export default function TeacherForm() {
           >
             시간당 수업료
           </label>
-
           <input
             id="hourlyRate"
             type="number"
@@ -1204,7 +1101,6 @@ export default function TeacherForm() {
           />
         </div>
       </section>
-
       {errorMessage && (
         <div
           role="alert"
@@ -1224,7 +1120,6 @@ export default function TeacherForm() {
           {errorMessage}
         </div>
       )}
-
       {successMessage && (
         <div
           role="status"
@@ -1246,7 +1141,6 @@ export default function TeacherForm() {
           {successMessage}
         </div>
       )}
-
       <button
         type="submit"
         disabled={

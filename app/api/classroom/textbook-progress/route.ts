@@ -5,8 +5,8 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { data: auth, error: authError } = await supabase.auth.getUser();
+    if (authError || !auth.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
     const { sessionId, enrollmentId, textbookId, pageId, pageNumber } = body ?? {};
@@ -27,35 +27,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { data: session } = await admin.from("class_sessions")
-      .select("id, enrollment_id").eq("id", sessionId).maybeSingle();
+    const { data: session, error: sessionError } = await admin.from("class_sessions")
+      .select("id, enrollment_id, teacher_user_id").eq("id", sessionId).maybeSingle();
+    if (sessionError) throw sessionError;
     if (!session || session.enrollment_id !== enrollmentId) {
       return NextResponse.json({ error: "Session mismatch" }, { status: 403 });
     }
 
-    const { data: enrollment } = await admin.from("enrollments")
+    const { data: enrollment, error: enrollmentError } = await admin.from("enrollments")
       .select("id, teacher_user_id").eq("id", enrollmentId).maybeSingle();
-    if (!enrollment || (profile.role !== "admin" && enrollment.teacher_user_id !== auth.user.id)) {
+    if (enrollmentError) throw enrollmentError;
+    if (!enrollment || (profile.role !== "admin" &&
+      (session.teacher_user_id ?? enrollment.teacher_user_id) !== auth.user.id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { data: page } = await admin.from("textbook_pages")
+    const { data: page, error: pageError } = await admin.from("textbook_pages")
       .select("id, page_number").eq("id", pageId).eq("textbook_id", textbookId).maybeSingle();
+    if (pageError) throw pageError;
     if (!page || page.page_number !== pageNumber) {
       return NextResponse.json({ error: "Page mismatch" }, { status: 400 });
     }
 
-    const { data: assignment } = await admin.from("enrollment_textbooks")
-      .select("id").eq("enrollment_id", enrollmentId)
-      .eq("textbook_id", textbookId).is("ended_at", null).limit(1).maybeSingle();
+    const { data: assignment, error: assignmentError } = await admin.from("enrollment_textbooks")
+      .select("id").eq("enrollment_id", enrollmentId).eq("textbook_id", textbookId)
+      .in("status", ["assigned", "in_use"]).is("ended_at", null)
+      .order("assigned_at", { ascending: false }).limit(1).maybeSingle();
+    if (assignmentError) throw assignmentError;
     if (!assignment) return NextResponse.json({ error: "Textbook not assigned" }, { status: 404 });
 
-    const { error } = await admin.from("enrollment_textbooks").update({
+    const { data: updated, error: updateError } = await admin.from("enrollment_textbooks").update({
       last_page_id: pageId,
       last_page_number: pageNumber,
       progress_updated_at: new Date().toISOString(),
-    }).eq("id", assignment.id);
-    if (error) throw error;
+    }).eq("id", assignment.id).in("status", ["assigned", "in_use"]).is("ended_at", null)
+      .select("id").maybeSingle();
+    if (updateError) throw updateError;
+    if (!updated) return NextResponse.json({ error: "Assignment changed" }, { status: 409 });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[TALKLY TEXTBOOK] progress API error", error);

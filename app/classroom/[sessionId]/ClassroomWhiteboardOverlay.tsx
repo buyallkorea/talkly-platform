@@ -1,5 +1,4 @@
 "use client";
-
 import {
   PointerEvent as ReactPointerEvent,
   useEffect,
@@ -9,19 +8,16 @@ import {
 } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase-browser";
-
 type Tool =
   | "select"
   | "pen"
   | "highlighter"
   | "line"
   | "eraser";
-
 type Point = {
   x: number;
   y: number;
 };
-
 type Stroke = {
   id: string;
   pageId: number;
@@ -33,7 +29,6 @@ type Stroke = {
   authorId: string;
   createdAt: number;
 };
-
 type Props = {
   sessionId: number;
   textbookId: number;
@@ -41,7 +36,6 @@ type Props = {
   pageNumber: number;
   viewerRole: string;
 };
-
 type WhiteboardAction =
   | {
       type: "add";
@@ -56,18 +50,15 @@ type WhiteboardAction =
       type: "clear";
       pageId: number;
     };
-
 type SyncPayload = {
   sessionId: number;
   senderId: string;
   pages: Record<string, Stroke[]>;
   sentAt: number;
 };
-
 const PEN_COLOR = "#ff3b30";
 const HIGHLIGHT_COLOR = "#ffd60a";
 const SAVE_DELAY_MS = 500;
-
 export default function ClassroomWhiteboardOverlay({
   sessionId,
   textbookId,
@@ -78,27 +69,20 @@ export default function ClassroomWhiteboardOverlay({
   const isController =
     viewerRole === "teacher" ||
     viewerRole === "admin";
-
   const [tool, setTool] =
     useState<Tool>("select");
-
   const [pages, setPages] =
     useState<Record<string, Stroke[]>>({});
-
   const [draft, setDraft] =
     useState<Stroke | null>(null);
-
   const [connected, setConnected] =
     useState(false);
-
   const [saveState, setSaveState] =
     useState<
       "idle" | "loading" | "saving" | "saved" | "error"
     >("loading");
-
   const [supabase] =
     useState(() => createClient());
-
   const senderId = useMemo(
     () =>
       `wb-${Math.random()
@@ -106,60 +90,47 @@ export default function ClassroomWhiteboardOverlay({
         .slice(2)}-${Date.now()}`,
     []
   );
-
   const channelRef =
     useRef<RealtimeChannel | null>(null);
-
   const pagesRef =
     useRef<Record<string, Stroke[]>>({});
-
   const drawingRef =
     useRef(false);
-
   const saveTimersRef =
     useRef<Record<string, number>>({});
-
+  const pendingSavesRef = useRef<Record<string, () => void>>({});
   const loadedPagesRef =
     useRef<Set<string>>(new Set());
-
   useEffect(() => {
     pagesRef.current = pages;
   }, [pages]);
-
   const pageKey =
     String(pageId);
-
   const strokes =
     pages[pageKey] ?? [];
-
   function normalizePoint(
     event: ReactPointerEvent<SVGSVGElement>
   ): Point {
     const rect =
       event.currentTarget.getBoundingClientRect();
-
     const x =
       ((event.clientX - rect.left) /
         rect.width) *
       100;
-
     const y =
       ((event.clientY - rect.top) /
         rect.height) *
       100;
-
     return {
       x: Math.max(0, Math.min(100, x)),
       y: Math.max(0, Math.min(100, y)),
     };
   }
-
   function makeStroke(
     point: Point
   ): Stroke {
     const highlighter =
       tool === "highlighter";
-
     return {
       id:
         `${senderId}-${Date.now()}-${Math.random()
@@ -182,14 +153,12 @@ export default function ClassroomWhiteboardOverlay({
       createdAt: Date.now(),
     };
   }
-
   async function broadcastAction(
     action: WhiteboardAction
   ) {
     if (!channelRef.current) {
       return;
     }
-
     await channelRef.current.send({
       type: "broadcast",
       event: "talkly-whiteboard-action",
@@ -201,20 +170,17 @@ export default function ClassroomWhiteboardOverlay({
       },
     });
   }
-
   async function persistPage(
     targetPageId: number,
     targetPageNumber: number,
     targetStrokes: Stroke[]
   ) {
     setSaveState("saving");
-
     const {
       data: { user },
       error: userError,
     } =
       await supabase.auth.getUser();
-
     if (userError || !user) {
       setSaveState("error");
       console.error(
@@ -223,10 +189,8 @@ export default function ClassroomWhiteboardOverlay({
       );
       return;
     }
-
     const now =
       new Date().toISOString();
-
     const {
       error,
     } = await supabase
@@ -247,7 +211,6 @@ export default function ClassroomWhiteboardOverlay({
             "session_id,textbook_id,page_number",
         }
       );
-
     if (error) {
       setSaveState("error");
       console.error(
@@ -256,13 +219,10 @@ export default function ClassroomWhiteboardOverlay({
       );
       return;
     }
-
     setSaveState("saved");
-
     window.setTimeout(() => {
       setSaveState("idle");
     }, 1200);
-
     console.log(
       "[WHITEBOARD] saved",
       {
@@ -277,7 +237,6 @@ export default function ClassroomWhiteboardOverlay({
       }
     );
   }
-
   function schedulePersist(
     targetPageId: number,
     targetPageNumber: number,
@@ -285,30 +244,23 @@ export default function ClassroomWhiteboardOverlay({
   ) {
     const key =
       `${sessionId}:${textbookId}:${targetPageNumber}`;
-
     const existing =
       saveTimersRef.current[key];
-
     if (existing) {
       window.clearTimeout(
         existing
       );
     }
-
-    saveTimersRef.current[key] =
-      window.setTimeout(() => {
-        delete saveTimersRef.current[
-          key
-        ];
-
-        void persistPage(
-          targetPageId,
-          targetPageNumber,
-          targetStrokes
-        );
-      }, SAVE_DELAY_MS);
+    pendingSavesRef.current[key] = () => {
+      void persistPage(targetPageId, targetPageNumber, targetStrokes);
+    };
+    saveTimersRef.current[key] = window.setTimeout(() => {
+      delete saveTimersRef.current[key];
+      const save = pendingSavesRef.current[key];
+      delete pendingSavesRef.current[key];
+      save?.();
+    }, SAVE_DELAY_MS);
   }
-
   function resolvePageNumber(
     targetPageId: number
   ) {
@@ -317,10 +269,8 @@ export default function ClassroomWhiteboardOverlay({
     ) {
       return pageNumber;
     }
-
     return null;
   }
-
   function applyAction(
     action: WhiteboardAction,
     persist: boolean
@@ -329,19 +279,14 @@ export default function ClassroomWhiteboardOverlay({
       const next = {
         ...current,
       };
-
       let affectedPageId: number;
-
       if (action.type === "add") {
         affectedPageId =
           action.stroke.pageId;
-
         const key =
           String(affectedPageId);
-
         const list =
           next[key] ?? [];
-
         if (
           list.some(
             (item) =>
@@ -351,7 +296,6 @@ export default function ClassroomWhiteboardOverlay({
         ) {
           return current;
         }
-
         next[key] = [
           ...list,
           action.stroke,
@@ -361,10 +305,8 @@ export default function ClassroomWhiteboardOverlay({
       ) {
         affectedPageId =
           action.pageId;
-
         const key =
           String(affectedPageId);
-
         next[key] = (
           next[key] ?? []
         ).filter(
@@ -375,20 +317,16 @@ export default function ClassroomWhiteboardOverlay({
       } else {
         affectedPageId =
           action.pageId;
-
         next[
           String(affectedPageId)
         ] = [];
       }
-
       pagesRef.current = next;
-
       if (persist) {
         const targetPageNumber =
           resolvePageNumber(
             affectedPageId
           );
-
         if (
           targetPageNumber !==
           null
@@ -404,22 +342,18 @@ export default function ClassroomWhiteboardOverlay({
           );
         }
       }
-
       return next;
     });
   }
-
   function finishDraft() {
     if (!draft) {
       drawingRef.current = false;
       return;
     }
-
     const minimumPoints =
       draft.kind === "line"
         ? 2
         : 1;
-
     if (
       draft.points.length >=
       minimumPoints
@@ -428,35 +362,28 @@ export default function ClassroomWhiteboardOverlay({
         type: "add",
         stroke: draft,
       };
-
       applyAction(
         action,
         true
       );
-
       void broadcastAction(
         action
       );
     }
-
     setDraft(null);
     drawingRef.current = false;
   }
-
   function handlePointerDown(
     event: ReactPointerEvent<SVGSVGElement>
   ) {
     if (tool === "select") {
       return;
     }
-
     event.currentTarget.setPointerCapture(
       event.pointerId
     );
-
     const point =
       normalizePoint(event);
-
     if (tool === "eraser") {
       drawingRef.current = true;
       eraseAtPoint(
@@ -465,12 +392,9 @@ export default function ClassroomWhiteboardOverlay({
       );
       return;
     }
-
     drawingRef.current = true;
-
     const stroke =
       makeStroke(point);
-
     if (
       stroke.kind === "line"
     ) {
@@ -479,20 +403,16 @@ export default function ClassroomWhiteboardOverlay({
         point,
       ];
     }
-
     setDraft(stroke);
   }
-
   function handlePointerMove(
     event: ReactPointerEvent<SVGSVGElement>
   ) {
     if (!drawingRef.current) {
       return;
     }
-
     const point =
       normalizePoint(event);
-
     if (tool === "eraser") {
       eraseAtPoint(
         point,
@@ -500,16 +420,13 @@ export default function ClassroomWhiteboardOverlay({
       );
       return;
     }
-
     if (!draft) {
       return;
     }
-
     setDraft((current) => {
       if (!current) {
         return current;
       }
-
       if (
         current.kind === "line"
       ) {
@@ -521,7 +438,6 @@ export default function ClassroomWhiteboardOverlay({
           ],
         };
       }
-
       return {
         ...current,
         points: [
@@ -531,7 +447,6 @@ export default function ClassroomWhiteboardOverlay({
       };
     });
   }
-
   function distanceToSegment(
     point: Point,
     start: Point,
@@ -541,14 +456,12 @@ export default function ClassroomWhiteboardOverlay({
       end.x - start.x;
     const dy =
       end.y - start.y;
-
     if (dx === 0 && dy === 0) {
       return Math.hypot(
         point.x - start.x,
         point.y - start.y
       );
     }
-
     const t =
       Math.max(
         0,
@@ -559,18 +472,15 @@ export default function ClassroomWhiteboardOverlay({
             (dx * dx + dy * dy)
         )
       );
-
     const px =
       start.x + t * dx;
     const py =
       start.y + t * dy;
-
     return Math.hypot(
       point.x - px,
       point.y - py
     );
   }
-
   function strokeHit(
     stroke: Stroke,
     point: Point,
@@ -582,12 +492,10 @@ export default function ClassroomWhiteboardOverlay({
         : pointerType === "pen"
           ? 4.2
           : 3.4;
-
     const tolerance =
       stroke.kind === "highlighter"
         ? baseTolerance + 1.2
         : baseTolerance;
-
     if (stroke.points.length === 1) {
       return (
         Math.hypot(
@@ -596,7 +504,6 @@ export default function ClassroomWhiteboardOverlay({
         ) <= tolerance
       );
     }
-
     for (
       let index = 0;
       index < stroke.points.length - 1;
@@ -612,17 +519,14 @@ export default function ClassroomWhiteboardOverlay({
         return true;
       }
     }
-
     return false;
   }
-
   function eraseAtPoint(
     point: Point,
     pointerType: string
   ) {
     const current =
       pagesRef.current[pageKey] ?? [];
-
     const target =
       [...current]
         .reverse()
@@ -633,14 +537,11 @@ export default function ClassroomWhiteboardOverlay({
             pointerType
           )
         );
-
     if (!target) {
       return;
     }
-
     removeStroke(target.id);
   }
-
   function removeStroke(
     strokeId: string
   ) {
@@ -649,37 +550,30 @@ export default function ClassroomWhiteboardOverlay({
       pageId,
       strokeId,
     };
-
     applyAction(
       action,
       true
     );
-
     void broadcastAction(
       action
     );
   }
-
   function undoLast() {
     const current =
       pagesRef.current[
         pageKey
       ] ?? [];
-
     const last =
       current[
         current.length - 1
       ];
-
     if (!last) {
       return;
     }
-
     removeStroke(
       last.id
     );
   }
-
   function clearPage() {
     if (
       !window.confirm(
@@ -688,26 +582,21 @@ export default function ClassroomWhiteboardOverlay({
     ) {
       return;
     }
-
     const action: WhiteboardAction = {
       type: "clear",
       pageId,
     };
-
     applyAction(
       action,
       true
     );
-
     void broadcastAction(
       action
     );
   }
-
   useEffect(() => {
     const key =
       `${sessionId}:${textbookId}:${pageNumber}`;
-
     if (
       loadedPagesRef.current.has(
         key
@@ -716,12 +605,9 @@ export default function ClassroomWhiteboardOverlay({
       setSaveState("idle");
       return;
     }
-
     let cancelled = false;
-
     async function loadSavedPage() {
       setSaveState("loading");
-
       const {
         data,
         error,
@@ -743,61 +629,47 @@ export default function ClassroomWhiteboardOverlay({
           pageNumber
         )
         .maybeSingle();
-
       if (cancelled) {
         return;
       }
-
       if (error) {
         setSaveState("error");
-
         console.error(
           "[WHITEBOARD] load failed",
           error
         );
-
         return;
       }
-
       const savedStrokes =
         Array.isArray(
           data?.strokes
         )
           ? (data.strokes as Stroke[])
           : [];
-
       setPages((current) => {
         const existing =
           current[pageKey] ??
           [];
-
         const merged =
           existing.length >
           0
             ? existing
             : savedStrokes;
-
         const next = {
           ...current,
           [pageKey]:
             merged,
         };
-
         pagesRef.current =
           next;
-
         return next;
       });
-
       loadedPagesRef.current.add(
         key
       );
-
       setSaveState("idle");
     }
-
     void loadSavedPage();
-
     return () => {
       cancelled = true;
     };
@@ -809,7 +681,6 @@ export default function ClassroomWhiteboardOverlay({
     pageNumber,
     pageKey,
   ]);
-
   useEffect(() => {
     const channel =
       supabase.channel(
@@ -823,10 +694,8 @@ export default function ClassroomWhiteboardOverlay({
           },
         }
       );
-
     channelRef.current =
       channel;
-
     channel
       .on(
         "broadcast",
@@ -842,23 +711,22 @@ export default function ClassroomWhiteboardOverlay({
           ) {
             return;
           }
-
+          if (Number(payload?.textbookId) !== textbookId) {
+            return;
+          }
           if (
             payload?.senderId ===
             senderId
           ) {
             return;
           }
-
           const action =
             payload?.action as
               | WhiteboardAction
               | undefined;
-
           if (!action) {
             return;
           }
-
           applyAction(
             action,
             false
@@ -875,7 +743,6 @@ export default function ClassroomWhiteboardOverlay({
           if (!isController) {
             return;
           }
-
           if (
             Number(
               payload?.sessionId
@@ -883,7 +750,9 @@ export default function ClassroomWhiteboardOverlay({
           ) {
             return;
           }
-
+          if (Number(payload?.textbookId) !== textbookId) {
+            return;
+          }
           const syncPayload: SyncPayload = {
             sessionId,
             senderId,
@@ -892,7 +761,6 @@ export default function ClassroomWhiteboardOverlay({
             sentAt:
               Date.now(),
           };
-
           void channel.send({
             type: "broadcast",
             event:
@@ -916,14 +784,15 @@ export default function ClassroomWhiteboardOverlay({
           ) {
             return;
           }
-
+          if (Number(payload?.textbookId) !== textbookId) {
+            return;
+          }
           if (
             payload?.senderId ===
             senderId
           ) {
             return;
           }
-
           if (
             payload?.pages &&
             typeof payload.pages ===
@@ -936,15 +805,12 @@ export default function ClassroomWhiteboardOverlay({
                     string,
                     Stroke[]
                   >;
-
                 const next = {
                   ...incoming,
                   ...current,
                 };
-
                 pagesRef.current =
                   next;
-
                 return next;
               }
             );
@@ -955,9 +821,7 @@ export default function ClassroomWhiteboardOverlay({
         const ok =
           status ===
           "SUBSCRIBED";
-
         setConnected(ok);
-
         if (
           ok &&
           !isController
@@ -975,11 +839,9 @@ export default function ClassroomWhiteboardOverlay({
           });
         }
       });
-
     return () => {
       channelRef.current =
         null;
-
       void supabase.removeChannel(
         channel
       );
@@ -990,19 +852,16 @@ export default function ClassroomWhiteboardOverlay({
     senderId,
     isController,
   ]);
-
   useEffect(() => {
     return () => {
-      Object.values(
-        saveTimersRef.current
-      ).forEach((timer) => {
-        window.clearTimeout(
-          timer
-        );
+      Object.values(saveTimersRef.current).forEach((timer) => {
+        window.clearTimeout(timer);
       });
+      Object.values(pendingSavesRef.current).forEach((save) => save());
+      pendingSavesRef.current = {};
+      saveTimersRef.current = {};
     };
   }, []);
-
   function renderStroke(
     stroke: Stroke
   ) {
@@ -1011,13 +870,11 @@ export default function ClassroomWhiteboardOverlay({
     ) {
       const a =
         stroke.points[0];
-
       const b =
         stroke.points[
           stroke.points.length -
             1
         ];
-
       return (
         <line
           key={stroke.id}
@@ -1051,9 +908,7 @@ export default function ClassroomWhiteboardOverlay({
             ) {
               return;
             }
-
             event.stopPropagation();
-
             removeStroke(
               stroke.id
             );
@@ -1061,7 +916,6 @@ export default function ClassroomWhiteboardOverlay({
         />
       );
     }
-
     const d =
       stroke.points
         .map(
@@ -1072,7 +926,6 @@ export default function ClassroomWhiteboardOverlay({
             `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`
         )
         .join(" ");
-
     return (
       <path
         key={stroke.id}
@@ -1105,9 +958,7 @@ export default function ClassroomWhiteboardOverlay({
           ) {
             return;
           }
-
           event.stopPropagation();
-
           removeStroke(
             stroke.id
           );
@@ -1115,7 +966,6 @@ export default function ClassroomWhiteboardOverlay({
       />
     );
   }
-
   const saveLabel =
     saveState === "loading"
       ? "Loading"
@@ -1126,7 +976,6 @@ export default function ClassroomWhiteboardOverlay({
           : saveState === "error"
             ? "Save error"
             : "";
-
   const activeToolLabel =
     tool === "select"
       ? "Pointer"
@@ -1137,7 +986,6 @@ export default function ClassroomWhiteboardOverlay({
           : tool === "line"
             ? "Line"
             : "Eraser";
-
   return (
     <>
       <style jsx>{`
@@ -1158,7 +1006,6 @@ export default function ClassroomWhiteboardOverlay({
           -webkit-backdrop-filter: blur(14px);
           max-width: calc(100% - 20px);
         }
-
         .talkly-whiteboard-status {
           display: flex;
           align-items: center;
@@ -1166,14 +1013,12 @@ export default function ClassroomWhiteboardOverlay({
           padding: 0 8px 0 2px;
           min-width: 88px;
         }
-
         .talkly-whiteboard-status-copy {
           display: flex;
           flex-direction: column;
           min-width: 0;
           line-height: 1.05;
         }
-
         .talkly-whiteboard-status-title {
           font-size: 10px;
           font-weight: 900;
@@ -1181,28 +1026,24 @@ export default function ClassroomWhiteboardOverlay({
           color: rgba(255, 255, 255, 0.92);
           white-space: nowrap;
         }
-
         .talkly-whiteboard-status-sub {
           margin-top: 3px;
           font-size: 9px;
           color: rgba(255, 255, 255, 0.45);
           white-space: nowrap;
         }
-
         .talkly-whiteboard-divider {
           width: 1px;
           height: 30px;
           background: rgba(255, 255, 255, 0.10);
           flex: 0 0 auto;
         }
-
         .talkly-whiteboard-group {
           display: flex;
           align-items: center;
           gap: 5px;
           min-width: 0;
         }
-
         @media (max-width: 900px) {
           .talkly-whiteboard-toolbar {
             left: 8px;
@@ -1213,25 +1054,20 @@ export default function ClassroomWhiteboardOverlay({
             overflow-x: auto;
             scrollbar-width: none;
           }
-
           .talkly-whiteboard-toolbar::-webkit-scrollbar {
             display: none;
           }
-
           .talkly-whiteboard-status {
             min-width: auto;
             padding-right: 4px;
           }
-
           .talkly-whiteboard-status-copy {
             display: none;
           }
-
           .talkly-whiteboard-divider {
             height: 28px;
           }
         }
-
         @media (max-width: 560px) {
           .talkly-whiteboard-toolbar {
             left: 6px;
@@ -1241,11 +1077,9 @@ export default function ClassroomWhiteboardOverlay({
             padding: 5px 6px;
             gap: 4px;
           }
-
           .talkly-whiteboard-divider {
             display: none;
           }
-
           .talkly-whiteboard-toolbar button {
             min-width: 40px !important;
             width: 40px !important;
@@ -1253,17 +1087,14 @@ export default function ClassroomWhiteboardOverlay({
             padding: 0 !important;
             border-radius: 8px !important;
           }
-
           .talkly-whiteboard-toolbar button span:last-child {
             display: none !important;
           }
-
           .talkly-whiteboard-status {
             padding-right: 1px;
           }
         }
       `}</style>
-
       <div
         className="talkly-whiteboard-toolbar"
         aria-label="Whiteboard tools"
@@ -1290,7 +1121,6 @@ export default function ClassroomWhiteboardOverlay({
               flex: "0 0 auto",
             }}
           />
-
           <div className="talkly-whiteboard-status-copy">
             <span className="talkly-whiteboard-status-title">
               WHITEBOARD
@@ -1302,9 +1132,7 @@ export default function ClassroomWhiteboardOverlay({
             </span>
           </div>
         </div>
-
         <div className="talkly-whiteboard-divider" />
-
         <div className="talkly-whiteboard-group">
           <ToolButton
             active={tool === "select"}
@@ -1313,7 +1141,6 @@ export default function ClassroomWhiteboardOverlay({
             label="Pointer"
             icon="↖"
           />
-
           <ToolButton
             active={tool === "pen"}
             onClick={() => setTool("pen")}
@@ -1321,7 +1148,6 @@ export default function ClassroomWhiteboardOverlay({
             label="Pen"
             icon="✎"
           />
-
           <ToolButton
             active={tool === "highlighter"}
             onClick={() => setTool("highlighter")}
@@ -1329,7 +1155,6 @@ export default function ClassroomWhiteboardOverlay({
             label="Highlight"
             icon="▰"
           />
-
           <ToolButton
             active={tool === "line"}
             onClick={() => setTool("line")}
@@ -1337,7 +1162,6 @@ export default function ClassroomWhiteboardOverlay({
             label="Line"
             icon="╱"
           />
-
           <ToolButton
             active={tool === "eraser"}
             onClick={() => setTool("eraser")}
@@ -1346,9 +1170,7 @@ export default function ClassroomWhiteboardOverlay({
             icon="⌫"
           />
         </div>
-
         <div className="talkly-whiteboard-divider" />
-
         <div className="talkly-whiteboard-group">
           <ActionButton
             onClick={undoLast}
@@ -1356,7 +1178,6 @@ export default function ClassroomWhiteboardOverlay({
             label="Undo"
             icon="↶"
           />
-
           <ActionButton
             onClick={clearPage}
             title="Clear page / 전체 지우기"
@@ -1366,7 +1187,6 @@ export default function ClassroomWhiteboardOverlay({
           />
         </div>
       </div>
-
       <svg
         viewBox="0 0 100 100"
         preserveAspectRatio="none"
@@ -1409,7 +1229,6 @@ export default function ClassroomWhiteboardOverlay({
         {strokes.map(
           renderStroke
         )}
-
         {draft &&
           renderStroke(
             draft
@@ -1418,7 +1237,6 @@ export default function ClassroomWhiteboardOverlay({
     </>
   );
 }
-
 function ToolButton({
   active,
   onClick,
@@ -1477,7 +1295,6 @@ function ToolButton({
       >
         {icon}
       </span>
-
       <span
         style={{
           marginTop: 2,
@@ -1494,7 +1311,6 @@ function ToolButton({
     </button>
   );
 }
-
 function ActionButton({
   onClick,
   title,
@@ -1549,7 +1365,6 @@ function ActionButton({
       >
         {icon}
       </span>
-
       <span
         style={{
           marginTop: 2,

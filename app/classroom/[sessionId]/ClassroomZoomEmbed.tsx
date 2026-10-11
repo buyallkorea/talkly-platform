@@ -1,12 +1,10 @@
 "use client";
-
 import {
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
-
 declare global {
   interface Window {
     ZoomMtgEmbedded?: {
@@ -17,7 +15,6 @@ declare global {
           patchJsMedia?: boolean;
           customize?: Record<string, unknown>;
         }) => Promise<unknown>;
-
         join: (options: {
           signature: string;
           meetingNumber: string;
@@ -25,11 +22,12 @@ declare global {
           userName: string;
           zak?: string;
         }) => Promise<unknown>;
+        leaveMeeting?: () => Promise<unknown>;
+
       };
     };
   }
 }
-
 type Props = {
   sessionId: number;
   meetingNumber: string;
@@ -37,15 +35,12 @@ type Props = {
   userName: string;
   hostMode: boolean;
 };
-
 type ZoomScreen =
   | "loading"
   | "waiting"
   | "error"
   | "joined";
-
 const ZOOM_VERSION = "6.2.0";
-
 const SCRIPTS = [
   `https://source.zoom.us/${ZOOM_VERSION}/lib/vendor/react.min.js`,
   `https://source.zoom.us/${ZOOM_VERSION}/lib/vendor/react-dom.min.js`,
@@ -54,18 +49,15 @@ const SCRIPTS = [
   `https://source.zoom.us/${ZOOM_VERSION}/lib/vendor/lodash.min.js`,
   `https://source.zoom.us/zoom-meeting-embedded-${ZOOM_VERSION}.min.js`,
 ];
-
 function loadScript(src: string) {
   return new Promise<void>((resolve, reject) => {
     const existing = document.querySelector(
       `script[src="${src}"]`
     ) as HTMLScriptElement | null;
-
     if (existing?.dataset.loaded === "true") {
       resolve();
       return;
     }
-
     if (existing) {
       existing.addEventListener(
         "load",
@@ -74,7 +66,6 @@ function loadScript(src: string) {
           once: true,
         }
       );
-
       existing.addEventListener(
         "error",
         () =>
@@ -87,47 +78,39 @@ function loadScript(src: string) {
           once: true,
         }
       );
-
       return;
     }
-
     const script =
       document.createElement("script");
-
     script.src = src;
     script.async = false;
-
     script.onload = () => {
       script.dataset.loaded = "true";
       resolve();
     };
-
     script.onerror = () => {
+      script.remove();
       reject(
         new Error(
           `스크립트 로드 실패: ${src}`
         )
       );
     };
-
     document.head.appendChild(script);
   });
 }
-
 function stringifyZoomError(
   error: unknown
 ) {
   if (error instanceof Error) {
     return error.message;
   }
-
   try {
     return JSON.stringify(error);
   } catch {
     return String(error);
   }
 }
-
 function isMeetingNotStartedError(
   error: unknown
 ) {
@@ -135,7 +118,6 @@ function isMeetingNotStartedError(
     stringifyZoomError(
       error
     ).toLowerCase();
-
   return (
     text.includes(
       "meeting has not started"
@@ -154,7 +136,6 @@ function isMeetingNotStartedError(
     )
   );
 }
-
 export default function ClassroomZoomEmbed({
   sessionId,
   meetingNumber,
@@ -166,10 +147,26 @@ export default function ClassroomZoomEmbed({
     useRef<HTMLDivElement | null>(
       null
     );
-
   const runningRef =
     useRef(false);
 
+  const clientRef = useRef<ReturnType<NonNullable<Window["ZoomMtgEmbedded"]>["createClient"]> | null>(null);
+  const generationRef = useRef(0);
+  const joinedRef = useRef(false);
+
+  const disposeClient = useCallback(async () => {
+    const client = clientRef.current;
+    clientRef.current = null;
+    const wasJoined = joinedRef.current;
+    joinedRef.current = false;
+    if (client && wasJoined && typeof client.leaveMeeting === "function") {
+      try {
+        await client.leaveMeeting();
+      } catch (error) {
+        console.warn("[TALKLY] Zoom leaveMeeting failed:", error);
+      }
+    }
+  }, []);
   const [
     screen,
     setScreen,
@@ -177,7 +174,6 @@ export default function ClassroomZoomEmbed({
     useState<ZoomScreen>(
       "loading"
     );
-
   const [
     status,
     setStatus,
@@ -185,19 +181,16 @@ export default function ClassroomZoomEmbed({
     useState(
       "Zoom Meeting SDK 준비 중..."
     );
-
   const [
     errorMessage,
     setErrorMessage,
   ] =
     useState("");
-
   const [
     attempt,
     setAttempt,
   ] =
     useState(0);
-
   const startZoom =
     useCallback(async () => {
       if (
@@ -205,25 +198,27 @@ export default function ClassroomZoomEmbed({
       ) {
         return;
       }
-
       runningRef.current =
         true;
 
+      const generation = generationRef.current;
+      const ensureCurrent = () => {
+        if (generation !== generationRef.current || !rootRef.current) {
+          throw new Error("Zoom initialization cancelled");
+        }
+      };
       try {
         setScreen(
           "loading"
         );
-
         setErrorMessage(
           ""
         );
-
         setStatus(
           hostMode
             ? "Zoom 호스트 인증을 준비하는 중..."
             : "Zoom SDK를 불러오는 중..."
         );
-
         for (
           const src of
           SCRIPTS
@@ -231,8 +226,8 @@ export default function ClassroomZoomEmbed({
           await loadScript(
             src
           );
+          ensureCurrent();
         }
-
         if (
           !window.ZoomMtgEmbedded ||
           !rootRef.current
@@ -241,14 +236,11 @@ export default function ClassroomZoomEmbed({
             "Zoom Meeting SDK를 초기화할 수 없습니다."
           );
         }
-
         let signature =
           "";
-
         let zak:
           | string
           | undefined;
-
         /*
          * =====================================================
          * 강사 / 관리자
@@ -259,32 +251,26 @@ export default function ClassroomZoomEmbed({
           setStatus(
             "Zoom 호스트 권한을 확인하는 중..."
           );
-
           const hostResponse =
             await fetch(
               "/api/zoom/host-auth",
               {
                 method:
                   "POST",
-
                 headers: {
                   "Content-Type":
                     "application/json",
                 },
-
                 credentials:
                   "same-origin",
-
                 body:
                   JSON.stringify({
                     sessionId,
                   }),
               }
             );
-
           const hostData =
             await hostResponse.json();
-
           if (
             !hostResponse.ok ||
             !hostData.success ||
@@ -298,10 +284,8 @@ export default function ClassroomZoomEmbed({
                 : "Zoom 호스트 인증정보를 발급받지 못했습니다."
             );
           }
-
           signature =
             hostData.signature;
-
           zak =
             hostData.zak;
         } else {
@@ -314,33 +298,28 @@ export default function ClassroomZoomEmbed({
           setStatus(
             "TALKLY 인증을 확인하는 중..."
           );
-
           const signatureResponse =
             await fetch(
               "/api/zoom/sdk-signature",
               {
                 method:
                   "POST",
-
                 headers: {
                   "Content-Type":
                     "application/json",
                 },
-
                 credentials:
                   "same-origin",
-
                 body:
                   JSON.stringify({
                     meetingNumber,
+                    sessionId,
                     role: 0,
                   }),
               }
             );
-
           const signatureData =
             await signatureResponse.json();
-
           if (
             !signatureResponse.ok ||
             !signatureData.success ||
@@ -353,10 +332,12 @@ export default function ClassroomZoomEmbed({
                 : "Meeting SDK 서명을 발급받지 못했습니다."
             );
           }
-
           signature =
             signatureData.signature;
         }
+        ensureCurrent();
+        await disposeClient();
+        ensureCurrent();
 
         /*
          * 기존 Zoom DOM 제거
@@ -370,16 +351,14 @@ export default function ClassroomZoomEmbed({
           rootRef.current.innerHTML =
             "";
         }
-
         const client =
           window.ZoomMtgEmbedded.createClient();
-
+        clientRef.current = client;
         setStatus(
           hostMode
             ? "Zoom 수업을 시작하는 중..."
             : "Zoom 수업실을 여는 중..."
         );
-
         const rootWidth =
           Math.max(
             160,
@@ -387,7 +366,6 @@ export default function ClassroomZoomEmbed({
               rootRef.current.clientWidth || 420
             )
           );
-
         const rootHeight =
           Math.max(
             220,
@@ -395,7 +373,6 @@ export default function ClassroomZoomEmbed({
               rootRef.current.clientHeight || 430
             )
           );
-
         /*
          * Zoom Component View는 비디오 캔버스 아래에
          * 마이크/카메라 등 기본 컨트롤 바를 렌더링합니다.
@@ -408,28 +385,23 @@ export default function ClassroomZoomEmbed({
             135,
             rootHeight - 96
           );
-
+        ensureCurrent();
         await client.init({
           zoomAppRoot:
             rootRef.current,
-
           language:
             "ko-KR",
-
           patchJsMedia:
             true,
-
           customize: {
             video: {
               isResizable:
                 true,
-
               viewSizes: {
                 default: {
                   width: rootWidth,
                   height: videoHeight,
                 },
-
                 ribbon: {
                   width: rootWidth,
                   height: Math.max(
@@ -444,7 +416,6 @@ export default function ClassroomZoomEmbed({
                 },
               },
             },
-
             meetingInfo: [
               "topic",
               "host",
@@ -458,18 +429,17 @@ export default function ClassroomZoomEmbed({
             ],
           },
         });
-
         setStatus(
           hostMode
             ? "Zoom 호스트로 입장하는 중..."
             : "Zoom 수업에 입장하는 중..."
         );
-
         /*
          * =====================================================
          * Zoom Meeting 입장
          * =====================================================
          */
+        ensureCurrent();
         await client.join({
           signature,
           meetingNumber,
@@ -479,6 +449,19 @@ export default function ClassroomZoomEmbed({
             ? { zak }
             : {}),
         });
+        joinedRef.current = true;
+        if (generation !== generationRef.current) {
+          try {
+            await client.leaveMeeting?.();
+          } catch (error) {
+            console.warn("[TALKLY] Zoom stale join cleanup failed:", error);
+          }
+          if (clientRef.current === client) {
+            clientRef.current = null;
+            joinedRef.current = false;
+          }
+          return;
+        }
 
         /*
          * =====================================================
@@ -497,24 +480,24 @@ export default function ClassroomZoomEmbed({
          * 방식으로만 처리합니다.
          * =====================================================
          */
-
         setStatus(
           ""
         );
-
         setScreen(
           "joined"
         );
       } catch (error) {
+        if (generation !== generationRef.current) {
+          return;
+        }
+        void disposeClient();
         console.error(
           "ZOOM CLASSROOM EMBED ERROR:",
           error
         );
-
         setStatus(
           ""
         );
-
         /*
          * 학생이 강사보다 먼저 Zoom Meeting에
          * 접근했을 경우 대기화면 처리
@@ -528,26 +511,23 @@ export default function ClassroomZoomEmbed({
           setScreen(
             "waiting"
           );
-
           setErrorMessage(
             ""
           );
-
           return;
         }
-
         setErrorMessage(
           stringifyZoomError(
             error
           )
         );
-
         setScreen(
           "error"
         );
       } finally {
-        runningRef.current =
-          false;
+        if (generation === generationRef.current) {
+          runningRef.current = false;
+        }
       }
     }, [
       sessionId,
@@ -556,25 +536,28 @@ export default function ClassroomZoomEmbed({
       userName,
       hostMode,
       attempt,
+      disposeClient,
     ]);
-
   useEffect(() => {
-    startZoom();
-  }, [startZoom]);
-
+    generationRef.current += 1;
+    void startZoom();
+    return () => {
+      generationRef.current += 1;
+      runningRef.current = false;
+      void disposeClient();
+    };
+  }, [startZoom, disposeClient]);
   function retryZoom() {
     if (
       runningRef.current
     ) {
       return;
     }
-
     setAttempt(
       (value) =>
         value + 1
     );
   }
-
   const showOverlay =
     screen ===
       "loading" ||
@@ -582,25 +565,19 @@ export default function ClassroomZoomEmbed({
       "waiting" ||
     screen ===
       "error";
-
   return (
     <div
       style={{
         position:
           "relative",
-
         height:
           "100%",
-
         minHeight:
           0,
-
         width:
           "100%",
-
         background:
           "#111216",
-
         overflow:
           "hidden",
       }}
@@ -610,31 +587,22 @@ export default function ClassroomZoomEmbed({
           style={{
             position:
               "absolute",
-
             inset:
               0,
-
             zIndex:
               10,
-
             display:
               "flex",
-
             alignItems:
               "center",
-
             justifyContent:
               "center",
-
             padding:
               "32px",
-
             textAlign:
               "center",
-
             background:
               "#111216",
-
             boxSizing:
               "border-box",
           }}
@@ -646,22 +614,18 @@ export default function ClassroomZoomEmbed({
                 style={{
                   fontSize:
                     "14px",
-
                   opacity:
                     0.55,
-
                   marginBottom:
                     "12px",
                 }}
               >
                 TALKLY CLASSROOM
               </div>
-
               <div
                 style={{
                   fontWeight:
                     800,
-
                   fontSize:
                     "20px",
                 }}
@@ -670,7 +634,6 @@ export default function ClassroomZoomEmbed({
               </div>
             </div>
           )}
-
           {screen ===
             "waiting" && (
             <div
@@ -683,43 +646,34 @@ export default function ClassroomZoomEmbed({
                 style={{
                   fontSize:
                     "14px",
-
                   opacity:
                     0.5,
-
                   marginBottom:
                     "12px",
                 }}
               >
                 TALKLY CLASSROOM
               </div>
-
               <div
                 style={{
                   fontWeight:
                     800,
-
                   fontSize:
                     "24px",
-
                   marginBottom:
                     "14px",
                 }}
               >
                 수업 시작 전입니다
               </div>
-
               <p
                 style={{
                   margin:
                     0,
-
                   lineHeight:
                     1.7,
-
                   opacity:
                     0.72,
-
                   fontSize:
                     "15px",
                 }}
@@ -728,7 +682,6 @@ export default function ClassroomZoomEmbed({
                 <br />
                 강사가 수업을 시작한 후 아래 버튼을 눌러 입장해 주세요.
               </p>
-
               <button
                 type="button"
                 onClick={
@@ -742,7 +695,6 @@ export default function ClassroomZoomEmbed({
               </button>
             </div>
           )}
-
           {screen ===
             "error" && (
             <div
@@ -755,25 +707,20 @@ export default function ClassroomZoomEmbed({
                 style={{
                   fontSize:
                     "14px",
-
                   opacity:
                     0.5,
-
                   marginBottom:
                     "12px",
                 }}
               >
                 TALKLY CLASSROOM
               </div>
-
               <div
                 style={{
                   fontWeight:
                     800,
-
                   fontSize:
                     "22px",
-
                   marginBottom:
                     "14px",
                 }}
@@ -782,18 +729,14 @@ export default function ClassroomZoomEmbed({
                   ? "Zoom 호스트 연결 오류"
                   : "Zoom 연결 오류"}
               </div>
-
               <p
                 style={{
                   margin:
                     0,
-
                   lineHeight:
                     1.7,
-
                   opacity:
                     0.72,
-
                   fontSize:
                     "14px",
                 }}
@@ -802,34 +745,25 @@ export default function ClassroomZoomEmbed({
                   ? "Zoom 수업을 호스트로 시작하지 못했습니다."
                   : "Zoom 수업실에 연결하지 못했습니다."}
               </p>
-
               {errorMessage && (
                 <div
                   style={{
                     marginTop:
                       "14px",
-
                     padding:
                       "12px",
-
                     borderRadius:
                       "8px",
-
                     background:
                       "rgba(255,255,255,0.05)",
-
                     fontSize:
                       "12px",
-
                     opacity:
                       0.6,
-
                     wordBreak:
                       "break-word",
-
                     maxHeight:
                       "140px",
-
                     overflow:
                       "auto",
                   }}
@@ -837,7 +771,6 @@ export default function ClassroomZoomEmbed({
                   {errorMessage}
                 </div>
               )}
-
               <button
                 type="button"
                 onClick={
@@ -853,7 +786,6 @@ export default function ClassroomZoomEmbed({
           )}
         </div>
       )}
-
       <div
         ref={
           rootRef
@@ -862,10 +794,8 @@ export default function ClassroomZoomEmbed({
         style={{
           width:
             "100%",
-
           height:
             "100%",
-
           minHeight:
             0,
         }}
@@ -873,33 +803,24 @@ export default function ClassroomZoomEmbed({
     </div>
   );
 }
-
 const primaryButton: React.CSSProperties =
   {
     marginTop:
       "26px",
-
     padding:
       "13px 24px",
-
     borderRadius:
       "9px",
-
     border:
       "1px solid rgba(255,255,255,0.25)",
-
     background:
       "#f7f7f8",
-
     color:
       "#111216",
-
     fontSize:
       "15px",
-
     fontWeight:
       800,
-
     cursor:
       "pointer",
   };

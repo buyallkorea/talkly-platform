@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ChangeEvent, FormEvent, useState } from "react";
@@ -17,6 +18,7 @@ const NATIONALITIES = [
 
 type Profile = {
   id: string;
+  email: string | null;
   name: string | null;
   phone: string | null;
   birth_date: string | null;
@@ -47,11 +49,16 @@ export default function EditTeacherForm({
   const router = useRouter();
 
   const knownNationality =
-    teacher.nationality &&
+    !!teacher.nationality &&
     NATIONALITIES.includes(
       teacher.nationality as (typeof NATIONALITIES)[number]
     ) &&
     teacher.nationality !== "기타";
+
+  const [email, setEmail] = useState(profile.email || "");
+  const [savedEmail, setSavedEmail] = useState(
+    (profile.email || "").trim().toLowerCase()
+  );
 
   const [name, setName] = useState(profile.name || "");
   const [phone, setPhone] = useState(profile.phone || "");
@@ -65,8 +72,9 @@ export default function EditTeacherForm({
   const [imageFile, setImageFile] =
     useState<File | null>(null);
 
-  const [imagePreview, setImagePreview] =
-    useState(profile.profile_image_url || "");
+  const [imagePreview, setImagePreview] = useState(
+    profile.profile_image_url || ""
+  );
 
   const [displayName, setDisplayName] = useState(
     teacher.display_name || ""
@@ -82,14 +90,10 @@ export default function EditTeacherForm({
 
   const [customNationality, setCustomNationality] =
     useState(
-      knownNationality
-        ? ""
-        : teacher.nationality || ""
+      knownNationality ? "" : teacher.nationality || ""
     );
 
-  const [bio, setBio] = useState(
-    teacher.bio || ""
-  );
+  const [bio, setBio] = useState(teacher.bio || "");
 
   const [specialties, setSpecialties] = useState(
     teacher.specialties?.join(", ") || ""
@@ -106,10 +110,9 @@ export default function EditTeacherForm({
     teacher.education || ""
   );
 
-  const [certifications, setCertifications] =
-    useState(
-      teacher.certifications || ""
-    );
+  const [certifications, setCertifications] = useState(
+    teacher.certifications || ""
+  );
 
   const [hourlyRate, setHourlyRate] = useState(
     teacher.hourly_rate != null
@@ -122,19 +125,45 @@ export default function EditTeacherForm({
   );
 
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const labelStyle = {
+    display: "block",
+    marginBottom: "8px",
+    fontWeight: 600,
+  };
+
+  const fieldStyle = {
+    width: "100%",
+    boxSizing: "border-box" as const,
+    padding: "12px 14px",
+    border: "1px solid #d6deea",
+    borderRadius: "10px",
+    background: "#ffffff",
+    color: "#101828",
+    fontSize: "15px",
+    outline: "none",
+  };
+
+  const sectionStyle = {
+    padding: "24px",
+    border: "1px solid #e4e7ec",
+    borderRadius: "14px",
+    background: "#ffffff",
+    boxShadow:
+      "0 1px 2px rgba(16,24,40,0.03), 0 8px 24px rgba(16,24,40,0.04)",
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "18px",
+  };
 
   function handleImageChange(
     event: ChangeEvent<HTMLInputElement>
   ) {
     const file = event.target.files?.[0];
-
     setErrorMessage("");
 
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     const allowedTypes = [
       "image/jpeg",
@@ -167,10 +196,26 @@ export default function EditTeacherForm({
   ) {
     event.preventDefault();
 
+    if (loading) return;
+
     setErrorMessage("");
 
     if (!name.trim()) {
       setErrorMessage("강사 이름을 입력해주세요.");
+      return;
+    }
+
+    const normalizedEmail =
+      email.trim().toLowerCase();
+
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        normalizedEmail
+      )
+    ) {
+      setErrorMessage(
+        "올바른 이메일 주소를 입력해주세요."
+      );
       return;
     }
 
@@ -190,18 +235,18 @@ export default function EditTeacherForm({
     }
 
     if (
-      yearsExperience &&
-      Number(yearsExperience) < 0
+      yearsExperience !== "" &&
+      (!Number.isFinite(Number(yearsExperience)) ||
+        Number(yearsExperience) < 0)
     ) {
-      setErrorMessage(
-        "강사 경력을 확인해주세요."
-      );
+      setErrorMessage("강사 경력을 확인해주세요.");
       return;
     }
 
     if (
-      hourlyRate &&
-      Number(hourlyRate) < 0
+      hourlyRate !== "" &&
+      (!Number.isFinite(Number(hourlyRate)) ||
+        Number(hourlyRate) < 0)
     ) {
       setErrorMessage(
         "시간당 수업료를 확인해주세요."
@@ -220,30 +265,28 @@ export default function EditTeacherForm({
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        setErrorMessage(
+        throw new Error(
           "로그인 정보를 확인할 수 없습니다."
         );
-        setLoading(false);
-        return;
       }
 
-      const { data: adminProfile, error: adminError } =
-        await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
+      const {
+        data: adminProfile,
+        error: adminError,
+      } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
 
       if (
         adminError ||
         !adminProfile ||
         adminProfile.role !== "admin"
       ) {
-        setErrorMessage(
+        throw new Error(
           "관리자 권한을 확인할 수 없습니다."
         );
-        setLoading(false);
-        return;
       }
 
       const finalNationality =
@@ -273,11 +316,9 @@ export default function EditTeacherForm({
             });
 
         if (uploadError) {
-          setErrorMessage(
+          throw new Error(
             `프로필 사진 업로드 실패: ${uploadError.message}`
           );
-          setLoading(false);
-          return;
         }
 
         const { data: publicUrlData } =
@@ -289,26 +330,27 @@ export default function EditTeacherForm({
           `${publicUrlData.publicUrl}?v=${Date.now()}`;
       }
 
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          name: name.trim(),
-          phone: phone.trim() || null,
-          birth_date: birthDate || null,
-          gender: gender || null,
-          profile_image_url: profileImageUrl,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", profile.id);
+      // 1. 기본정보 저장
+      const { error: profileError } =
+        await supabase
+          .from("profiles")
+          .update({
+            name: name.trim(),
+            phone: phone.trim() || null,
+            birth_date: birthDate || null,
+            gender: gender || null,
+            profile_image_url: profileImageUrl,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", profile.id);
 
       if (profileError) {
-        setErrorMessage(
+        throw new Error(
           `기본정보 수정 실패: ${profileError.message}`
         );
-        setLoading(false);
-        return;
       }
 
+      // 2. 강사 프로필 저장
       const { data, error: teacherError } =
         await supabase
           .from("teacher_profiles")
@@ -322,7 +364,8 @@ export default function EditTeacherForm({
               yearsExperience !== ""
                 ? Number(yearsExperience)
                 : null,
-            education: education.trim() || null,
+            education:
+              education.trim() || null,
             certifications:
               certifications.trim() || null,
             hourly_rate:
@@ -336,19 +379,44 @@ export default function EditTeacherForm({
           .select();
 
       if (teacherError) {
-        setErrorMessage(
+        throw new Error(
           `강사정보 수정 실패: ${teacherError.message}`
         );
-        setLoading(false);
-        return;
       }
 
       if (!data || data.length === 0) {
-        setErrorMessage(
+        throw new Error(
           "수정된 강사정보를 확인할 수 없습니다."
         );
-        setLoading(false);
-        return;
+      }
+
+      // 3. 다른 정보가 저장된 후 이메일 변경
+      if (normalizedEmail !== savedEmail) {
+        const response = await fetch(
+          `/api/admin/teachers/${teacher.user_id}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: normalizedEmail,
+            }),
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(
+            "강사 기본정보와 프로필은 저장되었지만 " +
+            "로그인 이메일 변경에 실패했습니다. " +
+            (result.error ||
+              "이메일 주소를 확인해주세요.")
+          );
+        }
+
+        setSavedEmail(normalizedEmail);
       }
 
       router.push(
@@ -363,43 +431,13 @@ export default function EditTeacherForm({
 
       setErrorMessage(
         error instanceof Error
-          ? `강사정보 수정 오류: ${error.message}`
+          ? error.message
           : "강사정보 수정 중 오류가 발생했습니다."
       );
-
+    } finally {
       setLoading(false);
     }
   }
-
-  const labelStyle = {
-    display: "block",
-    marginBottom: "8px",
-    fontWeight: 600,
-  };
-
-  const fieldStyle = {
-    width: "100%",
-    boxSizing: "border-box" as const,
-    padding: "12px 14px",
-    border: "1px solid #d6deea",
-    borderRadius: "10px",
-    background: "#ffffff",
-    color: "#101828",
-    fontSize: "15px",
-    outline: "none",
-  };
-
-  const sectionStyle = {
-    padding: "24px",
-    border: "1px solid #e4e7ec",
-    borderRadius: "14px",
-    background: "#ffffff",
-    boxShadow:
-      "0 1px 2px rgba(16,24,40,0.03), 0 8px 24px rgba(16,24,40,0.04)",
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: "18px",
-  };
 
   return (
     <form
@@ -457,7 +495,12 @@ export default function EditTeacherForm({
             )}
           </div>
 
-          <div style={{ flex: 1, minWidth: "240px" }}>
+          <div
+            style={{
+              flex: 1,
+              minWidth: "240px",
+            }}
+          >
             <label
               htmlFor="profileImage"
               style={labelStyle}
@@ -470,6 +513,7 @@ export default function EditTeacherForm({
               type="file"
               accept="image/jpeg,image/png,image/webp"
               onChange={handleImageChange}
+              disabled={loading}
               style={{
                 ...fieldStyle,
                 padding: "10px",
@@ -486,10 +530,52 @@ export default function EditTeacherForm({
               }}
             >
               JPG, PNG, WEBP 형식 · 최대 5MB
-              <br />
-              새 사진을 선택한 뒤 아래의 강사정보 수정 버튼을 누르면 저장됩니다.
+              {" · "}
+              새 사진을 선택한 후 저장하면
+              변경됩니다.
             </p>
           </div>
+        </div>
+      </section>
+
+      <section style={sectionStyle}>
+        <h2 style={{ margin: 0 }}>
+          로그인 정보
+        </h2>
+
+        <div>
+          <label
+            htmlFor="email"
+            style={labelStyle}
+          >
+            로그인 이메일 *
+          </label>
+
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(event) =>
+              setEmail(event.target.value)
+            }
+            required
+            disabled={loading}
+            autoComplete="off"
+            style={fieldStyle}
+          />
+
+          <small
+            style={{
+              display: "block",
+              marginTop: "8px",
+              color: "#667085",
+              lineHeight: 1.6,
+            }}
+          >
+            이메일을 변경하면 강사의 로그인
+            이메일도 변경됩니다. 기존 비밀번호와
+            수업 기록은 유지됩니다.
+          </small>
         </div>
       </section>
 
@@ -499,10 +585,12 @@ export default function EditTeacherForm({
         </h2>
 
         <div>
-          <label htmlFor="name" style={labelStyle}>
+          <label
+            htmlFor="name"
+            style={labelStyle}
+          >
             강사 이름 *
           </label>
-
           <input
             id="name"
             value={name}
@@ -510,6 +598,7 @@ export default function EditTeacherForm({
               setName(event.target.value)
             }
             required
+            disabled={loading}
             style={fieldStyle}
           />
         </div>
@@ -521,13 +610,13 @@ export default function EditTeacherForm({
           >
             표시 이름
           </label>
-
           <input
             id="displayName"
             value={displayName}
             onChange={(event) =>
               setDisplayName(event.target.value)
             }
+            disabled={loading}
             style={fieldStyle}
           />
         </div>
@@ -552,12 +641,12 @@ export default function EditTeacherForm({
               }
             }}
             required
+            disabled={loading}
             style={fieldStyle}
           >
             <option value="">
               국적을 선택해주세요
             </option>
-
             {NATIONALITIES.map((item) => (
               <option
                 key={item}
@@ -577,7 +666,6 @@ export default function EditTeacherForm({
             >
               기타 국적 *
             </label>
-
             <input
               id="customNationality"
               value={customNationality}
@@ -587,22 +675,26 @@ export default function EditTeacherForm({
                 )
               }
               required
+              disabled={loading}
               style={fieldStyle}
             />
           </div>
         )}
 
         <div>
-          <label htmlFor="phone" style={labelStyle}>
+          <label
+            htmlFor="phone"
+            style={labelStyle}
+          >
             연락처
           </label>
-
           <input
             id="phone"
             value={phone}
             onChange={(event) =>
               setPhone(event.target.value)
             }
+            disabled={loading}
             style={fieldStyle}
           />
         </div>
@@ -614,7 +706,6 @@ export default function EditTeacherForm({
           >
             생년월일
           </label>
-
           <input
             id="birthDate"
             type="date"
@@ -622,6 +713,7 @@ export default function EditTeacherForm({
             onChange={(event) =>
               setBirthDate(event.target.value)
             }
+            disabled={loading}
             style={fieldStyle}
           />
         </div>
@@ -633,19 +725,27 @@ export default function EditTeacherForm({
           >
             성별
           </label>
-
           <select
             id="gender"
             value={gender}
             onChange={(event) =>
               setGender(event.target.value)
             }
+            disabled={loading}
             style={fieldStyle}
           >
-            <option value="">선택 안 함</option>
-            <option value="male">남성</option>
-            <option value="female">여성</option>
-            <option value="other">기타</option>
+            <option value="">
+              선택 안 함
+            </option>
+            <option value="male">
+              남성
+            </option>
+            <option value="female">
+              여성
+            </option>
+            <option value="other">
+              기타
+            </option>
           </select>
         </div>
       </section>
@@ -656,10 +756,12 @@ export default function EditTeacherForm({
         </h2>
 
         <div>
-          <label htmlFor="bio" style={labelStyle}>
+          <label
+            htmlFor="bio"
+            style={labelStyle}
+          >
             강사 소개
           </label>
-
           <textarea
             id="bio"
             value={bio}
@@ -667,6 +769,7 @@ export default function EditTeacherForm({
               setBio(event.target.value)
             }
             rows={5}
+            disabled={loading}
             style={{
               ...fieldStyle,
               resize: "vertical",
@@ -681,7 +784,6 @@ export default function EditTeacherForm({
           >
             전문분야
           </label>
-
           <input
             id="specialties"
             value={specialties}
@@ -689,8 +791,12 @@ export default function EditTeacherForm({
               setSpecialties(event.target.value)
             }
             placeholder="초등영어, 회화, 파닉스"
+            disabled={loading}
             style={fieldStyle}
           />
+          <small>
+            여러 분야는 쉼표(,)로 구분해주세요.
+          </small>
         </div>
 
         <div>
@@ -700,7 +806,6 @@ export default function EditTeacherForm({
           >
             경력(년)
           </label>
-
           <input
             id="yearsExperience"
             type="number"
@@ -711,6 +816,7 @@ export default function EditTeacherForm({
                 event.target.value
               )
             }
+            disabled={loading}
             style={fieldStyle}
           />
         </div>
@@ -722,7 +828,6 @@ export default function EditTeacherForm({
           >
             학력
           </label>
-
           <textarea
             id="education"
             value={education}
@@ -730,6 +835,7 @@ export default function EditTeacherForm({
               setEducation(event.target.value)
             }
             rows={3}
+            disabled={loading}
             style={{
               ...fieldStyle,
               resize: "vertical",
@@ -744,7 +850,6 @@ export default function EditTeacherForm({
           >
             자격 및 인증
           </label>
-
           <textarea
             id="certifications"
             value={certifications}
@@ -754,6 +859,7 @@ export default function EditTeacherForm({
               )
             }
             rows={3}
+            disabled={loading}
             style={{
               ...fieldStyle,
               resize: "vertical",
@@ -768,7 +874,6 @@ export default function EditTeacherForm({
           >
             시간당 수업료
           </label>
-
           <input
             id="hourlyRate"
             type="number"
@@ -778,6 +883,7 @@ export default function EditTeacherForm({
             onChange={(event) =>
               setHourlyRate(event.target.value)
             }
+            disabled={loading}
             style={fieldStyle}
           />
         </div>
@@ -797,24 +903,28 @@ export default function EditTeacherForm({
               onChange={(event) =>
                 setIsActive(event.target.checked)
               }
+              disabled={loading}
             />
-
             활성 강사
           </label>
 
           <small>
-            비활성화하면 신규 수강생 강사 배정 목록에서 제외됩니다.
+            비활성화하면 신규 수강생 강사
+            배정 목록에서 제외됩니다.
           </small>
         </div>
       </section>
 
       {errorMessage && (
         <div
+          role="alert"
           style={{
             padding: "14px",
             border: "1px solid #d93025",
             borderRadius: "8px",
-            color: "#d93025",
+            color: "#b42318",
+            background: "#fef3f2",
+            lineHeight: 1.6,
           }}
         >
           {errorMessage}
@@ -828,7 +938,9 @@ export default function EditTeacherForm({
           padding: "15px",
           border: "none",
           borderRadius: "10px",
-          background: loading ? "#98a2b3" : "#0a1f44",
+          background: loading
+            ? "#98a2b3"
+            : "#0a1f44",
           color: "#ffffff",
           fontSize: "16px",
           fontWeight: 800,

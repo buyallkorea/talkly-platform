@@ -1,3 +1,4 @@
+
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import EditTeacherForm from "./EditTeacherForm";
@@ -64,6 +65,7 @@ export default async function EditTeacherPage({
       .from("profiles")
       .select(`
         id,
+        email,
         name,
         phone,
         birth_date,
