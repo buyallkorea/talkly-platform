@@ -461,15 +461,33 @@ export default async function AdminDashboardPage() {
     recentEnrollmentsResult.error;
 
   if (firstError) {
-  console.error("[ADMIN DASHBOARD QUERY ERROR]", {
-    code: firstError.code,
-    message: firstError.message,
-    details: firstError.details,
-    hint: firstError.hint,
-  });
+    const queryResults = {
+      parents: parentsResult,
+      students: studentsResult,
+      teachers: teachersResult,
+      activeEnrollments: activeEnrollmentsResult,
+      unassignedEnrollments: unassignedEnrollmentsResult,
+      todaySessions: todaySessionsResult,
+      todaySessionRows: todaySessionRowsResult,
+      weekSessions: weekSessionsResult,
+      monthSessions: monthSessionsResult,
+      pendingHolds: pendingHoldsResult,
+      recentSessions: recentSessionsResult,
+      recentEnrollments: recentEnrollmentsResult,
+    };
 
-  throw new Error("Admin dashboard data query failed.");
-}
+    for (const [name, result] of Object.entries(queryResults)) {
+      if (result.error) {
+        console.error("[ADMIN DASHBOARD FAILED QUERY]", {
+          name,
+          error: result.error,
+          message: String(result.error),
+        });
+      }
+    }
+
+    throw new Error("Admin dashboard data query failed.");
+  }
 
   const recentSessions =
     (recentSessionsResult.data ??
