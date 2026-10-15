@@ -80,6 +80,10 @@ const menuGroups: MenuGroup[] = [
         href: "/admin/class-holds",
       },
       {
+        label: "테스트 수업",
+        href: "/admin/test-classroom",
+      },
+      {
         label: "오늘 수업",
         href: "/admin/calendar",
         exact: true,
