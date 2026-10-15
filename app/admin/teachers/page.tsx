@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import ResendTeacherRegistrationButton from "./ResendTeacherRegistrationButton";
+import HomepageVisibilityToggle from "./HomepageVisibilityToggle";
 
 type PageProps = {
   searchParams: Promise<{
@@ -19,6 +20,7 @@ type TeacherProfile = {
   years_experience: number | null;
   education: string | null;
   is_active: boolean;
+  show_on_homepage: boolean;
   created_at: string;
 };
 
@@ -229,6 +231,7 @@ export default async function AdminTeachersPage({
           years_experience,
           education,
           is_active,
+          show_on_homepage,
           created_at
         `)
         .order(
@@ -1178,7 +1181,7 @@ export default async function AdminTeachersPage({
                   "grid",
 
                 gridTemplateColumns:
-                  "minmax(220px, 1.3fr) 105px 80px 90px 90px 80px 80px 80px minmax(175px, auto)",
+                  "minmax(220px, 1.3fr) 105px 80px 90px 90px 80px 80px 80px 95px minmax(175px, auto)",
 
                 gap: "12px",
 
@@ -1231,6 +1234,10 @@ export default async function AdminTeachersPage({
               </div>
 
               <div>
+                메인 노출
+              </div>
+
+              <div>
                 관리
               </div>
             </div>
@@ -1269,7 +1276,7 @@ export default async function AdminTeachersPage({
                           "grid",
 
                         gridTemplateColumns:
-                          "minmax(220px, 1.3fr) 105px 80px 90px 90px 80px 80px 80px minmax(175px, auto)",
+                          "minmax(220px, 1.3fr) 105px 80px 90px 90px 80px 80px 80px 95px minmax(175px, auto)",
 
                         gap:
                           "12px",
@@ -1535,6 +1542,15 @@ export default async function AdminTeachersPage({
                               2
                             )
                           : "-"}
+                      </div>
+
+                      {/* 메인페이지 노출 */}
+                      <div>
+                        <HomepageVisibilityToggle
+                          teacherUserId={teacher.user_id}
+                          initialValue={teacher.show_on_homepage}
+                          disabled={!teacher.is_active}
+                        />
                       </div>
 
                       {/* 관리 */}
