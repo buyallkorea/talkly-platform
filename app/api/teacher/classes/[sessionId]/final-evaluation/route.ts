@@ -110,10 +110,10 @@ export async function POST(
   } = await admin
     .from("class_sessions")
     .select(
-      "id, enrollment_id, lesson_number, scheduled_start, status"
-    )
-    .eq("id", numericSessionId)
-    .maybeSingle();
+  "id, enrollment_id, lesson_number, scheduled_start, status, is_test"
+)
+.eq("id", numericSessionId)
+.maybeSingle();
 
   if (sessionError || !session) {
     return jsonError(
@@ -121,7 +121,12 @@ export async function POST(
       404
     );
   }
-
+if (session.is_test === true) {
+  return jsonError(
+    "테스트 수업은 4주 평가 및 최종 평가 대상이 아닙니다.",
+    403
+  );
+}
   const {
     data: enrollment,
     error: enrollmentError,

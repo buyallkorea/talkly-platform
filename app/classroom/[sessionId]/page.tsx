@@ -10,11 +10,14 @@ import ClassSessionEndWatcher from "./ClassSessionEndWatcher";
 import StudentAttendanceRecorder from "./StudentAttendanceRecorder";
 import ClassroomChat from "./ClassroomChat";
 import ClassroomTextbookSelectorRefresh from "./ClassroomTextbookSelectorRefresh";
+import TestClassroomModeChooser from "./TestClassroomModeChooser";
+import { verifyTestStudentMode } from "@/lib/test-classroom-mode";
 
 type PageProps = {
   params: Promise<{
     sessionId: string;
   }>;
+  searchParams: Promise<{ testMode?: string }>;
 };
 
 async function getZoomAccessToken() {
@@ -119,9 +122,11 @@ async function getZoomMeetingPassword(
 
 export default async function ClassroomPage({
   params,
+  searchParams,
 }: PageProps) {
   const { sessionId } =
     await params;
+  const { testMode } = await searchParams;
 
   const numericSessionId =
     Number(sessionId);
@@ -188,8 +193,9 @@ export default async function ClassroomPage({
       selected_textbook_id,
       teacher_user_id,
       original_teacher_user_id,
-      is_external_teacher
-    
+      is_external_teacher,
+      is_test
+
     `)
     .eq(
       "id",
@@ -222,7 +228,8 @@ export default async function ClassroomPage({
       child_id,
       student_user_id,
       course_id,
-      teacher_user_id
+      teacher_user_id,
+      is_test
     `)
     .eq(
       "id",
@@ -257,7 +264,7 @@ export default async function ClassroomPage({
   ) {
     hasAccess =
       true;
-  
+
   } else if (
     profile.role === "teacher" &&
     session.is_external_teacher !== true &&
@@ -310,7 +317,29 @@ export default async function ClassroomPage({
   if (!hasAccess) {
     notFound();
   }
-  
+
+  // 테스트 모드는 두 레코드가 모두 테스트로 표시된 경우에만 노출합니다.
+  // 학생 쓰기 권한은 아직 구현되지 않았으므로 관리자 역할은 변경하지 않습니다.
+  const isAdminTestClassroom =
+    profile.role === "admin" &&
+    process.env.TALKLY_ENABLE_TEST_CLASSROOM === "true" &&
+    session.is_test === true &&
+    enrollment.is_test === true;
+
+  // URL 파라미터만으로 학생 권한을 부여하지 않습니다.
+  const isVerifiedTestStudent =
+    isAdminTestClassroom &&
+    testMode === "student" &&
+    (await verifyTestStudentMode(session.id));
+
+  if (
+    isAdminTestClassroom &&
+    testMode !== "observer" &&
+    !isVerifiedTestStudent
+  ) {
+    return <TestClassroomModeChooser sessionId={session.id} />;
+  }
+
   /*
    * =====================================================
    * 학생에게 배정된 수업 교재 목록
@@ -487,58 +516,15 @@ export default async function ClassroomPage({
     }
   }
 
-  /*
-   * =====================================================
-   * Zoom 연결 확인
-   * =====================================================
-   */
-  if (
-    session.meeting_provider !==
-      "zoom" ||
-    !session.meeting_id
-  ) {
-    return (
-      <main
-        style={{
-          minHeight:
-            "100vh",
 
-          padding:
-            "40px",
-
-          background:
-            "#0b0b0d",
-
-          color:
-            "#f7f7f8",
-
-          boxSizing:
-            "border-box",
-        }}
-      >
-        <h1>
-          TALKLY Classroom
-        </h1>
-
-        <p>
-          이 수업에는 아직
-          Zoom Meeting이
-          연결되어 있지 않습니다.
-        </p>
-      </main>
-    );
-  }
-
-  const meetingPassword =
-    await getZoomMeetingPassword(
-      session.meeting_id
-    );
 
   /*
    * Zoom 참가자 표시 이름
    */
   const zoomDisplayName =
-    profile.role ===
+    isVerifiedTestStudent
+      ? "Admin (Test Student)"
+      : profile.role ===
     "teacher"
       ? teacherName
       : profile.role ===
@@ -548,13 +534,14 @@ export default async function ClassroomPage({
         : studentName;
 
   const hostMode =
-    profile.role ===
-      "teacher" ||
-    profile.role ===
-      "admin";
+    profile.role === "teacher" &&
+    session.is_external_teacher !== true &&
+    (session.teacher_user_id ?? enrollment.teacher_user_id) === user.id;
 
   const identityPrimary =
-    profile.role === "teacher"
+    isVerifiedTestStudent
+      ? "ADMIN · TEST STUDENT"
+      : profile.role === "teacher"
       ? `${teacherName} · TEACHER`
       : profile.role === "student"
         ? `${studentName} · STUDENT`
@@ -563,7 +550,9 @@ export default async function ClassroomPage({
           : `TALKLY ADMIN`;
 
   const identitySecondary =
-    profile.role === "teacher"
+    isVerifiedTestStudent
+      ? `테스트 학생 / ${teacherName}`
+      : profile.role === "teacher"
       ? "강사"
       : profile.role === "student"
         ? "학생"
@@ -572,20 +561,62 @@ export default async function ClassroomPage({
           : `${studentName} / ${teacherName}`;
 
   const isLearner =
+    isVerifiedTestStudent ||
     profile.role ===
       "student" ||
     profile.role ===
       "parent";
 
+  const unavailableMessages: Record<string, string> = {
+    cancelled: "취소된 수업입니다.",
+    held: "연기 또는 결석 승인된 수업입니다.",
+    not_held: "진행되지 않은 수업입니다.",
+    no_show: "결석 처리된 수업입니다.",
+  };
+
+  const unavailableMessage = unavailableMessages[session.status];
+
+  if (unavailableMessage) {
+    const returnHref =
+      profile.role === "teacher"
+        ? `/teacher/classes/${session.id}`
+        : profile.role === "parent"
+          ? "/parent"
+          : profile.role === "student"
+            ? "/student"
+            : "/admin";
+
+    return (
+      <main
+        style={{
+          minHeight: "100vh",
+          padding: "40px 20px",
+          background: "#0b0b0d",
+          color: "#f7f7f8",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <h1>{unavailableMessage}</h1>
+          <p>
+            {course?.name || "Online English"} · {session.lesson_number}회차
+          </p>
+          <Link href={returnHref} style={{ color: "#93c5fd" }}>
+            돌아가기 →
+          </Link>
+        </div>
+      </main>
+    );
+  }
   /*
    * =====================================================
    * 학생/학부모 수업 시작 전 대기실
    * =====================================================
    */
   if (
-    isLearner &&
-    !session.started_at &&
-    !session.ended_at
+    isLearner && session.status === "scheduled" && !session.started_at && !session.ended_at
   ) {
     return (
       <ClassroomWaitingRoom
@@ -600,7 +631,7 @@ export default async function ClassroomPage({
           session.lesson_number
         }
         studentName={
-          studentName
+          isVerifiedTestStudent ? "Admin (Test Student)" : studentName
         }
         teacherName={
           teacherName
@@ -614,9 +645,7 @@ export default async function ClassroomPage({
    * 수업 종료
    * =====================================================
    */
-  if (
-    session.ended_at
-  ) {
+  if (session.ended_at || session.status === "completed") {
     const returnHref =
       profile.role ===
       "teacher"
@@ -826,6 +855,51 @@ export default async function ClassroomPage({
     );
   }
 
+  /*
+   * =====================================================
+   * Zoom 연결 확인
+   * =====================================================
+   */
+  if (
+    session.meeting_provider !==
+      "zoom" ||
+    !session.meeting_id
+  ) {
+    return (
+      <main
+        style={{
+          minHeight:
+            "100vh",
+
+          padding:
+            "40px",
+
+          background:
+            "#0b0b0d",
+
+          color:
+            "#f7f7f8",
+
+          boxSizing:
+            "border-box",
+        }}
+      >
+        <h1>
+          TALKLY Classroom
+        </h1>
+
+        <p>
+          이 수업에는 아직
+          Zoom Meeting이
+          연결되어 있지 않습니다.
+        </p>
+      </main>
+    );
+  }
+
+
+  const meetingPassword =
+    await getZoomMeetingPassword(session.meeting_id);
   /*
    * =====================================================
    * 실제 Classroom
@@ -1125,13 +1199,16 @@ export default async function ClassroomPage({
         <ClassSessionEndWatcher sessionId={session.id} />
 
         <StudentAttendanceRecorder
-          sessionId={session.id}
-          enabled={
-            profile.role === "student" &&
-            Boolean(session.started_at) &&
-            !session.ended_at
-          }
-        />
+  sessionId={session.id}
+  enabled={
+    (profile.role === "student" ||
+      isVerifiedTestStudent) &&
+    session.status === "in_progress" &&
+    Boolean(session.started_at) &&
+    !session.ended_at
+  }
+  testStudentMode={isVerifiedTestStudent}
+/>
 
         <header className="talkly-classroom-top">
           <div>
@@ -1177,7 +1254,7 @@ export default async function ClassroomPage({
             />
           </section>
 
-          
+
 
 <section className="talkly-classroom-panel talkly-classroom-textbook">
   <ClassroomTextbookSelectorRefresh
@@ -1205,10 +1282,7 @@ export default async function ClassroomPage({
         },
       ];
     })}
-    canControl={
-      profile.role === "admin" ||
-      profile.role === "teacher"
-    }
+    canControl={hostMode}
   />
 
   {session.selected_textbook_id ? (
@@ -1218,6 +1292,7 @@ export default async function ClassroomPage({
       sessionId={session.id}
       enrollmentId={enrollment.id}
       viewerRole={profile.role}
+      testStudentMode={isVerifiedTestStudent}
     />
   ) : (
     <div className="flex h-full min-h-[320px] items-center justify-center p-6 text-center">
@@ -1241,6 +1316,7 @@ export default async function ClassroomPage({
           sessionId={session.id}
           currentUserId={user.id}
           currentUserRole={profile.role}
+          testStudentMode={isVerifiedTestStudent}
           currentUserName={
             profile.role === "teacher"
               ? teacherName

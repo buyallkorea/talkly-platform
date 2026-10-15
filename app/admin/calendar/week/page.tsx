@@ -179,6 +179,7 @@ export default async function AdminWeekCalendarPage({
       `)
       .gte("scheduled_start", weekStart.toISOString())
       .lt("scheduled_start", weekEnd.toISOString())
+      .eq("is_test", false)
       .order("scheduled_start", { ascending: true }),
 
     supabase

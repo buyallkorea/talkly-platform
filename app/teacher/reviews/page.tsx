@@ -73,13 +73,14 @@ export default async function TeacherReviewsPage() {
   if (profile?.role !== "teacher") redirect("/");
 
   const { data: enrollmentData, error: enrollmentError } =
-    await supabase
-      .from("enrollments")
-      .select(
-        "id, student_user_id, child_id, course_id, teacher_user_id, status, total_lessons, start_date"
-      )
-      .eq("teacher_user_id", user.id)
-      .in("status", ["active", "pending", "completed"]);
+  await supabase
+    .from("enrollments")
+    .select(
+      "id, student_user_id, child_id, course_id, teacher_user_id, status, total_lessons, start_date"
+    )
+    .eq("teacher_user_id", user.id)
+    .eq("is_test", false)
+    .in("status", ["active", "pending", "completed"]);
 
   if (enrollmentError) throw new Error(enrollmentError.message);
 

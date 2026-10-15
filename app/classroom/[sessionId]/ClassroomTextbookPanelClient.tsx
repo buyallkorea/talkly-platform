@@ -64,6 +64,8 @@ type Props = {
 
   viewerRole: string;
 
+  testStudentMode?: boolean;
+
 };
 
 type PageMessage = {
@@ -106,13 +108,11 @@ export default function ClassroomTextbookPanelClient({
 
   viewerRole,
 
+  testStudentMode = false,
+
 }: Props) {
 
-  const isController =
-
-    viewerRole === "teacher" ||
-
-    viewerRole === "admin";
+  const isController = viewerRole === "teacher";
 
   const startingIndex = Math.min(Math.max(initialPageIndex, 0), Math.max(pages.length - 1, 0));
 
@@ -1297,7 +1297,7 @@ if (
 
               ? `TEACHER CONTROL · ${viewerRole}`
 
-              : `FOLLOW TEACHER · ${viewerRole}`}
+              : `FOLLOW TEACHER · ${testStudentMode ? "test student" : viewerRole}`}
 
           </span>
 
@@ -1930,38 +1930,13 @@ if (
               )}
 
               <ClassroomWhiteboardOverlay
-
-                sessionId={
-
-                  sessionId
-
-                }
-
-                textbookId={
-
-                  textbookId
-
-                }
-
-                pageId={
-
-                  currentPage.id
-
-                }
-
-                pageNumber={
-
-                  currentPage.pageNumber
-
-                }
-
-                viewerRole={
-
-                  viewerRole
-
-                }
-
-              />
+              sessionId={sessionId}
+              textbookId={textbookId}
+              pageId={currentPage.id}
+              pageNumber={currentPage.pageNumber}
+              viewerRole={viewerRole}
+              testStudentMode={testStudentMode}
+/>
 
             </div>
 

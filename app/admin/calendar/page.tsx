@@ -184,6 +184,7 @@ export default async function AdminCalendarPage({
         session_kind,
         makeup_for_session_id
       `)
+      .eq("is_test", false)
       .gte("scheduled_start", todayStart)
       .lt("scheduled_start", tomorrowStart)
       .order("scheduled_start", { ascending: true }),

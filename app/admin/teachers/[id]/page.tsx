@@ -170,6 +170,7 @@ export default async function TeacherDetailPage({
         created_at
       `)
       .eq("teacher_user_id", id)
+      .eq("is_test", false)
       .order("created_at", { ascending: false });
 
   if (enrollmentsError) {

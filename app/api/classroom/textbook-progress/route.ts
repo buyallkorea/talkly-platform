@@ -23,12 +23,12 @@ export async function POST(request: Request) {
 
     const { data: profile, error: profileError } = await admin
       .from("profiles").select("role").eq("id", auth.user.id).maybeSingle();
-    if (profileError || !profile || !["teacher", "admin"].includes(profile.role)) {
+    if (profileError || !profile || profile.role !== "teacher") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { data: session, error: sessionError } = await admin.from("class_sessions")
-      .select("id, enrollment_id, teacher_user_id").eq("id", sessionId).maybeSingle();
+      .select("id, enrollment_id, teacher_user_id, is_external_teacher, status, ended_at").eq("id", sessionId).maybeSingle();
     if (sessionError) throw sessionError;
     if (!session || session.enrollment_id !== enrollmentId) {
       return NextResponse.json({ error: "Session mismatch" }, { status: 403 });
@@ -37,8 +37,13 @@ export async function POST(request: Request) {
     const { data: enrollment, error: enrollmentError } = await admin.from("enrollments")
       .select("id, teacher_user_id").eq("id", enrollmentId).maybeSingle();
     if (enrollmentError) throw enrollmentError;
-    if (!enrollment || (profile.role !== "admin" &&
-      (session.teacher_user_id ?? enrollment.teacher_user_id) !== auth.user.id)) {
+    if (
+      !enrollment ||
+      session.is_external_teacher === true ||
+      (session.teacher_user_id ?? enrollment.teacher_user_id) !== auth.user.id ||
+      !["scheduled", "in_progress"].includes(session.status) ||
+      session.ended_at !== null
+    ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

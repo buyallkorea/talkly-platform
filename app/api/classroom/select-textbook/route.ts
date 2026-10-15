@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
     if (
       !profile ||
-      !["teacher", "admin"].includes(profile.role)
+      profile.role !== "teacher"
     ) {
       return jsonError(
         "교재를 선택할 권한이 없습니다.",
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
       await admin
         .from("class_sessions")
         .select(
-          "id, enrollment_id, teacher_user_id, is_external_teacher"
+          "id, enrollment_id, teacher_user_id, is_external_teacher, status, ended_at"
         )
         .eq("id", sessionId)
         .maybeSingle();
@@ -97,6 +97,16 @@ export async function POST(request: Request) {
       );
     }
 
+    // 종료되었거나 진행할 수 없는 수업의 교재 변경 방지
+    if (
+      !["scheduled", "in_progress"].includes(session.status) ||
+      session.ended_at !== null
+    ) {
+      return jsonError(
+        "현재 교재를 변경할 수 없는 수업입니다.",
+        403
+      );
+    }
     // 3. 수강등록 및 기본 담당 강사 확인
     const { data: enrollment, error: enrollmentError } =
       await admin
@@ -117,7 +127,7 @@ export async function POST(request: Request) {
     }
 
     // 4. 해당 수업 담당 강사 또는 관리자만 허용
-    if (profile.role !== "admin") {
+    if (profile.role === "teacher") {
       const assignedTeacherId =
         session.teacher_user_id ??
         enrollment.teacher_user_id;

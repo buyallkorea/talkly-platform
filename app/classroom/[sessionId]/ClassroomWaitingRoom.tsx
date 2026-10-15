@@ -54,6 +54,18 @@ export default function ClassroomWaitingRoom({
         if (effectiveStatus === "completed") {
           setMessage("수업이 종료되었습니다.");
           window.location.reload();
+          return;
+        }
+
+        if (
+          effectiveStatus === "cancelled" ||
+          effectiveStatus === "held" ||
+          effectiveStatus === "not_held" ||
+          effectiveStatus === "no_show"
+        ) {
+          setMessage("수업 상태가 변경되었습니다. 안내 화면으로 이동합니다.");
+          window.location.reload();
+          return;
         }
       } catch {
         // 일시적인 네트워크 오류는 다음 확인 주기에서 다시 시도합니다.

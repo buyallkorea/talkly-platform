@@ -11,6 +11,7 @@ type PageProps = {
 };
 
 type EnrollmentRow = {
+  is_test: boolean;
   id: number;
   student_user_id: string | null;
   child_id: number | null;
@@ -22,6 +23,7 @@ type EnrollmentRow = {
 };
 
 type SessionRow = {
+  is_test: boolean;
   id: number;
   enrollment_id: number;
   lesson_number: number;
@@ -271,6 +273,7 @@ export default async function TeacherPage({
     .from("enrollments")
     .select(`
       id,
+      is_test,
       student_user_id,
       child_id,
       course_id,
@@ -305,6 +308,7 @@ export default async function TeacherPage({
       .from("class_sessions")
       .select(`
         id,
+        is_test,
         enrollment_id,
         lesson_number,
         scheduled_start,
@@ -529,6 +533,8 @@ export default async function TeacherPage({
     const enrollment =
       getEnrollment(enrollmentId);
 
+    if (enrollment?.is_test) return "Admin (Test Student)";
+
     if (!enrollment) {
       return "Student";
     }
@@ -637,10 +643,12 @@ export default async function TeacherPage({
   const todaySessions = sessions.filter(
     isSessionToday
   );
+  const actualTodaySessions = todaySessions.filter((item) => !item.is_test);
 
   const weekSessions = sessions.filter(
     isSessionThisWeek
   );
+  const actualWeekSessions = weekSessions.filter((item) => !item.is_test);
 
   const monthSessions = sessions.filter(
     isSessionThisMonth
@@ -716,7 +724,7 @@ export default async function TeacherPage({
     existingEvaluations.map((item) => item.class_session_id)
   );
 
-  const pendingTeacherEvaluations = enrollments.flatMap((enrollment) => {
+  const pendingTeacherEvaluations = enrollments.filter((enrollment) => !enrollment.is_test).flatMap((enrollment) => {
     const enrollmentSessions = sessions.filter(
       (item) => item.enrollment_id === enrollment.id
     );
@@ -890,7 +898,7 @@ export default async function TeacherPage({
           {[
             [
               "Today's Classes",
-              todaySessions.length,
+              actualTodaySessions.length,
               "Regular classes today",
             ],
             [
@@ -905,7 +913,7 @@ export default async function TeacherPage({
             ],
             [
               "This Week",
-              weekSessions.length,
+              actualWeekSessions.length,
               "Classes this week",
             ],
           ].map(
@@ -1321,6 +1329,11 @@ export default async function TeacherPage({
                     }}
                   >
                     <div>
+                      {session.is_test && (
+                        <div style={{ fontSize: "10px", fontWeight: 900, color: "#b54708", marginBottom: "5px" }}>
+                          TEST CLASS
+                        </div>
+                      )}
                       <div
                         style={{
                           color: "#667085",

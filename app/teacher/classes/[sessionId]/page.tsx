@@ -54,6 +54,9 @@ export default async function TeacherClassDetailPage({
         status,
         meeting_provider,
         meeting_url,
+        teacher_user_id,
+        is_external_teacher,
+        is_test,
         teacher_notes,
         class_feedback
       `)
@@ -77,12 +80,12 @@ export default async function TeacherClassDetailPage({
         child_id,
         course_id,
         teacher_user_id,
+        is_test,
         status,
         total_lessons,
         start_date
       `)
       .eq("id", session.enrollment_id)
-      .eq("teacher_user_id", user.id)
       .maybeSingle();
 
   if (enrollmentError) {
@@ -93,7 +96,23 @@ export default async function TeacherClassDetailPage({
     notFound();
   }
 
-  let studentName = "Student";
+  const assignedTeacherId =
+    session.teacher_user_id ?? enrollment.teacher_user_id;
+
+  const isAssignedTeacher =
+    session.is_external_teacher !== true &&
+    assignedTeacherId === user.id;
+
+  const isRegularTeacher =
+    enrollment.teacher_user_id === user.id;
+
+  if (!isAssignedTeacher && !isRegularTeacher) {
+    notFound();
+  }
+
+  const isTestClass = session.is_test === true || enrollment.is_test === true;
+
+  let studentName = isTestClass ? "Admin (Test Student)" : "Student";
 
   if (enrollment.child_id) {
     const { data: child } = await supabase
@@ -192,7 +211,7 @@ export default async function TeacherClassDetailPage({
     existingEvaluations = (evaluationMetadata ?? []) as ExistingTeacherEvaluation[];
   }
 
-  const evaluationRequirement = getTeacherEvaluationRequirementForSession({
+  const evaluationRequirement = isTestClass ? null : getTeacherEvaluationRequirementForSession({
     sessionId: session.id,
     enrollmentId: enrollment.id,
     startDate: enrollment.start_date,
@@ -519,6 +538,11 @@ export default async function TeacherClassDetailPage({
           }}
         >
           Lesson {session.lesson_number}
+          {isTestClass && (
+            <span style={{ marginLeft: "12px", fontSize: "14px", color: "#b54708", fontWeight: 800 }}>
+              TEST CLASS · 테스트 수업
+            </span>
+          )}
         </h1>
 
         <div
@@ -666,7 +690,7 @@ export default async function TeacherClassDetailPage({
           <strong>Meeting:</strong>{" "}
           {session.meeting_url ? (
             <a
-              href={session.meeting_url}
+              href={session.meeting_provider === "zoom" ? `/classroom/${session.id}` : session.meeting_url}
               target="_blank"
               rel="noreferrer"
             >
@@ -922,7 +946,7 @@ export default async function TeacherClassDetailPage({
             marginTop: "22px",
           }}
         >
-          {canManageAttendance ? (
+          {isAssignedTeacher && canManageAttendance ? (
             <Link
               href={`/teacher/classes/${session.id}/attendance`}
               style={{
@@ -982,13 +1006,13 @@ export default async function TeacherClassDetailPage({
           )}
         </div>
 
-        <CompleteClassButton
-          sessionId={session.id}
-          currentStatus={session.status}
-          attendanceStatus={
-            attendance?.status ?? null
-          }
-        />
+        {isAssignedTeacher && session.meeting_provider !== "zoom" && (
+          <CompleteClassButton
+            sessionId={session.id}
+            currentStatus={session.status}
+            attendanceStatus={attendance?.status ?? null}
+          />
+        )}
       </section>
 
       <section
@@ -1017,16 +1041,21 @@ export default async function TeacherClassDetailPage({
           강사 내부 메모
         </div>
 
-        <TeacherNoteForm
-          sessionId={session.id}
-          initialNote={
-            session.teacher_notes
-          }
-        />
+        {isAssignedTeacher ? (
+          <TeacherNoteForm
+            sessionId={session.id}
+            initialNote={session.teacher_notes}
+          />
+        ) : (
+          <div style={{ whiteSpace: "pre-wrap", marginTop: "18px" }}>
+            {session.teacher_notes || "등록된 수업 메모가 없습니다."}
+          </div>
+        )}
       </section>
 
 
 
+      {!isTestClass && (
       <section
         style={{
           marginTop: "24px",
@@ -1050,7 +1079,7 @@ export default async function TeacherClassDetailPage({
             : "회차별 평가는 TALKLY AI가 분석합니다.")}
         </div>
 
-        {evaluationRequirement && session.status === "completed" ? (
+        {isRegularTeacher && evaluationRequirement && session.status === "completed" ? (
           <EvaluationForm
             sessionId={session.id}
             evaluationType={evaluationRequirement.type}
@@ -1081,6 +1110,7 @@ export default async function TeacherClassDetailPage({
           </div>
         )}
       </section>
+      )}
     </main>
   );
 }

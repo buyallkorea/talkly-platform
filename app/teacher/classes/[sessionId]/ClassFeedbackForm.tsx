@@ -74,10 +74,7 @@ export default function ClassFeedbackForm({
         error: sessionError,
       } = await supabase
         .from("class_sessions")
-        .select(`
-          id,
-          enrollment_id
-        `)
+        .select("id, enrollment_id, teacher_user_id, is_external_teacher")
         .eq("id", sessionId)
         .maybeSingle();
 
@@ -102,9 +99,8 @@ export default function ClassFeedbackForm({
         error: enrollmentError,
       } = await supabase
         .from("enrollments")
-        .select("id")
+        .select("id, teacher_user_id")
         .eq("id", session.enrollment_id)
-        .eq("teacher_user_id", user.id)
         .maybeSingle();
 
       if (enrollmentError) {
@@ -115,7 +111,11 @@ export default function ClassFeedbackForm({
         return;
       }
 
-      if (!enrollment) {
+      if (
+        !enrollment ||
+        session.is_external_teacher === true ||
+        (session.teacher_user_id ?? enrollment.teacher_user_id) !== user.id
+      ) {
         setErrorMessage(
           "This class is not assigned to you. / 본인에게 배정된 수업이 아닙니다."
         );

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@/lib/supabase-server";
 
@@ -158,13 +158,12 @@ export async function POST(request: Request) {
     if (
       profileError ||
       !profile ||
-      (profile.role !== "teacher" &&
-        profile.role !== "admin")
+      profile.role !== "teacher"
     ) {
       return NextResponse.json(
         {
           success: false,
-          error: "강사 또는 관리자 권한이 필요합니다.",
+          error: "담당 강사만 Zoom 호스트 인증을 받을 수 있습니다.",
         },
         { status: 403 }
       );
@@ -173,7 +172,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as RequestBody;
     const sessionId = Number(body.sessionId);
 
-    if (!Number.isInteger(sessionId) || sessionId <= 0) {
+    if (!Number.isSafeInteger(sessionId) || sessionId <= 0) {
       return NextResponse.json(
         {
           success: false,
@@ -191,7 +190,10 @@ export async function POST(request: Request) {
           enrollment_id,
           status,
           meeting_provider,
-          meeting_id
+          meeting_id,
+          teacher_user_id,
+          is_external_teacher,
+          ended_at
         `)
         .eq("id", sessionId)
         .maybeSingle();
@@ -220,6 +222,29 @@ export async function POST(request: Request) {
       );
     }
 
+    if (
+      session.ended_at ||
+      !["scheduled", "in_progress"].includes(session.status)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "종료되었거나 진행할 수 없는 수업입니다.",
+        },
+        { status: 403 }
+      );
+    }
+
+    if (session.is_external_teacher) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "외부 대체강사 수업은 이 계정으로 Zoom 호스트 인증을 받을 수 없습니다.",
+        },
+        { status: 403 }
+      );
+    }
+
     const { data: enrollment, error: enrollmentError } =
       await supabase
         .from("enrollments")
@@ -239,14 +264,15 @@ export async function POST(request: Request) {
       );
     }
 
-    if (
-      profile.role === "teacher" &&
-      enrollment.teacher_user_id !== user.id
-    ) {
+    const assignedTeacherId =
+      session.teacher_user_id ??
+      enrollment.teacher_user_id;
+
+    if (assignedTeacherId !== user.id) {
       return NextResponse.json(
         {
           success: false,
-          error: "이 수업의 담당 강사가 아닙니다.",
+          error: "이 수업에 배정된 담당 강사가 아닙니다.",
         },
         { status: 403 }
       );
@@ -289,13 +315,8 @@ export async function POST(request: Request) {
       1
     );
 
-    const accessToken =
-      await getZoomAccessToken();
-
-    const zak = await getHostZak(
-      accessToken,
-      hostEmail
-    );
+    const accessToken = await getZoomAccessToken();
+    const zak = await getHostZak(accessToken, hostEmail);
 
     return NextResponse.json({
       success: true,

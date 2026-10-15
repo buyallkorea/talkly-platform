@@ -253,6 +253,7 @@ export default async function AdminMonthCalendarPage({
         session_kind,
         makeup_for_session_id
       `)
+      .eq("is_test", false)
       .gte("scheduled_start", calendarStart.toISOString())
       .lt("scheduled_start", calendarEnd.toISOString())
       .order("scheduled_start", { ascending: true }),

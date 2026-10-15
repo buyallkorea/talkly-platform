@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
+import { createAdminClient } from "@/lib/supabase-admin";
 
 type RequestBody = {
   sessionId: number;
@@ -390,7 +391,8 @@ async function syncEnrollmentCompletion({
       .from("enrollments")
       .select(`
         id,
-        status
+        status,
+        is_test
       `)
       .eq(
         "id",
@@ -410,6 +412,13 @@ async function syncEnrollmentCompletion({
     throw new Error(
       "수강정보를 찾을 수 없습니다."
     );
+  }
+  // 테스트 수강은 실제 수강 완료 처리에서 제외합니다.
+  if (enrollment.is_test === true) {
+    return {
+      completed: false,
+      changed: false,
+    };
   }
 
   /*
@@ -519,47 +528,63 @@ async function syncEnrollmentCompletion({
     };
   }
 
-  const now =
-    new Date().toISOString();
+  const now = new Date().toISOString();
 
   const {
+    data: updatedEnrollment,
     error: updateError,
-  } =
-    await supabase
-      .from("enrollments")
-      .update({
-        status:
-          "completed",
-        updated_at: now,
-      })
-      .eq(
-        "id",
-        enrollmentId
-      )
-      /*
-       * 이미 취소되거나 다른 상태로
-       * 변경된 수강을 덮어쓰지 않습니다.
-       */
-      .in(
-        "status",
-        [
-          "active",
-          "paused",
-          "pending",
-        ]
-      );
+  } = await supabase
+    .from("enrollments")
+    .update({
+      status: "completed",
+      updated_at: now,
+    })
+    .eq("id", enrollmentId)
+    .in("status", [
+      "active",
+      "paused",
+      "pending",
+    ])
+    .select("id")
+    .maybeSingle();
 
-  if (
-    updateError
-  ) {
+  if (updateError) {
     throw new Error(
       `수강 완료 처리 실패: ${updateError.message}`
     );
   }
 
+  if (updatedEnrollment) {
+    return {
+      completed: true,
+      changed: true,
+    };
+  }
+
+  /*
+   * 다른 요청이 먼저 완료했거나
+   * 수강 상태가 변경됐을 수 있으므로
+   * 현재 상태를 다시 확인합니다.
+   */
+  const {
+    data: currentEnrollment,
+    error: recheckError,
+  } = await supabase
+    .from("enrollments")
+    .select("status")
+    .eq("id", enrollmentId)
+    .maybeSingle();
+
+  if (recheckError || !currentEnrollment) {
+    throw new Error(
+      recheckError?.message ||
+        "수강 완료 후 상태를 재확인할 수 없습니다."
+    );
+  }
+
   return {
-    completed: true,
-    changed: true,
+    completed: currentEnrollment.status === "completed",
+    changed: false,
   };
 }
 
@@ -667,6 +692,8 @@ async function getContext(
         scheduled_end,
         meeting_provider,
         meeting_id,
+        teacher_user_id,
+        is_external_teacher,
         started_at,
         ended_at
       `)
@@ -785,8 +812,7 @@ async function getContext(
   if (
     profile.role ===
       "teacher" &&
-    enrollment.teacher_user_id ===
-      user.id
+    session.is_external_teacher !== true && (session.teacher_user_id ?? enrollment.teacher_user_id) === user.id
   ) {
     hasAccess = true;
   }
@@ -1103,10 +1129,7 @@ export async function POST(
      * 담당 강사 또는 관리자만 가능
      */
     if (
-      ctx.profile.role !==
-        "teacher" &&
-      ctx.profile.role !==
-        "admin"
+      ctx.profile.role !== "teacher"
     ) {
       return NextResponse.json(
         {
@@ -1244,7 +1267,7 @@ export async function POST(
         data,
         error,
       } =
-        await ctx.supabase
+        await createAdminClient()
           .from(
             "class_sessions"
           )
@@ -1354,8 +1377,7 @@ export async function POST(
     ) {
       const enrollmentSync =
         await syncEnrollmentCompletion({
-          supabase:
-            ctx.supabase,
+          supabase: createAdminClient(),
 
           enrollmentId:
             ctx.session
@@ -1442,7 +1464,7 @@ export async function POST(
       data,
       error,
     } =
-      await ctx.supabase
+      await createAdminClient()
         .from(
           "class_sessions"
         )
@@ -1503,8 +1525,7 @@ export async function POST(
      */
     const enrollmentSync =
       await syncEnrollmentCompletion({
-        supabase:
-          ctx.supabase,
+        supabase: createAdminClient(),
 
         enrollmentId:
           data.enrollment_id,

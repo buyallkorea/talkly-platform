@@ -42,7 +42,10 @@ export default async function TeacherAttendancePage({
         lesson_number,
         scheduled_start,
         scheduled_end,
-        status
+        status,
+        teacher_user_id,
+        is_external_teacher,
+        is_test
       `)
       .eq("id", Number(sessionId))
       .maybeSingle();
@@ -63,21 +66,27 @@ export default async function TeacherAttendancePage({
         child_id,
         student_user_id,
         teacher_user_id,
-        course_id
+        course_id,
+        is_test
       `)
       .eq("id", session.enrollment_id)
-      .eq("teacher_user_id", user.id)
       .maybeSingle();
 
   if (enrollmentError) {
     throw new Error(enrollmentError.message);
   }
 
-  if (!enrollment) {
+  if (
+    !enrollment ||
+    session.is_external_teacher === true ||
+    (session.teacher_user_id ?? enrollment.teacher_user_id) !== user.id
+  ) {
     notFound();
   }
 
-  let studentName = "Student";
+  const isTestClass = session.is_test === true && enrollment.is_test === true;
+
+  let studentName = isTestClass ? "Admin (Test Student)" : "Student";
 
   if (enrollment.child_id) {
     const { data: child } = await supabase
@@ -157,6 +166,11 @@ export default async function TeacherAttendancePage({
         margin: "0 auto",
       }}
     >
+      {isTestClass && (
+        <div style={{ marginBottom: "16px", padding: "12px 16px", border: "1px solid #f59e0b", borderRadius: "10px", background: "#fffbeb", color: "#92400e", fontWeight: 800 }}>
+          TEST CLASS · 테스트 수업 출결 (실제 수업 실적에서 제외)
+        </div>
+      )}
       <h1
         style={{
           marginBottom: "4px",

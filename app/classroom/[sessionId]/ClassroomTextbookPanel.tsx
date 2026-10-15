@@ -6,6 +6,7 @@ type Props = {
   sessionId: number;
   enrollmentId: number;
   viewerRole: string;
+  testStudentMode?: boolean;
 };
 
 type HotspotRow = {
@@ -27,6 +28,7 @@ export default async function ClassroomTextbookPanel({
   sessionId,
   enrollmentId,
   viewerRole,
+  testStudentMode = false,
 }: Props) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -122,5 +124,6 @@ export default async function ClassroomTextbookPanel({
     enrollmentId={enrollmentId}
     initialPageIndex={initialPageIndex}
     viewerRole={viewerRole}
+    testStudentMode={testStudentMode}
   />;
 }

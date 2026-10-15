@@ -173,7 +173,8 @@ export default async function TeacherStudentsPage() {
 
       .eq("teacher_user_id", user.id)
 
-      .in("status", ["active", "pending"]);
+      .eq("is_test", false)
+       .in("status", ["active", "pending"]);
 
 
 

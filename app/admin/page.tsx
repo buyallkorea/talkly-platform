@@ -314,6 +314,7 @@ export default async function AdminDashboardPage() {
         count: "exact",
         head: true,
       })
+      .eq("is_test", false)
       .eq("status", "active"),
 
     supabase
@@ -322,6 +323,7 @@ export default async function AdminDashboardPage() {
         count: "exact",
         head: true,
       })
+      .eq("is_test", false)
       .eq("status", "active")
       .is(
         "teacher_user_id",
@@ -334,6 +336,7 @@ export default async function AdminDashboardPage() {
         count: "exact",
         head: true,
       })
+      .eq("is_test", false)
       .gte(
         "scheduled_start",
         todayStart
@@ -353,6 +356,7 @@ export default async function AdminDashboardPage() {
         id,
         status
       `)
+      .eq("is_test", false)
       .gte(
         "scheduled_start",
         todayStart
@@ -368,6 +372,7 @@ export default async function AdminDashboardPage() {
         count: "exact",
         head: true,
       })
+      .eq("is_test", false)
       .gte(
         "scheduled_start",
         weekStart
@@ -383,6 +388,7 @@ export default async function AdminDashboardPage() {
         count: "exact",
         head: true,
       })
+      .eq("is_test", false)
       .gte(
         "scheduled_start",
         monthStart
@@ -414,6 +420,7 @@ export default async function AdminDashboardPage() {
         enrollment_id,
         meeting_url
       `)
+      .eq("is_test", false)
       .gte(
         "scheduled_start",
         todayStart
@@ -437,6 +444,7 @@ export default async function AdminDashboardPage() {
         status,
         created_at
       `)
+      .eq("is_test", false)
       .order(
         "created_at",
         {
@@ -814,6 +822,7 @@ export default async function AdminDashboardPage() {
         course_id,
         teacher_user_id
       `)
+      .eq("is_test", false)
       .in(
         "id",
         combinedEnrollmentIds

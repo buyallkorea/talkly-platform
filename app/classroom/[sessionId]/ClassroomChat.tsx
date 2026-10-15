@@ -24,6 +24,7 @@ type Props = {
   currentUserId: string;
   currentUserRole: string;
   currentUserName: string;
+  testStudentMode?: boolean;
 };
 
 function formatTime(value: string) {
@@ -40,6 +41,7 @@ export default function ClassroomChat({
   currentUserId,
   currentUserRole,
   currentUserName,
+  testStudentMode = false,
 }: Props) {
   const [messages, setMessages] =
     useState<MessageRow[]>([]);
@@ -162,7 +164,10 @@ export default function ClassroomChat({
       list.scrollHeight;
   }, [messages]);
 
+  const canSend = currentUserRole !== "admin" || testStudentMode;
+
   async function sendMessage() {
+    if (!canSend) return;
     const trimmed =
       message.trim();
 
@@ -194,6 +199,21 @@ export default function ClassroomChat({
         throw new Error(
           "Your login session could not be verified."
         );
+      }
+
+      if (currentUserRole === "admin" && testStudentMode) {
+        const response = await fetch("/api/admin/test-classroom/chat", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId, message: trimmed }),
+        });
+        const result: { success?: boolean; error?: string } = await response.json();
+        if (!response.ok || result.success !== true) {
+          throw new Error(result.error || "테스트 학생 메시지를 보낼 수 없습니다.");
+        }
+        setMessage("");
+        return;
       }
 
       const {
@@ -454,7 +474,11 @@ export default function ClassroomChat({
           </div>
 
           <div className="talkly-chat-hint">
-            Enter to send · 실시간 메시지
+            {currentUserRole === "admin" && !testStudentMode
+              ? "관리자 참관 · 채팅 읽기 전용"
+              : testStudentMode
+                ? "테스트 학생 · 실시간 메시지"
+                : "Enter to send · 실시간 메시지"}
           </div>
         </div>
 
@@ -492,6 +516,7 @@ export default function ClassroomChat({
           )}
         </div>
 
+        {canSend && (
         <form onSubmit={handleSubmit} className="talkly-chat-form">
           <input
             value={message}
@@ -514,6 +539,7 @@ export default function ClassroomChat({
             {loading ? "Sending..." : "Send"}
           </button>
         </form>
+        )}
 
         {errorMessage && (
           <div className="talkly-chat-error">

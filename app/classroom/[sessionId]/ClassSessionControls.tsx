@@ -89,8 +89,7 @@ export default function ClassSessionControls({
     useRef(false);
 
   const canControl =
-    viewerRole === "teacher" ||
-    viewerRole === "admin";
+    viewerRole === "teacher";
 
   const applySessionState =
     useCallback(

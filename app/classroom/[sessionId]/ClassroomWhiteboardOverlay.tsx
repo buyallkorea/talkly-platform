@@ -35,6 +35,7 @@ type Props = {
   pageId: number;
   pageNumber: number;
   viewerRole: string;
+  testStudentMode?: boolean;
 };
 type WhiteboardAction =
   | {
@@ -52,6 +53,7 @@ type WhiteboardAction =
     };
 type SyncPayload = {
   sessionId: number;
+  textbookId: number;
   senderId: string;
   pages: Record<string, Stroke[]>;
   sentAt: number;
@@ -65,10 +67,10 @@ export default function ClassroomWhiteboardOverlay({
   pageId,
   pageNumber,
   viewerRole,
+  testStudentMode = false,
 }: Props) {
-  const isController =
-    viewerRole === "teacher" ||
-    viewerRole === "admin";
+  const isController = viewerRole === "teacher";
+
   const [tool, setTool] =
     useState<Tool>("select");
   const [pages, setPages] =
@@ -77,12 +79,88 @@ export default function ClassroomWhiteboardOverlay({
     useState<Stroke | null>(null);
   const [connected, setConnected] =
     useState(false);
+  const [supabase] =
+    useState(() => createClient());
+
+  // 수업 상태 확인 전에는 필기를 허용하지 않습니다.
+  const [classInProgress, setClassInProgress] =
+    useState(false);
+
+  const canDraw =
+  classInProgress &&
+  (viewerRole !== "admin" || testStudentMode === true);
+
+  useEffect(() => {
+    if (!canDraw) {
+      drawingRef.current = false;
+      setDraft(null);
+      setTool("select");
+    }
+  }, [canDraw]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function checkClassStatus() {
+      try {
+        const response = await fetch(
+          `/api/classroom/session-status?sessionId=${sessionId}`,
+          { cache: "no-store" }
+        );
+
+        if (!response.ok) {
+          if (active) setClassInProgress(false);
+          return;
+        }
+
+        const data = await response.json();
+
+        if (active) {
+          setClassInProgress(
+            data.success === true &&
+            data.session?.databaseStatus === "in_progress" &&
+            !data.session?.endedAt
+          );
+        }
+      } catch {
+        if (active) setClassInProgress(false);
+      }
+    }
+
+    void checkClassStatus();
+
+    const channel = supabase
+      .channel(`whiteboard-session-status-${sessionId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "class_sessions",
+          filter: `id=eq.${sessionId}`,
+        },
+        () => {
+          void checkClassStatus();
+        }
+      )
+      .subscribe();
+
+    const timer = window.setInterval(
+      checkClassStatus,
+      60_000
+    );
+
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, [sessionId, supabase]);
   const [saveState, setSaveState] =
     useState<
       "idle" | "loading" | "saving" | "saved" | "error"
     >("loading");
-  const [supabase] =
-    useState(() => createClient());
+
   const senderId = useMemo(
     () =>
       `wb-${Math.random()
@@ -156,6 +234,7 @@ export default function ClassroomWhiteboardOverlay({
   async function broadcastAction(
     action: WhiteboardAction
   ) {
+    if (!canDraw) return;
     if (!channelRef.current) {
       return;
     }
@@ -164,6 +243,7 @@ export default function ClassroomWhiteboardOverlay({
       event: "talkly-whiteboard-action",
       payload: {
         sessionId,
+        textbookId,
         senderId,
         action,
         sentAt: Date.now(),
@@ -175,7 +255,50 @@ export default function ClassroomWhiteboardOverlay({
     targetPageNumber: number,
     targetStrokes: Stroke[]
   ) {
+    if (!canDraw) return;
     setSaveState("saving");
+      if (viewerRole === "admin" && testStudentMode) {
+    try {
+      const response = await fetch(
+        "/api/admin/test-classroom/whiteboard",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            sessionId,
+            textbookId,
+            pageId: targetPageId,
+            pageNumber: targetPageNumber,
+            strokes: targetStrokes,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Test whiteboard save failed: ${response.status}`
+        );
+      }
+
+      setSaveState("saved");
+
+      window.setTimeout(() => {
+        setSaveState("idle");
+      }, 1200);
+
+      return;
+    } catch (error) {
+      setSaveState("error");
+      console.error(
+        "[WHITEBOARD] test student save failed",
+        error
+      );
+      return;
+    }
+  }
     const {
       data: { user },
       error: userError,
@@ -346,6 +469,7 @@ export default function ClassroomWhiteboardOverlay({
     });
   }
   function finishDraft() {
+    if (!canDraw) return;
     if (!draft) {
       drawingRef.current = false;
       return;
@@ -376,6 +500,7 @@ export default function ClassroomWhiteboardOverlay({
   function handlePointerDown(
     event: ReactPointerEvent<SVGSVGElement>
   ) {
+    if (!canDraw) return;
     if (tool === "select") {
       return;
     }
@@ -408,6 +533,7 @@ export default function ClassroomWhiteboardOverlay({
   function handlePointerMove(
     event: ReactPointerEvent<SVGSVGElement>
   ) {
+    if (!canDraw) return;
     if (!drawingRef.current) {
       return;
     }
@@ -525,6 +651,7 @@ export default function ClassroomWhiteboardOverlay({
     point: Point,
     pointerType: string
   ) {
+    if (!canDraw) return;
     const current =
       pagesRef.current[pageKey] ?? [];
     const target =
@@ -545,6 +672,7 @@ export default function ClassroomWhiteboardOverlay({
   function removeStroke(
     strokeId: string
   ) {
+    if (!canDraw) return;
     const action: WhiteboardAction = {
       type: "remove",
       pageId,
@@ -559,6 +687,7 @@ export default function ClassroomWhiteboardOverlay({
     );
   }
   function undoLast() {
+    if (!canDraw) return;
     const current =
       pagesRef.current[
         pageKey
@@ -575,6 +704,7 @@ export default function ClassroomWhiteboardOverlay({
     );
   }
   function clearPage() {
+    if (!canDraw) return;
     if (
       !window.confirm(
         "Clear all notes on this page?\n이 페이지의 모든 필기를 지울까요?"
@@ -755,6 +885,7 @@ export default function ClassroomWhiteboardOverlay({
           }
           const syncPayload: SyncPayload = {
             sessionId,
+            textbookId,
             senderId,
             pages:
               pagesRef.current,
@@ -832,6 +963,7 @@ export default function ClassroomWhiteboardOverlay({
               "talkly-whiteboard-sync-request",
             payload: {
               sessionId,
+              textbookId,
               senderId,
               requestedAt:
                 Date.now(),
@@ -1132,6 +1264,8 @@ export default function ClassroomWhiteboardOverlay({
             </span>
           </div>
         </div>
+        {canDraw && (
+          <>
         <div className="talkly-whiteboard-divider" />
         <div className="talkly-whiteboard-group">
           <ToolButton
@@ -1186,6 +1320,8 @@ export default function ClassroomWhiteboardOverlay({
             danger
           />
         </div>
+          </>
+        )}
       </div>
       <svg
         viewBox="0 0 100 100"
@@ -1214,7 +1350,7 @@ export default function ClassroomWhiteboardOverlay({
               ? "auto"
               : "none",
           pointerEvents:
-            tool === "select"
+            !canDraw || tool === "select"
               ? "none"
               : "auto",
           cursor:

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -5,11 +6,13 @@ import { useEffect, useRef } from "react";
 type Props = {
   sessionId: number;
   enabled: boolean;
+  testStudentMode?: boolean;
 };
 
 export default function StudentAttendanceRecorder({
   sessionId,
   enabled,
+  testStudentMode = false,
 }: Props) {
   const recordedRef = useRef(false);
 
@@ -26,35 +29,30 @@ export default function StudentAttendanceRecorder({
 
     const recordAttendance = async () => {
       try {
-        const response = await fetch(
-          "/api/classroom/attendance",
-          {
-            method: "POST",
+        const apiUrl = testStudentMode
+          ? "/api/admin/test-classroom/attendance"
+          : "/api/classroom/attendance";
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            sessionId,
+          }),
+        });
 
-            body: JSON.stringify({
-              sessionId,
-            }),
-          }
-        );
-
-        const data =
-          await response.json();
+        const data = await response.json();
 
         if (!response.ok) {
           console.error(
             "출석 자동 기록 실패:",
-            data?.error ||
-              "알 수 없는 오류"
+            data?.error || "알 수 없는 오류"
           );
 
-          recordedRef.current =
-            false;
-
+          recordedRef.current = false;
           return;
         }
 
@@ -68,13 +66,12 @@ export default function StudentAttendanceRecorder({
           error
         );
 
-        recordedRef.current =
-          false;
+        recordedRef.current = false;
       }
     };
 
     void recordAttendance();
-  }, [sessionId, enabled]);
+  }, [sessionId, enabled, testStudentMode]);
 
   return null;
 }

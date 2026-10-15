@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@/lib/supabase-server";
 
@@ -57,100 +57,140 @@ export async function POST(request: Request) {
     const meetingNumber = String(
       body.meetingNumber || ""
     ).trim();
+
     const role = Number(body.role);
     const sessionId = Number(body.sessionId);
 
-    if (!meetingNumber) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Meeting Number가 필요합니다.",
-        },
-        { status: 400 }
-      );
-    }
-
-    if (role !== 0 && role !== 1) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "올바른 Meeting SDK role 값이 아닙니다.",
-        },
-        { status: 400 }
-      );
-    }
-
     if (
-      role === 1 &&
-      profile.role !== "teacher" &&
-      profile.role !== "admin"
+      !Number.isSafeInteger(sessionId) ||
+      sessionId <= 0 ||
+      !/^\d+$/.test(meetingNumber)
     ) {
       return NextResponse.json(
         {
           success: false,
-          error: "호스트 권한은 강사 또는 관리자만 사용할 수 있습니다.",
+          error: "올바른 수업 ID와 회의 번호가 필요합니다.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Zoom 호스트 인증은 /api/zoom/host-auth에서만 처리한다.
+    // 이 API는 관리자, 강사, 학생, 학부모 모두에게
+    // 참가자(role 0) 서명만 발급한다.
+    if (role !== 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "이 API에서는 Zoom 참가자 서명만 발급할 수 있습니다.",
         },
         { status: 403 }
       );
     }
 
-    if (!Number.isSafeInteger(sessionId) || sessionId <= 0 || !/^\d+$/.test(meetingNumber)) {
-      return NextResponse.json(
-        { success: false, error: "올바른 수업 ID와 회의 번호가 필요합니다." },
-        { status: 400 }
-      );
-    }
+    const { data: session, error: sessionError } =
+      await supabase
+        .from("class_sessions")
+        .select(`
+          id,
+          enrollment_id,
+          meeting_id,
+          meeting_provider,
+          status,
+          ended_at,
+          teacher_user_id,
+          is_external_teacher
+        `)
+        .eq("id", sessionId)
+        .maybeSingle();
 
-    const { data: session, error: sessionError } = await supabase
-      .from("class_sessions")
-      .select("id, enrollment_id, meeting_id")
-      .eq("id", sessionId)
-      .maybeSingle();
-
-    if (sessionError || !session || String(session.meeting_id ?? "").trim() !== meetingNumber) {
+    if (
+      sessionError ||
+      !session ||
+      session.meeting_provider !== "zoom" ||
+      String(session.meeting_id ?? "").trim() !== meetingNumber
+    ) {
       return NextResponse.json(
-        { success: false, error: "해당 수업의 Zoom 회의를 확인할 수 없습니다." },
+        {
+          success: false,
+          error: "해당 수업의 Zoom 회의를 확인할 수 없습니다.",
+        },
         { status: 403 }
       );
     }
 
-    const { data: enrollment, error: enrollmentError } = await supabase
-      .from("enrollments")
-      .select("id, child_id, student_user_id, teacher_user_id")
-      .eq("id", session.enrollment_id)
-      .maybeSingle();
+    if (
+      session.ended_at ||
+      !["scheduled", "in_progress"].includes(session.status)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "종료되었거나 입장할 수 없는 수업입니다.",
+        },
+        { status: 403 }
+      );
+    }
+
+    const { data: enrollment, error: enrollmentError } =
+      await supabase
+        .from("enrollments")
+        .select("id, child_id, student_user_id, teacher_user_id")
+        .eq("id", session.enrollment_id)
+        .maybeSingle();
 
     if (enrollmentError || !enrollment) {
       return NextResponse.json(
-        { success: false, error: "수강정보를 확인할 수 없습니다." },
+        {
+          success: false,
+          error: "수강정보를 확인할 수 없습니다.",
+        },
         { status: 403 }
       );
     }
 
-    let allowed = profile.role === "admin" ||
-      (profile.role === "teacher" && enrollment.teacher_user_id === user.id) ||
-      (profile.role === "student" && enrollment.student_user_id === user.id);
+    const assignedTeacherId =
+      session.teacher_user_id ??
+      enrollment.teacher_user_id;
 
-    if (!allowed && profile.role === "parent" && enrollment.child_id) {
-      const { data: child } = await supabase
-        .from("children")
-        .select("id")
-        .eq("id", enrollment.child_id)
-        .eq("parent_user_id", user.id)
-        .maybeSingle();
-      allowed = Boolean(child);
+    let allowed = false;
+
+    if (profile.role === "admin") {
+      allowed = true;
+    } else if (profile.role === "teacher") {
+      allowed =
+        !session.is_external_teacher &&
+        assignedTeacherId === user.id;
+    } else if (profile.role === "student") {
+      allowed = enrollment.student_user_id === user.id;
+    } else if (
+      profile.role === "parent" &&
+      enrollment.child_id
+    ) {
+      const { data: child, error: childError } =
+        await supabase
+          .from("children")
+          .select("id")
+          .eq("id", enrollment.child_id)
+          .eq("parent_user_id", user.id)
+          .maybeSingle();
+
+      allowed = !childError && Boolean(child);
     }
 
-    if (!allowed || (role === 1 && profile.role !== "admin" &&
-      !(profile.role === "teacher" && enrollment.teacher_user_id === user.id))) {
+    if (!allowed) {
       return NextResponse.json(
-        { success: false, error: "이 수업의 Zoom 서명 발급 권한이 없습니다." },
+        {
+          success: false,
+          error: "이 수업의 Zoom 서명 발급 권한이 없습니다.",
+        },
         { status: 403 }
       );
     }
 
     const sdkKey =
       process.env.NEXT_PUBLIC_ZOOM_MEETING_SDK_CLIENT_ID;
+
     const sdkSecret =
       process.env.ZOOM_MEETING_SDK_CLIENT_SECRET;
 
@@ -158,8 +198,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            "Zoom Meeting SDK 환경변수가 설정되지 않았습니다.",
+          error: "Zoom Meeting SDK 환경변수가 설정되지 않았습니다.",
         },
         { status: 500 }
       );
@@ -176,7 +215,7 @@ export async function POST(request: Request) {
     const payload = {
       sdkKey,
       mn: meetingNumber,
-      role,
+      role: 0,
       iat,
       exp,
       appKey: sdkKey,
