@@ -57,3 +57,8 @@
 @media (max-width:800px) { .layout { grid-template-columns:1fr; gap:20px; }.toc { position:static; max-height:180px; background:#edf2fa; border-radius:10px; padding:16px; }.toc ol { columns:2; column-gap:18px; }.toc li { break-inside:avoid; }.document { padding:24px; }.hero { padding-top:34px; } }
 @media (max-width:480px) { .container { padding:20px 16px 32px; }.meta { gap:12px 20px; }.meta div { font-size:11px; }.tabs a { font-size:13px; padding:13px 12px; }.draft { padding:16px; }.document { padding:22px 18px; }.toc ol { columns:1; }.section h2 { font-size:17px; }.section>p,.section>ul { font-size:13px; }.hero>p { font-size:14px; } }
 @media print { .page { background:#fff; }.page>header,.breadcrumb,.tabs,.toc,.footer,.skip { display:none; }.container { max-width:none; padding:0; }.hero { padding:0 0 20px; }.hero h1 { font-size:26px; }.layout { display:block; }.document { border:0; box-shadow:none; padding:0; }.draft,.review { background:#fff; color:#222; border:1px solid #777; }.section h2 { break-after:avoid; }.tableWrap { overflow:visible; border:0; }.tableWrap table { min-width:0; }.tableWrap tr { break-inside:avoid; }.sources { display:none; } }
+
+.contacts { margin:16px 0; font-size:13px; color:#4c5d74; }
+.contacts div { display:grid; grid-template-columns:80px minmax(0,1fr); gap:12px; margin:10px 0; }
+.contacts dt { font-weight:700; }
+.contacts dd { margin:0; min-height:24px; border-bottom:1px solid #dce4ef; }

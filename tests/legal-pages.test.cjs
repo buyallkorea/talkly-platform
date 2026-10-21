@@ -45,3 +45,16 @@ test('home footer and signup link to both documents without submitting consent',
   }
   assert.ok(fs.readFileSync('app/signup/page.tsx','utf8').includes('초안에 동의한 것으로 처리하지 않습니다'));
 });
+
+test('confirmed business and recording policy are reflected with empty contact fields', () => {
+  assert.equal(data.business.type, '일반 사업자');
+  assert.equal(data.business.supportEmail, '');
+  assert.equal(data.business.supportPhone, '');
+  const recording = data.privacy.find(s => s.id === 'recordings');
+  assert.ok(recording.paragraphs[0].includes('녹화하고 음성을 저장하며, AI 분석을 사용합니다'));
+  assert.ok(!recording.review.includes('사용할지'));
+  const html = renderToStaticMarkup(React.createElement(Document, {kind:'privacy', sections:data.privacy}));
+  assert.ok(html.includes('이메일</dt><dd aria-label="미입력"></dd>'));
+  assert.ok(html.includes('전화번호</dt><dd aria-label="미입력"></dd>'));
+  assert.ok(!html.includes('href="tel:') && !html.includes('href="mailto:'));
+});

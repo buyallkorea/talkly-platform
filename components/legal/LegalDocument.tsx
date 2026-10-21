@@ -43,6 +43,7 @@ export default function LegalDocument({ kind, sections }: Props) {
           <article id="legal-content" className={styles.document} tabIndex={-1}>
             <div className={styles.company}>
               <strong>{business.name}</strong>
+              <p>운영 형태: {business.type}</p>
               <p>대표자 {business.representative} · 사업자등록번호 {business.registration}</p>
               <p>통신판매업 신고번호 {business.commerceRegistration}</p>
               <p>{business.address}</p>
@@ -65,7 +66,11 @@ export default function LegalDocument({ kind, sections }: Props) {
             <section className={styles.section} aria-labelledby="contact-heading">
               <h2 id="contact-heading">문의 및 검토 정보</h2>
               <p>개인정보 보호책임자: {business.privacyOfficer}</p>
-              <p>접수 경로: <Link href="/consultation">TALKLY 1:1 상담</Link> (로그인 필요). 전화·이메일 접수처는 최종 확인 후 함께 게시합니다.</p>
+              <p>접수 경로: <Link href="/consultation">TALKLY 1:1 상담</Link> (로그인 필요)</p>
+              <dl className={styles.contacts}>
+                <div><dt>이메일</dt><dd aria-label={business.supportEmail ? undefined : "미입력"}>{business.supportEmail}</dd></div>
+                <div><dt>전화번호</dt><dd aria-label={business.supportPhone ? undefined : "미입력"}>{business.supportPhone}</dd></div>
+              </dl>
               <details className={styles.sources}>
                 <summary>작성 시 확인한 공식 자료</summary>
                 <ul>
