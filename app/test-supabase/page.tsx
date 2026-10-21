@@ -1,6 +1,8 @@
 import { supabase } from "@/lib/supabase";
+import { notFound } from "next/navigation";
 
 export default async function TestSupabasePage() {
+  if (process.env.NODE_ENV !== "development") notFound();
   const { data, error } = await supabase
     .from("connection_test")
     .select("id, created_at, message")

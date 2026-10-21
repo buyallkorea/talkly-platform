@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase-server";
+import { notFound } from "next/navigation";
 
 export default async function TestAuthPage() {
+  if (process.env.NODE_ENV !== "development") notFound();
   const supabase = await createClient();
 
   const {

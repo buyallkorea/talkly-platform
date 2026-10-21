@@ -319,7 +319,7 @@ export default async function ClassroomPage({
   }
 
   // 테스트 모드는 두 레코드가 모두 테스트로 표시된 경우에만 노출합니다.
-  // 학생 쓰기 권한은 아직 구현되지 않았으므로 관리자 역할은 변경하지 않습니다.
+  // 관리자 역할을 변경하지 않고 테스트 학생 인증을 별도로 확인합니다.
   const isAdminTestClassroom =
     profile.role === "admin" &&
     process.env.TALKLY_ENABLE_TEST_CLASSROOM === "true" &&
@@ -334,6 +334,8 @@ export default async function ClassroomPage({
 
   if (
     isAdminTestClassroom &&
+    ["scheduled", "in_progress"].includes(session.status) &&
+    !session.ended_at &&
     testMode !== "observer" &&
     !isVerifiedTestStudent
   ) {

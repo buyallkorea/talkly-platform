@@ -391,13 +391,33 @@ export async function POST(request: Request) {
      * 가 자동 생성됩니다.
      */
 
+    // Admin createUser does not send an email. Send confirmation explicitly;
+    // never report that the new account is ready to log in before verification.
+    const requiresEmailConfirmation = !signupData.user.email_confirmed_at;
+    let confirmationEmailSent = false;
+    if (requiresEmailConfirmation) {
+      try {
+        const { error: confirmationError } = await admin.auth.resend({
+          type: "signup",
+          email,
+          options: { emailRedirectTo: "https://www.talkly.co.kr/login" },
+        });
+        confirmationEmailSent = !confirmationError;
+        if (confirmationError) {
+          console.error("SIGNUP CONFIRMATION EMAIL ERROR:", confirmationError);
+        }
+      } catch (confirmationError) {
+        console.error("SIGNUP CONFIRMATION EMAIL ERROR:", confirmationError);
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       userId: signupData.user.id,
       email: signupData.user.email ?? email,
       role,
-      requiresEmailConfirmation:
-        !signupData.user.email_confirmed_at,
+      requiresEmailConfirmation,
+      confirmationEmailSent,
     });
   } catch (error) {
     console.error("SIGNUP UNEXPECTED ERROR:", error);

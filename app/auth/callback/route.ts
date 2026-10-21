@@ -1,21 +1,8 @@
+import { getSafeNextPath } from "@/lib/safe-next-path";
 import {
   NextResponse,
 } from "next/server";
 import { createClient } from "@/lib/supabase-server";
-
-function getSafeNextPath(
-  value: string | null
-) {
-  if (
-    !value ||
-    !value.startsWith("/") ||
-    value.startsWith("//")
-  ) {
-    return "/";
-  }
-
-  return value;
-}
 
 export async function GET(
   request: Request
@@ -33,7 +20,7 @@ export async function GET(
       requestUrl.searchParams.get(
         "next"
       )
-    );
+    ) ?? "/";
 
   if (!code) {
     return NextResponse.redirect(

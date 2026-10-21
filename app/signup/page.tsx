@@ -1,5 +1,7 @@
 "use client";
 
+import { getSafeNextPath } from "@/lib/safe-next-path";
+
 import {
   FormEvent,
   Suspense,
@@ -84,12 +86,7 @@ function SignupPageContent() {
   const nextParam =
     searchParams.get("next");
 
-  const safeNextPath =
-    nextParam &&
-    nextParam.startsWith("/") &&
-    !nextParam.startsWith("//")
-      ? nextParam
-      : null;
+  const safeNextPath = getSafeNextPath(nextParam);
 
   /*
    * 로그인 페이지에서도
@@ -150,6 +147,15 @@ function SignupPageContent() {
       if (!response.ok) {
         setErrorMessage(
           result?.error ?? "인증번호를 발송하지 못했습니다."
+        );
+        return;
+      }
+
+      if (result?.requiresEmailConfirmation) {
+        setSuccessMessage(
+          result.confirmationEmailSent
+            ? "회원가입이 완료되었습니다. 이메일의 인증 링크를 클릭한 뒤 로그인해주세요. 스팸메일함도 확인해주세요."
+            : "계정은 생성되었으나 인증메일을 보내지 못했습니다. 다시 가입하지 말고 고객센터에 문의해주세요."
         );
         return;
       }
