@@ -1,5 +1,7 @@
 "use client";
 
+import { getSafeNextPath } from "@/lib/safe-next-path";
+
 
 
 import {
@@ -94,17 +96,7 @@ function LoginPageContent() {
 
 
 
-  const safeNextPath =
-
-    nextParam &&
-
-    nextParam.startsWith("/") &&
-
-    !nextParam.startsWith("//")
-
-      ? nextParam
-
-      : null;
+  const safeNextPath = getSafeNextPath(nextParam);
 
 
 
