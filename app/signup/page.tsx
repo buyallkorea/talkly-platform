@@ -1235,6 +1235,13 @@ function SignupPageContent() {
                   : "연령과 관계없이 본인 계정으로 직접 가입할 수 있습니다. 어린 수강생은 학부모 계정의 자녀 관리 방식도 이용할 수 있습니다."}
               </div>
 
+              <nav aria-label="회원가입 관련 문서" style={{ marginBottom: 20, fontSize: 12, lineHeight: 1.8, color: "#667085" }}>
+                <Link href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "#2f66bb", textDecoration: "underline" }}>이용약관 초안 보기 (새 창)</Link>
+                {" · "}
+                <Link href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#2f66bb", fontWeight: 700, textDecoration: "underline" }}>개인정보처리방침 초안 보기 (새 창)</Link>
+                <p style={{ margin: "6px 0 0" }}>검토 중인 문서입니다. 문서 열람이나 회원가입으로 초안에 동의한 것으로 처리하지 않습니다.</p>
+              </nav>
+
               {errorMessage && (
                 <div
                   role="alert"
