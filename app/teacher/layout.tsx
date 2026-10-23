@@ -1,3 +1,4 @@
+import MessageNotification from "@/components/messages/MessageNotification";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
@@ -72,6 +73,7 @@ export default async function TeacherLayout({
           </div>
 
           <div className="talkly-teacher-header-actions">
+            <MessageNotification role="teacher" />
             <LogoutButton label="Log Out" />
           </div>
         </header>

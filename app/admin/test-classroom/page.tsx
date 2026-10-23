@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 
 type CreateResult = {
@@ -10,16 +10,24 @@ type CreateResult = {
   classroomUrl?: string;
 };
 
-const TEACHERS = [
-  { id: "3c269c0a-fb3e-4e8f-98d5-fc1ac29cc090", name: "Jennifer" },
-  { id: "b6dd3057-6350-45cb-ac89-8eb289f2740c", name: "Suzette" },
-  { id: "f9f6f009-86f5-4604-9bef-cc814ecbf390", name: "Mars" },
-  { id: "d67feb8e-9635-48b2-8b18-ed809ce00128", name: "Leo" },
-  { id: "610c8097-10dd-408e-a368-89a5af29784d", name: "Cheryl" },
-];
-
 export default function TestClassroomPage() {
-  const [teacherUserId, setTeacherUserId] = useState(TEACHERS[0].id);
+  const [teacherUserId, setTeacherUserId] = useState("");
+  const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
+  const [textbooks, setTextbooks] = useState<{ id: number; title: string; pages: number }[]>([]);
+  const [textbookId, setTextbookId] = useState("");
+  const [optionsError, setOptionsError] = useState("");
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/admin/test-classroom/options", { signal: controller.signal, cache: "no-store" })
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "목록 조회 실패");
+        setTeachers(data.teachers); setTextbooks(data.textbooks);
+        setTeacherUserId(data.teachers[0]?.id ?? "");
+        setTextbookId(String(data.textbooks[0]?.id ?? ""));
+      }).catch(error => { if (!controller.signal.aborted) setOptionsError(error.message); });
+    return () => controller.abort();
+  }, []);
   const [scheduledStart, setScheduledStart] = useState("");
   const [durationMinutes, setDurationMinutes] = useState<25 | 50>(25);
   const [loading, setLoading] = useState(false);
@@ -48,6 +56,7 @@ export default function TestClassroomPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           teacherUserId,
+          textbookId: Number(textbookId),
           scheduledStart: start.toISOString(),
           durationMinutes,
         }),
@@ -92,11 +101,12 @@ export default function TestClassroomPage() {
         <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <strong>강사 선택</strong>
           <select
+            required
             value={teacherUserId}
             onChange={(event) => setTeacherUserId(event.target.value)}
             style={{ padding: 12, borderRadius: 8, border: "1px solid #aaa" }}
           >
-            {TEACHERS.map((teacher) => (
+            {teachers.map((teacher) => (
               <option key={teacher.id} value={teacher.id}>
                 {teacher.name}
               </option>
@@ -104,6 +114,15 @@ export default function TestClassroomPage() {
           </select>
         </label>
 
+        {optionsError && <p role="alert" style={{ color: "#b91c1c" }}>{optionsError}</p>}
+        <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <strong>수업 교재 선택</strong>
+          <select required value={textbookId} onChange={event => setTextbookId(event.target.value)} style={{ padding: 12, borderRadius: 8, border: "1px solid #aaa" }}>
+            <option value="">교재를 선택해 주세요</option>
+            {textbooks.map(book => <option key={book.id} value={book.id}>{book.title} · {book.pages}페이지</option>)}
+          </select>
+          <small>페이지 준비가 완료된 활성 교재만 표시됩니다. 선택한 교재가 테스트 수업에 자동 배정됩니다.</small>
+        </label>
         <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <strong>수업 시작 날짜 및 시간</strong>
           <input
@@ -129,7 +148,7 @@ export default function TestClassroomPage() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !teacherUserId || !textbookId || !!optionsError}
           style={{
             padding: 14,
             borderRadius: 9,

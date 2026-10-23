@@ -1,3 +1,4 @@
+import { getTestClassroomOptions } from "@/lib/test-classroom-options";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
@@ -347,6 +348,7 @@ export default async function ClassroomPage({
    * 학생에게 배정된 수업 교재 목록
    * =====================================================
    */
+  const testTextbooks = isVerifiedTestStudent ? (await getTestClassroomOptions()).textbooks : null;
   const {
     data: assignedTextbooks,
     error: assignedTextbooksError,
@@ -928,7 +930,7 @@ export default async function ClassroomPage({
         .talkly-classroom-control,
         .talkly-classroom-stage,
         .talkly-classroom > .talkly-chat {
-          max-width: 1500px;
+          max-width: 1920px;
           width: 100%;
           margin-left: auto;
           margin-right: auto;
@@ -1025,8 +1027,9 @@ export default async function ClassroomPage({
           position: relative;
           display: grid;
           grid-template-columns:
-            minmax(300px, .68fr)
-            minmax(620px, 1.82fr);
+            minmax(260px, .85fr)
+            minmax(0, 1.8fr)
+            minmax(260px, .9fr);
           gap: 14px;
           align-items: stretch;
           flex: 1 1 auto;
@@ -1035,6 +1038,7 @@ export default async function ClassroomPage({
         }
 
         .talkly-classroom-panel {
+          min-width: 0;
           min-height: 0;
           height: 100%;
           border: 1px solid rgba(255,255,255,.11);
@@ -1046,129 +1050,26 @@ export default async function ClassroomPage({
 
         .talkly-classroom-textbook {
           overflow: hidden;
+          display: flex;
+          flex-direction: column;
         }
+        .talkly-classroom-textbook > :first-child { flex: 0 0 auto; margin-bottom: 0; }
+        .talkly-classroom-textbook > .talkly-textbook-shell { flex: 1 1 0; height: auto !important; min-height: 0; }
+        .talkly-classroom-video { overflow: auto; }
 
-        @media (max-width: 1100px) {
-          .talkly-classroom {
-            padding: 10px 12px;
-          }
 
-          .talkly-classroom-stage {
-            grid-template-columns:
-              minmax(280px, .72fr)
-              minmax(500px, 1.58fr);
-            gap: 10px;
-          }
+        @media (max-width: 1050px) {
+          .talkly-classroom { height: auto; min-height: 100dvh; overflow: auto; }
+          .talkly-classroom-stage { grid-template-columns: minmax(260px, .65fr) minmax(0, 1.35fr); overflow: visible; flex: none; }
+          .talkly-classroom-video, .talkly-classroom-textbook { height: 65dvh; min-height: 420px; }
+          .talkly-classroom-stage > .talkly-chat { grid-column: 1 / -1; height: 320px; }
         }
-
-        /*
-         * 태블릿 세로/스마트폰:
-         * 교재를 메인 화면으로 두고 Zoom을 Picture-in-Picture 형태로 올립니다.
-         * 따라서 영상 + 교재 + 전자칠판 + 채팅을 한 화면에서 계속 확인할 수 있습니다.
-         */
-        @media (max-width: 900px) {
-          .talkly-classroom {
-            padding: 8px;
-          }
-
-          .talkly-classroom-top {
-            min-height: 42px;
-            margin-bottom: 7px;
-          }
-
-          .talkly-classroom-title {
-            font-size: 18px;
-          }
-
-          .talkly-classroom-control {
-            min-height: 46px;
-            margin-bottom: 7px;
-            padding: 6px 9px;
-            border-radius: 12px;
-          }
-
-          .talkly-classroom-stage {
-            display: block;
-            position: relative;
-            flex: 1 1 auto;
-            min-height: 0;
-            overflow: hidden;
-          }
-
-          .talkly-classroom-video {
-            position: absolute;
-            z-index: 35;
-            top: 56px;
-            right: 10px;
-            left: auto;
-            width: min(25vw, 180px);
-            height: min(18vh, 132px);
-            min-width: 138px;
-            min-height: 98px;
-            border-radius: 12px;
-            box-shadow:
-              0 18px 48px rgba(0,0,0,.46),
-              0 0 0 1px rgba(255,255,255,.10);
-          }
-
-          .talkly-classroom-textbook {
-            width: 100%;
-            height: 100%;
-          }
-        }
-
-        @media (max-width: 620px) {
-          .talkly-classroom {
-            padding: 6px;
-          }
-
-          .talkly-classroom-top {
-            min-height: 34px;
-            margin-bottom: 5px;
-            gap: 10px;
-          }
-
-          .talkly-brand-kicker {
-            font-size: 8px;
-          }
-
-          .talkly-classroom-title {
-            margin-top: 2px;
-            font-size: 15px;
-          }
-
-          .talkly-classroom-title small {
-            display: none;
-          }
-
-          .talkly-identity strong {
-            max-width: 130px;
-            font-size: 9px;
-          }
-
-          .talkly-identity small {
-            display: none;
-          }
-
-          .talkly-classroom-control {
-            min-height: 42px;
-            margin-bottom: 5px;
-          }
-
-          .talkly-control-copy small {
-            display: none;
-          }
-
-          .talkly-classroom-video {
-            top: 48px;
-            right: 7px;
-            left: auto;
-            width: 106px;
-            height: 78px;
-            min-width: 106px;
-            min-height: 78px;
-            border-radius: 10px;
-          }
+        @media (max-width: 640px) {
+          .talkly-classroom-stage { grid-template-columns: minmax(0, 1fr); }
+          .talkly-classroom-video { height: 360px; min-height: 360px; }
+          .talkly-classroom-textbook { height: 70dvh; min-height: 480px; }
+          .talkly-classroom-top { flex-wrap: wrap; }
+          .talkly-classroom-title { font-size: 17px; }
         }
 
         @media (orientation: landscape) and (max-height: 600px) {
@@ -1262,7 +1163,7 @@ export default async function ClassroomPage({
   <ClassroomTextbookSelectorRefresh
     sessionId={session.id}
     selectedTextbookId={session.selected_textbook_id}
-    textbooks={(assignedTextbooks ?? []).flatMap((item) => {
+    textbooks={testTextbooks ?? (assignedTextbooks ?? []).flatMap((item) => {
       const textbook = item.textbooks;
 
       if (!textbook) {
@@ -1284,7 +1185,7 @@ export default async function ClassroomPage({
         },
       ];
     })}
-    canControl={hostMode}
+    canControl={hostMode || isVerifiedTestStudent}
   />
 
   {session.selected_textbook_id ? (
@@ -1312,8 +1213,6 @@ export default async function ClassroomPage({
 </section>
 
 
-        </div>
-
         <ClassroomChat
           sessionId={session.id}
           currentUserId={user.id}
@@ -1327,6 +1226,7 @@ export default async function ClassroomPage({
                 : studentName
           }
         />
+        </div>
       </main>
     </>
   );

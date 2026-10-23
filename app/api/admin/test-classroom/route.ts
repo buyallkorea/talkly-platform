@@ -8,6 +8,7 @@ const DEFAULT_TEACHER_ID = "3c269c0a-fb3e-4e8f-98d5-fc1ac29cc090";
 type RequestBody = {
   teacherUserId?: string;
   scheduledStart?: string;
+  textbookId?: number;
   durationMinutes?: 25 | 50;
 };
 
@@ -42,7 +43,7 @@ async function createZoomMeeting(token: string, start: Date, duration: number) {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      topic: "TALKLY Jennifer - 관리자 테스트 수업",
+      topic: "TALKLY 관리자 테스트 수업",
       type: 2,
       start_time: start.toISOString(),
       duration,
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
   let enrollmentId: number | null = null;
   let meetingId: string | null = null;
   let token: string | null = null;
-  const admin = createAdminClient();
+  let admin: ReturnType<typeof createAdminClient> | null = null;
   try {
     // Explicit opt-in: prevents accidental use of the temporary test API in production.
     if (process.env.TALKLY_ENABLE_TEST_CLASSROOM !== "true") {
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
     }
 
+    admin = createAdminClient();
     let body: RequestBody;
     try { body = (await request.json()) as RequestBody; }
     catch { return NextResponse.json({ error: "요청 JSON을 확인해주세요." }, { status: 400 }); }
@@ -110,6 +112,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "미래의 올바른 수업 시작시간을 입력해주세요." }, { status: 400 });
     }
     const end = new Date(start.getTime() + duration * 60000);
+    if (!Number.isSafeInteger(body.textbookId) || Number(body.textbookId) <= 0) return NextResponse.json({ error: "수업 교재를 선택해주세요." }, { status: 400 });
+    const { data: book, error: bookError } = await admin.from("textbooks")
+      .select("id, textbook_pages!inner(id)").eq("id", body.textbookId).eq("status", "ready").eq("is_active", true).maybeSingle();
+    if (bookError || !book?.textbook_pages?.length) return NextResponse.json({ error: "페이지가 준비된 활성 교재를 선택해주세요." }, { status: 400 });
+
     const { data: teacher, error: teacherError } = await admin.from("teacher_profiles").select("user_id").eq("user_id", teacherUserId).maybeSingle();
     if (teacherError || !teacher) return NextResponse.json({ error: "등록된 강사 계정을 찾을 수 없습니다." }, { status: 400 });
     const { data: course, error: courseError } = await admin.from("courses").select("id").eq("id", TEST_COURSE_ID).maybeSingle();
@@ -133,10 +140,15 @@ export async function POST(request: Request) {
     if (enrollmentError || !enrollment) throw new Error(`테스트 수강 생성 실패: ${enrollmentError?.message || "ID 없음"}`);
     enrollmentId = enrollment.id;
 
+    const { error: assignmentError } = await admin.from("enrollment_textbooks").insert({
+      enrollment_id: enrollmentId, textbook_id: body.textbookId, assigned_by: user.id,
+      status: "assigned", is_primary: true, payment_required: false, admin_note: "관리자 테스트 수업 교재",
+    });
+    if (assignmentError) throw new Error("테스트 교재 배정 실패");
     const { data: session, error: sessionError } = await admin.from("class_sessions")
       .insert({ enrollment_id: enrollmentId, teacher_user_id: teacherUserId,
         lesson_number: 1, scheduled_start: start.toISOString(), scheduled_end: end.toISOString(),
-        status: "scheduled", meeting_provider: "zoom", is_test: true })
+        selected_textbook_id: body.textbookId, status: "scheduled", meeting_provider: "zoom", is_test: true })
       .select("id").single();
     if (sessionError || !session) throw new Error(`테스트 수업 생성 실패: ${sessionError?.message || "ID 없음"}`);
 
@@ -157,7 +169,7 @@ export async function POST(request: Request) {
       try { await deleteZoomMeeting(token, meetingId); }
       catch (rollbackError) { console.error("[TEST CLASSROOM ZOOM ROLLBACK FAILED]", rollbackError); }
     }
-    if (enrollmentId !== null) {
+    if (admin && enrollmentId !== null) {
       // FK cascade deletes the newly-created class session as well.
       const { error: rollbackError } = await admin.from("enrollments").delete()
         .eq("id", enrollmentId).eq("is_test", true);

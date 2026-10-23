@@ -1,3 +1,4 @@
+import { verifyTestStudentMode } from "@/lib/test-classroom-mode";
 
 import { NextResponse } from "next/server";
 
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
 
     if (
       !profile ||
-      profile.role !== "teacher"
+      !["teacher", "admin"].includes(profile.role)
     ) {
       return jsonError(
         "교재를 선택할 권한이 없습니다.",
@@ -76,6 +77,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const testStudent = profile.role === "admin" && await verifyTestStudentMode(sessionId);
+    if (profile.role === "admin" && !testStudent) return jsonError("테스트 학생 인증이 필요합니다.", 403);
     // 2. 수업 정보 확인
     const { data: session, error: sessionError } =
       await admin
@@ -151,6 +154,7 @@ export async function POST(request: Request) {
         .eq("enrollment_id", session.enrollment_id)
         .eq("textbook_id", textbookId)
         .in("status", ["assigned", "in_use"])
+        .is("ended_at", null)
         .limit(1)
         .maybeSingle();
 
@@ -158,7 +162,7 @@ export async function POST(request: Request) {
       throw assignmentError;
     }
 
-    if (!assignment) {
+    if (!assignment && !testStudent) {
       return jsonError(
         "학생에게 배정되지 않았거나 해제된 교재입니다.",
         403
@@ -186,6 +190,12 @@ export async function POST(request: Request) {
       );
     }
 
+    const { data: page, error: pageError } = await admin.from("textbook_pages").select("id").eq("textbook_id", textbookId).limit(1).maybeSingle();
+    if (pageError || !page) return jsonError("교재 페이지가 아직 준비되지 않았습니다.", 400);
+    if (!assignment && testStudent) {
+      const { error } = await admin.from("enrollment_textbooks").insert({ enrollment_id: session.enrollment_id, textbook_id: textbookId, assigned_by: user.id, payment_required: false, status: "assigned", admin_note: "관리자 테스트 교재" });
+      if (error) throw error;
+    }
     // 7. 수업별 선택 교재 저장
     const { data: updatedSession, error: updateError } =
       await admin
@@ -194,6 +204,8 @@ export async function POST(request: Request) {
           selected_textbook_id: textbookId,
         })
         .eq("id", sessionId)
+        .in("status", ["scheduled", "in_progress"])
+        .is("ended_at", null)
         .select("id, selected_textbook_id")
         .single();
 

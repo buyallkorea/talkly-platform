@@ -1,0 +1,29 @@
+.talkly-messages { max-width: 1100px; margin: 0 auto; color: #172033; }
+.talkly-messages > header { margin-bottom: 24px; }
+.talkly-messages h1 { font-size: 28px; font-weight: 800; overflow-wrap: anywhere; }
+.talkly-messages h2 { font-size: 19px; font-weight: 750; margin-bottom: 16px; }
+.talkly-messages > header p { color: #64748b; line-height: 1.7; }
+.talkly-messages .message-eyebrow { color: #2563eb; font-size: 12px; font-weight: 800; letter-spacing: .08em; }
+.talkly-messages a { color: #1d4ed8; }
+.talkly-messages .message-card { padding: 24px; border: 1px solid #dbe3ef; border-radius: 16px; background: white; margin-bottom: 20px; box-shadow: 0 4px 18px #0f172a04; }
+.talkly-messages .message-compose { display: grid; gap: 16px; }
+.talkly-messages label { display: grid; gap: 8px; font-size: 15px; font-weight: 650; }
+.talkly-messages input, .talkly-messages select, .talkly-messages textarea { width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; font-size: 16px; color: #172033; background: white; box-sizing: border-box; }
+.talkly-messages textarea { resize: vertical; line-height: 1.65; }
+.talkly-messages :focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.talkly-messages button { justify-self: start; border-radius: 9px; padding: 10px 18px; background: #2563eb; color: white; font-size: 15px; font-weight: 700; cursor: pointer; }
+.talkly-messages button:disabled { opacity: .45; cursor: default; }
+.talkly-messages small { display: block; color: #64748b; font-size: 13px; }
+.talkly-messages .message-list-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #e2e8f0; padding: 18px 12px; color: #172033; overflow-wrap: anywhere; }
+.talkly-messages .message-list-item small { margin-top: 6px; }
+.talkly-messages .message-unread { background: #eff6ff; }
+.talkly-messages .message-count { flex-shrink: 0; border-radius: 20px; background: #2563eb; color: white; font-size: 12px; padding: 4px 10px; }
+.talkly-messages .message-pagination { display: flex; align-items: center; gap: 16px; margin-top: 20px; }
+.talkly-messages .message-conversation { display: flex; flex-direction: column; gap: 18px; }
+.talkly-messages .message-bubble { width: min(88%, 760px); padding: 18px; border: 1px solid #dbe3ef; border-radius: 14px; background: #f8fafc; }
+.talkly-messages .message-mine { align-self: flex-end; background: #eff6ff; border-color: #bfdbfe; }
+.talkly-messages .message-bubble header { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; }
+.talkly-messages time { color: #64748b; }
+.talkly-messages .message-bubble p { margin: 12px 0; font-size: 16px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
+.talkly-messages .message-error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 16px; border-radius: 10px; margin-bottom: 16px; }
+@media(max-width: 640px) { .talkly-messages .message-card { padding: 16px; } .talkly-messages .message-bubble { width: 100%; box-sizing: border-box; } .talkly-messages .message-list-item { align-items: flex-start; flex-direction: column; } }

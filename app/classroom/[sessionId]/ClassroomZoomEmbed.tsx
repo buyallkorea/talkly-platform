@@ -13,6 +13,7 @@ declare global {
           zoomAppRoot: HTMLElement;
           language: string;
           patchJsMedia?: boolean;
+          leaveOnPageUnload?: boolean;
           customize?: Record<string, unknown>;
         }) => Promise<unknown>;
         join: (options: {
@@ -22,6 +23,7 @@ declare global {
           userName: string;
           zak?: string;
         }) => Promise<unknown>;
+        updateVideoOptions?: (options: Record<string, unknown>) => void;
         leaveMeeting?: () => Promise<unknown>;
 
       };
@@ -37,6 +39,7 @@ type Props = {
 };
 type ZoomScreen =
   | "loading"
+  | "joining"
   | "waiting"
   | "error"
   | "joined";
@@ -361,7 +364,7 @@ export default function ClassroomZoomEmbed({
         );
         const rootWidth =
           Math.max(
-            160,
+            240,
             Math.floor(
               rootRef.current.clientWidth || 420
             )
@@ -393,10 +396,12 @@ export default function ClassroomZoomEmbed({
             "ko-KR",
           patchJsMedia:
             true,
+          leaveOnPageUnload: true,
           customize: {
             video: {
+              popper: { disableDraggable: true },
               isResizable:
-                true,
+                false,
               viewSizes: {
                 default: {
                   width: rootWidth,
@@ -440,6 +445,7 @@ export default function ClassroomZoomEmbed({
          * =====================================================
          */
         ensureCurrent();
+        setScreen("joining");
         await client.join({
           signature,
           meetingNumber,
@@ -535,18 +541,36 @@ export default function ClassroomZoomEmbed({
       password,
       userName,
       hostMode,
-      attempt,
       disposeClient,
     ]);
   useEffect(() => {
     generationRef.current += 1;
-    void startZoom();
+    const timer = window.setTimeout(() => void startZoom(), 0);
     return () => {
+      window.clearTimeout(timer);
       generationRef.current += 1;
       runningRef.current = false;
       void disposeClient();
     };
-  }, [startZoom, disposeClient]);
+  }, [startZoom, disposeClient, attempt]);
+  useEffect(() => {
+    if (screen !== "waiting") return;
+    const timer = window.setTimeout(() => setAttempt(value => value + 1), 10000);
+    return () => window.clearTimeout(timer);
+  }, [screen, attempt]);
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || screen !== "joined") return;
+    let timer: ReturnType<typeof setTimeout>;
+    const observer = new ResizeObserver(() => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        clientRef.current?.updateVideoOptions?.({ viewSizes: { default: { width: Math.max(240, root.clientWidth), height: Math.max(135, root.clientHeight - 110) } } });
+      }, 150);
+    });
+    observer.observe(root);
+    return () => { clearTimeout(timer); observer.disconnect(); };
+  }, [screen]);
   function retryZoom() {
     if (
       runningRef.current
@@ -579,9 +603,13 @@ export default function ClassroomZoomEmbed({
         background:
           "#111216",
         overflow:
-          "hidden",
+          "auto",
       }}
     >
+      <div role="status" style={{ padding: "10px 12px", fontSize: 13, lineHeight: 1.5, background: "#1e293b", color: "#e2e8f0" }}>
+        {hostMode ? "강사 · Zoom 호스트" : "학생·참관 · Zoom 참가자"} · {screen === "joined" ? "Zoom 연결됨" : screen === "joining" ? "Zoom 입장 확인 중" : "연결 준비"}
+        <br />마이크·카메라 권한을 허용한 뒤 Zoom의 오디오 연결·비디오 시작을 눌러 주세요.
+      </div>
       {showOverlay && (
         <div
           style={{
@@ -680,7 +708,7 @@ export default function ClassroomZoomEmbed({
               >
                 아직 Zoom 수업이 시작되지 않았습니다.
                 <br />
-                강사가 수업을 시작한 후 아래 버튼을 눌러 입장해 주세요.
+                강사가 Zoom을 시작하면 10초 간격으로 자동 재입장합니다.
               </p>
               <button
                 type="button"
@@ -792,12 +820,13 @@ export default function ClassroomZoomEmbed({
         }
         id="meetingSDKElement"
         style={{
+          position: "relative",
           width:
             "100%",
           height:
-            "100%",
+            "calc(100% - 72px)",
           minHeight:
-            0,
+            240,
         }}
       />
     </div>
