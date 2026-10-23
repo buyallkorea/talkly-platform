@@ -18,6 +18,7 @@ const menuGroups: MenuGroup[] = [
   {
     title: "OVERVIEW",
     items: [
+      { label: "Messages", href: "/teacher/messages" },
       {
         label: "Dashboard",
         href: "/teacher",

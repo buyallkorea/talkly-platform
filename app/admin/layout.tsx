@@ -1,3 +1,4 @@
+import MessageNotification from "@/components/messages/MessageNotification";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import LogoutButton from "@/components/LogoutButton";
@@ -55,6 +56,7 @@ export default async function AdminLayout({
           </div>
 
           <div className="talkly-admin-header-actions">
+            <MessageNotification role="admin" />
             <a
               href="/"
               className="talkly-admin-site-link"

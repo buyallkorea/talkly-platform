@@ -25,6 +25,7 @@ type Props = {
   currentUserRole: string;
   currentUserName: string;
   testStudentMode?: boolean;
+  classInProgress?: boolean;
 };
 
 function formatTime(value: string) {
@@ -42,6 +43,7 @@ export default function ClassroomChat({
   currentUserRole,
   currentUserName,
   testStudentMode = false,
+  classInProgress = true,
 }: Props) {
   const [messages, setMessages] =
     useState<MessageRow[]>([]);
@@ -81,7 +83,7 @@ export default function ClassroomChat({
           sessionId
         )
         .order("created_at", {
-          ascending: true,
+          ascending: false,
         })
         .limit(100);
 
@@ -97,7 +99,7 @@ export default function ClassroomChat({
       }
 
       setMessages(
-        (data ?? []) as MessageRow[]
+        ((data ?? []) as MessageRow[]).reverse()
       );
     }
 
@@ -164,7 +166,7 @@ export default function ClassroomChat({
       list.scrollHeight;
   }, [messages]);
 
-  const canSend = currentUserRole !== "admin" || testStudentMode;
+  const canSend = (currentUserRole !== "admin" || testStudentMode) && (!testStudentMode || classInProgress);
 
   async function sendMessage() {
     if (!canSend) return;
@@ -262,7 +264,7 @@ export default function ClassroomChat({
     event: KeyboardEvent<HTMLInputElement>
   ) {
     if (
-      event.key === "Enter" &&
+      event.key === "Enter" && !event.nativeEvent.isComposing &&
       !event.shiftKey
     ) {
       event.preventDefault();
@@ -273,193 +275,25 @@ export default function ClassroomChat({
   return (
     <>
       <style>{`
-        .talkly-chat {
-          max-width: 1500px;
-          width: 100%;
-          margin: 7px auto 0;
-          padding: 6px 9px 7px;
-          border: 1px solid rgba(255,255,255,.11);
-          border-radius: 14px;
-          background:
-            linear-gradient(180deg, rgba(20,22,27,.97), rgba(14,16,20,.97));
-          box-sizing: border-box;
-          flex: 0 0 auto;
-          box-shadow: 0 12px 30px rgba(0,0,0,.16);
-        }
-
-        .talkly-chat-head {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          margin-bottom: 4px;
-        }
-
-        .talkly-chat-title {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .talkly-chat-live {
-          width: 7px;
-          height: 7px;
-          border-radius: 999px;
-          background: #35d07f;
-          box-shadow: 0 0 0 4px rgba(53,208,127,.09);
-        }
-
-        .talkly-chat-title-copy strong {
-          display: block;
-          font-size: 11px;
-          line-height: 1;
-          font-weight: 900;
-          letter-spacing: .08em;
-        }
-
-        .talkly-chat-title-copy small {
-          display: block;
-          margin-top: 3px;
-          font-size: 9px;
-          color: rgba(255,255,255,.42);
-        }
-
-        .talkly-chat-hint {
-          font-size: 9px;
-          color: rgba(255,255,255,.36);
-        }
-
-        .talkly-chat-list {
-          height: 38px;
-          overflow-y: auto;
-          padding: 3px 7px;
-          border-radius: 9px;
-          background: rgba(255,255,255,.025);
-          border: 1px solid rgba(255,255,255,.04);
-          box-sizing: border-box;
-          scrollbar-width: thin;
-        }
-
-        .talkly-chat-empty {
-          padding: 7px 4px 0;
-          font-size: 10px;
-          color: rgba(255,255,255,.42);
-        }
-
-        .talkly-chat-row {
-          display: grid;
-          grid-template-columns: minmax(72px, auto) minmax(0,1fr) auto;
-          align-items: baseline;
-          gap: 8px;
-          padding: 2px 3px;
-          font-size: 10px;
-          line-height: 1.35;
-        }
-
-        .talkly-chat-name {
-          font-weight: 900;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .talkly-chat-message {
-          color: rgba(255,255,255,.80);
-          overflow-wrap: anywhere;
-        }
-
-        .talkly-chat-time {
-          font-size: 8px;
-          color: rgba(255,255,255,.28);
-          white-space: nowrap;
-        }
-
-        .talkly-chat-form {
-          display: grid;
-          grid-template-columns: minmax(0,1fr) auto;
-          gap: 8px;
-          margin-top: 5px;
-        }
-
-        .talkly-chat-input {
-          width: 100%;
-          height: 30px;
-          box-sizing: border-box;
-          padding: 0 11px;
-          border: 1px solid rgba(255,255,255,.10);
-          border-radius: 9px;
-          background: rgba(255,255,255,.045);
-          color: #f8fafc;
-          outline: none;
-          font-size: 10px;
-        }
-
-        .talkly-chat-input:focus {
-          border-color: rgba(96,165,250,.55);
-          box-shadow: 0 0 0 3px rgba(37,99,235,.08);
-        }
-
-        .talkly-chat-send {
-          height: 30px;
-          min-width: 70px;
-          padding: 0 14px;
-          border: 1px solid rgba(96,165,250,.35);
-          border-radius: 9px;
-          background: #2563eb;
-          color: #fff;
-          font-size: 10px;
-          font-weight: 900;
-          cursor: pointer;
-        }
-
-        .talkly-chat-send:disabled {
-          background: #26303f;
-          cursor: default;
-          opacity: .75;
-        }
-
-        .talkly-chat-error {
-          margin-top: 5px;
-          color: #fca5a5;
-          font-size: 9px;
-        }
-
-        @media (max-width: 900px) {
-          .talkly-chat {
-            margin-top: 8px;
-            border-radius: 12px;
-          }
-        }
-
-        @media (max-width: 600px) {
-          .talkly-chat {
-            padding: 7px 8px 8px;
-          }
-
-          .talkly-chat-list {
-            height: 34px;
-          }
-
-          .talkly-chat-row {
-            grid-template-columns: 64px minmax(0,1fr);
-            gap: 6px;
-          }
-
-          .talkly-chat-time,
-          .talkly-chat-hint {
-            display: none;
-          }
-
-          .talkly-chat-form {
-            margin-top: 6px;
-            gap: 6px;
-          }
-
-          .talkly-chat-send {
-            min-width: 58px;
-            padding: 0 10px;
-          }
-        }
+        .talkly-chat { min-width: 0; min-height: 0; height: 100%; display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid #303744; border-radius: 16px; background: #111318; color: #f8fafc; box-sizing: border-box; }
+        .talkly-chat-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+        .talkly-chat-title { display: flex; align-items: center; gap: 8px; }
+        .talkly-chat-live { width: 8px; height: 8px; border-radius: 50%; background: #35d07f; }
+        .talkly-chat-title-copy strong { font-size: 16px; }
+        .talkly-chat-title-copy small { margin-left: 8px; color: #94a3b8; font-size: 13px; }
+        .talkly-chat-hint { font-size: 12px; color: #94a3b8; }
+        .talkly-chat-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+        .talkly-chat-empty { font-size: 15px; line-height: 1.7; color: #94a3b8; }
+        .talkly-chat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; padding: 12px 0; border-bottom: 1px solid #26303f; }
+        .talkly-chat-name { font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+        .talkly-chat-message { grid-column: 1 / -1; grid-row: 2; font-size: 16px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .talkly-chat-time { font-size: 11px; color: #94a3b8; }
+        .talkly-chat-form { display: flex; flex-wrap: wrap; gap: 8px; }
+        .talkly-chat-input { flex: 1 1 140px; width: 100%; min-width: 0; height: 44px; padding: 10px; border: 1px solid #475569; border-radius: 8px; background: #1e293b; color: #fff; font-size: 16px; }
+        .talkly-chat-input:focus-visible { outline: 2px solid #60a5fa; }
+        .talkly-chat-send { min-height: 44px; padding: 8px 14px; border-radius: 8px; background: #2563eb; color: white; font-size: 15px; cursor: pointer; }
+        .talkly-chat-send:disabled { opacity: .5; cursor: default; }
+        .talkly-chat-error { color: #fca5a5; font-size: 14px; }
       `}</style>
 
       <section className="talkly-chat">
@@ -477,7 +311,7 @@ export default function ClassroomChat({
             {currentUserRole === "admin" && !testStudentMode
               ? "관리자 참관 · 채팅 읽기 전용"
               : testStudentMode
-                ? "테스트 학생 · 실시간 메시지"
+                ? classInProgress ? "테스트 학생 · 실시간 메시지" : "강사가 수업을 시작하면 채팅할 수 있습니다."
                 : "Enter to send · 실시간 메시지"}
           </div>
         </div>
@@ -519,6 +353,7 @@ export default function ClassroomChat({
         {canSend && (
         <form onSubmit={handleSubmit} className="talkly-chat-form">
           <input
+            aria-label="수업 채팅 메시지"
             value={message}
             onChange={(event) => {
               setMessage(event.target.value);

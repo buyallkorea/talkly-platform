@@ -39,8 +39,7 @@ export default function TestClassroomModeChooser({ sessionId }: { sessionId: num
         <p style={{ color: "#93c5fd", fontSize: 12, fontWeight: 800 }}>TALKLY · TEST CLASSROOM</p>
         <h1 style={{ fontSize: 24, margin: "12px 0" }}>테스트 수업 입장 방식</h1>
         <p style={{ lineHeight: 1.7, color: "#cbd5e1" }}>
-          관리자 계정의 실제 역할은 변경되지 않습니다. 테스트 학생 모드는 인증 절차만 연결된 상태이며,
-          교실 기능별 권한 연결이 완료되기 전에는 읽기 전용 정책이 유지됩니다.
+          테스트 학생 모드에서는 Zoom에 참가자로 입장하고 채팅·전자칠판·출석을 테스트할 수 있습니다. 강사는 별도 강사 계정으로 입장하여 수업을 시작해야 합니다.
         </p>
         <button type="button" onClick={() => enterMode("observer")} disabled={pendingMode !== null}
           style={{ display: "block", width: "100%", padding: 14, borderRadius: 10, border: 0, background: "#2563eb", color: "white", fontWeight: 800, marginTop: 24, cursor: pendingMode ? "wait" : "pointer", opacity: pendingMode ? 0.7 : 1 }}>
@@ -48,11 +47,11 @@ export default function TestClassroomModeChooser({ sessionId }: { sessionId: num
         </button>
         <button type="button" onClick={() => enterMode("student")} disabled={pendingMode !== null}
           style={{ display: "block", width: "100%", padding: 14, borderRadius: 10, border: "1px solid #64748b", background: "#1e293b", color: "white", fontWeight: 800, marginTop: 12, cursor: pendingMode ? "wait" : "pointer", opacity: pendingMode ? 0.7 : 1 }}>
-          {pendingMode === "student" ? "테스트 학생 인증 중…" : "테스트 학생 모드 인증 (기능 연결 전)"}
+          {pendingMode === "student" ? "테스트 학생 인증 중…" : "테스트 학생으로 입장 · Zoom·채팅·교재 테스트"}
         </button>
         {error && <p role="alert" style={{ color: "#fca5a5", marginTop: 12 }}>{error}</p>}
         <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 16, lineHeight: 1.6 }}>
-          학생 모드 인증만으로 출결·채팅·전자칠판의 쓰기 권한이 부여되지는 않습니다.
+          Zoom 입장 후 마이크·카메라 사용을 허용하고 오디오 연결·비디오 시작을 눌러 주세요.
           테스트 기능이 비활성화되어 있으면 두 모드 모두 API에서 거부됩니다.
         </p>
       </section>
