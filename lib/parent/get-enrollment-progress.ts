@@ -415,7 +415,7 @@ export async function getEnrollmentProgress({
     "레벨테스트 신청하기";
 
   let ctaHref =
-    "/parent/level-tests";
+    `/parent/level-tests/new?childId=${childId}`;
 
   /*
    * 레벨테스트가 완료되었지만 신청 전

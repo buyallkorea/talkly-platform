@@ -49,7 +49,7 @@ export default function SiteHeader() {
           aria-label="TALKLY 주요 메뉴"
           className="talkly-site-nav"
         >
-          <NavLink href="/#about">
+          <NavLink href="/#greeting">
             토클리소개
           </NavLink>
 
@@ -145,7 +145,7 @@ export default function SiteHeader() {
             className="talkly-mobile-nav"
           >
             <MobileNavLink
-              href="/#about"
+              href="/#greeting"
               onClick={closeMobileMenu}
             >
               토클리소개

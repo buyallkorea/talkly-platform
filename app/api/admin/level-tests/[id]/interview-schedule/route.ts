@@ -773,27 +773,10 @@ export async function POST(
           );
         }
 
-        const {
-          data: recipientProfile,
-          error: recipientProfileError,
-        } = await admin
-          .from("profiles")
-          .select(
-            "id, name, email"
-          )
-          .eq(
-            "id",
-            recipientUserId
-          )
-          .maybeSingle();
-
-        if (recipientProfileError) {
-          throw recipientProfileError;
-        }
-
-        const recipientEmail =
-          recipientProfile?.email?.trim() ||
-          "";
+        const { data: recipientAccount, error: recipientAccountError } =
+          await admin.auth.admin.getUserById(recipientUserId);
+        if (recipientAccountError) throw recipientAccountError;
+        const recipientEmail = recipientAccount.user?.email?.trim() || "";
 
         if (!recipientEmail) {
           throw new Error(

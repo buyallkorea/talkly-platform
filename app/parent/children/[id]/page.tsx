@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase-admin";
 import Link from "next/link";
 import {
   notFound,
@@ -86,42 +87,13 @@ export default async function ChildDetailPage({
     notFound();
   }
 
-  /*
-   * 자녀에 학생 로그인 계정이 연결되어 있으면
-   * profiles에서 학생 로그인 이메일을 조회합니다.
-   *
-   * 계정이 아직 없으면 null을 그대로 전달하여
-   * StudentAccountCard가 계정 생성 화면을 표시합니다.
-   */
-  let studentEmail: string | null =
-    null;
-
+  // Only after verifying this active child belongs to the signed-in parent,
+  // resolve its linked student's login email through the server Auth API.
+  let studentEmail: string | null = null;
   if (child.student_user_id) {
-    const {
-      data: studentProfile,
-      error:
-        studentProfileError,
-    } = await supabase
-      .from("profiles")
-      .select("email")
-      .eq(
-        "id",
-        child.student_user_id
-      )
-      .maybeSingle();
-
-    if (
-      studentProfileError
-    ) {
-      console.error(
-        "[Child Detail] Student profile lookup failed:",
-        studentProfileError.message
-      );
-    } else {
-      studentEmail =
-        studentProfile?.email ??
-        null;
-    }
+    const { data: account, error: accountError } = await createAdminClient().auth.admin.getUserById(child.student_user_id);
+    if (accountError) console.error("[Child Detail] Linked account lookup failed:", accountError.message);
+    else studentEmail = account.user?.email ?? null;
   }
 
   /*
