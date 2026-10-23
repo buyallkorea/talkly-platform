@@ -75,6 +75,7 @@ const menuGroups: MenuGroup[] = [
   {
     title: "수업 운영",
     items: [
+      { label: "학습 평가", href: "/admin/evaluations" },
       { label: "강사 전달사항", href: "/admin/teacher-messages" },
       {
         label: "결석 신청 관리",

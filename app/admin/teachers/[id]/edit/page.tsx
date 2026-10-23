@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase-admin";
 
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
@@ -65,7 +66,6 @@ export default async function EditTeacherPage({
       .from("profiles")
       .select(`
         id,
-        email,
         name,
         phone,
         birth_date,
@@ -82,6 +82,11 @@ export default async function EditTeacherPage({
   if (!profile) {
     notFound();
   }
+
+  // Login email lives in Supabase Auth, not the public profiles table.
+  // The caller's admin role and target teacher record were verified above.
+  const { data: account, error: accountError } = await createAdminClient().auth.admin.getUserById(id);
+  if (accountError || !account.user) throw new Error("강사 로그인 계정을 불러오지 못했습니다.");
 
   return (
     <main
@@ -106,7 +111,7 @@ export default async function EditTeacherPage({
       </p>
 
       <EditTeacherForm
-        profile={profile}
+        profile={{ ...profile, email: account.user.email ?? null }}
         teacher={teacher}
       />
     </main>

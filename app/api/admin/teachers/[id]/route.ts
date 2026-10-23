@@ -445,7 +445,7 @@ export async function PATCH(
     const { data: profile, error: profileError } =
       await adminClient
         .from("profiles")
-        .select("id, role, email")
+        .select("id, role")
         .eq("id", id)
         .maybeSingle();
 
@@ -496,50 +496,8 @@ export async function PATCH(
       );
     }
 
-    const { error: updateProfileError } =
-      await adminClient
-        .from("profiles")
-        .update({
-          email,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id);
-
-    if (updateProfileError) {
-      // Auth 변경 후 DB 저장에 실패하면 이전 이메일로 복구
-      const { error: rollbackError } =
-        await adminClient.auth.admin.updateUserById(
-          id,
-          {
-            email: previousEmail,
-            email_confirm: true,
-          }
-        );
-
-      if (rollbackError) {
-        console.error(
-          "TEACHER EMAIL ROLLBACK ERROR:",
-          rollbackError
-        );
-
-        return NextResponse.json(
-          {
-            error:
-              "프로필 이메일 저장에 실패했고 로그인 이메일 복구도 실패했습니다. " +
-              "관리자가 Supabase Auth와 profiles 이메일을 확인해야 합니다.",
-          },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json(
-        {
-          error:
-            `이메일 변경이 취소되었습니다: ${updateProfileError.message}`,
-        },
-        { status: 500 }
-      );
-    }
+    // Auth is the single source of truth for login email. There is no
+    // profiles.email column to mirror or roll back after this successful update.
 
     return NextResponse.json({
       success: true,

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:routes": "node scripts/check-internal-routes.mjs"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.9",
