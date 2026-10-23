@@ -59,3 +59,20 @@ test('interview scheduling resolves recipient Auth email and preserves successfu
  const route=load('app/api/admin/level-tests/[id]/interview-schedule/route.ts',{'@/lib/supabase-server':{createClient:async()=>db},'@/lib/supabase-admin':{createAdminClient:()=>admin},'@/lib/email':{sendEmail:async message=>sent.push(message)}});
  const response=await route.POST({json:async()=>({testerUserId:'teacher',scheduledAt:'2030-10-23T10:00:00+09:00',meetingProvider:'external',meetingUrl:'https://example.test/meeting'})},{params:Promise.resolve({id:'1'})});assert.equal(response.status,200,JSON.stringify(response.data));assert.equal(sent.length,1);assert.equal(sent[0].to,'parent@example.test');
 });
+test('evaluation page renders saved reports and excludes test enrollments for either join shape',async()=>{
+ for(const arrayJoin of [false,true]){
+  const sessionCalls=[];const enrollment={id:12,child_id:7,student_user_id:null,teacher_user_id:'teacher',is_test:false};
+  const db={auth:{getUser:async()=>({data:{user:{id:'admin'}}})},from(table){
+   if(table==='profiles')return chain({role:'admin'});
+   if(table==='class_sessions')return chain([{id:8,enrollment_id:12,lesson_number:3,scheduled_start:'2026-10-23T10:00:00Z',teacher_user_id:'teacher',enrollments:arrayJoin?[enrollment]:enrollment}],sessionCalls);
+   if(table==='evaluations')return chain([{id:9,class_session_id:8,evaluation_type:'monthly',period_number:1,teacher_comment:'Saved evaluation comment',speaking_score:5}]);
+   if(table==='children')return chain([{id:7,name:'Child'}]);
+   if(table==='teacher_profiles')return chain([{user_id:'teacher',display_name:'Jennifer'}]);
+   throw Error('unexpected table '+table);
+  }};
+  const page=load('app/admin/evaluations/page.tsx',{'@/lib/supabase-server':{createClient:async()=>db}});
+  const element=await page.default({searchParams:Promise.resolve({date:'2026-10-23'})});const output=JSON.stringify(element);
+  assert(output.includes('Saved evaluation comment'));assert(output.includes('Jennifer'));assert(output.includes('/admin/enrollments/12/lessons/8'));
+  assert(sessionCalls.some(c=>c[0]==='eq'&&c[1]==='is_test'&&c[2]===false));assert(sessionCalls.some(c=>c[0]==='eq'&&c[1]==='enrollments.is_test'&&c[2]===false));
+ }
+});

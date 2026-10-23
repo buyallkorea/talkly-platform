@@ -22,7 +22,7 @@
 
 ## Validation
 
-- New regression tests: 8; existing automated tests: 31; existing terminal classroom cases: 22. All pass.
+- New regression tests: 9; existing automated tests: 31; existing terminal classroom cases: 22. All pass.
 - TypeScript, production build, and lint on changed production files/new checks pass.
 - Repository-wide ESLint baseline still has 61 errors and 39 warnings, primarily existing React hook rules, loose types, and CommonJS test imports. These are not equivalent to observed failing pages; no claim is made that the entire repository is lint-clean.
 - No schema, RLS, production account/email, class, Zoom meeting, payment, or notice data was changed during testing.
