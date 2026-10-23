@@ -1,3 +1,4 @@
+import TestStudentStartWatcher from "./TestStudentStartWatcher";
 import { getTestClassroomOptions } from "@/lib/test-classroom-options";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -620,7 +621,7 @@ export default async function ClassroomPage({
    * =====================================================
    */
   if (
-    isLearner && session.status === "scheduled" && !session.started_at && !session.ended_at
+    isLearner && !isVerifiedTestStudent && session.status === "scheduled" && !session.started_at && !session.ended_at
   ) {
     return (
       <ClassroomWaitingRoom
@@ -1100,6 +1101,7 @@ export default async function ClassroomPage({
 
       <main className="talkly-classroom">
         <ClassSessionEndWatcher sessionId={session.id} />
+        {isVerifiedTestStudent && session.status === "scheduled" && <TestStudentStartWatcher sessionId={session.id} />}
 
         <StudentAttendanceRecorder
   sessionId={session.id}
@@ -1217,6 +1219,7 @@ export default async function ClassroomPage({
           sessionId={session.id}
           currentUserId={user.id}
           currentUserRole={profile.role}
+          classInProgress={session.status === "in_progress" && Boolean(session.started_at) && !session.ended_at}
           testStudentMode={isVerifiedTestStudent}
           currentUserName={
             profile.role === "teacher"

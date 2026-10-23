@@ -15,6 +15,7 @@ type HistoryCheck = {
 };
 
 const HISTORY_CHECKS: HistoryCheck[] = [
+  { label: "강사 전달사항", table: "teacher_message_threads", column: "teacher_user_id" },
   {
     label: "수강 배정",
     table: "enrollments",

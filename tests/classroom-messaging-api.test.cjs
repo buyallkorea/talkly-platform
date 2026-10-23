@@ -75,3 +75,17 @@ test('verified admin test student can assign a rendered book without charging pa
   const r=selection({role:'admin',verified:true,assigned:false});await r.POST(request({sessionId:1,textbookId:30}));
   const insert=r.calls.find(c=>c[0]==='insert');assert(insert);assert.equal(insert[1].payment_required,false);assert.equal(insert[1].enrollment_id,2);
 });
+
+test('teacher with conversation history is protected before any account or storage deletion',async()=>{
+  const calls=[];
+  const userDb={auth:{getUser:async()=>({data:{user:{id:'admin'}}})},from:()=>chain({data:{role:'admin'}})};
+  const admin={from:table=>{
+    calls.push(table);
+    if(table==='profiles')return chain({data:{id:teacher,role:'teacher'}});
+    if(table==='teacher_profiles')return chain({data:{user_id:teacher}});
+    return chain({count:table==='teacher_message_threads'?1:0,error:null});
+  },auth:{admin:{getUserById:async()=>({data:{user:{id:teacher}}}),deleteUser:()=>{throw Error('must not delete user');}}},storage:{from:()=>{throw Error('must not delete image');}}};
+  const r=load('app/api/admin/teachers/[id]/route.ts',{'@/lib/supabase-server':{createClient:async()=>userDb},'@/lib/supabase-admin':{createAdminClient:()=>admin}});
+  const response=await r.DELETE(request({}),{params:Promise.resolve({id:teacher})});
+  assert.equal(response.status,409);assert.equal(response.data.code,'TEACHER_HAS_HISTORY');assert(response.data.history.some(item=>item.label==='강사 전달사항'));
+});

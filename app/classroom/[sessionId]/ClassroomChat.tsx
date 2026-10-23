@@ -25,6 +25,7 @@ type Props = {
   currentUserRole: string;
   currentUserName: string;
   testStudentMode?: boolean;
+  classInProgress?: boolean;
 };
 
 function formatTime(value: string) {
@@ -42,6 +43,7 @@ export default function ClassroomChat({
   currentUserRole,
   currentUserName,
   testStudentMode = false,
+  classInProgress = true,
 }: Props) {
   const [messages, setMessages] =
     useState<MessageRow[]>([]);
@@ -164,7 +166,7 @@ export default function ClassroomChat({
       list.scrollHeight;
   }, [messages]);
 
-  const canSend = currentUserRole !== "admin" || testStudentMode;
+  const canSend = (currentUserRole !== "admin" || testStudentMode) && (!testStudentMode || classInProgress);
 
   async function sendMessage() {
     if (!canSend) return;
@@ -309,7 +311,7 @@ export default function ClassroomChat({
             {currentUserRole === "admin" && !testStudentMode
               ? "관리자 참관 · 채팅 읽기 전용"
               : testStudentMode
-                ? "테스트 학생 · 실시간 메시지"
+                ? classInProgress ? "테스트 학생 · 실시간 메시지" : "강사가 수업을 시작하면 채팅할 수 있습니다."
                 : "Enter to send · 실시간 메시지"}
           </div>
         </div>
