@@ -16,6 +16,7 @@ async function check(status, endedAt, mode, expected) {
   const exports = {};
   const context = {exports, process: {env: {TALKLY_ENABLE_TEST_CLASSROOM: 'true'}}, require(name) {
     if (name === 'react/jsx-runtime') return require(process.cwd() + '/node_modules/react/jsx-runtime');
+    if (name === '@/lib/server-user') return {getCurrentUser: () => db.auth.getUser()};
     if (name === '@/lib/supabase-server') return {createClient: async () => db};
     if (name === '@/lib/test-classroom-mode') return {verifyTestStudentMode: async () => false};
     if (name === './TestClassroomModeChooser') return {default: Chooser};

@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -100,7 +101,7 @@ async function requireAdmin() {
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
   if (!user) {
     redirect("/login");

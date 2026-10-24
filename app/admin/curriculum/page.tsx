@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import {
   redirect,
 } from "next/navigation";
@@ -154,7 +155,7 @@ async function updateCurriculumLevel(
   const {
     data: { user },
   } =
-    await supabase.auth.getUser();
+    await getCurrentUser();
 
   if (!user) {
     redirect("/login");
@@ -315,7 +316,7 @@ export default async function AdminCurriculumPage({
   const {
     data: { user },
   } =
-    await supabase.auth.getUser();
+    await getCurrentUser();
 
   if (!user) {
     redirect("/login");

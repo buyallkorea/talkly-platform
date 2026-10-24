@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import EnrollmentForm from "./EnrollmentForm";
@@ -7,7 +8,7 @@ export default async function NewEnrollmentPage() {
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
   if (!user) {
     redirect("/login");

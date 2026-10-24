@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import LessonScheduleForm from "./LessonScheduleForm";
@@ -17,7 +18,7 @@ export default async function NewLessonSchedulePage({
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
   if (!user) {
     redirect("/login");

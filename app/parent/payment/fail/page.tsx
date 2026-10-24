@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 
 import {
@@ -62,7 +63,7 @@ export default async function PaymentFailPage({
       user,
     },
   } =
-    await supabase.auth.getUser();
+    await getCurrentUser();
 
   let role:
     | "parent"

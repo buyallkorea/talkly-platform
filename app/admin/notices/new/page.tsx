@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -10,7 +11,7 @@ async function createNotice(formData: FormData) {
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
   if (!user) {
     redirect("/login");
@@ -89,7 +90,7 @@ export default async function NewNoticePage() {
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
   if (!user) {
     redirect("/login");

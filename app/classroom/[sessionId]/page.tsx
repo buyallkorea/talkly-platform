@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import TestStudentStartWatcher from "./TestStudentStartWatcher";
 import { getTestClassroomOptions } from "@/lib/test-classroom-options";
 import Link from "next/link";
@@ -152,7 +153,7 @@ export default async function ClassroomPage({
   const {
     data: { user },
   } =
-    await supabase.auth.getUser();
+    await getCurrentUser();
 
   if (!user) {
     redirect("/login");

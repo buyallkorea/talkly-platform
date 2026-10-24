@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import { createClient } from "@/lib/supabase-server";
 import { notFound } from "next/navigation";
 
@@ -7,7 +8,7 @@ export default async function TestAuthPage() {
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
   if (!user) {
     return (

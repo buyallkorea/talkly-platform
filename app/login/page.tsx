@@ -150,6 +150,7 @@ function LoginPageContent() {
 
       const {
 
+        data: loginData,
         error: loginError,
 
       } =
@@ -184,37 +185,12 @@ function LoginPageContent() {
 
 
 
-      const {
-
-        data: { user },
-
-        error: userError,
-
-      } =
-
-        await supabase.auth.getUser();
-
-
-
-      if (
-
-        userError ||
-
-        !user
-
-      ) {
-
-        setErrorMessage(
-
-          "로그인 정보를 확인할 수 없습니다."
-
-        );
-
+      // signInWithPassword already returns a server-validated user.
+      const user = loginData.user;
+      if (!user) {
+        setErrorMessage("로그인 정보를 확인할 수 없습니다.");
         return;
-
       }
-
-
 
       const {
 

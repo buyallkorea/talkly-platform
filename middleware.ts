@@ -6,6 +6,10 @@ export async function middleware(request: NextRequest) {
     request,
   });
 
+  // No session can be refreshed without an auth cookie. Protected pages/APIs
+  // still independently validate identity and role before reading private data.
+  if (!request.cookies.getAll().some(({ name }) => /^sb-.+-auth-token(?:\.\d+)?$/.test(name))) return response;
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -31,7 +35,9 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  // Verify/refresh JWTs using the SDK's supported local JWKS path (legacy
+  // symmetric projects fall back to Auth validation). Page/API getUser stays fresh.
+  await supabase.auth.getClaims();
 
   return response;
 }

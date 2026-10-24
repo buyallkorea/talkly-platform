@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
@@ -10,7 +11,7 @@ function validDate(value: unknown): value is string {
 
 export default async function AdminEvaluationsPage({ searchParams }: { searchParams: Promise<{ date?: string; page?: string }> }) {
   const db = await createClient();
-  const { data: { user } } = await db.auth.getUser();
+  const { data: { user } } = await getCurrentUser();
   if (!user) redirect("/login");
   const { data: viewer } = await db.from("profiles").select("role").eq("id", user.id).maybeSingle();
   if (viewer?.role !== "admin") redirect("/");

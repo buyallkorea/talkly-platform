@@ -1,3 +1,5 @@
+import { signStoragePaths } from "@/lib/storage-signing";
+import { getCurrentUser } from "@/lib/server-user";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import TextbookViewerClient from "./TextbookViewerClient";
@@ -22,7 +24,7 @@ export default async function TextbookViewerPage({
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
   if (!user) {
     redirect("/login");
@@ -73,27 +75,12 @@ export default async function TextbookViewerPage({
     );
   }
 
-  const signedPages = await Promise.all(
-    pages.map(async (page) => {
-      const { data, error } = await supabase.storage
-        .from("textbook-pages")
-        .createSignedUrl(page.page_image_url, 60 * 60);
-
-      if (error || !data?.signedUrl) {
-        throw new Error(
-          `${page.page_number}페이지 이미지를 불러오지 못했습니다: ${
-            error?.message ?? "Signed URL 생성 실패"
-          }`
-        );
-      }
-
-      return {
-        id: page.id,
-        pageNumber: page.page_number,
-        imageUrl: data.signedUrl,
-      };
-    })
-  );
+  const urls = await signStoragePaths(supabase, "textbook-pages", pages.map(page => page.page_image_url));
+  const signedPages = pages.map(page => {
+    const imageUrl = urls.get(page.page_image_url);
+    if (!imageUrl) throw new Error(`${page.page_number}페이지 이미지를 불러오지 못했습니다.`);
+    return { id: page.id, pageNumber: page.page_number, imageUrl };
+  });
 
   return (
     <TextbookViewerClient

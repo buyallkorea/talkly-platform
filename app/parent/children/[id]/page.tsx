@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import { createAdminClient } from "@/lib/supabase-admin";
 import Link from "next/link";
 import {
@@ -29,7 +30,7 @@ export default async function ChildDetailPage({
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
   if (!user) {
     redirect("/login");

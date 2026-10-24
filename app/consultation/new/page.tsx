@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -10,7 +11,7 @@ async function createInquiry(formData: FormData) {
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
   if (!user) {
     redirect("/login");
@@ -82,7 +83,7 @@ export default async function NewConsultationPage() {
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
   if (!user) {
     redirect("/login");

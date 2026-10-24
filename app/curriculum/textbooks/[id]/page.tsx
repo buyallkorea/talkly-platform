@@ -1,3 +1,4 @@
+import { getPublicCoverUrls } from "@/lib/public-cover-urls";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -116,17 +117,11 @@ export default async function PublicTextbookDetailPage({
   let coverSignedUrl: string | null = null;
 
   if (textbook.cover_image_url) {
-    const { data, error } = await adminClient.storage
-      .from("textbook-files")
-      .createSignedUrl(textbook.cover_image_url, 60 * 60);
-
-    if (error) {
-      console.error(
-        `PUBLIC TEXTBOOK COVER SIGNED URL ERROR (${textbook.id}):`,
-        error.message
-      );
-    } else {
-      coverSignedUrl = data?.signedUrl ?? null;
+    try {
+      const urls = await getPublicCoverUrls([textbook.cover_image_url]);
+      coverSignedUrl = urls[textbook.cover_image_url] ?? null;
+    } catch (error) {
+      console.error("PUBLIC TEXTBOOK COVER SIGNING ERROR:", error);
     }
   }
 

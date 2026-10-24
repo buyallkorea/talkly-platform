@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import AttendanceForm from "./AttendanceForm";
@@ -17,7 +18,7 @@ export default async function TeacherAttendancePage({
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
   if (!user) {
     redirect("/login");

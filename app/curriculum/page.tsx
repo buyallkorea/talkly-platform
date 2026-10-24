@@ -1,3 +1,4 @@
+import { getPublicCoverUrls } from "@/lib/public-cover-urls";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -214,55 +215,15 @@ export default async function CurriculumPage() {
    * 따라서 공개 페이지에서 직접 img src로 사용할 수 없고,
    * 서버에서 signed URL을 만들어 전달합니다.
    */
-  const textbooks =
-    await Promise.all(
-      rawTextbooks.map(
-        async (textbook) => {
-          if (
-            !textbook.cover_image_url
-          ) {
-            return {
-              ...textbook,
-              cover_signed_url:
-                null,
-            };
-          }
-
-          const {
-            data,
-            error,
-          } =
-            await adminClient.storage
-              .from(
-                "textbook-files"
-              )
-              .createSignedUrl(
-                textbook.cover_image_url,
-                60 * 60
-              );
-
-          if (error) {
-            console.error(
-              `TEXTBOOK COVER SIGNED URL ERROR (${textbook.id}):`,
-              error.message
-            );
-
-            return {
-              ...textbook,
-              cover_signed_url:
-                null,
-            };
-          }
-
-          return {
-            ...textbook,
-            cover_signed_url:
-              data?.signedUrl ??
-              null,
-          };
-        }
-      )
-    );
+  let coverUrls: Record<string, string> = {};
+  try {
+    coverUrls = await getPublicCoverUrls([...new Set(rawTextbooks.flatMap(book => book.cover_image_url ? [book.cover_image_url] : []))].sort());
+  } catch (error) {
+    console.error("PUBLIC COVER SIGNING ERROR:", error);
+  }
+  const textbooks: Textbook[] = rawTextbooks.map(book => ({
+    ...book, cover_signed_url: book.cover_image_url ? coverUrls[book.cover_image_url] ?? null : null,
+  }));
 
   const textbookMap =
     new Map<number, Textbook>(

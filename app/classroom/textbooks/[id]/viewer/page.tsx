@@ -1,3 +1,5 @@
+import { signStoragePaths } from "@/lib/storage-signing";
+import { getCurrentUser } from "@/lib/server-user";
 import { notFound, redirect } from "next/navigation";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase-server";
@@ -38,7 +40,7 @@ export default async function ClassroomTextbookViewerPage({
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
   if (!user) {
     redirect("/login");
@@ -165,97 +167,30 @@ export default async function ClassroomTextbookViewerPage({
     throw new Error(hotspotsError.message);
   }
 
-  const signedPages = await Promise.all(
-    pageRows.map(async (page) => {
-      const {
-        data: signedPage,
-        error: signedPageError,
-      } = await adminSupabase.storage
-        .from("textbook-pages")
-        .createSignedUrl(
-          page.page_image_url,
-          60 * 60
-        );
-
-      if (
-        signedPageError ||
-        !signedPage?.signedUrl
-      ) {
-        throw new Error(
-          `${page.page_number}페이지 이미지를 불러오지 못했습니다.`
-        );
-      }
-
-      const pageHotspots = (
-        (hotspotRows ?? []) as HotspotRow[]
-      ).filter(
-        (hotspot) =>
-          hotspot.page_id === page.id &&
-          hotspot.type === "audio" &&
-          hotspot.audio_url
-      );
-
-      const hotspots = await Promise.all(
-        pageHotspots.map(
-          async (hotspot) => {
-            const {
-              data: signedAudio,
-              error: signedAudioError,
-            } =
-              await adminSupabase.storage
-                .from("textbook-audio")
-                .createSignedUrl(
-                  hotspot.audio_url as string,
-                  60 * 60
-                );
-
-            if (
-              signedAudioError ||
-              !signedAudio?.signedUrl
-            ) {
-              return null;
-            }
-
-            return {
-              id: hotspot.id,
-              label:
-                hotspot.label ||
-                "듣기",
-              xPercent: Number(
-                hotspot.x_percent
-              ),
-              yPercent: Number(
-                hotspot.y_percent
-              ),
-              widthPercent: Number(
-                hotspot.width_percent
-              ),
-              heightPercent: Number(
-                hotspot.height_percent
-              ),
-              audioUrl:
-                signedAudio.signedUrl,
-            };
-          }
-        )
-      );
-
-      return {
-        id: page.id,
-        pageNumber:
-          page.page_number,
-        imageUrl:
-          signedPage.signedUrl,
-        hotspots: hotspots.filter(
-          (
-            hotspot
-          ): hotspot is NonNullable<
-            typeof hotspot
-          > => Boolean(hotspot)
-        ),
-      };
-    })
-  );
+  const audioHotspots = ((hotspotRows ?? []) as HotspotRow[]).filter(h => h.type === "audio" && h.audio_url);
+  const [pageUrls, audioUrls] = await Promise.all([
+    signStoragePaths(adminSupabase, "textbook-pages", pageRows.map(page => page.page_image_url)),
+    signStoragePaths(adminSupabase, "textbook-audio", audioHotspots.map(h => h.audio_url as string)).catch(error => {
+      console.error("[TALKLY TEXTBOOK] audio signing failed", error);
+      return new Map<string, string>();
+    }),
+  ]);
+  const hotspotsByPage = new Map<number, typeof audioHotspots>();
+  for (const hotspot of audioHotspots) {
+    const list = hotspotsByPage.get(hotspot.page_id) ?? [];
+    list.push(hotspot); hotspotsByPage.set(hotspot.page_id, list);
+  }
+  const signedPages = pageRows.map(page => {
+    const imageUrl = pageUrls.get(page.page_image_url);
+    if (!imageUrl) throw new Error(`${page.page_number}페이지 이미지를 불러오지 못했습니다.`);
+    return {
+      id: page.id, pageNumber: page.page_number, imageUrl,
+      hotspots: (hotspotsByPage.get(page.id) ?? []).flatMap(h => {
+        const audioUrl = audioUrls.get(h.audio_url as string);
+        return audioUrl ? [{ id: h.id, label: h.label || "듣기", xPercent: Number(h.x_percent), yPercent: Number(h.y_percent), widthPercent: Number(h.width_percent), heightPercent: Number(h.height_percent), audioUrl }] : [];
+      }),
+    };
+  });
 
   return (
     <ClassroomTextbookViewerClient
