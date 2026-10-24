@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
@@ -10,7 +11,7 @@ export default async function TeacherAccountSetupPage() {
   const {
     data: { user },
   } =
-    await supabase.auth.getUser();
+    await getCurrentUser();
 
   if (!user) {
     redirect(

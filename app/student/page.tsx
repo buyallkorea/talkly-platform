@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
@@ -62,7 +63,7 @@ export default async function StudentPage() {
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
   if (!user) {
     redirect("/login");
@@ -85,142 +86,152 @@ export default async function StudentPage() {
     })) as Enrollment[];
   const enrollmentIds = enrollments.map((item) => item.id);
 
-  let sessions: ClassSession[] = [];
 
-  if (enrollmentIds.length > 0) {
-    const { data, error } = await supabase
-      .from("class_sessions")
-      .select(`
-        id,
-        enrollment_id,
-        lesson_number,
-        scheduled_start,
-        scheduled_end,
-        started_at,
-        ended_at,
-        status
-      `)
-      .in("enrollment_id", enrollmentIds)
-      .order("scheduled_start", { ascending: true });
+  const [{ sessions, attendances, evaluations }, { teacherReviews }, { courses }, { teachers }] = await Promise.all([
+    (async () => {
+      let sessions: ClassSession[] = [];
+      let attendances: Attendance[] = [];
+      let evaluations: Evaluation[] = [];
+      if (enrollmentIds.length > 0) {
+        const { data, error } = await supabase
+          .from("class_sessions")
+          .select(`
+            id,
+            enrollment_id,
+            lesson_number,
+            scheduled_start,
+            scheduled_end,
+            started_at,
+            ended_at,
+            status
+          `)
+          .in("enrollment_id", enrollmentIds)
+          .order("scheduled_start", { ascending: true });
 
-    if (error) {
-      throw new Error(error.message);
-    }
+        if (error) {
+          throw new Error(error.message);
+        }
 
-    sessions = (data ?? []) as ClassSession[];
-  }
+        sessions = (data ?? []) as ClassSession[];
+      }
 
-  const sessionIds = sessions.map((session) => session.id);
+      const sessionIds = sessions.map((session) => session.id);
 
-  let attendances: Attendance[] = [];
-  let evaluations: Evaluation[] = [];
 
-  if (sessionIds.length > 0) {
-    const [
-      { data: attendanceData, error: attendanceError },
-      { data: evaluationData, error: evaluationError },
-    ] = await Promise.all([
-      supabase
-        .from("attendance")
-        .select(`
-          id,
-          class_session_id,
-          status,
-          attended_at
-        `)
-        .in("class_session_id", sessionIds),
+      if (sessionIds.length > 0) {
+        const [
+          { data: attendanceData, error: attendanceError },
+          { data: evaluationData, error: evaluationError },
+        ] = await Promise.all([
+          supabase
+            .from("attendance")
+            .select(`
+              id,
+              class_session_id,
+              status,
+              attended_at
+            `)
+            .in("class_session_id", sessionIds),
 
-      supabase
-        .from("evaluations")
-        .select(`
-          id,
-          class_session_id,
-          participation_score,
-          comprehension_score,
-          speaking_score,
-          pronunciation_score,
-          strengths,
-          improvements,
-          homework,
-          teacher_comment,
-          updated_at
-        `)
-        .in("class_session_id", sessionIds)
-        .order("updated_at", { ascending: false }),
-    ]);
+          supabase
+            .from("evaluations")
+            .select(`
+              id,
+              class_session_id,
+              participation_score,
+              comprehension_score,
+              speaking_score,
+              pronunciation_score,
+              strengths,
+              improvements,
+              homework,
+              teacher_comment,
+              updated_at
+            `)
+            .in("class_session_id", sessionIds)
+            .order("updated_at", { ascending: false }),
+        ]);
 
-    if (attendanceError) {
-      throw new Error(attendanceError.message);
-    }
+        if (attendanceError) {
+          throw new Error(attendanceError.message);
+        }
 
-    if (evaluationError) {
-      throw new Error(evaluationError.message);
-    }
+        if (evaluationError) {
+          throw new Error(evaluationError.message);
+        }
 
-    attendances = (attendanceData ?? []) as Attendance[];
-    evaluations = (evaluationData ?? []) as Evaluation[];
-  }
+        attendances = (attendanceData ?? []) as Attendance[];
+        evaluations = (evaluationData ?? []) as Evaluation[];
+      }
+      return { sessions, attendances, evaluations };
+    })(),
+    (async () => {
+      let teacherReviews: TeacherReview[] = [];
+      if (enrollmentIds.length > 0) {
+        const { data, error } = await supabase
+          .from("teacher_reviews")
+          .select(`
+            id,
+            enrollment_id,
+            created_at
+          `)
+          .in("enrollment_id", enrollmentIds);
 
-  let teacherReviews: TeacherReview[] = [];
+        if (error) {
+          throw new Error(error.message);
+        }
 
-  if (enrollmentIds.length > 0) {
-    const { data, error } = await supabase
-      .from("teacher_reviews")
-      .select(`
-        id,
-        enrollment_id,
-        created_at
-      `)
-      .in("enrollment_id", enrollmentIds);
+        teacherReviews = (data ?? []) as TeacherReview[];
+      }
+      return { teacherReviews };
+    })(),
+    (async () => {
+      let courses: Course[] = [];
+      const courseIds = Array.from(
+        new Set(enrollments.map((enrollment) => enrollment.course_id))
+      );
 
-    if (error) {
-      throw new Error(error.message);
-    }
 
-    teacherReviews = (data ?? []) as TeacherReview[];
-  }
+      if (courseIds.length > 0) {
+        const { data, error } = await supabase
+          .from("courses")
+          .select("id, name")
+          .in("id", courseIds);
 
-  const courseIds = Array.from(
-    new Set(enrollments.map((enrollment) => enrollment.course_id))
-  );
+        if (error) {
+          throw new Error(error.message);
+        }
 
-  let courses: Course[] = [];
+        courses = (data ?? []) as Course[];
+      }
+      return { courses };
+    })(),
+    (async () => {
+      let teachers: Teacher[] = [];
+      const teacherIds = Array.from(
+        new Set(
+          enrollments
+            .map((enrollment) => enrollment.teacher_user_id)
+            .filter((value): value is string => Boolean(value))
+        )
+      );
 
-  if (courseIds.length > 0) {
-    const { data, error } = await supabase
-      .from("courses")
-      .select("id, name")
-      .in("id", courseIds);
 
-    if (error) {
-      throw new Error(error.message);
-    }
+      if (teacherIds.length > 0) {
+        const { data, error } = await supabase
+          .from("teacher_profiles")
+          .select("user_id, display_name")
+          .in("user_id", teacherIds);
 
-    courses = (data ?? []) as Course[];
-  }
+        if (error) {
+          throw new Error(error.message);
+        }
 
-  const teacherIds = Array.from(
-    new Set(
-      enrollments
-        .map((enrollment) => enrollment.teacher_user_id)
-        .filter((value): value is string => Boolean(value))
-    )
-  );
-
-  let teachers: Teacher[] = [];
-
-  if (teacherIds.length > 0) {
-    const { data, error } = await supabase
-      .from("teacher_profiles")
-      .select("user_id, display_name")
-      .in("user_id", teacherIds);
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    teachers = (data ?? []) as Teacher[];
-  }
+        teachers = (data ?? []) as Teacher[];
+      }
+      return { teachers };
+    })(),
+  ]);
 
   const now = new Date();
 

@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import MessageNotification from "@/components/messages/MessageNotification";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
@@ -15,7 +16,7 @@ export default async function AdminLayout({
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
   if (!user) {
     redirect("/login");

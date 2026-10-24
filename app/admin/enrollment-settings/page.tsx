@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -62,7 +63,7 @@ async function saveEnrollmentOperationSettings(
   const {
     data: { user },
   } =
-    await supabase.auth.getUser();
+    await getCurrentUser();
 
   if (!user) {
     redirect("/login");
@@ -266,7 +267,7 @@ export default async function EnrollmentSettingsPage({
   const {
     data: { user },
   } =
-    await supabase.auth.getUser();
+    await getCurrentUser();
 
   if (!user) {
     redirect("/login");

@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -75,7 +76,7 @@ export default async function StudentEnrollmentRequestsPage() {
   const {
     data: { user },
   } =
-    await supabase.auth.getUser();
+    await getCurrentUser();
 
   if (!user) {
     redirect(

@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase-admin";
@@ -225,7 +226,7 @@ export default async function TeacherPage({
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
   if (!user) {
     redirect("/login");
@@ -379,88 +380,97 @@ export default async function TeacherPage({
     }
   }
 
-  const childIds = enrollments
-    .map((item) => item.child_id)
-    .filter(
-      (id): id is number =>
-        id !== null
-    );
+  const [{ children }, { students }, { courses }] = await Promise.all([
+    (async () => {
+      let children: {
+        id: number;
+        name: string;
+      }[] = [];
+      const childIds = enrollments
+        .map((item) => item.child_id)
+        .filter(
+          (id): id is number =>
+            id !== null
+        );
 
-  let children: {
-    id: number;
-    name: string;
-  }[] = [];
 
-  if (childIds.length > 0) {
-    const { data, error } = await supabase
-      .from("children")
-      .select("id, name")
-      .in(
-        "id",
-        Array.from(new Set(childIds))
+      if (childIds.length > 0) {
+        const { data, error } = await supabase
+          .from("children")
+          .select("id, name")
+          .in(
+            "id",
+            Array.from(new Set(childIds))
+          );
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        children = data ?? [];
+      }
+      return { children };
+    })(),
+    (async () => {
+      let students: {
+        id: string;
+        name: string | null;
+      }[] = [];
+      const studentIds = enrollments
+        .map(
+          (item) => item.student_user_id
+        )
+        .filter(
+          (id): id is string =>
+            id !== null
+        );
+
+
+      if (studentIds.length > 0) {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, name")
+          .in(
+            "id",
+            Array.from(new Set(studentIds))
+          );
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        students = data ?? [];
+      }
+      return { students };
+    })(),
+    (async () => {
+      let courses: {
+        id: number;
+        name: string;
+      }[] = [];
+      const courseIds = enrollments.map(
+        (item) => item.course_id
       );
 
-    if (error) {
-      throw new Error(error.message);
-    }
 
-    children = data ?? [];
-  }
+      if (courseIds.length > 0) {
+        const { data, error } = await supabase
+          .from("courses")
+          .select("id, name")
+          .in(
+            "id",
+            Array.from(new Set(courseIds))
+          );
 
-  const studentIds = enrollments
-    .map(
-      (item) => item.student_user_id
-    )
-    .filter(
-      (id): id is string =>
-        id !== null
-    );
+        if (error) {
+          throw new Error(error.message);
+        }
 
-  let students: {
-    id: string;
-    name: string | null;
-  }[] = [];
-
-  if (studentIds.length > 0) {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, name")
-      .in(
-        "id",
-        Array.from(new Set(studentIds))
-      );
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    students = data ?? [];
-  }
-
-  const courseIds = enrollments.map(
-    (item) => item.course_id
-  );
-
-  let courses: {
-    id: number;
-    name: string;
-  }[] = [];
-
-  if (courseIds.length > 0) {
-    const { data, error } = await supabase
-      .from("courses")
-      .select("id, name")
-      .in(
-        "id",
-        Array.from(new Set(courseIds))
-      );
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    courses = data ?? [];
-  }
+        courses = data ?? [];
+      }
+      return { courses };
+    })(),
+  ]);
 
   const {
     data: levelTestInterviewData,

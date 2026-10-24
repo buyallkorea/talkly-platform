@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 
 import { redirect } from "next/navigation";
@@ -98,7 +99,7 @@ export default async function StudentEvaluationsPage() {
 
     data: { user },
 
-  } = await supabase.auth.getUser();
+  } = await getCurrentUser();
 
 
 
