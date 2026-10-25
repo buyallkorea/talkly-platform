@@ -76,6 +76,15 @@ await db.exec(
     "utf8",
   ),
 );
+await db.exec(
+  await readFile(
+    new URL(
+      "../../supabase/migrations/20261025110204_talkly_ai_session_closing.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 const a = "11111111-1111-4111-8111-111111111111",
   b = "22222222-2222-4222-8222-222222222222";
 await db.query(`insert into auth.users values($1),($2)`, [a, b]);

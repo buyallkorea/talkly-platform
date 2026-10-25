@@ -109,12 +109,21 @@ export async function POST(request: Request) {
     callId = upstream.headers.get("location")?.split("/").pop();
     if (!callId || !/^rtc_[A-Za-z0-9_-]+$/.test(callId))
       throw new AiError("음성 연결의 종료 제어 정보를 받지 못했어요.", 502);
-    const { error: attachError } = await db
+    const { data: attached, error: attachError } = await db
       .from("ai_sessions")
       .update({ call_id: callId, state: "active" })
       .eq("id", sessionId)
-      .eq("state", "connecting");
+      .eq("user_id", user.id)
+      .eq("state", "connecting")
+      .gt("deadline", new Date().toISOString())
+      .select("id")
+      .maybeSingle();
     if (attachError) throw attachError;
+    if (!attached)
+      throw new AiError(
+        "음성 연결 준비 중 대화가 종료됐어요. 다시 시작해 주세요.",
+        409,
+      );
     const capturedUser = user.id,
       capturedSession = lease.id;
     // Bounded server watchdog. This must pass real Vercel runtime verification

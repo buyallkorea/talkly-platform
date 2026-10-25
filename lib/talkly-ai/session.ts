@@ -7,12 +7,12 @@ export async function closeSession(
   failed = false,
 ) {
   const db = createAdminClient();
-  const { data: s, error } = await db
-    .from("ai_sessions")
-    .select("call_id,state")
-    .eq("id", sessionId)
-    .eq("user_id", userId)
-    .maybeSingle();
+  // Atomically block new attachment before inspecting the provider call ID.
+  // A failed hangup leaves `closing` for a later retry, without releasing quota.
+  const { data: s, error } = await db.rpc("ai_begin_close", {
+    p_user: userId,
+    p_session: sessionId,
+  });
   if (error || !s) throw new Error("Session not found");
   if (s.state !== "closed" && s.call_id) await hangup(s.call_id);
   const { error: finishError } = await db.rpc("ai_finish", {
