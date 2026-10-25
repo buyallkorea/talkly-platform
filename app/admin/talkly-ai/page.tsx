@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/server-user";
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { notFound } from "next/navigation";
+import { REFUND_STATES } from "@/lib/talkly-ai/refunds";
 import VoiceUsagePanel from "./VoiceUsagePanel";
 import RefundReviews from "./RefundReviews";
 import SessionOperations from "./SessionOperations";
@@ -140,25 +141,47 @@ export default async function AdminAiPage() {
   const ids = [
     ...new Set([
       ...memberIds,
+      ...(refundRequests.data ?? []).map((row) => row.user_id),
+      ...(refundReviews.data ?? []).flatMap((row) =>
+        row.actor_id ? [row.actor_id] : [],
+      ),
       ...(liveSessions.data ?? []).map((s) => s.user_id),
       ...(adminActions.data ?? []).flatMap((a) =>
         [a.actor_id, a.user_id].filter((id): id is string => !!id),
       ),
     ]),
   ];
-  const { data: names } = ids.length
-    ? await db.from("profiles").select("id,name,role").in("id", ids)
-    : { data: [] };
+  const refundPaymentIds = [
+    ...new Set((refundRequests.data ?? []).map((row) => row.payment_id)),
+  ];
+  const [namesResult, activityResult, refundOrders] = await Promise.all([
+    ids.length
+      ? db.from("profiles").select("id,name,role").in("id", ids)
+      : Promise.resolve({ data: [], error: null }),
+    memberIds.length
+      ? db
+          .from("ai_sessions")
+          .select("user_id,state,ended_at,charged_seconds")
+          .in("user_id", memberIds)
+          .order("started_at", { ascending: false })
+          .limit(1000)
+      : Promise.resolve({ data: [], error: null }),
+    refundPaymentIds.length
+      ? db
+          .from("ai_payments")
+          .select(
+            "id,user_id,order_id,amount,status,approved_at,activated_until",
+          )
+          .in("id", refundPaymentIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  const names = namesResult.data;
   const nameMap = new Map((names ?? []).map((n) => [n.id, n.name]));
   const name = (id: string) => nameMap.get(id) || id;
-  const { data: activity, error: activityError } = memberIds.length
-    ? await db
-        .from("ai_sessions")
-        .select("user_id,state,ended_at,charged_seconds")
-        .in("user_id", memberIds)
-        .order("started_at", { ascending: false })
-        .limit(1000)
-    : { data: [], error: null };
+  const { data: activity, error: activityError } = activityResult;
+  const refundOrderMap = new Map(
+    (refundOrders.data ?? []).map((order) => [order.id, order]),
+  );
   const roleMap = new Map((names ?? []).map((n) => [n.id, n.role]));
   const candidates = activityError
     ? []
@@ -489,7 +512,21 @@ export default async function AdminAiPage() {
       {refundRequests.error ? (
         <p>환불 요청을 불러오지 못했습니다.</p>
       ) : (
-        <RefundReviews rows={refundRequests.data ?? []} />
+        <RefundReviews
+          rows={(refundRequests.data ?? []).map((row) => {
+            const found = refundOrderMap.get(row.payment_id);
+            const order = found?.user_id === row.user_id ? found : null;
+            return {
+              ...row,
+              name: name(row.user_id),
+              orderId: order?.order_id ?? null,
+              amount: typeof order?.amount === "number" ? order.amount : null,
+              paymentStatus: order?.status ?? null,
+              approvedAt: order?.approved_at ?? null,
+              validUntil: order?.activated_until ?? null,
+            };
+          })}
+        />
       )}
       <details>
         <summary>환불 검토 변경 이력 · 최근 100건</summary>
@@ -499,8 +536,10 @@ export default async function AdminAiPage() {
           <ul>
             {refundReviews.data?.map((row) => (
               <li key={row.id}>
-                {row.request_id} · {row.actor_id ?? "삭제된 관리자"} ·{" "}
-                {row.from_state} → {row.to_state} ·{" "}
+                접수 {row.request_id} ·{" "}
+                {row.actor_id ? name(row.actor_id) : "삭제된 관리자"} ·{" "}
+                {REFUND_STATES[row.from_state] ?? "상태 확인 필요"} →{" "}
+                {REFUND_STATES[row.to_state] ?? "상태 확인 필요"} ·{" "}
                 {new Date(row.created_at).toLocaleString("ko-KR", {
                   timeZone: "Asia/Seoul",
                 })}
