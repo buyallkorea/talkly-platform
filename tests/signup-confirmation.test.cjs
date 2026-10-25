@@ -34,6 +34,7 @@ async function signup({confirmed = false, mailError = false, mailThrows = false,
   vm.runInNewContext(code, {exports, Date, console: {error() {}}, require(name) {
     if (name === 'next/server') return {NextResponse: {json: (body, init) => Response.json(body, init)}};
     if (name === '@/lib/supabase-admin') return {createAdminClient: () => admin};
+    if (name === '@/lib/talkly-ai/phone-proof') return {signupPhoneProof: () => ({})};
     if (name === '@/lib/solapi') return {hashPhoneVerificationValue: () => 'hash', isValidKoreanMobilePhone: () => true, normalizeKoreanPhone: x => x};
     throw Error(name);
   }});
