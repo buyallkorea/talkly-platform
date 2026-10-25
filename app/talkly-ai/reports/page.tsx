@@ -10,6 +10,7 @@ import {
   summaryRetentionCutoff,
   type LearningSummary,
 } from "@/lib/talkly-ai/reports";
+import MemoryDeletion from "./MemoryDeletion";
 import SummaryConsent from "./SummaryConsent";
 import SummaryDeletion from "./SummaryDeletion";
 import { loadReportHistory } from "@/lib/talkly-ai/report-history";
@@ -67,6 +68,7 @@ export default async function Reports({
     return (
       <main className="tai tai-info">
         <h1>나의 월간 학습 리포트</h1>
+        <MemoryDeletion />
         <p>
           {e instanceof AiError
             ? e.message

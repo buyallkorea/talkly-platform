@@ -133,3 +133,16 @@ assert.equal((await send(member, valid)).status, 409);
 console.log(
   "PASS: request validation, prototype reason rejection, server owner/actor, admin enforcement, RPC failure handling, no-store",
 );
+
+rpcError = null;
+const memory = await load("app/api/talkly-ai/memory/route.ts");
+assert.equal((await send(memory, { confirm: false })).status, 400);
+rpcError = { message: "unavailable" };
+assert.equal(
+  (await send(memory, { confirm: true, userId: "victim" })).status,
+  503,
+);
+assert.deepEqual(calls.at(-1), ["ai_clear_memory", { p_user: "owner" }]);
+console.log(
+  "PASS: memory confirmation and server-owned target; failure is not reported as deletion",
+);
