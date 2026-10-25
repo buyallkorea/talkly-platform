@@ -70,22 +70,37 @@ class AiError extends Error {
 let attached = false,
   scheduled = 0;
 const cleanup = [];
+let rateAllowed = true,
+  rateError = null;
+const rpcCalls = [];
 const filters = [];
+const watchdogTasks = [];
+let watchdogState = "active";
 const lease = {
   id: "lease",
   deadline: new Date(Date.now() + 180000).toISOString(),
   reserved_seconds: 180,
 };
 const db = {
-  async rpc(name) {
+  async rpc(name, args) {
+    rpcCalls.push(name);
+    if (name === "ai_claim_connection_attempt") {
+      assert.equal(args.p_user, "owner");
+      return {
+        data: { allowed: rateAllowed, retry_after_seconds: 42 },
+        error: rateError,
+      };
+    }
     assert.equal(name, "ai_reserve");
     return { data: lease, error: null };
   },
   from(table) {
     assert.equal(table, "ai_sessions");
-    let mutation = false;
+    let mutation = false,
+      selected;
     const q = {
-      select() {
+      select(columns) {
+        selected = columns;
         return q;
       },
       update(value) {
@@ -109,7 +124,12 @@ const db = {
         return q;
       },
       maybeSingle: async () => ({
-        data: attached ? { id: "lease" } : null,
+        data:
+          selected === "state"
+            ? { state: watchdogState }
+            : attached
+              ? { id: "lease" }
+              : null,
         error: null,
       }),
       then(resolve) {
@@ -126,7 +146,8 @@ globalThis.negotiationHarness = {
     voice_connect: "gpt-realtime-2.1-mini",
     learning_summary: "gpt-4.1-mini",
   },
-  after: () => {
+  after: (callback) => {
+    watchdogTasks.push(callback);
     scheduled++;
   },
   AiError,
@@ -179,11 +200,52 @@ try {
   assert.equal(metadata[0].outcome, "failed");
   assert.equal(metadata[1].outcome, "succeeded");
   assert.equal(metadata[1].httpStatus, 200);
+  rateAllowed = false;
+  rpcCalls.length = 0;
+  const blocked = await POST(request());
+  assert.equal(blocked.status, 429);
+  assert.equal(blocked.headers.get("Retry-After"), "42");
+  assert.equal((await blocked.json()).retryAfterSeconds, 42);
+  assert.deepEqual(rpcCalls, ["ai_claim_connection_attempt"]);
+  assert.equal(metadata.length, 2);
+  assert.equal(cleanup.length, 0);
+  rateError = { message: "rate store unavailable" };
+  rpcCalls.length = 0;
+  assert.equal((await POST(request())).status, 503);
+  assert.deepEqual(rpcCalls, ["ai_claim_connection_attempt"]);
+  const originalNow = Date.now,
+    originalTimeout = globalThis.setTimeout;
+  let fakeNow = Date.parse(lease.deadline) - 25000;
+  const delays = [];
+  cleanup.length = 0;
+  Date.now = () => fakeNow;
+  globalThis.setTimeout = (callback, delay) => {
+    delays.push(delay);
+    fakeNow += delay;
+    callback();
+    return 0;
+  };
+  try {
+    await watchdogTasks[0]();
+    assert.deepEqual(delays, [10000, 10000, 5000]);
+    assert.equal(fakeNow, Date.parse(lease.deadline));
+    assert.deepEqual(cleanup, [["close", "owner", "lease"]]);
+    watchdogState = "closed";
+    fakeNow = Date.parse(lease.deadline) - 25000;
+    delays.length = 0;
+    cleanup.length = 0;
+    await watchdogTasks[0]();
+    assert.deepEqual(delays, [10000]);
+    assert.equal(cleanup.length, 0);
+  } finally {
+    Date.now = originalNow;
+    globalThis.setTimeout = originalTimeout;
+  }
 } finally {
   globalThis.fetch = originalFetch;
   if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
   else process.env.OPENAI_API_KEY = originalKey;
 }
 console.log(
-  "PASS: atomic begin-close -> hangup -> finish, hangup failure holds quota, zero-row attachment closes upstream and rejects success, successful owned attachment schedules watchdog",
+  "PASS: atomic begin-close -> hangup -> finish, hangup failure holds quota, zero-row attachment closes upstream and rejects success, successful owned attachment schedules watchdog, local cooldown prevents quota/provider work, and 10-second polling preserves deadline",
 );

@@ -45,6 +45,35 @@ export async function POST(request: Request) {
       .neq("state", "closed")
       .lt("deadline", new Date().toISOString());
     for (const row of stale ?? []) await closeSession(user.id, row.id);
+    // Count only authenticated, syntactically valid connection starts. Stop and
+    // settlement routes remain available during a cooldown. No quota is reserved yet.
+    const { data: attempt, error: attemptError } = await db.rpc(
+      "ai_claim_connection_attempt",
+      { p_user: user.id },
+    );
+    if (attemptError || typeof attempt?.allowed !== "boolean")
+      throw new AiError(
+        "연결 요청을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.",
+        503,
+      );
+    if (!attempt.allowed) {
+      const retry = Number.isInteger(attempt.retry_after_seconds)
+        ? Math.max(1, Math.min(3600, attempt.retry_after_seconds))
+        : 60;
+      return Response.json(
+        {
+          error: `연결 요청이 여러 번 반복됐어요. 약 ${retry}초 후 다시 시작해 주세요.`,
+          retryAfterSeconds: retry,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(retry),
+            "Cache-Control": "no-store",
+          },
+        },
+      );
+    }
     const { data: lease, error } = await db.rpc("ai_reserve", {
       p_user: user.id,
       p_tutor: tutor.id,
@@ -141,7 +170,7 @@ export async function POST(request: Request) {
       const deadline = Date.parse(lease.deadline);
       while (Date.now() < deadline) {
         await new Promise((r) =>
-          setTimeout(r, Math.min(2000, Math.max(1, deadline - Date.now()))),
+          setTimeout(r, Math.min(10000, Math.max(1, deadline - Date.now()))),
         );
         const { data: current } = await db
           .from("ai_sessions")
