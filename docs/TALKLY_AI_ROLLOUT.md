@@ -12,7 +12,11 @@
 
 ## Rollout state
 
-This branch is reviewable implementation, not a claim of a live paid service. Do not merge, apply production migration, or enable paid checkout until the outstanding runtime checks below pass and the owner approves production rollout. Existing production code and database are unchanged during development.
+On 2026-10-25 the owner approved the additive production AI schema and a preview deployment with payments off. The four AI tables and three RPCs have now been applied to the TALKLY database; existing classroom/payment tables were not changed. Production main remains unmerged. Paid checkout remains disabled.
+
+Preview-only flags on `feat/talkly-ai-integration`: `TALKLY_AI_ENABLED=true`, `TALKLY_AI_PAYMENTS_ENABLED=false`, `TALKLY_AI_TEST_MODE=true`. No production flags were changed. Existing OpenAI credentials are reused without reading their value.
+
+Only a verified TALKLY admin can activate a 24-hour test pass for their own AI membership, after joining. `/api/talkly-ai/test-access` also requires `VERCEL_ENV=preview`, test mode on and paid checkout off. It creates no payment record, does not reset daily quota and does not shorten an existing pass. This is for the approved test deployment, not a free public plan.
 
 Required existing environment names:
 
@@ -29,7 +33,7 @@ Deploying a changed environment requires a rebuild/redeploy. Never expose OpenAI
 
 ## Schema and quota enforcement
 
-Migration: `supabase/migrations/20261024235249_talkly_ai.sql`. It adds four RLS-enabled tables and three invoker RPCs. No changes to existing profiles, auth triggers, enrollment tables, or existing payment endpoints. All writes and payment secrets are server-only. RPC execution is revoked from PUBLIC/anon/authenticated and granted only to service_role. Own-row reads are granted only for non-secret membership and daily usage.
+Migration: `supabase/migrations/20261025002307_talkly_ai.sql`. It adds four RLS-enabled tables and three invoker RPCs. No changes to existing profiles, auth triggers, enrollment tables, or existing payment endpoints. All writes and payment secrets are server-only. RPC execution is revoked from PUBLIC/anon/authenticated and granted only to service_role. Own-row reads are granted only for non-secret membership and daily usage.
 
 Server creates at most 240-second provider call leases to fit the route's 300-second duration. Quota is atomically reserved under a member lock before external negotiation. A unique partial index prevents concurrent live calls per member. Normal stop hangs up the provider call then charges server elapsed time and refunds unused reservation. Failed negotiations without an attached provider call refund the reservation. Repeated settlement is idempotent. At midnight or pass expiry the lease ends at that boundary.
 
@@ -40,6 +44,9 @@ Payment approval uses server fixed price, owner-scoped orders, bound payment key
 ## Verification completed locally
 
 - Full TypeScript check.
+- Applied schema verification: all four tables have RLS; all three RPCs are invoker functions with pinned search paths, executable only by service_role.
+- Actual database reservation/double-session/refund/idempotence smoke check succeeded inside a rolled-back transaction; no fixture rows remained.
+- `node tests/talkly-ai/test-access.mjs`: production/development exclusion, paid-mode exclusion, non-admin rejection, owner-only granting and preservation of a longer pass.
 - Local production HTTP smoke checks: public preparation page renders; all disabled AI endpoints return 503; enabled POST endpoints reject unauthenticated requests (401) and foreign origins (403).
 - Production Next build, using placeholder build-time configuration; no production API key was read.
 - `node tests/talkly-ai/config.mjs`: tutor catalog, plan constants, Korean midnight and bounded memory.

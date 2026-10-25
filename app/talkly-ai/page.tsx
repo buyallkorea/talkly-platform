@@ -15,6 +15,13 @@ export default function TalklyAiPage() {
         </Link>
         <Link href="/">토클리 홈 ↗</Link>
       </header>
+      {process.env.TALKLY_AI_TEST_MODE === "true" &&
+        process.env.VERCEL_ENV === "preview" && (
+          <p className="tai-guide">
+            테스트 배포 · 유료 결제는 비활성화되어 있어요. 관리자 계정은 AI 가입
+            후 테스트 이용권을 활성화할 수 있어요.
+          </p>
+        )}
       <section className="tai-intro">
         <div>
           <p className="tai-kicker">A LITTLE ENGLISH, EVERY DAY</p>

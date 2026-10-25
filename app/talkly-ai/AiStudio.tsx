@@ -3,6 +3,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CONSENT_VERSION, TUTORS, PLAN, Turn } from "@/lib/talkly-ai/config";
 type Account = {
+  canTestAccess: boolean;
+  paymentsEnabled: boolean;
   member: null | {
     status: string;
     valid_until: string | null;
@@ -375,6 +377,18 @@ export default function AiStudio() {
       setBusy(false);
     }
   }
+  async function testAccess() {
+    setBusy(true);
+    setError("");
+    try {
+      await api("test-access", {});
+      await refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function purchase() {
     setBusy(true);
     setError("");
@@ -475,6 +489,21 @@ export default function AiStudio() {
         </section>
       ) : (
         <>
+          {account.canTestAccess && (
+            <section className="tai-card">
+              <b>관리자 전용 음성 테스트</b>
+              <p>
+                결제 없이 본인 계정에 24시간 테스트 이용권을 활성화해요. 하루
+                10분 한도는 유지돼요.
+              </p>
+              <button
+                disabled={busy || state === "live" || state === "connecting"}
+                onClick={testAccess}
+              >
+                24시간 테스트 이용권 활성화
+              </button>
+            </section>
+          )}
           <section className="tai-account">
             <div>
               <b>{paid ? "이용권 사용 중" : "30일 이용권"}</b>
@@ -485,10 +514,19 @@ export default function AiStudio() {
               </p>
             </div>
             <button
-              disabled={busy || state === "live" || state === "connecting"}
+              disabled={
+                !account.paymentsEnabled ||
+                busy ||
+                state === "live" ||
+                state === "connecting"
+              }
               onClick={purchase}
             >
-              {paid ? "30일 추가 구매" : "이용권 구매"}
+              {!account.paymentsEnabled
+                ? "유료 결제 비활성화"
+                : paid
+                  ? "30일 추가 구매"
+                  : "이용권 구매"}
             </button>
             <div>
               <b>오늘 남은 시간 {clock(remaining)}</b>

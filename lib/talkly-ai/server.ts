@@ -12,6 +12,13 @@ export class AiError extends Error {
 export function enabled() {
   return process.env.TALKLY_AI_ENABLED === "true";
 }
+export function previewTestMode() {
+  return (
+    process.env.VERCEL_ENV === "preview" &&
+    process.env.TALKLY_AI_TEST_MODE === "true" &&
+    process.env.TALKLY_AI_PAYMENTS_ENABLED !== "true"
+  );
+}
 export async function context(request?: Request) {
   if (!enabled()) throw new AiError("TALKLY AI를 준비 중이에요.", 503);
   if (request) {

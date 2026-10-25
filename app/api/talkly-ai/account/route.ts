@@ -1,10 +1,10 @@
-import { context, failure } from "@/lib/talkly-ai/server";
+import { context, failure, previewTestMode } from "@/lib/talkly-ai/server";
 import { seoulDay, PLAN } from "@/lib/talkly-ai/config";
 export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const { user, db } = await context();
-    const [member, usage, payments] = await Promise.all([
+    const [member, usage, payments, profile] = await Promise.all([
       db
         .from("ai_members")
         .select("status,valid_until,last_tutor_id,memory")
@@ -22,12 +22,16 @@ export async function GET() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(10),
+      db.from("profiles").select("role").eq("id", user.id).maybeSingle(),
     ]);
     if (member.error || usage.error || payments.error)
       throw new Error("Account read failed");
     return Response.json(
       {
         member: member.data,
+        paymentsEnabled: process.env.TALKLY_AI_PAYMENTS_ENABLED === "true",
+        canTestAccess:
+          previewTestMode() && !profile.error && profile.data?.role === "admin",
         remaining: Math.max(
           0,
           PLAN.dailySeconds - (usage.data?.used_seconds ?? 0),
