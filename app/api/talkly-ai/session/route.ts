@@ -14,6 +14,7 @@ import { queueApiEvent, API_MODELS } from "@/lib/talkly-ai/api-events";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 export async function POST(request: Request) {
+  const requestStarted = performance.now();
   let owner: string | undefined,
     sessionId: string | undefined,
     callId: string | undefined;
@@ -95,6 +96,13 @@ export async function POST(request: Request) {
       throw new AiError(message, 409);
     }
     sessionId = lease.id;
+    // Leave runtime headroom for the 240-second lease and bounded close retries.
+    // The catch path releases a call-less reservation without consuming minutes.
+    if (performance.now() - requestStarted > 10000)
+      throw new AiError(
+        "연결 준비가 지연되고 있어요. 잠시 후 다시 시작해 주세요.",
+        503,
+      );
     const form = new FormData();
     form.set("sdp", data.sdp);
     form.set(

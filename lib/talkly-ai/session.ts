@@ -18,7 +18,9 @@ export async function closeSession(
     .rpc("ai_finish", {
       p_user: userId,
       p_session: sessionId,
-      p_failed: failed,
+      // begin-close prevents a later attachment, so a call-less reservation
+      // cannot have delivered a connected lesson to this browser.
+      p_failed: failed || !s.call_id,
     })
     .abortSignal(AbortSignal.timeout(2000));
   if (finishError) throw finishError;

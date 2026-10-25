@@ -26,12 +26,15 @@ async function compile(path, prelude) {
 const events = [];
 let closed = false,
   hangupError = false,
-  closeRpcFailure = null;
+  closeRpcFailure = null,
+  callPresent = true,
+  finishArgs = [];
 const closeDb = {
   rpc(name, args) {
     assert.equal(args.p_user, "owner");
     assert.equal(args.p_session, "session");
     events.push(name);
+    if (name === "ai_finish") finishArgs.push(args);
     return {
       abortSignal: async (signal) => {
         assert.ok(signal instanceof AbortSignal);
@@ -41,7 +44,7 @@ const closeDb = {
           ? {
               data: {
                 state: closed ? "closed" : "closing",
-                call_id: "rtc_test",
+                call_id: callPresent ? "rtc_test" : null,
               },
               error: null,
             }
@@ -83,6 +86,12 @@ closeRpcFailure = "ai_finish";
 await assert.rejects(closeSession("owner", "session"));
 assert.deepEqual(events, ["ai_begin_close", "hangup", "ai_finish"]);
 closeRpcFailure = null;
+events.length = 0;
+callPresent = false;
+await closeSession("owner", "session");
+assert.deepEqual(events, ["ai_begin_close", "ai_finish"]);
+assert.equal(finishArgs.at(-1).p_failed, true);
+callPresent = true;
 class AiError extends Error {
   constructor(message, status = 400) {
     super(message);
@@ -306,6 +315,20 @@ try {
   assert.deepEqual(observations, [
     { sessionId: lease.id, callId: "rtc_test", deadline: lease.deadline },
   ]);
+  const originalPerformance = globalThis.performance;
+  let performanceReads = 0;
+  globalThis.performance = {
+    now: () => (performanceReads++ === 0 ? 0 : 11000),
+  };
+  const beforeProvider = metadata.length;
+  cleanup.length = 0;
+  try {
+    assert.equal((await POST(request())).status, 503);
+    assert.deepEqual(cleanup, [["close", "owner", "lease", true]]);
+    assert.equal(metadata.length, beforeProvider);
+  } finally {
+    globalThis.performance = originalPerformance;
+  }
 } finally {
   if (originalVoiceFlag === undefined)
     delete process.env.TALKLY_AI_VOICE_USAGE_ENABLED;
