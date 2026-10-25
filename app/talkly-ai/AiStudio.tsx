@@ -7,6 +7,7 @@ import {
   ConnectionEpoch,
   leaseMilliseconds,
 } from "@/lib/talkly-ai/client-connection";
+import { TurnCoordinator } from "@/lib/talkly-ai/turn-coordinator";
 type Account = {
   latestReport: null | { month: string; published_at: string };
   activePass: boolean;
@@ -92,8 +93,7 @@ export default function AiStudio() {
     history = useRef<Turn[]>([]),
     segmentTurns = useRef<Turn[]>([]),
     timer = useRef<ReturnType<typeof setInterval> | null>(null),
-    pending = useRef(false),
-    deferred = useRef(false),
+    turnCoordinator = useRef(new TurnCoordinator()),
     holdingRef = useRef(false),
     busyRef = useRef(false),
     stopping = useRef(false),
@@ -128,8 +128,7 @@ export default function AiStudio() {
     if (audio.current) audio.current.srcObject = null;
     holdingRef.current = false;
     setHolding(false);
-    pending.current = false;
-    deferred.current = false;
+    turnCoordinator.current.reset();
   }
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
   async function checkpoint(id: string) {
@@ -235,21 +234,36 @@ export default function AiStudio() {
         setError("대화 기억을 저장하지 못했어요. 연결 상태를 확인해 주세요."),
       );
   }
+  function replyWhenReady() {
+    if (!active.current || dc.current?.readyState !== "open") return;
+    if (turnCoordinator.current.takeResponse()) {
+      try {
+        dc.current.send(JSON.stringify({ type: "response.create" }));
+      } catch {
+        setError("응답 연결이 끊어졌어요. 다시 시작해 주세요.");
+        void stop(true);
+      }
+    }
+  }
   async function renew() {
     const wasHolding = holdingRef.current;
+    const queued = turnCoordinator.current.queued;
     const a = await stop(true);
-    if (a && a.remaining > 0) await start(true, wasHolding, true);
+    if (a && a.remaining > 0) await start(true, wasHolding, true, queued);
   }
   async function start(
     continuation = false,
     resumeHold = false,
     automatic = false,
+    queued = false,
   ) {
     if (busyRef.current || active.current || stopping.current) return;
     busyRef.current = true;
     setConnectionBusy(true);
     const attempt = connectionEpoch.current.begin();
     holdingRef.current = resumeHold;
+    turnCoordinator.current.reset(resumeHold);
+    turnCoordinator.current.queued = queued;
     setHolding(resumeHold);
     setError("");
     setState("connecting");
@@ -315,13 +329,8 @@ export default function AiStudio() {
         } catch {
           return;
         }
-        if (d.type === "response.created") pending.current = true;
-        if (d.type === "response.done") pending.current = false;
-        if (
-          d.type === "input_audio_buffer.speech_stopped" &&
-          holdingRef.current
-        )
-          deferred.current = true;
+        if (!d || typeof d.type !== "string") return;
+        turnCoordinator.current.event(d);
         if (d.type === "conversation.item.input_audio_transcription.completed")
           add("user", d.transcript);
         if (
@@ -338,7 +347,10 @@ export default function AiStudio() {
         }
         if (d.type === "error") {
           setError("AI 응답을 처리하지 못했어요. 잠시 후 다시 시작해 주세요.");
+          void stop(true);
+          return;
         }
+        replyWhenReady();
       };
       const opened = new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(
@@ -390,7 +402,11 @@ export default function AiStudio() {
       started.current = performance.now();
       active.current = true;
       setState("live");
-      if (!automatic && !resumeHold)
+      if (
+        !automatic &&
+        !turnCoordinator.current.queued &&
+        turnCoordinator.current.beginResponse()
+      )
         channel.send(
           JSON.stringify({
             type: "response.create",
@@ -401,6 +417,7 @@ export default function AiStudio() {
             },
           }),
         );
+      replyWhenReady();
       timer.current = setInterval(() => {
         const left = Math.max(
           0,
@@ -436,29 +453,10 @@ export default function AiStudio() {
   function think() {
     const hold = !holdingRef.current;
     holdingRef.current = hold;
+    turnCoordinator.current.holding = hold;
     setHolding(hold);
-    dc.current?.send(
-      JSON.stringify({
-        type: "session.update",
-        session: {
-          type: "realtime",
-          audio: {
-            input: {
-              turn_detection: {
-                type: "semantic_vad",
-                eagerness: "low",
-                create_response: !hold,
-                interrupt_response: true,
-              },
-            },
-          },
-        },
-      }),
-    );
-    if (!hold && deferred.current && !pending.current) {
-      dc.current?.send(JSON.stringify({ type: "response.create" }));
-      deferred.current = false;
-    }
+    // No session.update race: automatic response creation stays off throughout.
+    replyWhenReady();
   }
   async function join() {
     setBusy(true);
@@ -771,7 +769,8 @@ export default function AiStudio() {
                   if (
                     !input.trim() ||
                     state !== "live" ||
-                    pending.current ||
+                    turnCoordinator.current.pending ||
+                    turnCoordinator.current.speaking ||
                     holdingRef.current ||
                     dc.current?.readyState !== "open"
                   )
@@ -787,8 +786,8 @@ export default function AiStudio() {
                       },
                     }),
                   );
-                  dc.current.send(JSON.stringify({ type: "response.create" }));
-                  pending.current = true;
+                  turnCoordinator.current.queued = true;
+                  replyWhenReady();
                   add("user", text);
                   setInput("");
                 }}
