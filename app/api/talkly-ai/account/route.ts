@@ -29,6 +29,10 @@ export async function GET() {
     return Response.json(
       {
         member: member.data,
+        activePass:
+          member.data?.status === "active" &&
+          !!member.data?.valid_until &&
+          Date.parse(member.data.valid_until) > Date.now(),
         paymentsEnabled: process.env.TALKLY_AI_PAYMENTS_ENABLED === "true",
         canTestAccess:
           previewTestMode() && !profile.error && profile.data?.role === "admin",

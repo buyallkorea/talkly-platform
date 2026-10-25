@@ -2,7 +2,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CONSENT_VERSION, TUTORS, PLAN, Turn } from "@/lib/talkly-ai/config";
+import {
+  CancelledConnection,
+  ConnectionEpoch,
+  leaseMilliseconds,
+} from "@/lib/talkly-ai/client-connection";
 type Account = {
+  activePass: boolean;
   canTestAccess: boolean;
   paymentsEnabled: boolean;
   member: null | {
@@ -33,15 +39,28 @@ type Widgets = {
   }) => Promise<void>;
 };
 async function api(path: string, data?: unknown) {
-  const r = await fetch("/api/talkly-ai/" + path, {
-    method: data === undefined ? "GET" : "POST",
-    headers: data === undefined ? {} : { "Content-Type": "application/json" },
-    body: data === undefined ? undefined : JSON.stringify(data),
-    cache: "no-store",
-  });
-  const result = await r.json();
-  if (!r.ok) throw new Error(result.error || "요청을 처리하지 못했어요.");
-  return result;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 35000);
+  try {
+    const r = await fetch("/api/talkly-ai/" + path, {
+      method: data === undefined ? "GET" : "POST",
+      headers: data === undefined ? {} : { "Content-Type": "application/json" },
+      body: data === undefined ? undefined : JSON.stringify(data),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    const result = await r.json();
+    if (!r.ok) throw new Error(result.error || "요청을 처리하지 못했어요.");
+    return result;
+  } catch (e) {
+    if (controller.signal.aborted)
+      throw new Error(
+        "응답이 지연되고 있어요. 연결 상태를 확인한 뒤 다시 시도해 주세요.",
+      );
+    throw e;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 function clock(s: number) {
   return `${Math.floor(s / 60)
@@ -60,7 +79,9 @@ export default function AiStudio() {
     [holding, setHolding] = useState(false),
     [remaining, setRemaining] = useState(600),
     [turns, setTurns] = useState<Turn[]>([]),
-    [input, setInput] = useState("");
+    [input, setInput] = useState(""),
+    [connectionBusy, setConnectionBusy] = useState(false);
+  const connectionEpoch = useRef(new ConnectionEpoch());
   const audio = useRef<HTMLAudioElement>(null),
     pc = useRef<RTCPeerConnection | null>(null),
     dc = useRef<RTCDataChannel | null>(null),
@@ -91,6 +112,7 @@ export default function AiStudio() {
       .catch((e) => setError(e.message));
   }, [refresh]);
   function localClose() {
+    connectionEpoch.current.cancel();
     active.current = false;
     if (timer.current) clearInterval(timer.current);
     timer.current = null;
@@ -145,6 +167,7 @@ export default function AiStudio() {
   // pagehide uses keepalive; server watchdog independently expires abandoned calls.
   useEffect(() => {
     const leave = () => {
+      connectionEpoch.current.cancel();
       active.current = false;
       if (timer.current) clearInterval(timer.current);
       timer.current = null;
@@ -194,9 +217,22 @@ export default function AiStudio() {
         setError("대화 기억을 저장하지 못했어요. 연결 상태를 확인해 주세요."),
       );
   }
-  async function start(continuation = false) {
+  async function renew() {
+    const wasHolding = holdingRef.current;
+    const a = await stop(true);
+    if (a && a.remaining > 0) await start(true, wasHolding, true);
+  }
+  async function start(
+    continuation = false,
+    resumeHold = false,
+    automatic = false,
+  ) {
     if (busyRef.current || active.current || stopping.current) return;
     busyRef.current = true;
+    setConnectionBusy(true);
+    const attempt = connectionEpoch.current.begin();
+    holdingRef.current = resumeHold;
+    setHolding(resumeHold);
     setError("");
     setState("connecting");
     try {
@@ -204,15 +240,25 @@ export default function AiStudio() {
         throw new Error(
           "마이크를 사용할 수 없어요. 최신 Chrome 또는 Safari에서 열어 주세요.",
         );
-      stream.current = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
-      });
+      stream.current = await connectionEpoch.current.microphone(
+        attempt,
+        navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true },
+        }),
+      );
+      if (!connectionEpoch.current.current(attempt)) {
+        stream.current.getTracks().forEach((t) => t.stop());
+        stream.current = null;
+        throw new CancelledConnection();
+      }
       const peer = new RTCPeerConnection();
       pc.current = peer;
       stream.current
         .getTracks()
         .forEach((t) => peer.addTrack(t, stream.current!));
       peer.ontrack = (e) => {
+        if (pc.current !== peer || !connectionEpoch.current.current(attempt))
+          return;
         if (audio.current) {
           audio.current.srcObject = e.streams[0];
           void audio.current
@@ -221,19 +267,30 @@ export default function AiStudio() {
         }
       };
       peer.onconnectionstatechange = () => {
+        if (pc.current !== peer || !connectionEpoch.current.current(attempt))
+          return;
         if (
           peer.connectionState === "failed" ||
           peer.connectionState === "disconnected"
         ) {
           if (active.current) {
-            setError("연결이 끊어졌어요. 다시 시작해 주세요.");
-            void stop();
+            if (
+              deadline.current > 0 &&
+              deadline.current - performance.now() <= 1500
+            ) {
+              void renew();
+            } else {
+              setError("연결이 끊어졌어요. 다시 시작해 주세요.");
+              void stop();
+            }
           }
         }
       };
       const channel = peer.createDataChannel("oai-events");
       dc.current = channel;
       channel.onmessage = (e) => {
+        if (dc.current !== channel || !connectionEpoch.current.current(attempt))
+          return;
         let d;
         try {
           d = JSON.parse(e.data);
@@ -282,48 +339,65 @@ export default function AiStudio() {
       // Attach a handler immediately: negotiation may fail before opened is awaited.
       void opened.catch(() => {});
       const offer = await peer.createOffer();
+      connectionEpoch.current.assert(attempt);
       await peer.setLocalDescription(offer);
-      const result = await api("session", { sdp: offer.sdp, tutorId: tutor });
+      connectionEpoch.current.assert(attempt);
+      const result = await api("session", {
+        sdp: offer.sdp,
+        tutorId: tutor,
+        hold: resumeHold,
+      });
+      if (!connectionEpoch.current.current(attempt)) {
+        await api("session/stop", { sessionId: result.sessionId });
+        throw new CancelledConnection();
+      }
       session.current = result.sessionId;
-      deadline.current = Date.parse(result.deadline);
+      deadline.current =
+        performance.now() +
+        leaseMilliseconds(result.deadline, result.serverNow, result.seconds);
       await peer.setRemoteDescription({ type: "answer", sdp: result.sdp });
       await opened;
+      connectionEpoch.current.assert(attempt);
       if (!continuation) {
         history.current = [];
         setTurns([]);
       }
       const a = await refresh();
+      connectionEpoch.current.assert(attempt);
       dailyStart.current =
         a.remaining +
-        Math.max(0, Math.floor((deadline.current - Date.now()) / 1000));
-      started.current = Date.now();
+        Math.max(0, Math.floor((deadline.current - performance.now()) / 1000));
+      started.current = performance.now();
       active.current = true;
       setState("live");
-      channel.send(
-        JSON.stringify({
-          type: "response.create",
-          response: {
-            instructions: continuation
-              ? "The connection was refreshed. Briefly continue the last topic without a new greeting or repeating an already answered question."
-              : "Greet warmly in one short sentence. If there is previous conversation, ask whether to continue its last topic; otherwise ask one simple open-ended question about today.",
-          },
-        }),
-      );
+      if (!automatic && !resumeHold)
+        channel.send(
+          JSON.stringify({
+            type: "response.create",
+            response: {
+              instructions: continuation
+                ? "The connection was refreshed. Briefly continue the last topic without a new greeting or repeating an already answered question."
+                : "Greet warmly in one short sentence. If there is previous conversation, ask whether to continue its last topic; otherwise ask one simple open-ended question about today.",
+            },
+          }),
+        );
       timer.current = setInterval(() => {
         const left = Math.max(
           0,
           dailyStart.current -
-            Math.floor((Date.now() - started.current) / 1000),
+            Math.floor((performance.now() - started.current) / 1000),
         );
         setRemaining(left);
-        if (Date.now() >= deadline.current) {
-          void (async () => {
-            const a = await stop(true);
-            if (a && a.remaining > 0) await start(true);
-          })();
+        if (performance.now() >= deadline.current) {
+          void renew();
         }
       }, 500);
     } catch (e) {
+      if (
+        e instanceof CancelledConnection ||
+        !connectionEpoch.current.current(attempt)
+      )
+        return;
       await stop(true);
       setError(
         e instanceof DOMException && e.name === "NotFoundError"
@@ -336,6 +410,7 @@ export default function AiStudio() {
       );
     } finally {
       busyRef.current = false;
+      setConnectionBusy(false);
     }
   }
   function think() {
@@ -439,9 +514,7 @@ export default function AiStudio() {
       setBusy(false);
     }
   }
-  const paid =
-    !!account?.member?.valid_until &&
-    Date.parse(account.member.valid_until) > Date.now();
+  const paid = account?.activePass ?? false;
   return (
     <>
       <div className="tai-error" role="status" aria-live="polite">
@@ -592,17 +665,23 @@ export default function AiStudio() {
                     <button onClick={() => stop(true)}>일시정지</button>
                     <button onClick={() => stop(false)}>대화 종료</button>
                   </>
+                ) : state === "connecting" ? (
+                  <button onClick={() => stop(true)}>연결 취소</button>
                 ) : (
                   <button
                     disabled={
+                      connectionBusy ||
                       !paid ||
                       remaining < 1 ||
-                      state === "connecting" ||
                       account.member.status !== "active"
                     }
                     onClick={() => start(state === "paused")}
                   >
-                    {state === "paused" ? "이어서 대화" : "대화 시작"}
+                    {connectionBusy
+                      ? "연결 정리 중…"
+                      : state === "paused"
+                        ? "이어서 대화"
+                        : "대화 시작"}
                   </button>
                 )}
               </div>

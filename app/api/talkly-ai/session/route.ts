@@ -86,7 +86,7 @@ export async function POST(request: Request) {
             turn_detection: {
               type: "semantic_vad",
               eagerness: "low",
-              create_response: true,
+              create_response: data.hold !== true,
               interrupt_response: true,
             },
           },
@@ -141,9 +141,11 @@ export async function POST(request: Request) {
       }
       console.error("[TALKLY AI] watchdog termination failed", capturedSession);
     });
+    const answer = await upstream.text();
     return Response.json(
       {
-        sdp: await upstream.text(),
+        sdp: answer,
+        serverNow: new Date().toISOString(),
         sessionId,
         deadline: lease.deadline,
         seconds: lease.reserved_seconds,

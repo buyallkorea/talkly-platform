@@ -44,6 +44,8 @@ Payment approval uses server fixed price, owner-scoped orders, bound payment key
 ## Verification completed locally
 
 - Full TypeScript check.
+- `node tests/talkly-ai/client-connection.mjs`: cancellation of delayed microphone permission, replacement-attempt isolation, and lease countdown independent of PC wall-clock skew.
+- Client countdown uses server timestamps and monotonic browser time; pass validity is computed on the server. Connecting can be cancelled, and old data-channel events are ignored.
 - Applied schema verification: all four tables have RLS; all three RPCs are invoker functions with pinned search paths, executable only by service_role.
 - Actual database reservation/double-session/refund/idempotence smoke check succeeded inside a rolled-back transaction; no fixture rows remained.
 - `node tests/talkly-ai/test-access.mjs`: production/development exclusion, paid-mode exclusion, non-admin rejection, owner-only granting and preservation of a longer pass.
