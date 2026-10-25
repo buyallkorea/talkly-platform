@@ -8,10 +8,11 @@ import {
 export async function POST(request: Request) {
   try {
     const { user, db } = await context(request);
-    await requireMember(db, user.id);
     const data = await body(request);
     if (typeof data.consent !== "boolean")
       throw new AiError("학습 요약 저장 안내를 확인해 주세요.");
+    // Withdrawal must remain available even if an older member has not renewed consent.
+    await requireMember(db, user.id, data.consent);
     let query = db
       .from("ai_members")
       .update({

@@ -5,7 +5,12 @@ import {
   monthlyReportsEnabled,
 } from "@/lib/talkly-ai/server";
 import { summaryRetentionCutoff } from "@/lib/talkly-ai/reports";
-import { seoulDay, PLAN, TRIAL_SECONDS } from "@/lib/talkly-ai/config";
+import {
+  seoulDay,
+  PLAN,
+  TRIAL_SECONDS,
+  CONSENT_VERSION,
+} from "@/lib/talkly-ai/config";
 export const dynamic = "force-dynamic";
 export async function GET() {
   try {
@@ -13,7 +18,9 @@ export async function GET() {
     const [member, usage, payments, profile, publication] = await Promise.all([
       db
         .from("ai_members")
-        .select("status,valid_until,last_tutor_id,memory,trial_used_seconds")
+        .select(
+          "status,valid_until,last_tutor_id,memory,trial_used_seconds,consent_version",
+        )
         .eq("user_id", user.id)
         .maybeSingle(),
       db
@@ -52,6 +59,8 @@ export async function GET() {
     return Response.json(
       {
         member: member.data,
+        needsAdultConsent:
+          !!member.data && member.data.consent_version !== CONSENT_VERSION,
         latestReport: publication.error ? null : publication.data,
         activePass,
         trialRemaining,

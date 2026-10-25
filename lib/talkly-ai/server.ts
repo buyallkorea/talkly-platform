@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { CONSENT_VERSION } from "./config";
 export class AiError extends Error {
   constructor(
     message: string,
@@ -72,6 +73,7 @@ export async function body(request: Request) {
 export async function requireMember(
   db: ReturnType<typeof createAdminClient>,
   id: string,
+  requireCurrentConsent = true,
 ) {
   const { data, error } = await db
     .from("ai_members")
@@ -81,6 +83,11 @@ export async function requireMember(
   if (error) throw new AiError("AI 가입 정보를 확인하지 못했어요.", 503);
   if (!data || data.status !== "active")
     throw new AiError("AI 전용 가입을 먼저 완료해 주세요.", 403);
+  if (requireCurrentConsent && data.consent_version !== CONSENT_VERSION)
+    throw new AiError(
+      "만 19세 이상 이용 안내를 확인하고 AI 가입 동의를 완료해 주세요.",
+      403,
+    );
   return data;
 }
 export async function hangup(callId: string) {

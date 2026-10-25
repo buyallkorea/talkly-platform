@@ -9,6 +9,7 @@ import {
 } from "@/lib/talkly-ai/client-connection";
 import { TurnCoordinator } from "@/lib/talkly-ai/turn-coordinator";
 type Account = {
+  needsAdultConsent: boolean;
   latestReport: null | { month: string; published_at: string };
   activePass: boolean;
   trialRemaining: number;
@@ -74,6 +75,7 @@ export default function AiStudio() {
   const [account, setAccount] = useState<Account | null>(null),
     [error, setError] = useState(""),
     [consent, setConsent] = useState(false),
+    [adultConfirmed, setAdultConfirmed] = useState(false),
     [busy, setBusy] = useState(false),
     [tutor, setTutor] = useState("us-female"),
     [state, setState] = useState<"idle" | "connecting" | "live" | "paused">(
@@ -481,7 +483,7 @@ export default function AiStudio() {
     setBusy(true);
     setError("");
     try {
-      await api("join", { consent, version: CONSENT_VERSION });
+      await api("join", { consent, adultConfirmed, version: CONSENT_VERSION });
       await refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -572,9 +574,13 @@ export default function AiStudio() {
             상태 다시 확인
           </button>
         </section>
-      ) : !account.member ? (
+      ) : !account.member || account.needsAdultConsent ? (
         <section className="tai-card">
-          <h2>AI 회화에 가입하기</h2>
+          <h2>{account.member ? "AI 이용 대상 확인" : "AI 회화에 가입하기"}</h2>
+          <p>
+            초기 TALKLY AI는 만 19세 이상 성인에게 제공합니다. 미성년자와 자녀의
+            AI 이용은 아직 지원하지 않아요.
+          </p>
           <p>
             AI 음성·자막은 OpenAI에서 처리돼요. 녹음 파일은 저장하지 않으며,
             다음 대화를 이어가기 위해 마지막 대화 최대 20개 발언을 저장해요.
@@ -588,6 +594,14 @@ export default function AiStudio() {
           <label>
             <input
               type="checkbox"
+              checked={adultConfirmed}
+              onChange={(e) => setAdultConfirmed(e.target.checked)}
+            />{" "}
+            저는 만 19세 이상이며, 제 계정으로 직접 이용합니다.
+          </label>
+          <label>
+            <input
+              type="checkbox"
               checked={consent}
               onChange={(e) => setConsent(e.target.checked)}
             />{" "}
@@ -596,8 +610,10 @@ export default function AiStudio() {
             <Link href="/talkly-ai/privacy">AI 정보 처리 안내</Link>을 확인하고
             동의합니다.
           </label>
-          <button disabled={!consent || busy} onClick={join}>
-            가입하고 3분 무료 체험
+          <button disabled={!consent || !adultConfirmed || busy} onClick={join}>
+            {account.member
+              ? "확인하고 회화로 돌아가기"
+              : "가입하고 3분 무료 체험"}
           </button>
         </section>
       ) : (

@@ -48,6 +48,7 @@ export default function TalklyAiPage() {
             <span>어제의 이야기를 이어가요</span>
             <span>가입하면 3분 무료 체험</span>
             <span>5개국 AI 튜터</span>
+            <span>만 19세 이상 성인 대상</span>
           </div>
         </div>
         <aside>

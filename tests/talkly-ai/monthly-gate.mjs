@@ -65,9 +65,10 @@ globalThis.monthlyGate = {
   seoulDay: () => "",
   PLAN: { dailySeconds: 600 },
   TRIAL_SECONDS: 180,
+  CONSENT_VERSION: "2026-10-25-v2-adult19",
 };
 const js = ts.transpileModule(
-  "const {context,failure,previewTestMode,monthlyReportsEnabled,summaryRetentionCutoff,seoulDay,PLAN,TRIAL_SECONDS}=globalThis.monthlyGate;\n" +
+  "const {context,failure,previewTestMode,monthlyReportsEnabled,summaryRetentionCutoff,seoulDay,PLAN,TRIAL_SECONDS,CONSENT_VERSION}=globalThis.monthlyGate;\n" +
     code,
   {
     compilerOptions: {
