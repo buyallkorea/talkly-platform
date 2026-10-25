@@ -9,12 +9,18 @@ import {
 } from "@/lib/talkly-ai/server";
 import { closeSession } from "@/lib/talkly-ai/session";
 import { TUTORS, tutorInstructions } from "@/lib/talkly-ai/config";
+import { queueApiEvent, API_MODELS } from "@/lib/talkly-ai/api-events";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 export async function POST(request: Request) {
   let owner: string | undefined,
     sessionId: string | undefined,
     callId: string | undefined;
+  let providerStarted: number | undefined,
+    providerStatus: number | undefined,
+    providerDuration: number | undefined,
+    succeeded = false,
+    timedOut = false;
   try {
     const { user, db } = await context(request);
     owner = user.id;
@@ -60,7 +66,7 @@ export async function POST(request: Request) {
       "session",
       JSON.stringify({
         type: "realtime",
-        model: "gpt-realtime-2.1-mini",
+        model: API_MODELS.voice_connect,
         instructions: tutorInstructions(tutor.id, member.memory),
         tools: [
           {
@@ -95,12 +101,15 @@ export async function POST(request: Request) {
         },
       }),
     );
+    providerStarted = Date.now();
     const upstream = await fetch("https://api.openai.com/v1/realtime/calls", {
       method: "POST",
       headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
       body: form,
       signal: AbortSignal.timeout(25000),
     });
+    providerStatus = upstream.status;
+    providerDuration = Date.now() - providerStarted;
     if (!upstream.ok)
       throw new AiError(
         "선택한 음성 모델 연결에 실패했어요. 관리자에게 모델 권한·API 이용 한도를 확인해 달라고 알려주세요.",
@@ -152,6 +161,7 @@ export async function POST(request: Request) {
       console.error("[TALKLY AI] watchdog termination failed", capturedSession);
     });
     const answer = await upstream.text();
+    succeeded = true;
     return Response.json(
       {
         sdp: answer,
@@ -163,6 +173,8 @@ export async function POST(request: Request) {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (e) {
+    timedOut =
+      e instanceof Error && ["TimeoutError", "AbortError"].includes(e.name);
     if (callId) {
       try {
         await hangup(callId);
@@ -179,5 +191,15 @@ export async function POST(request: Request) {
       }
     }
     return failure(e);
+  } finally {
+    if (providerStarted !== undefined && sessionId)
+      queueApiEvent({
+        sessionId,
+        kind: "voice_connect",
+        outcome: succeeded ? "succeeded" : "failed",
+        httpStatus: providerStatus,
+        durationMs: providerDuration ?? Date.now() - providerStarted,
+        timedOut,
+      });
   }
 }

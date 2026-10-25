@@ -6,6 +6,7 @@ import {
   AiError,
 } from "@/lib/talkly-ai/server";
 import { summaryTurns, validateSummary } from "@/lib/talkly-ai/reports";
+import { queueApiEvent, API_MODELS } from "@/lib/talkly-ai/api-events";
 export const maxDuration = 40;
 export async function POST(request: Request) {
   try {
@@ -44,7 +45,14 @@ export async function POST(request: Request) {
     if (claim?.code === "23505")
       return Response.json({ status: "already_requested" });
     if (claim) throw claim;
+    let providerStarted: number | undefined,
+      providerStatus: number | undefined,
+      providerDuration: number | undefined,
+      usage: unknown,
+      succeeded = false,
+      timedOut = false;
     try {
+      providerStarted = Date.now();
       const r = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: {
@@ -53,7 +61,7 @@ export async function POST(request: Request) {
         },
         signal: AbortSignal.timeout(20000),
         body: JSON.stringify({
-          model: "gpt-4.1-mini",
+          model: API_MODELS.learning_summary,
           store: false,
           max_output_tokens: 900,
           instructions:
@@ -95,8 +103,11 @@ export async function POST(request: Request) {
           },
         }),
       });
+      providerStatus = r.status;
+      providerDuration = Date.now() - providerStarted;
       if (!r.ok) throw new Error("Summary provider failed");
       const result = await r.json();
+      usage = result.usage;
       if (result.status !== "completed") throw new Error("Incomplete summary");
       const output = result.output
         ?.flatMap(
@@ -117,8 +128,12 @@ export async function POST(request: Request) {
         },
       );
       if (save) throw save;
+      succeeded = true;
       return Response.json({ status: stored ? "ready" : "not_saved" });
-    } catch {
+    } catch (summaryError) {
+      timedOut =
+        summaryError instanceof Error &&
+        ["TimeoutError", "AbortError"].includes(summaryError.name);
       await db
         .from("ai_learning_summaries")
         .update({ status: "failed" })
@@ -129,6 +144,17 @@ export async function POST(request: Request) {
         "회화는 종료됐지만 학습 요약을 저장하지 못했어요.",
         503,
       );
+    } finally {
+      if (providerStarted !== undefined)
+        queueApiEvent({
+          sessionId: s.id,
+          kind: "learning_summary",
+          outcome: succeeded ? "succeeded" : "failed",
+          httpStatus: providerStatus,
+          durationMs: providerDuration ?? Date.now() - providerStarted,
+          timedOut,
+          usage,
+        });
     }
   } catch (e) {
     return failure(e);

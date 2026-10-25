@@ -7,18 +7,21 @@ const reportSource = (
     "utf8",
   )
 ).replace(/^import .*;$/m, "");
-const routeSource = (
-  await readFile(
-    new URL(
-      "../../app/api/talkly-ai/session/summary/route.ts",
-      import.meta.url,
-    ),
-    "utf8",
-  )
-)
-  .replace(/^import[\s\S]*?from "@\/lib\/talkly-ai\/server";\n/, "")
-  .replace(/^import .*reports";\n/m, "");
-const prelude = `const {context,body,requireMember,failure,AiError}=globalThis.summaryHarness;`;
+const routeText = await readFile(
+  new URL("../../app/api/talkly-ai/session/summary/route.ts", import.meta.url),
+  "utf8",
+);
+const routeAst = ts.createSourceFile(
+  "summary.ts",
+  routeText,
+  ts.ScriptTarget.Latest,
+  true,
+);
+const routeSource = routeAst.statements
+  .filter((node) => !ts.isImportDeclaration(node))
+  .map((node) => node.getText(routeAst))
+  .join("\n");
+const prelude = `const {context,body,requireMember,failure,AiError,queueApiEvent,API_MODELS}=globalThis.summaryHarness;`;
 const js = ts.transpileModule(prelude + reportSource + "\n" + routeSource, {
   compilerOptions: {
     module: ts.ModuleKind.ESNext,
@@ -79,6 +82,11 @@ const db = {
   },
 };
 globalThis.summaryHarness = {
+  queueApiEvent: () => {},
+  API_MODELS: {
+    voice_connect: "gpt-realtime-2.1-mini",
+    learning_summary: "gpt-4.1-mini",
+  },
   AiError,
   context: async () => ({ user: { id: "owner" }, db }),
   body: async (r) => r.json(),

@@ -13,6 +13,14 @@ const actionStateLabels: Record<string, string> = {
   completed: "종료·정산 완료",
   failed: "종료·정산 확인 실패",
 };
+const apiFailureLabels: Record<string, string> = {
+  access: "접근 권한",
+  rate_limit: "요청 한도",
+  provider: "제공업체 오류",
+  request_rejected: "요청 거부",
+  timeout: "응답 시간 초과",
+  other: "추가 확인 필요",
+};
 export default async function AdminAiPage() {
   const {
     data: { user },
@@ -41,44 +49,58 @@ export default async function AdminAiPage() {
       </section>
     );
   const db = createAdminClient();
-  const [members, payments, usage, outreachQueue, liveSessions, adminActions] =
-    await Promise.all([
-      db
-        .from("ai_members")
-        .select(
-          "user_id,status,consented_at,consent_version,valid_until,last_tutor_id,trial_used_seconds",
-        )
-        .order("created_at", { ascending: false })
-        .limit(100),
-      db
-        .from("ai_payments")
-        .select("user_id,order_id,amount,status,approved_at,created_at")
-        .order("created_at", { ascending: false })
-        .limit(100),
-      db
-        .from("ai_daily_usage")
-        .select("user_id,day,used_seconds")
-        .order("day", { ascending: false })
-        .limit(100),
-      db
-        .from("ai_outreach_outbox")
-        .select("id,kind,channel,state,created_at")
-        .order("created_at", { ascending: false })
-        .limit(100),
-      db
-        .from("ai_sessions")
-        .select("id,user_id,state,started_at,deadline,entitlement")
-        .neq("state", "closed")
-        .order("started_at", { ascending: true })
-        .limit(100),
-      db
-        .from("ai_session_admin_actions")
-        .select(
-          "id,actor_id,user_id,session_id,reason,state,created_at,finished_at",
-        )
-        .order("created_at", { ascending: false })
-        .limit(100),
-    ]);
+  const [
+    members,
+    payments,
+    usage,
+    outreachQueue,
+    liveSessions,
+    adminActions,
+    apiEvents,
+  ] = await Promise.all([
+    db
+      .from("ai_members")
+      .select(
+        "user_id,status,consented_at,consent_version,valid_until,last_tutor_id,trial_used_seconds",
+      )
+      .order("created_at", { ascending: false })
+      .limit(100),
+    db
+      .from("ai_payments")
+      .select("user_id,order_id,amount,status,approved_at,created_at")
+      .order("created_at", { ascending: false })
+      .limit(100),
+    db
+      .from("ai_daily_usage")
+      .select("user_id,day,used_seconds")
+      .order("day", { ascending: false })
+      .limit(100),
+    db
+      .from("ai_outreach_outbox")
+      .select("id,kind,channel,state,created_at")
+      .order("created_at", { ascending: false })
+      .limit(100),
+    db
+      .from("ai_sessions")
+      .select("id,user_id,state,started_at,deadline,entitlement")
+      .neq("state", "closed")
+      .order("started_at", { ascending: true })
+      .limit(100),
+    db
+      .from("ai_session_admin_actions")
+      .select(
+        "id,actor_id,user_id,session_id,reason,state,created_at,finished_at",
+      )
+      .order("created_at", { ascending: false })
+      .limit(100),
+    db
+      .from("ai_api_events")
+      .select(
+        "kind,model,outcome,failure_kind,http_status,duration_ms,input_tokens,output_tokens,cached_input_tokens,created_at",
+      )
+      .order("created_at", { ascending: false })
+      .limit(1000),
+  ]);
   if (members.error || payments.error || usage.error)
     return (
       <section>
@@ -146,6 +168,101 @@ export default async function AdminAiPage() {
     <section>
       <h1>TALKLY AI 운영</h1>
       <p>하루 10분 · 30일 13,900원 · 수동 재결제 / 각 목록 최근 100건</p>
+      <section>
+        <h2>API 요청·사용량 관찰</h2>
+        <p>
+          저장된 최근 1,000건 기준입니다. 기록이 누락될 수 있어 전체 요청 수나
+          실제 청구액을 뜻하지 않습니다. 요약 생성의 서버 응답에서 확인된 토큰만
+          표시하며, 음성 대화·자막 전사의 토큰과 비용은 집계하지 않습니다.
+        </p>
+        {apiEvents.error ? (
+          <p>API 처리 기록을 불러오지 못했습니다.</p>
+        ) : (
+          <>
+            <ul>
+              {["voice_connect", "learning_summary"].map((kind) => {
+                const rows = (apiEvents.data ?? []).filter(
+                  (event) => event.kind === kind,
+                );
+                return (
+                  <li key={kind}>
+                    {kind === "voice_connect"
+                      ? "음성 연결 준비"
+                      : "학습 요약 생성"}
+                    : 기록 {rows.length}건 · 실패{" "}
+                    {rows.filter((event) => event.outcome === "failed").length}
+                    건
+                  </li>
+                );
+              })}
+            </ul>
+            <p>
+              확인된 요약 토큰: 입력{" "}
+              {(apiEvents.data ?? [])
+                .reduce((sum, event) => sum + (event.input_tokens ?? 0), 0)
+                .toLocaleString()}{" "}
+              · 출력{" "}
+              {(apiEvents.data ?? [])
+                .reduce((sum, event) => sum + (event.output_tokens ?? 0), 0)
+                .toLocaleString()}{" "}
+              · 입력 중 캐시{" "}
+              {(apiEvents.data ?? [])
+                .reduce(
+                  (sum, event) => sum + (event.cached_input_tokens ?? 0),
+                  0,
+                )
+                .toLocaleString()}
+              . 값이 없는 기록을 0 사용량으로 확정하지 않습니다.
+            </p>
+            <details>
+              <summary>요청 처리 기록 · 최근 50건</summary>
+              <div style={{ overflowX: "auto" }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>종류</th>
+                      <th>모델</th>
+                      <th>결과</th>
+                      <th>HTTP</th>
+                      <th>응답 시간</th>
+                      <th>입력 / 출력 토큰</th>
+                      <th>기록 시각 · 한국시간</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(apiEvents.data ?? []).slice(0, 50).map((event, index) => (
+                      <tr key={`${event.created_at}-${index}`}>
+                        <td>
+                          {event.kind === "voice_connect"
+                            ? "음성 연결"
+                            : "학습 요약"}
+                        </td>
+                        <td>{event.model}</td>
+                        <td>
+                          {event.outcome === "succeeded"
+                            ? "처리 성공"
+                            : `실패 (${apiFailureLabels[event.failure_kind ?? "other"] ?? "추가 확인 필요"})`}
+                        </td>
+                        <td>{event.http_status ?? "확인 안 됨"}</td>
+                        <td>{event.duration_ms}ms</td>
+                        <td>
+                          {event.input_tokens ?? "미수집"} /{" "}
+                          {event.output_tokens ?? "미수집"}
+                        </td>
+                        <td>
+                          {new Date(event.created_at).toLocaleString("ko-KR", {
+                            timeZone: "Asia/Seoul",
+                          })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </>
+        )}
+      </section>
       {liveSessions.error ? (
         <p>연결 현황을 불러오지 못했습니다.</p>
       ) : (

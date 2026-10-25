@@ -119,7 +119,13 @@ const db = {
     return q;
   },
 };
+const metadata = [];
 globalThis.negotiationHarness = {
+  queueApiEvent: (event) => metadata.push(event),
+  API_MODELS: {
+    voice_connect: "gpt-realtime-2.1-mini",
+    learning_summary: "gpt-4.1-mini",
+  },
   after: () => {
     scheduled++;
   },
@@ -136,7 +142,7 @@ globalThis.negotiationHarness = {
 };
 const { POST } = await compile(
   "app/api/talkly-ai/session/route.ts",
-  "const {after,AiError,body,context,failure,requireMember,hangup,closeSession,TUTORS,tutorInstructions}=globalThis.negotiationHarness;\n",
+  "const {after,AiError,body,context,failure,requireMember,hangup,closeSession,TUTORS,tutorInstructions,queueApiEvent,API_MODELS}=globalThis.negotiationHarness;\n",
 );
 const originalFetch = globalThis.fetch;
 const originalKey = process.env.OPENAI_API_KEY;
@@ -169,6 +175,10 @@ try {
   assert.equal((await response.json()).sdp, "sdp-answer");
   assert.equal(scheduled, 1);
   assert.equal(cleanup.length, 0);
+  assert.equal(metadata.length, 2);
+  assert.equal(metadata[0].outcome, "failed");
+  assert.equal(metadata[1].outcome, "succeeded");
+  assert.equal(metadata[1].httpStatus, 200);
 } finally {
   globalThis.fetch = originalFetch;
   if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
