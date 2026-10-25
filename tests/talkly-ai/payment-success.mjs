@@ -138,6 +138,25 @@ try {
   assert.equal(messages.length, pendingMessages);
   assert.equal(done.length, 0);
   reset();
+  cleanup = run();
+  await flush();
+  resolveFetch(
+    new Response(
+      JSON.stringify({
+        success: false,
+        terminal: true,
+        error: "승인 실패로 종료",
+      }),
+      { status: 409 },
+    ),
+  );
+  await flush();
+  assert.equal(allowed.at(-1), false);
+  assert.equal(done.length, 0);
+  assert.equal(urls.length, 0);
+  assert.equal(messages.at(-1), "승인 실패로 종료");
+  cleanup();
+  reset();
   globalThis.location.search = "";
   run();
   await flush();

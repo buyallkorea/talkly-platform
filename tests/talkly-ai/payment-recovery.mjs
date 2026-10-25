@@ -25,6 +25,7 @@ let calls = [],
   busy = [],
   refreshCalls = 0,
   resolveApi,
+  rejectApi,
   refreshError = false;
 const busyRef = { current: false },
   active = { current: false },
@@ -41,8 +42,9 @@ globalThis.recoveryHarness = {
   api: (path, data) => {
     assert.equal(path, "payment/confirm");
     calls.push(data);
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       resolveApi = resolve;
+      rejectApi = reject;
     });
   },
   refresh: async () => {
@@ -87,6 +89,18 @@ const retry = recoverPayment("order");
 resolveApi({ success: true, alreadyActivated: true });
 await retry;
 assert.ok(messages.at(-1).includes("반영은 확인"));
+assert.equal(busyRef.current, false);
+refreshError = false;
+const terminal = recoverPayment("order");
+rejectApi(Object.assign(new Error("승인 실패로 종료"), { terminal: true }));
+await terminal;
+assert.equal(messages.at(-1), "승인 실패로 종료");
+assert.equal(busyRef.current, false);
+refreshError = true;
+const terminalRefresh = recoverPayment("order");
+rejectApi(Object.assign(new Error("만료로 종료"), { terminal: true }));
+await terminalRefresh;
+assert.ok(messages.at(-1).includes("새로고침"));
 assert.equal(busyRef.current, false);
 stopping.current = true;
 const count = calls.length;

@@ -54,7 +54,11 @@ async function api(path: string, data?: unknown) {
       signal: controller.signal,
     });
     const result = await r.json();
-    if (!r.ok) throw new Error(result.error || "요청을 처리하지 못했어요.");
+    if (!r.ok)
+      throw Object.assign(
+        new Error(result.error || "요청을 처리하지 못했어요."),
+        { terminal: result.terminal === true },
+      );
     return result;
   } catch (e) {
     if (controller.signal.aborted)
@@ -590,6 +594,21 @@ export default function AiStudio() {
           : "승인된 결제를 확인해 이용권에 반영했어요.",
       );
     } catch (error) {
+      if (
+        error instanceof Error &&
+        "terminal" in error &&
+        error.terminal === true
+      ) {
+        try {
+          await refresh();
+          setPaymentMessage(error.message);
+        } catch {
+          setPaymentMessage(
+            error.message + " 내역은 새로고침해 확인해 주세요.",
+          );
+        }
+        return;
+      }
       setPaymentMessage(
         confirmed
           ? "이용권 반영은 확인했지만 내역을 새로 불러오지 못했어요. 페이지를 새로고침해 주세요."
@@ -904,7 +923,11 @@ export default function AiStudio() {
                       ? "결제 대기"
                       : p.status === "confirming"
                         ? "확인 중"
-                        : p.status}
+                        : p.status === "failed"
+                          ? "승인 실패·만료"
+                          : p.status === "cancelled"
+                            ? "취소됨"
+                            : p.status}
                   {p.status === "confirming" && (
                     <>
                       {" "}

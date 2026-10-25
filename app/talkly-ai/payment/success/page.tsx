@@ -44,6 +44,7 @@ export default function AiPaymentSuccess() {
       })
       .then(async (r) => {
         const d = await r.json();
+        if (d.terminal === true && !cancelled) setRetryAllowed(false);
         if (!r.ok || d.success !== true)
           throw new Error(d.error || "결제 상태를 확인하지 못했어요.");
         if (!cancelled) {

@@ -136,6 +136,42 @@ export async function POST(request: Request) {
         );
       payment = await response.json();
     }
+    // Resolve only verified, never-approved failures. Cancellation/refund of an
+    // approved purchase requires its separate entitlement reconciliation flow.
+    if (
+      ["ABORTED", "EXPIRED"].includes(payment?.status) &&
+      payment.approvedAt === null &&
+      payment.orderId === order.order_id &&
+      payment.paymentKey === paymentKey &&
+      payment.totalAmount === order.amount &&
+      payment.currency === "KRW"
+    ) {
+      const { data: failedOrder, error: failedError } = await db
+        .from("ai_payments")
+        .update({ status: "failed" })
+        .eq("id", order.id)
+        .eq("user_id", user.id)
+        .eq("payment_key", paymentKey)
+        .in("status", ["ready", "confirming", "failed"])
+        .is("approved_at", null)
+        .is("activated_until", null)
+        .select("id")
+        .maybeSingle();
+      if (failedError || !failedOrder)
+        throw new AiError(
+          "주문 상태가 변경되어 종료 여부를 확인하지 못했어요. 내역을 다시 확인해 주세요.",
+          409,
+        );
+      return Response.json(
+        {
+          success: false,
+          terminal: true,
+          error:
+            "이 주문은 결제 승인 실패 또는 유효시간 만료로 종료됐어요. 이용권은 추가되지 않았어요.",
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
     if (
       payment.status !== "DONE" ||
       payment.orderId !== order.order_id ||

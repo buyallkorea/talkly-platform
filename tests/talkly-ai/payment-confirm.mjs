@@ -12,6 +12,7 @@ let order,
   providerOverride = {},
   activationError = false,
   claimAllowed = true,
+  terminalAllowed = true,
   events = [];
 const orderId = "TALKLYAI-test-order",
   paymentKey = "test-payment-key";
@@ -29,11 +30,13 @@ function reset() {
   providerOverride = {};
   activationError = false;
   claimAllowed = true;
+  terminalAllowed = true;
   events = [];
 }
 const db = {
   from(table) {
     assert.equal(table, "ai_payments");
+    let updateValue;
     const q = {
       select() {
         return q;
@@ -46,15 +49,27 @@ const db = {
       },
       single: async () => ({ data: order, error: null }),
       update(value) {
-        events.push(["claim", value]);
+        updateValue = value;
+        events.push([value.status === "failed" ? "terminal" : "claim", value]);
+        return q;
+      },
+      in(k, v) {
+        assert.deepEqual([k, v], ["status", ["ready", "confirming", "failed"]]);
         return q;
       },
       is(k, v) {
-        assert.deepEqual([k, v], ["payment_key", null]);
+        assert.equal(v, null);
+        assert.ok(
+          ["payment_key", "approved_at", "activated_until"].includes(k),
+        );
         return q;
       },
       maybeSingle: async () => ({
-        data: claimAllowed ? { id: order.id } : null,
+        data: (
+          updateValue?.status === "failed" ? terminalAllowed : claimAllowed
+        )
+          ? { id: order.id }
+          : null,
         error: null,
       }),
     };
@@ -195,6 +210,33 @@ try {
       events.some((e) => e[0] === "activate"),
       false,
     );
+  }
+  for (const terminal of ["ABORTED", "EXPIRED"]) {
+    reset();
+    lookupStatus = terminal;
+    providerOverride = { approvedAt: null };
+    const response = await request();
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).terminal, true);
+    assert.deepEqual(events, [["lookup"], ["terminal", { status: "failed" }]]);
+    for (const override of [
+      { totalAmount: 1 },
+      { currency: "USD" },
+      { orderId: "other-order" },
+      { paymentKey: "other-key" },
+      { approvedAt: "2026-10-25T00:00:00Z" },
+    ]) {
+      reset();
+      lookupStatus = terminal;
+      providerOverride = { approvedAt: null, ...override };
+      assert.equal((await request()).status, 409);
+      assert.deepEqual(events, [["lookup"]]);
+    }
+    reset();
+    lookupStatus = terminal;
+    providerOverride = { approvedAt: null };
+    terminalAllowed = false;
+    assert.equal((await request()).status, 409);
   }
   reset();
   order.payment_key = null;
