@@ -2,11 +2,17 @@ import { getCurrentUser } from "@/lib/server-user";
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { notFound } from "next/navigation";
+import SessionOperations from "./SessionOperations";
 import {
   outreachCandidate,
   OUTREACH_DRAFTS,
 } from "@/lib/talkly-ai/reengagement";
 export const dynamic = "force-dynamic";
+const actionStateLabels: Record<string, string> = {
+  started: "시작됨 · 결과 확인 필요",
+  completed: "종료·정산 완료",
+  failed: "종료·정산 확인 실패",
+};
 export default async function AdminAiPage() {
   const {
     data: { user },
@@ -35,30 +41,44 @@ export default async function AdminAiPage() {
       </section>
     );
   const db = createAdminClient();
-  const [members, payments, usage, outreachQueue] = await Promise.all([
-    db
-      .from("ai_members")
-      .select(
-        "user_id,status,consented_at,consent_version,valid_until,last_tutor_id,trial_used_seconds",
-      )
-      .order("created_at", { ascending: false })
-      .limit(100),
-    db
-      .from("ai_payments")
-      .select("user_id,order_id,amount,status,approved_at,created_at")
-      .order("created_at", { ascending: false })
-      .limit(100),
-    db
-      .from("ai_daily_usage")
-      .select("user_id,day,used_seconds")
-      .order("day", { ascending: false })
-      .limit(100),
-    db
-      .from("ai_outreach_outbox")
-      .select("id,kind,channel,state,created_at")
-      .order("created_at", { ascending: false })
-      .limit(100),
-  ]);
+  const [members, payments, usage, outreachQueue, liveSessions, adminActions] =
+    await Promise.all([
+      db
+        .from("ai_members")
+        .select(
+          "user_id,status,consented_at,consent_version,valid_until,last_tutor_id,trial_used_seconds",
+        )
+        .order("created_at", { ascending: false })
+        .limit(100),
+      db
+        .from("ai_payments")
+        .select("user_id,order_id,amount,status,approved_at,created_at")
+        .order("created_at", { ascending: false })
+        .limit(100),
+      db
+        .from("ai_daily_usage")
+        .select("user_id,day,used_seconds")
+        .order("day", { ascending: false })
+        .limit(100),
+      db
+        .from("ai_outreach_outbox")
+        .select("id,kind,channel,state,created_at")
+        .order("created_at", { ascending: false })
+        .limit(100),
+      db
+        .from("ai_sessions")
+        .select("id,user_id,state,started_at,deadline,entitlement")
+        .neq("state", "closed")
+        .order("started_at", { ascending: true })
+        .limit(100),
+      db
+        .from("ai_session_admin_actions")
+        .select(
+          "id,actor_id,user_id,session_id,reason,state,created_at,finished_at",
+        )
+        .order("created_at", { ascending: false })
+        .limit(100),
+    ]);
   if (members.error || payments.error || usage.error)
     return (
       <section>
@@ -66,17 +86,26 @@ export default async function AdminAiPage() {
         <p>AI 관리 정보를 불러오지 못했습니다. DB 적용 상태를 확인해 주세요.</p>
       </section>
     );
-  const ids = [...new Set((members.data ?? []).map((m) => m.user_id))];
+  const memberIds = [...new Set((members.data ?? []).map((m) => m.user_id))];
+  const ids = [
+    ...new Set([
+      ...memberIds,
+      ...(liveSessions.data ?? []).map((s) => s.user_id),
+      ...(adminActions.data ?? []).flatMap((a) =>
+        [a.actor_id, a.user_id].filter((id): id is string => !!id),
+      ),
+    ]),
+  ];
   const { data: names } = ids.length
     ? await db.from("profiles").select("id,name,role").in("id", ids)
     : { data: [] };
   const nameMap = new Map((names ?? []).map((n) => [n.id, n.name]));
   const name = (id: string) => nameMap.get(id) || id;
-  const { data: activity, error: activityError } = ids.length
+  const { data: activity, error: activityError } = memberIds.length
     ? await db
         .from("ai_sessions")
         .select("user_id,state,ended_at,charged_seconds")
-        .in("user_id", ids)
+        .in("user_id", memberIds)
         .order("started_at", { ascending: false })
         .limit(1000)
     : { data: [], error: null };
@@ -117,6 +146,65 @@ export default async function AdminAiPage() {
     <section>
       <h1>TALKLY AI 운영</h1>
       <p>하루 10분 · 30일 13,900원 · 수동 재결제 / 각 목록 최근 100건</p>
+      {liveSessions.error ? (
+        <p>연결 현황을 불러오지 못했습니다.</p>
+      ) : (
+        <SessionOperations
+          sessions={(liveSessions.data ?? []).map((s) => ({
+            id: s.id,
+            state: s.state,
+            started_at: s.started_at,
+            deadline: s.deadline,
+            entitlement: s.entitlement,
+            name: name(s.user_id),
+          }))}
+        />
+      )}
+      <details>
+        <summary>관리자 연결 정리 이력 · 최근 100건</summary>
+        {adminActions.error ? (
+          <p>처리 이력을 불러오지 못했습니다.</p>
+        ) : !adminActions.data?.length ? (
+          <p>처리 이력이 없습니다.</p>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>처리자</th>
+                  <th>대상 회원</th>
+                  <th>사유</th>
+                  <th>결과</th>
+                  <th>요청 시각 · 한국시간</th>
+                </tr>
+              </thead>
+              <tbody>
+                {adminActions.data.map((action) => (
+                  <tr key={action.id}>
+                    <td>
+                      {action.actor_id ? name(action.actor_id) : "삭제된 계정"}
+                    </td>
+                    <td>
+                      {action.user_id ? name(action.user_id) : "삭제된 계정"}
+                    </td>
+                    <td>
+                      {action.reason === "connection_issue"
+                        ? "연결 장애"
+                        : "회원 요청"}
+                    </td>
+                    <td>{actionStateLabels[action.state] ?? action.state}</td>
+                    <td>
+                      {new Date(action.created_at).toLocaleString("ko-KR", {
+                        timeZone: "Asia/Seoul",
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </details>
       <section
         style={{
           border: "1px solid #d8b4fe",
@@ -192,9 +280,9 @@ export default async function AdminAiPage() {
           </p>
         )}
         <p>
-          현재 별도 이메일·카카오 광고 수신동의와 발송 이력 저장이 연결되지 않아
-          발송 가능 대상은 0명입니다. 관리자·강사·정지 회원·성인 이용 확인 전
-          회원·이용 중인 회원·결제 확인 중인 회원은 제외합니다.
+          채널별 동의 저장과 대기열은 준비됐지만 신규 동의·자동 등록·실제 발송은
+          비활성화 상태입니다. 관리자·강사·정지 회원·성인 이용 확인 전 회원·이용
+          중인 회원·결제 확인 중인 회원은 제외합니다.
         </p>
         <p>
           기본안: 체험 후 안내는 회원당 1회, 만료 안내는 이용권 만료 회차당 1회.
