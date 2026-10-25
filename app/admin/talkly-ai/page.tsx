@@ -35,7 +35,7 @@ export default async function AdminAiPage() {
       </section>
     );
   const db = createAdminClient();
-  const [members, payments, usage] = await Promise.all([
+  const [members, payments, usage, outreachQueue] = await Promise.all([
     db
       .from("ai_members")
       .select(
@@ -52,6 +52,11 @@ export default async function AdminAiPage() {
       .from("ai_daily_usage")
       .select("user_id,day,used_seconds")
       .order("day", { ascending: false })
+      .limit(100),
+    db
+      .from("ai_outreach_outbox")
+      .select("id,kind,channel,state,created_at")
+      .order("created_at", { ascending: false })
       .limit(100),
   ]);
   if (members.error || payments.error || usage.error)
@@ -121,14 +126,51 @@ export default async function AdminAiPage() {
         }}
       >
         <h2>재이용·재결제 안내 준비</h2>
+        <h3>발송 대기열 · 최근 100건</h3>
+        {outreachQueue.error ? (
+          <p>대기열을 불러오지 못했습니다.</p>
+        ) : (
+          <>
+            <p>
+              자동 등록·발송은 연결 전입니다. 아래 수치는 실제 저장된 최근
+              기록의 상태이며 전체 집계가 아닙니다.
+            </p>
+            <ul>
+              {Object.entries({
+                pending: "대기 중",
+                sending: "발송 처리 중",
+                accepted: "발송업체 접수",
+                failed: "실패",
+                unknown: "결과 확인 필요",
+                skipped: "제외됨",
+              }).map(([state, label]) => (
+                <li key={state}>
+                  {label}:{" "}
+                  {
+                    (outreachQueue.data ?? []).filter(
+                      (row) => row.state === state,
+                    ).length
+                  }
+                  건
+                </li>
+              ))}
+            </ul>
+            <p>
+              발송업체 접수는 전달 완료가 아닙니다. 결과가 불명확한 건은 자동
+              재시도하지 않습니다.
+            </p>
+          </>
+        )}
         <p>
           <strong>실제 발송 OFF</strong> · 관리자 검토용 대상 조건과 문안입니다.
         </p>
         <p>
-          기존 토클리 SOLAPI 계정: {existingSolapiConfigured
+          기존 토클리 SOLAPI 계정:{" "}
+          {existingSolapiConfigured
             ? "이 배포에 설정됨 — 기존 계정 재사용 예정"
-            : "이 배포에는 설정되지 않음 — 운영 설정과 별도 확인 필요"}.
-          설정 유무만 확인하며 실제 발송 연결이나 카카오 승인을 검증한 것은 아닙니다.
+            : "이 배포에는 설정되지 않음 — 운영 설정과 별도 확인 필요"}
+          . 설정 유무만 확인하며 실제 발송 연결이나 카카오 승인을 검증한 것은
+          아닙니다.
         </p>
         <p>
           카카오 발신프로필·광고 메시지 사용 가능 여부는 기존 SOLAPI 계정에서
