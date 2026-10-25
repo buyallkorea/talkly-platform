@@ -9,6 +9,7 @@ import {
 } from "@/lib/talkly-ai/client-connection";
 type Account = {
   activePass: boolean;
+  trialRemaining: number;
   canTestAccess: boolean;
   paymentsEnabled: boolean;
   member: null | {
@@ -367,6 +368,7 @@ export default function AiStudio() {
       dailyStart.current =
         a.remaining +
         Math.max(0, Math.floor((deadline.current - performance.now()) / 1000));
+      setRemaining(dailyStart.current);
       started.current = performance.now();
       active.current = true;
       setState("live");
@@ -523,7 +525,10 @@ export default function AiStudio() {
       {!account ? (
         <section className="tai-card">
           <h2>TALKLY 계정으로 시작해요</h2>
-          <p>로그인은 함께 사용하고, AI 가입과 이용권은 별도로 관리해요.</p>
+          <p>
+            AI 가입을 완료하면 결제 없이 계정당 3분 무료 체험이 제공돼요. TALKLY
+            로그인은 함께 사용해요.
+          </p>
           <Link className="tai-button" href="/login?next=/talkly-ai">
             로그인
           </Link>{" "}
@@ -557,7 +562,7 @@ export default function AiStudio() {
             동의합니다.
           </label>
           <button disabled={!consent || busy} onClick={join}>
-            AI 회원으로 가입
+            가입하고 3분 무료 체험
           </button>
         </section>
       ) : (
@@ -579,11 +584,19 @@ export default function AiStudio() {
           )}
           <section className="tai-account">
             <div>
-              <b>{paid ? "이용권 사용 중" : "30일 이용권"}</b>
+              <b>
+                {paid
+                  ? "이용권 사용 중"
+                  : remaining > 0
+                    ? "가입 혜택 · 3분 무료 체험"
+                    : "무료 체험 완료"}
+              </b>
               <p>
                 {paid
                   ? `만료: ${new Date(account.member.valid_until!).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
-                  : "하루 10분, 30일 13,900원"}
+                  : remaining > 0
+                    ? "결제 없이 체험하세요. 일시정지 후 남은 시간을 이어 쓸 수 있어요."
+                    : "계정당 1회 제공되는 3분 체험을 모두 사용했어요."}
               </p>
             </div>
             <button
@@ -602,8 +615,15 @@ export default function AiStudio() {
                   : "이용권 구매"}
             </button>
             <div>
-              <b>오늘 남은 시간 {clock(remaining)}</b>
-              <p>사용하지 않은 시간은 이월되지 않아요.</p>
+              <b>
+                {paid ? "오늘 남은 시간" : "무료 체험 남은 시간"}{" "}
+                {clock(remaining)}
+              </b>
+              <p>
+                {paid
+                  ? "사용하지 않은 시간은 이월되지 않아요."
+                  : "무료 체험은 매일 초기화되지 않아요."}
+              </p>
             </div>
           </section>
           <div className="tai-grid">
@@ -671,7 +691,6 @@ export default function AiStudio() {
                   <button
                     disabled={
                       connectionBusy ||
-                      !paid ||
                       remaining < 1 ||
                       account.member.status !== "active"
                     }
@@ -681,7 +700,9 @@ export default function AiStudio() {
                       ? "연결 정리 중…"
                       : state === "paused"
                         ? "이어서 대화"
-                        : "대화 시작"}
+                        : !paid
+                          ? "3분 무료 체험 시작"
+                          : "대화 시작"}
                   </button>
                 )}
               </div>

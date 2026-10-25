@@ -4,7 +4,8 @@
 
 - `/talkly-ai`: separate AI section; homepage desktop and mobile shortcuts and lower promotional banner.
 - Existing Supabase login is reused. AI membership, consent, pass, orders, daily usage and sessions have separate tables; existing classroom enrollment/payment tables are unchanged.
-- One plan: KRW 13,900 / 30 days, 600 connected seconds per Asia/Seoul calendar day. No automatic renewal, no daily rollover. Payment extends from the later of current expiration and approval processing time. It does not reset today's quota.
+- Signup benefit: one lifetime 180-second free trial per AI membership, no payment, no daily reset; unused seconds remain after pausing. It is separate from the admin test pass.
+- One paid plan: KRW 13,900 / 30 days, 600 connected seconds per Asia/Seoul calendar day. No automatic renewal, no daily rollover. Payment extends from the later of current expiration and approval processing time. It does not reset today's quota.
 - Ten AI tutor profiles (US/UK/AU/CA/ZA, male/female presentations) use cedar/marin plus locale prompts. These are AI personalities, not ten recorded native speakers. Accent fidelity needs listening tests.
 - `gpt-realtime-2.1-mini`; semantic VAD low eagerness; no unsolicited idle timeout. Thinking control suppresses automatic responses; pause disconnects and settles usage. Paused time is not charged.
 - Last 20 text turns (max 1,000 characters each), kept only in member memory, are passed as explicitly untrusted previous-conversation data. Audio recordings are not stored by TALKLY AI. Provider processing is disclosed at AI enrollment. No validated pronunciation scores.
@@ -31,6 +32,10 @@ New rollout gates, both default off:
 
 Deploying a changed environment requires a rebuild/redeploy. Never expose OpenAI, Toss secret or Supabase service keys to the client. Do not copy live Toss credentials into a test environment; use a matching Toss test-key pair for payment tests.
 
+## Signup trial rollout
+
+The restored signup-trial requirement is implemented by `supabase/migrations/20261025005457_talkly_ai_signup_trial.sql`, applied to the approved AI tables on 2026-10-25. `ai_members.trial_used_seconds` is a lifetime reserved/used counter capped at 180. `ai_sessions.entitlement` separates trial from paid usage. Active passes use paid daily minutes first. Failed negotiation and pause refund unused reservation; repeated signup does not reset the counter. Real DB trial grant/refund/exhaustion was checked in a rolled-back transaction. No payment record is created for a trial.
+
 ## Schema and quota enforcement
 
 Migration: `supabase/migrations/20261025002307_talkly_ai.sql`. It adds four RLS-enabled tables and three invoker RPCs. No changes to existing profiles, auth triggers, enrollment tables, or existing payment endpoints. All writes and payment secrets are server-only. RPC execution is revoked from PUBLIC/anon/authenticated and granted only to service_role. Own-row reads are granted only for non-secret membership and daily usage.
@@ -53,6 +58,10 @@ Payment approval uses server fixed price, owner-scoped orders, bound payment key
 - Production Next build, using placeholder build-time configuration; no production API key was read.
 - `node tests/talkly-ai/config.mjs`: tutor catalog, plan constants, Korean midnight and bounded memory.
 - `TALKLY_AI_PGLITE_MODULE=/path/to/pglite/dist/index.js node tests/talkly-ai/database.mjs`: real ephemeral PostgreSQL migration, expiry, double session rejection, ownership, refunds, settlement replay, quota exhaustion, payment key binding, activation replay, 30-day extension, RLS and grants. This does not replace concurrency/load testing on Supabase.
+
+## Requirements review
+
+See `docs/TALKLY_AI_REQUIREMENTS.md` for agreed features and remaining work, including the still-required monthly learning report.
 
 ## Required before production activation
 

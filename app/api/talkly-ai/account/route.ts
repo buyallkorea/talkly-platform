@@ -1,5 +1,5 @@
 import { context, failure, previewTestMode } from "@/lib/talkly-ai/server";
-import { seoulDay, PLAN } from "@/lib/talkly-ai/config";
+import { seoulDay, PLAN, TRIAL_SECONDS } from "@/lib/talkly-ai/config";
 export const dynamic = "force-dynamic";
 export async function GET() {
   try {
@@ -7,7 +7,7 @@ export async function GET() {
     const [member, usage, payments, profile] = await Promise.all([
       db
         .from("ai_members")
-        .select("status,valid_until,last_tutor_id,memory")
+        .select("status,valid_until,last_tutor_id,memory,trial_used_seconds")
         .eq("user_id", user.id)
         .maybeSingle(),
       db
@@ -26,20 +26,24 @@ export async function GET() {
     ]);
     if (member.error || usage.error || payments.error)
       throw new Error("Account read failed");
+    const activePass =
+      member.data?.status === "active" &&
+      !!member.data?.valid_until &&
+      Date.parse(member.data.valid_until) > Date.now();
+    const trialRemaining = member.data
+      ? Math.max(0, TRIAL_SECONDS - member.data.trial_used_seconds)
+      : 0;
     return Response.json(
       {
         member: member.data,
-        activePass:
-          member.data?.status === "active" &&
-          !!member.data?.valid_until &&
-          Date.parse(member.data.valid_until) > Date.now(),
+        activePass,
+        trialRemaining,
         paymentsEnabled: process.env.TALKLY_AI_PAYMENTS_ENABLED === "true",
         canTestAccess:
           previewTestMode() && !profile.error && profile.data?.role === "admin",
-        remaining: Math.max(
-          0,
-          PLAN.dailySeconds - (usage.data?.used_seconds ?? 0),
-        ),
+        remaining: activePass
+          ? Math.max(0, PLAN.dailySeconds - (usage.data?.used_seconds ?? 0))
+          : trialRemaining,
         payments: payments.data,
         name: user.user_metadata?.name ?? "",
       },

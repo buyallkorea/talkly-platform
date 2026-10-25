@@ -28,7 +28,9 @@ export default async function AdminAiPage() {
   const [members, payments, usage] = await Promise.all([
     db
       .from("ai_members")
-      .select("user_id,status,consented_at,valid_until,last_tutor_id")
+      .select(
+        "user_id,status,consented_at,valid_until,last_tutor_id,trial_used_seconds",
+      )
       .order("created_at", { ascending: false })
       .limit(100),
     db
@@ -69,6 +71,7 @@ export default async function AdminAiPage() {
               <th>가입일</th>
               <th>이용권 만료</th>
               <th>선택 강사</th>
+              <th>무료 체험 사용·예약</th>
             </tr>
           </thead>
           <tbody>
@@ -79,6 +82,7 @@ export default async function AdminAiPage() {
                 <td>{m.consented_at}</td>
                 <td>{m.valid_until ?? "없음"}</td>
                 <td>{m.last_tutor_id ?? "-"}</td>
+                <td>{m.trial_used_seconds}초 / 180초</td>
               </tr>
             ))}
           </tbody>

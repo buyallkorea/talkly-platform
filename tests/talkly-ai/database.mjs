@@ -18,6 +18,15 @@ await db.exec(
     "utf8",
   ),
 );
+await db.exec(
+  await readFile(
+    new URL(
+      "../../supabase/migrations/20261025005457_talkly_ai_signup_trial.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 const a = "11111111-1111-4111-8111-111111111111",
   b = "22222222-2222-4222-8222-222222222222";
 await db.query(`insert into auth.users values($1),($2)`, [a, b]);
@@ -36,7 +45,11 @@ const finish = async (id, failed = false, user = a) =>
       failed,
     ])
   ).rows[0].result;
-await assert.rejects(() => reserve(b), /PASS_EXPIRED/);
+await db.query(
+  "update ai_members set trial_used_seconds=180 where user_id=$1",
+  [b],
+);
+await assert.rejects(() => reserve(b), /TRIAL_EXHAUSTED/);
 let lease = await reserve();
 assert.equal(lease.reserved_seconds, 240);
 await assert.rejects(() => reserve(), /SESSION_ACTIVE/);
@@ -96,6 +109,89 @@ const first = await activate(),
   repeat = await activate();
 assert.equal(new Date(first).getTime(), new Date(repeat).getTime());
 assert.equal(Date.parse(first) - Date.parse(before), 30 * 86400000);
+// A signup trial is lifetime-scoped, survives pause/rejoin and never uses paid minutes.
+const c = "33333333-3333-4333-8333-333333333333";
+await db.query("insert into auth.users values($1)", [c]);
+await db.query(
+  "insert into ai_members(user_id,consent_version) values($1,'test')",
+  [c],
+);
+let trial = await reserve(c);
+assert.equal(trial.entitlement, "trial");
+assert.equal(trial.reserved_seconds, 180);
+await assert.rejects(() => reserve(c), /SESSION_ACTIVE/);
+await finish(trial.id, true, c);
+await finish(trial.id, true, c);
+assert.equal(
+  (
+    await db.query(
+      "select trial_used_seconds from ai_members where user_id=$1",
+      [c],
+    )
+  ).rows[0].trial_used_seconds,
+  0,
+);
+trial = await reserve(c);
+await db.query(
+  "update ai_sessions set call_id='rtc_trial',started_at=clock_timestamp()-interval '60 seconds' where id=$1",
+  [trial.id],
+);
+await finish(trial.id, false, c);
+const used = (
+  await db.query("select trial_used_seconds from ai_members where user_id=$1", [
+    c,
+  ])
+).rows[0].trial_used_seconds;
+assert(used >= 60 && used <= 62);
+trial = await reserve(c);
+assert.equal(trial.reserved_seconds, 180 - used);
+await db.query(
+  "update ai_sessions set call_id='rtc_trial',started_at=clock_timestamp()-make_interval(secs=>reserved_seconds) where id=$1",
+  [trial.id],
+);
+await finish(trial.id, false, c);
+await finish(trial.id, false, c);
+assert.equal(
+  (
+    await db.query(
+      "select trial_used_seconds from ai_members where user_id=$1",
+      [c],
+    )
+  ).rows[0].trial_used_seconds,
+  180,
+);
+assert.equal(
+  (
+    await db.query(
+      "select count(*)::int as count from ai_daily_usage where user_id=$1",
+      [c],
+    )
+  ).rows[0].count,
+  0,
+);
+await db.query(
+  "insert into ai_members(user_id,consent_version) values($1,'again') on conflict(user_id) do nothing",
+  [c],
+);
+await db.query("update ai_sessions set day=day-1 where user_id=$1", [c]);
+await assert.rejects(() => reserve(c), /TRIAL_EXHAUSTED/);
+await db.query(
+  "update ai_members set valid_until=clock_timestamp()+interval '30 days' where user_id=$1",
+  [c],
+);
+const upgraded = await reserve(c);
+assert.equal(upgraded.entitlement, "paid");
+assert.equal(upgraded.reserved_seconds, 240);
+await finish(upgraded.id, true, c);
+assert.equal(
+  (
+    await db.query(
+      "select trial_used_seconds from ai_members where user_id=$1",
+      [c],
+    )
+  ).rows[0].trial_used_seconds,
+  180,
+);
 await db.exec(
   `set role authenticated; select set_config('test.uid','${b}',false);`,
 );
@@ -130,6 +226,6 @@ await assert.rejects(
   /permission denied/,
 );
 console.log(
-  "PASS: migration; expired pass; duplicate tabs; ownership; failure refund; idempotent finish; 600-second cap; payment key binding; activation replay; 30-day extension; RLS; RPC grants.",
+  "PASS: migration; expired pass; duplicate tabs; ownership; failure refund; idempotent finish; 600-second cap; payment key binding; activation replay; 30-day extension; RLS; RPC grants; 180-second lifetime trial, pause/refund/rejoin, no signup reset, paid/trial separation.",
 );
 await db.close();

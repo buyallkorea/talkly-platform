@@ -4,6 +4,7 @@ export const PLAN = {
   dailySeconds: 600,
   name: "TALKLY AI 30일 이용권",
 } as const;
+export const TRIAL_SECONDS = 180;
 export const CONSENT_VERSION = "2026-10-25-v1";
 const locales = [
   ["us", "미국", "American", "Oliver", "Emma"],

@@ -48,8 +48,8 @@ export async function POST(request: Request) {
         ? "다른 창의 대화를 종료한 뒤 다시 시작해 주세요."
         : error.message.includes("NO_TIME")
           ? "오늘의 10분을 모두 사용했어요."
-          : error.message.includes("PASS_EXPIRED")
-            ? "30일 이용권을 구매해 주세요."
+          : error.message.includes("TRIAL_EXHAUSTED")
+            ? "3분 무료 체험을 모두 사용했어요."
             : "이용권과 남은 시간을 확인해 주세요.";
       throw new AiError(message, 409);
     }

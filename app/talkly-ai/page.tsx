@@ -26,8 +26,8 @@ export default function TalklyAiPage() {
       {process.env.TALKLY_AI_TEST_MODE === "true" &&
         process.env.VERCEL_ENV === "preview" && (
           <p className="tai-guide tai-test-notice">
-            테스트 배포 · 유료 결제는 비활성화되어 있어요. 관리자 계정은 AI 가입
-            후 테스트 이용권을 활성화할 수 있어요.
+            테스트 배포 · 유료 결제는 비활성화되어 있어요. AI 가입 후 3분 무료
+            체험이 제공되며, 관리자는 추가 검증용 이용권을 활성화할 수 있어요.
           </p>
         )}
       <section className="tai-intro">
@@ -46,6 +46,7 @@ export default function TalklyAiPage() {
           <div className="tai-features" aria-label="AI 회화의 특징">
             <span>생각할 시간을 기다려요</span>
             <span>어제의 이야기를 이어가요</span>
+            <span>가입하면 3분 무료 체험</span>
             <span>5개국 AI 튜터</span>
           </div>
         </div>
