@@ -35,7 +35,7 @@ export default function AiPaymentSuccess() {
     };
   }, [retry]);
   return (
-    <main style={{ maxWidth: 600, margin: "80px auto", padding: 25 }}>
+    <main className="tai tai-info">
       <h1>TALKLY AI 결제</h1>
       <p role="status">{message}</p>
       {!done && (

@@ -555,7 +555,7 @@ export default function AiStudio() {
                 ))}
               </div>
             </section>
-            <section className="tai-card tai-studio">
+            <section className="tai-card tai-studio" data-state={state}>
               <div className="tai-studio-top">
                 <span>
                   {state === "live"
@@ -614,7 +614,7 @@ export default function AiStudio() {
               <div className="tai-transcript" aria-live="polite">
                 {turns.length ? (
                   turns.map((t, i) => (
-                    <p key={i}>
+                    <p key={i} className={`tai-turn-${t.role}`}>
                       <b>
                         {t.role === "user"
                           ? "나"

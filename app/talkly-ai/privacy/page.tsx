@@ -1,14 +1,7 @@
 import Link from "next/link";
 export default function AiDataGuide() {
   return (
-    <main
-      style={{
-        maxWidth: 760,
-        margin: "50px auto",
-        padding: 24,
-        lineHeight: 1.9,
-      }}
-    >
+    <main className="tai tai-info">
       <h1>TALKLY AI 정보 처리 안내</h1>
       <p>TALKLY 로그인 계정을 연결해 AI 가입과 서비스 이용을 관리합니다.</p>
       <h2>처리하는 정보와 목적</h2>

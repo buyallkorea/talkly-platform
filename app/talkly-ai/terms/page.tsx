@@ -1,14 +1,7 @@
 import Link from "next/link";
 export default function AiUsageGuide() {
   return (
-    <main
-      style={{
-        maxWidth: 760,
-        margin: "50px auto",
-        padding: 24,
-        lineHeight: 1.9,
-      }}
-    >
+    <main className="tai tai-info">
       <h1>TALKLY AI 이용 안내</h1>
       <p>
         TALKLY 계정으로 로그인한 뒤 AI 서비스에 별도로 가입합니다. 기존 화상수업
