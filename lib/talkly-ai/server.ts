@@ -12,6 +12,9 @@ export class AiError extends Error {
 export function enabled() {
   return process.env.TALKLY_AI_ENABLED === "true";
 }
+export function monthlyReportsEnabled() {
+  return process.env.TALKLY_AI_MONTHLY_REPORTS_ENABLED === "true";
+}
 export function previewTestMode() {
   return (
     process.env.VERCEL_ENV === "preview" &&

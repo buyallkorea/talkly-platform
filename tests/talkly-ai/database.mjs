@@ -58,6 +58,15 @@ await db.exec(
     "utf8",
   ),
 );
+await db.exec(
+  await readFile(
+    new URL(
+      "../../supabase/migrations/20261025062822_talkly_ai_monthly_publication.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 const a = "11111111-1111-4111-8111-111111111111",
   b = "22222222-2222-4222-8222-222222222222";
 await db.query(`insert into auth.users values($1),($2)`, [a, b]);
@@ -445,6 +454,72 @@ assert.ok(
 );
 console.log(
   "PASS: 3-calendar-month RLS expiry, daily cleanup registration, server-only purge, idempotence and current/related record preservation.",
+);
+await db.exec("reset role");
+await db.query(
+  "update ai_members set learning_summary_consent_at='2026-01-01' where user_id=$1",
+  [a],
+);
+for (const [owner, day, seconds] of [
+  [a, "2026-12-30", 60],
+  [a, "2026-12-30", 40],
+  [a, "2026-12-31", 30],
+  [a, "2027-01-01", 200],
+  [b, "2026-12-31", 50],
+]) {
+  await db.query(
+    "insert into ai_sessions(user_id,tutor_id,day,reserved_seconds,deadline,state,charged_seconds) values($1,'us-female',$2,240,now(),'closed',$3)",
+    [owner, day, seconds],
+  );
+}
+const publish = async (date) =>
+  (await db.query("select ai_publish_monthly_reports($1) as n", [date])).rows[0]
+    .n;
+assert.equal(await publish("2027-01-01T00:10:00+09:00"), 1);
+const published = (
+  await db.query("select * from ai_monthly_publications where user_id=$1", [a])
+).rows[0];
+assert.equal(new Date(published.month).toISOString().slice(0, 10), "2026-12-01");
+assert.equal(Number(published.connected_seconds), 130);
+assert.equal(published.learning_days, 2);
+assert.equal(published.segments, 3);
+assert.equal(await publish("2027-01-02T00:10:00+09:00"), 0); // One publication despite daily retries.
+await db.exec(
+  `set role authenticated; select set_config('test.uid','${b}',false)`,
+);
+assert.equal(
+  (await db.query("select * from ai_monthly_publications")).rows.length,
+  0,
+);
+await assert.rejects(
+  () => db.query("select ai_publish_monthly_reports()"),
+  /permission denied/,
+);
+await db.exec(`select set_config('test.uid','${a}',false)`);
+assert.equal(
+  (await db.query("select * from ai_monthly_publications")).rows.length,
+  1,
+);
+await assert.rejects(
+  () => db.query("delete from ai_monthly_publications"),
+  /permission denied/,
+);
+await db.exec("reset role");
+await publish("2027-05-01T00:10:00+09:00");
+assert.equal(
+  (await db.query("select * from ai_monthly_publications")).rows.length,
+  0,
+); // Publication metadata expires too.
+assert.equal(
+  (
+    await db.query(
+      "select schedule from cron.job where jobname='talkly-ai-monthly-publication'",
+    )
+  ).rows[0].schedule,
+  "10 15 * * *",
+);
+console.log(
+  "PASS: monthly publication at Seoul year boundary, closed-month totals, consent gate, unique retry, owner RLS, expiry and daily schedule.",
 );
 console.log(
   "PASS: learning summary ownership/RLS, duplicate API claim exclusion, monthly activity bounds and server-only RPC.",

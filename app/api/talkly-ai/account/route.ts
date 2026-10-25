@@ -1,10 +1,16 @@
-import { context, failure, previewTestMode } from "@/lib/talkly-ai/server";
+import {
+  context,
+  failure,
+  previewTestMode,
+  monthlyReportsEnabled,
+} from "@/lib/talkly-ai/server";
+import { summaryRetentionCutoff } from "@/lib/talkly-ai/reports";
 import { seoulDay, PLAN, TRIAL_SECONDS } from "@/lib/talkly-ai/config";
 export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const { user, db } = await context();
-    const [member, usage, payments, profile] = await Promise.all([
+    const [member, usage, payments, profile, publication] = await Promise.all([
       db
         .from("ai_members")
         .select("status,valid_until,last_tutor_id,memory,trial_used_seconds")
@@ -23,6 +29,16 @@ export async function GET() {
         .order("created_at", { ascending: false })
         .limit(10),
       db.from("profiles").select("role").eq("id", user.id).maybeSingle(),
+      monthlyReportsEnabled()
+        ? db
+            .from("ai_monthly_publications")
+            .select("month,published_at")
+            .eq("user_id", user.id)
+            .gt("published_at", summaryRetentionCutoff())
+            .order("month", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
     ]);
     if (member.error || usage.error || payments.error)
       throw new Error("Account read failed");
@@ -36,6 +52,7 @@ export async function GET() {
     return Response.json(
       {
         member: member.data,
+        latestReport: publication.error ? null : publication.data,
         activePass,
         trialRemaining,
         paymentsEnabled: process.env.TALKLY_AI_PAYMENTS_ENABLED === "true",

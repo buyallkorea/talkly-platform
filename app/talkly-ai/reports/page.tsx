@@ -1,5 +1,10 @@
 import Link from "next/link";
-import { context, requireMember, AiError } from "@/lib/talkly-ai/server";
+import {
+  context,
+  requireMember,
+  AiError,
+  monthlyReportsEnabled,
+} from "@/lib/talkly-ai/server";
 import {
   reportMonth,
   summaryRetentionCutoff,
@@ -18,7 +23,7 @@ export default async function Reports({
   try {
     const { user, db } = await context();
     const member = await requireMember(db, user.id);
-    const [activity, records] = await Promise.all([
+    const [activity, records, publication] = await Promise.all([
       db.rpc("ai_monthly_activity", {
         p_user: user.id,
         p_from: period.from,
@@ -33,11 +38,27 @@ export default async function Reports({
         .lt("day", period.to)
         .order("created_at", { ascending: false })
         .limit(1000),
+      monthlyReportsEnabled()
+        ? db
+            .from("ai_monthly_publications")
+            .select("published_at,connected_seconds,learning_days,segments")
+            .eq("user_id", user.id)
+            .eq("month", period.from)
+            .gt("published_at", summaryRetentionCutoff())
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
     ]);
     if (activity.error || records.error) throw new Error("Report read failed");
     result = {
       member,
-      activity: activity.data as {
+      publication: publication.error ? null : publication.data,
+      activity: (publication.data
+        ? {
+            seconds: publication.data.connected_seconds,
+            days: publication.data.learning_days,
+            segments: publication.data.segments,
+          }
+        : activity.data) as {
         seconds: number;
         days: number;
         segments: number;
@@ -81,6 +102,15 @@ export default async function Reports({
         {period.complete ? "월간 정리" : "이번 달 중간 기록"} · 한국시간 기준.
         학습 요약은 저장 시점부터 3개월 동안 조회할 수 있어요.
       </p>
+      {result.publication && (
+        <p className="tai-guide">
+          월말 리포트 발행 완료 ·{" "}
+          {new Date(result.publication.published_at).toLocaleString("ko-KR", {
+            timeZone: "Asia/Seoul",
+          })}
+          . 학습 요약은 각 기록의 3개월 보관 기간 안에서 제공돼요.
+        </p>
+      )}
       <form>
         <label>
           확인할 달{" "}
@@ -105,8 +135,11 @@ export default async function Reports({
           </strong>
         </p>
         <p>
-          종료·정산된 회화 기준이며 생각하는 시간을 포함해요. 일시정지 시간은
-          제외합니다. 자동 재연결 구간을 수업 횟수로 세지 않아요.
+          {result.publication
+            ? "발행 시점에 종료·정산된 회화 기준이며"
+            : "종료·정산된 회화 기준이며"}{" "}
+          생각하는 시간을 포함해요. 일시정지 시간은 제외합니다. 자동 재연결
+          구간을 수업 횟수로 세지 않아요.
         </p>
       </section>
       <section className="tai-card">
@@ -167,8 +200,11 @@ export default async function Reports({
       </p>
       <p>
         AI가 생성한 복습용 요약이므로 잘못 정리될 수 있어요. 발음 점수·공인
-        등급·향상률을 뜻하지 않으며 전체 대화의 평가가 아니에요. 월말
-        이메일·알림 발송은 아직 제공하지 않습니다.
+        등급·향상률을 뜻하지 않으며 전체 대화의 평가가 아니에요.{" "}
+        {monthlyReportsEnabled()
+          ? "월말 발행 안내는 AI 회화 화면에서 제공해요."
+          : "월말 자동 발행은 준비 중이에요."}{" "}
+        이메일·문자·외부 푸시는 발송하지 않습니다.
       </p>
     </main>
   );

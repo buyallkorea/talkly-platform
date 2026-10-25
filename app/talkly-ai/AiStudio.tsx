@@ -8,6 +8,7 @@ import {
   leaseMilliseconds,
 } from "@/lib/talkly-ai/client-connection";
 type Account = {
+  latestReport: null | { month: string; published_at: string };
   activePass: boolean;
   trialRemaining: number;
   canTestAccess: boolean;
@@ -584,6 +585,19 @@ export default function AiStudio() {
         </section>
       ) : (
         <>
+          {account.latestReport && (
+            <section className="tai-card" aria-label="월말 리포트 발행 안내">
+              <b>
+                {account.latestReport.month.slice(0, 7)} 리포트가 준비됐어요.
+              </b>
+              <p>한 달 동안 이야기한 주제와 연습 표현을 확인해 보세요.</p>
+              <Link
+                href={`/talkly-ai/reports?month=${account.latestReport.month.slice(0, 7)}`}
+              >
+                월말 리포트 확인 →
+              </Link>
+            </section>
+          )}
           <section className="tai-card">
             <Link href="/talkly-ai/reports">나의 월간 학습 리포트 →</Link>
             <p>
