@@ -1,3 +1,4 @@
+import { queueVoiceObservation } from "@/lib/talkly-ai/voice-observer";
 import { after } from "next/server";
 import {
   body,
@@ -205,6 +206,12 @@ export async function POST(request: Request) {
       }
       console.error("[TALKLY AI] watchdog termination failed", capturedSession);
     });
+    if (process.env.TALKLY_AI_VOICE_USAGE_ENABLED === "true")
+      queueVoiceObservation({
+        sessionId: lease.id,
+        callId,
+        deadline: lease.deadline,
+      });
     const answer = await upstream.text();
     succeeded = true;
     return Response.json(

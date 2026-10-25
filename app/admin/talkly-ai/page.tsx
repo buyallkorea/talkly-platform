@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/server-user";
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { notFound } from "next/navigation";
+import VoiceUsagePanel from "./VoiceUsagePanel";
 import RefundReviews from "./RefundReviews";
 import SessionOperations from "./SessionOperations";
 import {
@@ -60,6 +61,8 @@ export default async function AdminAiPage() {
     apiEvents,
     refundRequests,
     refundReviews,
+    voiceUsage,
+    voiceObservations,
   ] = await Promise.all([
     db
       .from("ai_members")
@@ -112,6 +115,18 @@ export default async function AdminAiPage() {
       .from("ai_refund_reviews")
       .select("id,request_id,actor_id,from_state,to_state,created_at")
       .order("created_at", { ascending: false })
+      .limit(100),
+    db
+      .from("ai_voice_usage")
+      .select(
+        "input_tokens,output_tokens,cached_input_tokens,input_audio_tokens,input_text_tokens,output_audio_tokens,output_text_tokens,cached_audio_tokens,cached_text_tokens",
+      )
+      .order("created_at", { ascending: false })
+      .limit(1000),
+    db
+      .from("ai_voice_observations")
+      .select("state,reason,recording_errors,dropped_events,started_at")
+      .order("started_at", { ascending: false })
       .limit(100),
   ]);
   if (members.error || payments.error || usage.error)
@@ -186,7 +201,8 @@ export default async function AdminAiPage() {
         <p>
           저장된 최근 1,000건 기준입니다. 기록이 누락될 수 있어 전체 요청 수나
           실제 청구액을 뜻하지 않습니다. 요약 생성의 서버 응답에서 확인된 토큰만
-          표시하며, 음성 대화·자막 전사의 토큰과 비용은 집계하지 않습니다.
+          표시하며, 이 요청 처리 목록에는 음성 대화·자막 전사의 토큰과 비용을
+          표시하지 않습니다. 음성 응답 관찰은 아래 별도 항목을 확인해 주세요.
         </p>
         {apiEvents.error ? (
           <p>API 처리 기록을 불러오지 못했습니다.</p>
@@ -276,6 +292,12 @@ export default async function AdminAiPage() {
           </>
         )}
       </section>
+      <VoiceUsagePanel
+        rows={voiceUsage.data ?? []}
+        observations={voiceObservations.data ?? []}
+        unavailable={!!voiceUsage.error || !!voiceObservations.error}
+        enabled={process.env.TALKLY_AI_VOICE_USAGE_ENABLED === "true"}
+      />
       {liveSessions.error ? (
         <p>연결 현황을 불러오지 못했습니다.</p>
       ) : (

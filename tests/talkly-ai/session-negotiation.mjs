@@ -175,8 +175,10 @@ const db = {
     return q;
   },
 };
-const metadata = [];
+const metadata = [],
+  observations = [];
 globalThis.negotiationHarness = {
+  queueVoiceObservation: (args) => observations.push(args),
   queueApiEvent: (event) => metadata.push(event),
   API_MODELS: {
     voice_connect: "gpt-realtime-2.1-mini",
@@ -199,10 +201,12 @@ globalThis.negotiationHarness = {
 };
 const { POST } = await compile(
   "app/api/talkly-ai/session/route.ts",
-  "const {after,AiError,body,context,failure,requireMember,hangup,closeSession,TUTORS,tutorInstructions,queueApiEvent,API_MODELS}=globalThis.negotiationHarness;\n",
+  "const {after,AiError,body,context,failure,requireMember,hangup,closeSession,TUTORS,tutorInstructions,queueApiEvent,API_MODELS,queueVoiceObservation}=globalThis.negotiationHarness;\n",
 );
 const originalFetch = globalThis.fetch;
 const originalKey = process.env.OPENAI_API_KEY;
+const originalVoiceFlag = process.env.TALKLY_AI_VOICE_USAGE_ENABLED;
+delete process.env.TALKLY_AI_VOICE_USAGE_ENABLED;
 process.env.OPENAI_API_KEY = "test-placeholder";
 globalThis.fetch = async () =>
   new Response("sdp-answer", {
@@ -293,7 +297,19 @@ try {
     Date.now = originalNow;
     globalThis.setTimeout = originalTimeout;
   }
+  assert.equal(observations.length, 0);
+  rateAllowed = true;
+  rateError = null;
+  staleReadError = false;
+  process.env.TALKLY_AI_VOICE_USAGE_ENABLED = "true";
+  assert.equal((await POST(request())).status, 200);
+  assert.deepEqual(observations, [
+    { sessionId: lease.id, callId: "rtc_test", deadline: lease.deadline },
+  ]);
 } finally {
+  if (originalVoiceFlag === undefined)
+    delete process.env.TALKLY_AI_VOICE_USAGE_ENABLED;
+  else process.env.TALKLY_AI_VOICE_USAGE_ENABLED = originalVoiceFlag;
   globalThis.fetch = originalFetch;
   if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
   else process.env.OPENAI_API_KEY = originalKey;
