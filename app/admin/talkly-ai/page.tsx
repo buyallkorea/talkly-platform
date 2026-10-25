@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/server-user";
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { notFound } from "next/navigation";
+import RefundReviews from "./RefundReviews";
 import SessionOperations from "./SessionOperations";
 import {
   outreachCandidate,
@@ -57,6 +58,8 @@ export default async function AdminAiPage() {
     liveSessions,
     adminActions,
     apiEvents,
+    refundRequests,
+    refundReviews,
   ] = await Promise.all([
     db
       .from("ai_members")
@@ -100,6 +103,16 @@ export default async function AdminAiPage() {
       )
       .order("created_at", { ascending: false })
       .limit(1000),
+    db
+      .from("ai_refund_requests")
+      .select("id,user_id,payment_id,reason,state,revision,created_at")
+      .order("created_at", { ascending: false })
+      .limit(100),
+    db
+      .from("ai_refund_reviews")
+      .select("id,request_id,actor_id,from_state,to_state,created_at")
+      .order("created_at", { ascending: false })
+      .limit(100),
   ]);
   if (members.error || payments.error || usage.error)
     return (
@@ -451,6 +464,29 @@ export default async function AdminAiPage() {
           </tbody>
         </table>
       </div>
+      {refundRequests.error ? (
+        <p>환불 요청을 불러오지 못했습니다.</p>
+      ) : (
+        <RefundReviews rows={refundRequests.data ?? []} />
+      )}
+      <details>
+        <summary>환불 검토 변경 이력 · 최근 100건</summary>
+        {refundReviews.error ? (
+          <p>이력을 불러오지 못했습니다.</p>
+        ) : (
+          <ul>
+            {refundReviews.data?.map((row) => (
+              <li key={row.id}>
+                {row.request_id} · {row.actor_id ?? "삭제된 관리자"} ·{" "}
+                {row.from_state} → {row.to_state} ·{" "}
+                {new Date(row.created_at).toLocaleString("ko-KR", {
+                  timeZone: "Asia/Seoul",
+                })}
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
       <h2>결제 내역</h2>
       <div style={{ overflowX: "auto" }}>
         <table>

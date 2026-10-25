@@ -686,6 +686,9 @@ export default function AiStudio() {
           <section className="tai-card">
             <Link href="/talkly-ai/reports">나의 월간 학습 리포트 →</Link>
             <p>
+              <Link href="/talkly-ai/refunds">결제·환불 문의 →</Link>
+            </p>
+            <p>
               <Link href="/talkly-ai/notifications">
                 카카오톡·이메일 안내 수신 설정 →
               </Link>
