@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   context,
-  requireMember,
   AiError,
   monthlyReportsEnabled,
 } from "@/lib/talkly-ai/server";
@@ -11,6 +10,7 @@ import {
   type LearningSummary,
 } from "@/lib/talkly-ai/reports";
 import SummaryConsent from "./SummaryConsent";
+import SummaryDeletion from "./SummaryDeletion";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "나의 월간 학습 리포트 | TALKLY AI" };
 export default async function Reports({
@@ -22,7 +22,14 @@ export default async function Reports({
   let result;
   try {
     const { user, db } = await context();
-    const member = await requireMember(db, user.id);
+    // Reading and deleting one's records must not depend on renewed learning consent.
+    const { data: member, error: memberError } = await db
+      .from("ai_members")
+      .select("status,learning_summary_consent_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (memberError) throw memberError;
+    if (!member) throw new AiError("AI 가입 정보를 찾을 수 없어요.", 403);
     const [activity, records, publication] = await Promise.all([
       db.rpc("ai_monthly_activity", {
         p_user: user.id,
@@ -33,6 +40,7 @@ export default async function Reports({
         .from("ai_learning_summaries")
         .select("session_id,day,status,summary,created_at", { count: "exact" })
         .eq("user_id", user.id)
+        .is("deleted_at", null)
         .gt("created_at", summaryRetentionCutoff())
         .gte("day", period.from)
         .lt("day", period.to)
@@ -124,7 +132,22 @@ export default async function Reports({
         </label>{" "}
         <button type="submit">조회</button>
       </form>
-      <SummaryConsent enabled={!!result.member.learning_summary_consent_at} />
+      {result.member.status === "active" && (
+        <SummaryConsent enabled={!!result.member.learning_summary_consent_at} />
+      )}
+      <SummaryDeletion
+        records={result.records.map(
+          ({ session_id, day, status, created_at, summary }) => ({
+            session_id,
+            day,
+            status,
+            created_at,
+            label:
+              (summary as LearningSummary)?.topics?.slice(0, 2).join(" · ") ??
+              "",
+          }),
+        )}
+      />
       <section className="tai-card">
         <h2>꾸준히 이야기한 시간</h2>
         <p>

@@ -67,6 +67,15 @@ await db.exec(
     "utf8",
   ),
 );
+await db.exec(
+  await readFile(
+    new URL(
+      "../../supabase/migrations/20261025100553_talkly_ai_summary_deletion.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 const a = "11111111-1111-4111-8111-111111111111",
   b = "22222222-2222-4222-8222-222222222222";
 await db.query(`insert into auth.users values($1),($2)`, [a, b]);
@@ -479,7 +488,10 @@ assert.equal(await publish("2027-01-01T00:10:00+09:00"), 1);
 const published = (
   await db.query("select * from ai_monthly_publications where user_id=$1", [a])
 ).rows[0];
-assert.equal(new Date(published.month).toISOString().slice(0, 10), "2026-12-01");
+assert.equal(
+  new Date(published.month).toISOString().slice(0, 10),
+  "2026-12-01",
+);
 assert.equal(Number(published.connected_seconds), 130);
 assert.equal(published.learning_days, 2);
 assert.equal(published.segments, 3);
