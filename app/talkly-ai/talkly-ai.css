@@ -1,0 +1,261 @@
+.tai {
+  --green: #205c49;
+  --ink: #193e34;
+  background: #f5f7f1;
+  color: var(--ink);
+  min-height: 100vh;
+  padding: 0 max(20px, calc((100vw - 1180px) / 2)) 32px;
+  font-family: Arial, sans-serif;
+}
+.tai a {
+  color: inherit;
+}
+.tai-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 25px 0;
+  border-bottom: 1px solid #dce5d9;
+}
+.tai-nav > a:first-child {
+  font-size: 25px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.tai-nav span {
+  background: #205c49;
+  color: white;
+  border-radius: 8px;
+  padding: 4px 7px;
+  font-size: 17px;
+}
+.tai-intro {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 35px;
+  padding: 50px 0;
+}
+.tai-kicker {
+  font-size: 11px !important;
+  letter-spacing: 2px;
+  color: #547364;
+}
+.tai h1 {
+  font-size: clamp(29px, 4vw, 47px);
+  letter-spacing: -1.8px;
+  line-height: 1.3;
+  margin: 15px 0;
+}
+.tai p {
+  line-height: 1.8;
+  color: #5b7065;
+  font-size: 14px;
+}
+.tai-intro aside {
+  background: #e2edce;
+  border-radius: 24px;
+  padding: 28px;
+  align-self: center;
+}
+.tai-intro aside strong {
+  display: block;
+  font-size: 40px;
+  margin: 15px 0;
+}
+.tai-intro aside span {
+  font-size: 18px;
+}
+.tai-card {
+  background: white;
+  padding: 26px;
+  border: 1px solid #dce5d9;
+  border-radius: 22px;
+  margin-bottom: 22px;
+}
+.tai h2 {
+  font-size: 21px;
+  margin: 10px 0;
+}
+.tai button,
+.tai-button {
+  display: inline-block;
+  border: 1px solid #c8d6c6;
+  border-radius: 12px;
+  padding: 12px 17px;
+  background: #205c49;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  text-decoration: none;
+}
+.tai button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.tai button:focus-visible,
+.tai a:focus-visible,
+.tai input:focus-visible {
+  outline: 3px solid #6d98db;
+  outline-offset: 3px;
+}
+.tai label {
+  display: block;
+  line-height: 1.9;
+  margin: 20px 0;
+  font-size: 14px;
+}
+.tai label input {
+  margin-right: 8px;
+}
+.tai-account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 25px;
+  background: #eaf0e1;
+  border-radius: 18px;
+  padding: 22px;
+  margin-bottom: 24px;
+}
+.tai-account p {
+  margin: 4px 0;
+  font-size: 12px;
+}
+.tai-grid {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 22px;
+}
+.tai-tutors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: 20px;
+}
+.tai-tutors button {
+  background: #f5f7f0;
+  color: #365647;
+  text-align: left;
+  padding: 13px 10px;
+}
+.tai-tutors button.selected {
+  background: #deebcf;
+  border: 2px solid #347458;
+  padding: 12px 9px;
+}
+.tai-tutors small {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+}
+.tai-studio {
+  text-align: center;
+}
+.tai-studio-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.tai-orb {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  height: 125px;
+  width: 125px;
+  background: #205c49;
+  color: #d3ef94;
+  font-size: 65px;
+  margin: 28px auto;
+}
+.tai-guide {
+  background: #f2f5ea;
+  padding: 13px;
+  border-radius: 12px;
+  text-align: left;
+  font-size: 12px !important;
+}
+.tai-controls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 20px 0 12px;
+}
+.tai-studio > small {
+  font-size: 11px;
+  color: #627462;
+}
+.tai-transcript {
+  height: 280px;
+  overflow: auto;
+  margin-top: 24px;
+  border-top: 1px solid #e2e8db;
+  text-align: left;
+  padding: 15px 0;
+}
+.tai-transcript p {
+  background: #f0f5e9;
+  border-radius: 10px;
+  padding: 12px;
+}
+.tai-transcript b {
+  display: block;
+  font-size: 11px;
+  color: #205c49;
+}
+.tai form {
+  display: flex;
+  gap: 8px;
+}
+.tai form input {
+  min-width: 0;
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #cdd9c7;
+  border-radius: 12px;
+  font-size: 14px;
+}
+.tai-error {
+  color: #a33232;
+  min-height: 25px;
+  margin-bottom: 10px;
+  line-height: 1.7;
+}
+.tai-footer {
+  font-size: 11px;
+  line-height: 1.9;
+  padding: 20px 0;
+  color: #697b70;
+}
+.tai details summary {
+  cursor: pointer;
+  font-weight: bold;
+}
+@media (max-width: 800px) {
+  .tai-grid,
+  .tai-intro {
+    grid-template-columns: 1fr;
+  }
+  .tai-intro {
+    padding: 30px 0;
+    gap: 15px;
+  }
+  .tai-intro aside {
+    padding: 20px;
+  }
+  .tai-intro aside strong {
+    margin: 8px 0;
+  }
+  .tai-tutors {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .tai-account {
+    gap: 15px;
+  }
+  .tai-card {
+    padding: 20px;
+  }
+  .tai-studio-top {
+    gap: 12px;
+  }
+}

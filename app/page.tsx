@@ -237,10 +237,11 @@ export default function Home() {
             </div>
 
             <div className="talkly-nav-item">
-              <a href="#ai" className="talkly-nav-link">
-                TALKLY AI ▾
-              </a>
+              <Link href="/talkly-ai" className="talkly-nav-link">
+                TALKLY AI ↗
+              </Link>
               <div className="talkly-dropdown">
+                <Link href="/talkly-ai">AI 영어 회화</Link>
                 <a href="#ai">AI 수업리포트</a>
                 <a href="#ai">AI 성장리포트</a>
                 <a href="#ai">AI Writing</a>
@@ -1120,6 +1121,12 @@ export default function Home() {
         </div>
       </section>
 
+      <section aria-label="TALKLY AI 영어 회화" style={{ background: "#e3edda", padding: "42px 24px", textAlign: "center" }}>
+        <p style={{ color: "#246548", fontWeight: 800 }}>TALKLY AI · 나의 속도로 말하는 영어</p>
+        <h2 style={{ fontSize: "clamp(24px, 4vw, 36px)", margin: "12px 0" }}>하루 10분, 오늘의 이야기를 영어로.</h2>
+        <p>5개국 남녀 AI 튜터와 자유롭게 · 30일 13,900원</p>
+        <Link href="/talkly-ai" style={{ display: "inline-block", background: "#205c49", color: "white", padding: "14px 24px", borderRadius: 12, marginTop: 16 }}>TALKLY AI 만나보기 ↗</Link>
+      </section>
       <footer
         style={{
           background: "#1b2a4a",
