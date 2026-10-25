@@ -38,12 +38,18 @@ export async function POST(request: Request) {
       throw new AiError("음성 연결 정보를 확인해 주세요.");
     // Recover expired leases before accepting a new connection. Never refund an
     // expired lease without first hanging up its provider call.
-    const { data: stale } = await db
+    const { data: stale, error: staleError } = await db
       .from("ai_sessions")
       .select("id")
       .eq("user_id", user.id)
       .neq("state", "closed")
-      .lt("deadline", new Date().toISOString());
+      .lt("deadline", new Date().toISOString())
+      .abortSignal(AbortSignal.timeout(3000));
+    if (staleError)
+      throw new AiError(
+        "이전 연결 상태를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.",
+        503,
+      );
     for (const row of stale ?? []) await closeSession(user.id, row.id);
     // Count only authenticated, syntactically valid connection starts. Stop and
     // settlement routes remain available during a cooldown. No quota is reserved yet.
@@ -171,12 +177,23 @@ export async function POST(request: Request) {
         await new Promise((r) =>
           setTimeout(r, Math.min(10000, Math.max(1, deadline - Date.now()))),
         );
-        const { data: current } = await db
-          .from("ai_sessions")
-          .select("state")
-          .eq("id", capturedSession)
-          .maybeSingle();
-        if (current?.state === "closed") return;
+        // Do not put an optional state read between the lease deadline and hangup.
+        if (Date.now() >= deadline) break;
+        try {
+          const { data: current, error: stateError } = await db
+            .from("ai_sessions")
+            .select("state")
+            .eq("id", capturedSession)
+            .abortSignal(
+              AbortSignal.timeout(
+                Math.min(1500, Math.max(1, deadline - Date.now())),
+              ),
+            )
+            .maybeSingle();
+          if (!stateError && current?.state === "closed") return;
+        } catch {
+          // A transient observation failure must not abandon deadline cleanup.
+        }
       }
       for (let attempt = 0; attempt < 3; attempt++) {
         try {

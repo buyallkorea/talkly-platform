@@ -25,18 +25,29 @@ async function compile(path, prelude) {
 }
 const events = [];
 let closed = false,
-  hangupError = false;
+  hangupError = false,
+  closeRpcFailure = null;
 const closeDb = {
-  async rpc(name, args) {
+  rpc(name, args) {
     assert.equal(args.p_user, "owner");
     assert.equal(args.p_session, "session");
     events.push(name);
-    return name === "ai_begin_close"
-      ? {
-          data: { state: closed ? "closed" : "closing", call_id: "rtc_test" },
-          error: null,
-        }
-      : { error: null };
+    return {
+      abortSignal: async (signal) => {
+        assert.ok(signal instanceof AbortSignal);
+        if (closeRpcFailure === name)
+          return { data: null, error: { message: "database timeout" } };
+        return name === "ai_begin_close"
+          ? {
+              data: {
+                state: closed ? "closed" : "closing",
+                call_id: "rtc_test",
+              },
+              error: null,
+            }
+          : { error: null };
+      },
+    };
   },
 };
 globalThis.closeHarness = {
@@ -61,6 +72,17 @@ events.length = 0;
 closed = true;
 await closeSession("owner", "session");
 assert.deepEqual(events, ["ai_begin_close", "ai_finish"]);
+events.length = 0;
+closed = false;
+hangupError = false;
+closeRpcFailure = "ai_begin_close";
+await assert.rejects(closeSession("owner", "session"));
+assert.deepEqual(events, ["ai_begin_close"]);
+events.length = 0;
+closeRpcFailure = "ai_finish";
+await assert.rejects(closeSession("owner", "session"));
+assert.deepEqual(events, ["ai_begin_close", "hangup", "ai_finish"]);
+closeRpcFailure = null;
 class AiError extends Error {
   constructor(message, status = 400) {
     super(message);
@@ -75,7 +97,10 @@ let rateAllowed = true,
 const rpcCalls = [];
 const filters = [];
 const watchdogTasks = [];
-let watchdogState = "active";
+let watchdogState = "active",
+  watchdogReadError = false,
+  staleReadError = false,
+  stateReads = 0;
 const lease = {
   id: "lease",
   deadline: new Date(Date.now() + 180000).toISOString(),
@@ -128,17 +153,23 @@ const db = {
         assert.ok(Number.isFinite(Date.parse(v)));
         return q;
       },
-      maybeSingle: async () => ({
-        data:
-          selected === "state"
-            ? { state: watchdogState }
-            : attached
-              ? { id: "lease" }
-              : null,
-        error: null,
-      }),
+      abortSignal(signal) {
+        assert.ok(signal instanceof AbortSignal);
+        return q;
+      },
+      async maybeSingle() {
+        if (selected === "state") {
+          stateReads++;
+          if (watchdogReadError) throw new Error("observation timed out");
+          return { data: { state: watchdogState }, error: null };
+        }
+        return { data: attached ? { id: "lease" } : null, error: null };
+      },
       then(resolve) {
-        return Promise.resolve({ data: [], error: null }).then(resolve);
+        return Promise.resolve({
+          data: [],
+          error: staleReadError ? { message: "stale read unavailable" } : null,
+        }).then(resolve);
       },
     };
     return q;
@@ -218,6 +249,11 @@ try {
   rpcCalls.length = 0;
   assert.equal((await POST(request())).status, 503);
   assert.deepEqual(rpcCalls, ["ai_claim_connection_attempt"]);
+  staleReadError = true;
+  rpcCalls.length = 0;
+  assert.equal((await POST(request())).status, 503);
+  assert.equal(rpcCalls.length, 0);
+  staleReadError = false;
   const originalNow = Date.now,
     originalTimeout = globalThis.setTimeout;
   let fakeNow = Date.parse(lease.deadline) - 25000;
@@ -234,7 +270,18 @@ try {
     await watchdogTasks[0]();
     assert.deepEqual(delays, [10000, 10000, 5000]);
     assert.equal(fakeNow, Date.parse(lease.deadline));
+    assert.equal(stateReads, 2);
     assert.deepEqual(cleanup, [["close", "owner", "lease"]]);
+    watchdogReadError = true;
+    fakeNow = Date.parse(lease.deadline) - 25000;
+    delays.length = 0;
+    cleanup.length = 0;
+    stateReads = 0;
+    await watchdogTasks[0]();
+    assert.deepEqual(delays, [10000, 10000, 5000]);
+    assert.equal(stateReads, 2);
+    assert.deepEqual(cleanup, [["close", "owner", "lease"]]);
+    watchdogReadError = false;
     watchdogState = "closed";
     fakeNow = Date.parse(lease.deadline) - 25000;
     delays.length = 0;

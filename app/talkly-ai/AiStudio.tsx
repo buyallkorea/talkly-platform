@@ -19,7 +19,6 @@ type Account = {
     status: string;
     valid_until: string | null;
     last_tutor_id: string | null;
-    memory: Turn[];
   };
   remaining: number;
   payments: {

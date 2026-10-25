@@ -19,7 +19,7 @@ export async function GET() {
       db
         .from("ai_members")
         .select(
-          "status,valid_until,last_tutor_id,memory,trial_used_seconds,consent_version",
+          "status,valid_until,last_tutor_id,trial_used_seconds,consent_version",
         )
         .eq("user_id", user.id)
         .maybeSingle(),
