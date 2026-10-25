@@ -89,7 +89,7 @@ export default async function Reports({
         </label>{" "}
         <button type="submit">조회</button>
       </form>
-      {!result.member.learning_summary_consent_at && <SummaryConsent />}
+      <SummaryConsent enabled={!!result.member.learning_summary_consent_at} />
       <section className="tai-card">
         <h2>꾸준히 이야기한 시간</h2>
         <p>

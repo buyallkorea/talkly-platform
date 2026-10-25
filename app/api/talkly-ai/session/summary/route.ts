@@ -107,19 +107,24 @@ export async function POST(request: Request) {
         .map((c: { text: string }) => c.text)
         .join("");
       const summary = validateSummary(JSON.parse(output), turns);
-      const { error: save } = await db
-        .from("ai_learning_summaries")
-        .update({ status: "ready", summary })
-        .eq("session_id", s.id)
-        .eq("user_id", user.id);
+      const { data: stored, error: save } = await db.rpc(
+        "ai_store_learning_summary",
+        {
+          p_user: user.id,
+          p_session: s.id,
+          p_consent: member.learning_summary_consent_at,
+          p_summary: summary,
+        },
+      );
       if (save) throw save;
-      return Response.json({ status: "ready" });
+      return Response.json({ status: stored ? "ready" : "not_saved" });
     } catch {
       await db
         .from("ai_learning_summaries")
         .update({ status: "failed" })
         .eq("session_id", s.id)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .eq("status", "pending");
       throw new AiError(
         "회화는 종료됐지만 학습 요약을 저장하지 못했어요.",
         503,

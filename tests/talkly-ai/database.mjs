@@ -36,6 +36,15 @@ await db.exec(
     "utf8",
   ),
 );
+await db.exec(
+  await readFile(
+    new URL(
+      "../../supabase/migrations/20261025052121_talkly_ai_summary_preferences.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 const a = "11111111-1111-4111-8111-111111111111",
   b = "22222222-2222-4222-8222-222222222222";
 await db.query(`insert into auth.users values($1),($2)`, [a, b]);
@@ -291,6 +300,84 @@ await assert.rejects(
   () =>
     db.query("select ai_monthly_activity($1,'2020-01-01','2040-01-01')", [b]),
   /permission denied/,
+);
+await assert.rejects(
+  () =>
+    db.query("select ai_store_learning_summary($1,$2,now(),'{}')", [
+      a,
+      summarySession.id,
+    ]),
+  /permission denied/,
+);
+await db.exec("reset role");
+const consentAt = "2001-01-01T00:00:00Z",
+  newConsent = "2002-01-01T00:00:00Z";
+const summaryStore = async (user = a, consent = consentAt) =>
+  (
+    await db.query(
+      "select ai_store_learning_summary($1,$2,$3,'{\"topics\":[]}'::jsonb) as saved",
+      [user, summarySession.id, consent],
+    )
+  ).rows[0].saved;
+await db.query(
+  "update ai_members set learning_summary_consent_at=$2 where user_id=$1",
+  [a, consentAt],
+);
+await db.query(
+  "update ai_learning_summaries set status='pending',summary=null where session_id=$1",
+  [summarySession.id],
+);
+assert.equal(await summaryStore(b), false); // Another owner cannot touch the pending row.
+assert.equal(await summaryStore(), true);
+assert.equal(await summaryStore(), false); // Replay cannot overwrite a ready summary.
+await db.query(
+  "update ai_learning_summaries set status='pending',summary=null where session_id=$1",
+  [summarySession.id],
+);
+await db.query(
+  "update ai_members set learning_summary_consent_at=null where user_id=$1",
+  [a],
+);
+assert.equal(await summaryStore(), false);
+assert.equal(
+  (
+    await db.query(
+      "select summary from ai_learning_summaries where session_id=$1",
+      [summarySession.id],
+    )
+  ).rows[0].summary,
+  null,
+);
+await db.query(
+  "update ai_members set learning_summary_consent_at=$2 where user_id=$1",
+  [a, newConsent],
+);
+await db.query(
+  "update ai_learning_summaries set status='pending' where session_id=$1",
+  [summarySession.id],
+);
+assert.equal(await summaryStore(), false); // Old in-flight analysis cannot use a renewed consent.
+await db.query(
+  "update ai_learning_summaries set status='pending' where session_id=$1",
+  [summarySession.id],
+);
+assert.equal(await summaryStore(a, newConsent), true);
+await db.query(
+  "update ai_members set learning_summary_consent_at=null where user_id=$1",
+  [a],
+);
+assert.equal(await summaryStore(a, newConsent), false);
+assert.notEqual(
+  (
+    await db.query(
+      "select summary from ai_learning_summaries where session_id=$1",
+      [summarySession.id],
+    )
+  ).rows[0].summary,
+  null,
+); // Opt-out retains existing records.
+console.log(
+  "PASS: withdrawn/renewed consent blocks in-flight results, owner binding, one-time save, existing record preservation and RPC grants.",
 );
 console.log(
   "PASS: learning summary ownership/RLS, duplicate API claim exclusion, monthly activity bounds and server-only RPC.",

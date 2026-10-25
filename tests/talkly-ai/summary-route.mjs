@@ -36,8 +36,17 @@ let consent = true,
   claimError = null,
   saved = [],
   calls = 0,
-  failProvider = false;
+  failProvider = false,
+  storeAllowed = true;
 const db = {
+  async rpc(name, args) {
+    assert.equal(name, "ai_store_learning_summary");
+    assert.equal(args.p_user, "owner");
+    assert.equal(args.p_session, session.id);
+    assert.equal(args.p_consent, "2026-01-01T00:00:00Z");
+    if (storeAllowed) saved.push({ status: "ready", summary: args.p_summary });
+    return { data: storeAllowed, error: null };
+  },
   from(table) {
     let op = "read",
       value;
@@ -110,6 +119,7 @@ globalThis.fetch = async (_url, options) => {
 };
 function reset() {
   consent = true;
+  storeAllowed = true;
   claimError = null;
   saved = [];
   calls = 0;
@@ -158,6 +168,12 @@ reset();
 failProvider = true;
 assert.equal((await POST(request())).status, 503);
 assert.equal(saved[0].status, "failed");
+reset();
+storeAllowed = false;
+const withdrawnResponse = await POST(request());
+assert.equal(withdrawnResponse.status, 200);
+assert.equal((await withdrawnResponse.json()).status, "not_saved");
+assert.equal(saved.length, 0);
 globalThis.fetch = originalFetch;
 console.log(
   "PASS: summary route consent, owned closed session, duplicate exclusion, bounded provider request, validated saved output and failure state.",
