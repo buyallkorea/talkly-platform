@@ -70,7 +70,7 @@ export function safeHashEquals(left: string, right: string) {
   return crypto.timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-function createAuthorizationHeader() {
+export function createAuthorizationHeader() {
   const { apiKey, apiSecret } = getSolapiConfig();
   const date = new Date().toISOString();
   const salt = crypto.randomBytes(16).toString("hex");

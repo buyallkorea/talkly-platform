@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/server-user";
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { notFound } from "next/navigation";
+import OutreachOperations from "./OutreachOperations";
 import { REFUND_STATES } from "@/lib/talkly-ai/refunds";
 import VoiceUsagePanel from "./VoiceUsagePanel";
 import RefundReviews from "./RefundReviews";
@@ -389,14 +390,17 @@ export default async function AdminAiPage() {
         }}
       >
         <h2>재이용·재결제 안내 준비</h2>
+        <OutreachOperations
+          enabled={process.env.TALKLY_AI_OUTREACH_DELIVERY_ENABLED === "true"}
+        />
         <h3>발송 대기열 · 최근 100건</h3>
         {outreachQueue.error ? (
           <p>대기열을 불러오지 못했습니다.</p>
         ) : (
           <>
             <p>
-              자동 등록·발송은 연결 전입니다. 아래 수치는 실제 저장된 최근
-              기록의 상태이며 전체 집계가 아닙니다.
+              자동 대상 등록·예약 발송은 연결 전입니다. 아래 수치는 실제 저장된
+              최근 기록의 상태이며 전체 집계가 아닙니다.
             </p>
             <ul>
               {Object.entries({
@@ -425,7 +429,12 @@ export default async function AdminAiPage() {
           </>
         )}
         <p>
-          <strong>실제 발송 OFF</strong> · 관리자 검토용 대상 조건과 문안입니다.
+          <strong>
+            {process.env.TALKLY_AI_OUTREACH_DELIVERY_ENABLED === "true"
+              ? "발송 스위치 ON · 설정과 대상 확인 필요"
+              : "실제 발송 OFF"}
+          </strong>{" "}
+          · 관리자 검토용 대상 조건과 문안입니다.
         </p>
         <p>
           기존 토클리 SOLAPI 계정:{" "}
@@ -437,8 +446,10 @@ export default async function AdminAiPage() {
         </p>
         <p>
           카카오 발신프로필·광고 메시지 사용 가능 여부는 기존 SOLAPI 계정에서
-          확인해야 합니다. 기존에 연결된 프로필이 있으면 우선 재사용합니다.
-          테스트 배포에 운영 발송 키를 복사하거나 인증문자를 보내지는 않습니다.
+          확인해야 합니다. 기존에 연결된 프로필이 있으면 우선 재사용합니다. 현재
+          카카오는 채널 친구 대상만 처리하며 문자 대체발송이나 친구가 아닌 대상
+          확장은 하지 않습니다. 테스트 배포에 운영 발송 키를 복사하거나
+          인증문자를 보내지는 않습니다.
         </p>
         <p>
           최근 회원 100명·결제 100건·해당 회원 연결 기록 1,000건 범위의
@@ -455,9 +466,10 @@ export default async function AdminAiPage() {
           </p>
         )}
         <p>
-          채널별 동의 저장과 대기열은 준비됐지만 신규 동의·자동 등록·실제 발송은
-          비활성화 상태입니다. 관리자·강사·정지 회원·성인 이용 확인 전 회원·이용
-          중인 회원·결제 확인 중인 회원은 제외합니다.
+          채널별 동의 저장과 대기열은 준비됐으며 자동 등록·예약 발송은 연결
+          전입니다. 신규 동의와 실제 발송은 별도 서버 설정으로 제어합니다.
+          관리자·강사·정지 회원·성인 이용 확인 전 회원·이용 중인 회원·결제 확인
+          중인 회원은 제외합니다.
         </p>
         <p>
           기본안: 체험 후 안내는 회원당 1회, 만료 안내는 이용권 만료 회차당 1회.
@@ -478,7 +490,7 @@ export default async function AdminAiPage() {
         ))}
         <p>
           초안의 서비스 링크·운영 연락처·무료 수신거부 방법을 확정하고, 채널별
-          수신동의·중복 방지·발송 기록·제공업체 설정을 완료해야 실제 발송을 켤
+          수신동의·중복 방지·발송 기록·제공업체 설정을 확인해야 실제 발송을 켤
           수 있습니다. 카카오는 광고성 브랜드 메시지 연동이 별도로 필요합니다.
         </p>
       </section>
