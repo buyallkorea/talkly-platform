@@ -17,6 +17,16 @@ export function reportMonth(value: unknown, now = new Date()) {
   const next = new Date(Date.UTC(year, m, 1)).toISOString().slice(0, 10);
   return { month, from: `${month}-01`, to: next, complete: month < current };
 }
+export function reportHistoryMonths(value: unknown, now = new Date()) {
+  const selected = reportMonth(value, now);
+  const [year, month] = selected.month.split("-").map(Number);
+  return [2, 1, 0].flatMap((offset) => {
+    const key = new Date(Date.UTC(year, month - 1 - offset, 1))
+      .toISOString()
+      .slice(0, 7);
+    return key >= "2000-01" ? [reportMonth(key, now)] : [];
+  });
+}
 // Match PostgreSQL calendar-month subtraction in Asia/Seoul, including month-end clamping.
 export function summaryRetentionCutoff(now = new Date()) {
   const offset = 9 * 60 * 60 * 1000;

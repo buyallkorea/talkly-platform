@@ -6,11 +6,13 @@ import {
 } from "@/lib/talkly-ai/server";
 import {
   reportMonth,
+  reportHistoryMonths,
   summaryRetentionCutoff,
   type LearningSummary,
 } from "@/lib/talkly-ai/reports";
 import SummaryConsent from "./SummaryConsent";
 import SummaryDeletion from "./SummaryDeletion";
+import { loadReportHistory } from "@/lib/talkly-ai/report-history";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "나의 월간 학습 리포트 | TALKLY AI" };
 export default async function Reports({
@@ -18,7 +20,10 @@ export default async function Reports({
 }: {
   searchParams: Promise<{ month?: string }>;
 }) {
-  const period = reportMonth((await searchParams).month);
+  const now = new Date();
+  const period = reportMonth((await searchParams).month, now);
+  const periods = reportHistoryMonths(period.month, now);
+  const cutoff = summaryRetentionCutoff(now);
   let result;
   try {
     const { user, db } = await context();
@@ -30,47 +35,31 @@ export default async function Reports({
       .maybeSingle();
     if (memberError) throw memberError;
     if (!member) throw new AiError("AI 가입 정보를 찾을 수 없어요.", 403);
-    const [activity, records, publication] = await Promise.all([
-      db.rpc("ai_monthly_activity", {
-        p_user: user.id,
-        p_from: period.from,
-        p_to: period.to,
-      }),
+    const [history, records] = await Promise.all([
+      loadReportHistory(db, user.id, periods, monthlyReportsEnabled(), cutoff),
       db
         .from("ai_learning_summaries")
         .select("session_id,day,status,summary,created_at", { count: "exact" })
         .eq("user_id", user.id)
         .is("deleted_at", null)
-        .gt("created_at", summaryRetentionCutoff())
+        .gt("created_at", cutoff)
         .gte("day", period.from)
         .lt("day", period.to)
         .order("created_at", { ascending: false })
         .limit(1000),
-      monthlyReportsEnabled()
-        ? db
-            .from("ai_monthly_publications")
-            .select("published_at,connected_seconds,learning_days,segments")
-            .eq("user_id", user.id)
-            .eq("month", period.from)
-            .gt("published_at", summaryRetentionCutoff())
-            .maybeSingle()
-        : Promise.resolve({ data: null, error: null }),
     ]);
-    if (activity.error || records.error) throw new Error("Report read failed");
+    const selected = history.rows.find(
+      (row) => row.period.month === period.month,
+    );
+    if (!selected?.activity || records.error)
+      throw new Error("Report read failed");
     result = {
       member,
-      publication: publication.error ? null : publication.data,
-      activity: (publication.data
-        ? {
-            seconds: publication.data.connected_seconds,
-            days: publication.data.learning_days,
-            segments: publication.data.segments,
-          }
-        : activity.data) as {
-        seconds: number;
-        days: number;
-        segments: number;
-      },
+      publication: selected.publishedAt
+        ? { published_at: selected.publishedAt }
+        : null,
+      activity: selected.activity,
+      history,
       records: records.data ?? [],
       total: records.count ?? 0,
     };
@@ -163,6 +152,71 @@ export default async function Reports({
             : "종료·정산된 회화 기준이며"}{" "}
           생각하는 시간을 포함해요. 일시정지 시간은 제외합니다. 자동 재연결
           구간을 수업 횟수로 세지 않아요.
+        </p>
+      </section>
+      <section className="tai-card">
+        <h2>월별 학습 활동</h2>
+        <p>
+          선택한 달을 포함한 최대 3개월 기록입니다. 진행 중인 달과 월별 날짜
+          수의 차이를 고려해 확인해 주세요. 시간과 학습 일수는 영어 실력 점수가
+          아닙니다.
+        </p>
+        {result.history.publicationError && (
+          <p>발행 기록을 불러오지 못해 현재 정산된 기록을 표시합니다.</p>
+        )}
+        <div style={{ overflowX: "auto" }}>
+          <table className="tai-history-table">
+            <caption>정산된 회화 시간과 학습 일수</caption>
+            <thead>
+              <tr>
+                <th scope="col">월</th>
+                <th scope="col">학습한 날</th>
+                <th scope="col">총 연결시간</th>
+                <th scope="col">집계 기준</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.history.rows.map((row) => (
+                <tr
+                  key={row.period.month}
+                  data-selected={row.period.month === period.month}
+                >
+                  <th scope="row">
+                    {row.period.month === period.month ? (
+                      <strong aria-current="page">{row.period.month}</strong>
+                    ) : (
+                      <Link
+                        prefetch={false}
+                        href={`/talkly-ai/reports?month=${row.period.month}`}
+                      >
+                        {row.period.month}
+                      </Link>
+                    )}
+                  </th>
+                  {row.activity ? (
+                    <>
+                      <td>{row.activity.days}일</td>
+                      <td>
+                        {Math.floor(row.activity.seconds / 60)}분{" "}
+                        {row.activity.seconds % 60}초
+                      </td>
+                      <td>
+                        {row.period.complete ? "종료된 달" : "진행 중인 달"} ·{" "}
+                        {row.publishedAt ? "발행 시점" : "현재 정산 기록"}
+                      </td>
+                    </>
+                  ) : (
+                    <td colSpan={3}>기록을 불러오지 못했어요.</td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p>
+          발행된 월은 발행 시점의 사용량, 나머지는 현재 종료·정산된 회화를
+          사용합니다. 생성에 실패하거나 삭제한 학습 요약과 별도로 이용 시간
+          기록은 유지됩니다.
         </p>
       </section>
       <section className="tai-card">

@@ -18,10 +18,15 @@ const js = ts.transpileModule(
     },
   },
 ).outputText;
-const { reportMonth, summaryTurns, validateSummary, summaryRetentionCutoff } =
-  await import(
-    "data:text/javascript;base64," + Buffer.from(js).toString("base64")
-  );
+const {
+  reportMonth,
+  reportHistoryMonths,
+  summaryTurns,
+  validateSummary,
+  summaryRetentionCutoff,
+} = await import(
+  "data:text/javascript;base64," + Buffer.from(js).toString("base64")
+);
 assert.deepEqual(reportMonth("2026-12", new Date("2026-12-31T15:01:00Z")), {
   month: "2026-12",
   from: "2026-12-01",
@@ -90,4 +95,31 @@ assert.equal(
 );
 console.log(
   "PASS: 3-calendar-month retention clamps short/leap months using Seoul date boundaries.",
+);
+
+assert.deepEqual(
+  reportHistoryMonths("2026-01", new Date("2026-10-25T00:00:00Z")).map(
+    (p) => p.month,
+  ),
+  ["2025-11", "2025-12", "2026-01"],
+);
+assert.deepEqual(
+  reportHistoryMonths("2000-01", new Date("2026-10-25T00:00:00Z")).map(
+    (p) => p.month,
+  ),
+  ["2000-01"],
+);
+const leapHistory = reportHistoryMonths(
+  "2024-03",
+  new Date("2024-03-31T14:59:59Z"),
+);
+assert.equal(leapHistory[1].from, "2024-02-01");
+assert.equal(leapHistory[1].to, "2024-03-01");
+assert.equal(leapHistory[2].complete, false);
+assert.equal(
+  reportHistoryMonths("2030-01", new Date("2026-12-31T15:00:00Z")).at(-1).month,
+  "2027-01",
+);
+console.log(
+  "PASS: bounded three-month history across year/leap/Seoul boundaries and earliest supported month",
 );

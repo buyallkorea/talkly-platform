@@ -463,6 +463,27 @@
   line-height: 1.95;
   background: transparent;
 }
+.talkly-ai-service .tai-history-table {
+  width: 100%;
+  min-width: 460px;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+.talkly-ai-service .tai-history-table caption {
+  text-align: left;
+  font-size: 12px;
+  color: #6b5c7b;
+  padding-bottom: 8px;
+}
+.talkly-ai-service .tai-history-table th,
+.talkly-ai-service .tai-history-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--tai-line);
+}
+.talkly-ai-service .tai-history-table tr[data-selected="true"] {
+  background: #f4effb;
+}
 .tai-info h1 {
   font-size: 30px;
   letter-spacing: -1px;
