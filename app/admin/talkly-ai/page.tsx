@@ -19,6 +19,12 @@ export default async function AdminAiPage() {
     .eq("id", user.id)
     .maybeSingle();
   if (profile?.role !== "admin") notFound();
+  // Presence only: never render credentials or infer provider approval from them.
+  const existingSolapiConfigured = [
+    process.env.SOLAPI_API_KEY,
+    process.env.SOLAPI_API_SECRET,
+    process.env.SOLAPI_SENDER_NUMBER,
+  ].every((value) => Boolean(value?.trim()));
   if (process.env.TALKLY_AI_ENABLED !== "true")
     return (
       <section>
@@ -117,6 +123,17 @@ export default async function AdminAiPage() {
         <h2>재이용·재결제 안내 준비</h2>
         <p>
           <strong>실제 발송 OFF</strong> · 관리자 검토용 대상 조건과 문안입니다.
+        </p>
+        <p>
+          기존 토클리 SOLAPI 계정: {existingSolapiConfigured
+            ? "이 배포에 설정됨 — 기존 계정 재사용 예정"
+            : "이 배포에는 설정되지 않음 — 운영 설정과 별도 확인 필요"}.
+          설정 유무만 확인하며 실제 발송 연결이나 카카오 승인을 검증한 것은 아닙니다.
+        </p>
+        <p>
+          카카오 발신프로필·광고 메시지 사용 가능 여부는 기존 SOLAPI 계정에서
+          확인해야 합니다. 기존에 연결된 프로필이 있으면 우선 재사용합니다.
+          테스트 배포에 운영 발송 키를 복사하거나 인증문자를 보내지는 않습니다.
         </p>
         <p>
           최근 회원 100명·결제 100건·해당 회원 연결 기록 1,000건 범위의
