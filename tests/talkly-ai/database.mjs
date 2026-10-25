@@ -61,7 +61,7 @@ await db.exec(
 await db.exec(
   await readFile(
     new URL(
-      "../../supabase/migrations/20261025062822_talkly_ai_monthly_publication.sql",
+      "../../supabase/migrations/20261025095815_talkly_ai_monthly_publication.sql",
       import.meta.url,
     ),
     "utf8",

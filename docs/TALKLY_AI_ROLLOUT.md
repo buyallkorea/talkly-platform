@@ -156,3 +156,10 @@ adult-enrollment.mjs executes the actual join route and requireMember function u
 Owner requested Kakao/email re-engagement for trial-only users and lapsed paid passes. Added reengagement.ts pure targeting/delivery-decision rules, tests, and admin-only preview using existing AI data. It is a bounded sample (100 members/100 payments/1,000 related sessions), not an authoritative campaign queue. The screen reports actual sendable count zero because no channel consent ledger or send ledger is connected. Drafts include explicit unresolved placeholders and cannot be sent from this UI.
 
 Confirmed existing SMTP and SOLAPI verification SMS code; did not modify them or send messages. Kakao marketing requires brand-message channel setup rather than reusing an informational/SMS payload. Scope/status and next implementation steps are in docs/TALKLY_AI_REENGAGEMENT.md. No new provider/resource install, credentials copied, DB schema change, or message delivery occurred. Full automation remains incomplete until consent persistence, unsubscribe, durable queue/dedup and provider configuration are implemented and verified.
+
+
+## 2026-10-25 월말 발행 DB 보류 해소
+
+이전 requestState 오류는 이번 적용에서 재현되지 않았습니다. `20261025095815_talkly_ai_monthly_publication`을 운영 DB에 적용하고 RLS, 서비스 역할 전용 실행 권한, `talkly-ai-monthly-publication` cron 활성 및 `10 15 * * *`(매일 한국시간 00:10)을 확인했습니다. 지난달의 마감된 실제 사용량과 요약 저장 동의가 있는 활성 회원을 대상으로 고유 사용자/월 키로 한 번 발행하며, 이후 일일 실행은 중복 없이 재시도합니다. 현재 운영 수동 실행은 정상 종료/신규 0건입니다. 실제 예약 실행과 실제 이용자의 발행 확인은 아직 검증 전입니다. 텍스트 요약 자체를 중복 복사하거나 카카오/이메일로 보내지 않습니다.
+
+테스트 브랜치 preview에만 `TALKLY_AI_MONTHLY_REPORTS_ENABLED=true`를 설정했습니다. 운영 사이트 기능 플래그와 유료 결제는 켜지 않았습니다. 이전 문서의 해당 migration 미적용/flag OFF 상태는 이 기록으로 대체합니다. 독립 PostgreSQL의 연도 경계/지난달 집계/중복 재시도/소유자 RLS/3개월 보관 테스트와 account flag 검증을 통과했습니다.
