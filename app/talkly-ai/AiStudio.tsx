@@ -286,6 +286,34 @@ export default function AiStudio() {
       }
       const peer = new RTCPeerConnection();
       pc.current = peer;
+      function failConnection(message: string, allowRenew = false) {
+        if (pc.current !== peer || !connectionEpoch.current.current(attempt))
+          return;
+        if (
+          allowRenew &&
+          active.current &&
+          deadline.current > 0 &&
+          deadline.current - performance.now() <= 1500
+        ) {
+          void renew();
+          return;
+        }
+        setError(message);
+        void stop(true);
+      }
+      const microphone = stream.current;
+      if (
+        !microphone.getAudioTracks().length ||
+        microphone.getAudioTracks().some((track) => track.readyState !== "live")
+      ) {
+        throw new Error("마이크 연결을 확인한 뒤 다시 시작해 주세요.");
+      }
+      microphone.getAudioTracks().forEach((track) => {
+        track.onended = () =>
+          failConnection(
+            "마이크 연결이 끊어졌어요. 입력 장치를 확인한 뒤 다시 시작해 주세요.",
+          );
+      });
       stream.current
         .getTracks()
         .forEach((t) => peer.addTrack(t, stream.current!));
@@ -296,27 +324,20 @@ export default function AiStudio() {
           audio.current.srcObject = e.streams[0];
           void audio.current
             .play()
-            .catch(() => setError("소리 재생을 허용해 주세요."));
+            .catch(() =>
+              failConnection(
+                "소리를 재생하지 못했어요. 사이트의 소리 재생을 허용한 뒤 다시 시작해 주세요.",
+              ),
+            );
         }
       };
       peer.onconnectionstatechange = () => {
-        if (pc.current !== peer || !connectionEpoch.current.current(attempt))
-          return;
         if (
           peer.connectionState === "failed" ||
-          peer.connectionState === "disconnected"
+          peer.connectionState === "disconnected" ||
+          peer.connectionState === "closed"
         ) {
-          if (active.current) {
-            if (
-              deadline.current > 0 &&
-              deadline.current - performance.now() <= 1500
-            ) {
-              void renew();
-            } else {
-              setError("연결이 끊어졌어요. 다시 시작해 주세요.");
-              void stop();
-            }
-          }
+          failConnection("연결이 끊어졌어요. 다시 시작해 주세요.", true);
         }
       };
       const channel = peer.createDataChannel("oai-events");
@@ -365,6 +386,12 @@ export default function AiStudio() {
         channel.onerror = () => {
           clearTimeout(timeout);
           reject(new Error("음성 연결에 실패했어요."));
+          failConnection("음성 통신에 오류가 생겼어요. 다시 시작해 주세요.");
+        };
+        channel.onclose = () => {
+          clearTimeout(timeout);
+          reject(new Error("음성 연결이 닫혔어요."));
+          failConnection("음성 연결이 끊어졌어요. 다시 시작해 주세요.", true);
         };
       });
       // Attach a handler immediately: negotiation may fail before opened is awaited.

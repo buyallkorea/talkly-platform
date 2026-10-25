@@ -128,3 +128,17 @@ Owner explicitly removed the thinking button requirement. Removed hold UI/state/
 Speech restart cancels the timer. The coordinator tracks the new speech item and waits for its own commit, so an old/duplicate commit cannot release a new utterance. Text submissions bypass voice grace. Timers clear on local stop and are rebuilt only for pending input on renewal. No silence-only idle event creates a question. Long mid-sentence pauses can still be misjudged; VAD latency is additional to grace, and real listening remains required.
 
 Replaced earlier manual-hold tests with fake-clock/fake-scheduler tests of the actual client handler plus timing rules, resume-before-reply, new-commit matching, duplicate suppression and idle. Manual QA document was rewritten for hands-free use; prior hold instructions in this history are superseded. Existing schema, model, quota and paid flags are unchanged.
+
+## Voice transport/device/playback failure cleanup
+
+AiStudio now funnels data-channel close/error, microphone audio-track ended, peer closed/disconnected/failed, and rejected audio.play through the existing stop/settlement path. Failure during connecting cancels setup too. Callback guards bind to the current peer and connection epoch, so old device/playback events cannot close a replacement connection. Normal local close cancels the epoch first; expiry-boundary remote close retains lease renewal.
+
+`connection-failures.mjs` executes actual failConnection/localClose/stop functions and actual device/channel/peer handlers using fake browser objects. Checks include one-time mic/peer cleanup and settlement, setup failure, stale events, normal close, audio failure, queued summary after settlement, near-expiry renewal, and complete network failure with visible unsettled state. This proves client behavior under mocks, not actual unplug/browser policies or offline quota accuracy. If stop cannot reach the server, settlement awaits watchdog/recovery; do not claim immediate server refunds. No schema, key, price or quota change.
+
+Browser references: MDN MediaStreamTrack ended_event, RTCDataChannel close_event, HTMLMediaElement play. Explicit track.stop does not emit ended, and current-epoch guards also prevent intentional-close recursion.
+
+## Monthly schema retry during connection audit
+
+A fresh read confirmed the monthly publication table/history were still absent and existing retention job active. One apply_migration retry in the new turn again returned Invalid or expired requestState. A follow-up read confirmed no table/history/job. Keep publication off; do not repeat unchanged mutations until the connector request-state issue is resolved. Other UI/voice work is independent and continues.
+
+Existing signup/parent-child code was inspected for launch policy preparation. Student/parent role and phone verification do not by themselves establish the AI learner age or AI parental consent. Initial launch audience remains an explicit product decision; no auth/enrollment/child schema change was made. See docs/TALKLY_AI_LAUNCH_DECISIONS.md.
