@@ -89,6 +89,7 @@ export default function AiStudio() {
     stream = useRef<MediaStream | null>(null),
     session = useRef<string | null>(null),
     history = useRef<Turn[]>([]),
+    segmentTurns = useRef<Turn[]>([]),
     timer = useRef<ReturnType<typeof setInterval> | null>(null),
     pending = useRef(false),
     deferred = useRef(false),
@@ -146,12 +147,24 @@ export default function AiStudio() {
     localClose();
     const id = session.current;
     session.current = null;
+    const summarySnapshot = [...segmentTurns.current];
+    segmentTurns.current = [];
     setState(paused ? "paused" : "idle");
     try {
       if (id) {
         const result = await Promise.allSettled([
           checkpoint(id),
-          api("session/stop", { sessionId: id }),
+          api("session/stop", { sessionId: id }).then(() => {
+            // Summary must not delay lease renewal or settlement.
+            void api("session/summary", {
+              sessionId: id,
+              turns: summarySnapshot,
+            }).catch(() =>
+              setError(
+                "회화는 종료됐지만 학습 요약을 저장하지 못했어요. 리포트에 일부 기록이 빠질 수 있어요.",
+              ),
+            );
+          }),
         ]);
         if (result.some((r) => r.status === "rejected"))
           throw new Error(
@@ -212,6 +225,9 @@ export default function AiStudio() {
   function add(role: Turn["role"], text: string) {
     if (!text) return;
     history.current = [...history.current, { role, text }].slice(-100);
+    segmentTurns.current = [...segmentTurns.current, { role, text }].slice(
+      -100,
+    );
     setTurns([...history.current]);
     if (session.current)
       void checkpoint(session.current).catch(() =>
@@ -352,6 +368,7 @@ export default function AiStudio() {
         await api("session/stop", { sessionId: result.sessionId });
         throw new CancelledConnection();
       }
+      segmentTurns.current = [];
       session.current = result.sessionId;
       deadline.current =
         performance.now() +
@@ -567,6 +584,13 @@ export default function AiStudio() {
         </section>
       ) : (
         <>
+          <section className="tai-card">
+            <Link href="/talkly-ai/reports">나의 월간 학습 리포트 →</Link>
+            <p>
+              학습 요약 저장에 동의하면 다음 회화부터 복습 기록을 모을 수
+              있어요.
+            </p>
+          </section>
           {account.canTestAccess && (
             <section className="tai-card">
               <b>관리자 전용 음성 테스트</b>

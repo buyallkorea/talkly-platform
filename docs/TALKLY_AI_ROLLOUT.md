@@ -73,4 +73,14 @@ See `docs/TALKLY_AI_REQUIREMENTS.md` for agreed features and remaining work, inc
 6. Review AI-specific privacy/terms, retention, refund policy and child enrollment/consent requirements before sale to minors. The initial join disclosure is not a complete legal policy.
 7. Confirm UI on desktop/mobile and no regression to enrollment, teacher/student classroom, admin and existing checkout.
 
-No automatic billing, monthly learning report, separately recorded custom voices, or validated pronunciation assessment is claimed in this initial version.
+No automatic billing, scheduled month-end delivery, separately recorded custom voices, or validated pronunciation assessment is claimed in this initial version.
+
+## Opt-in learning summaries and monthly review
+
+Applied `20261025011913_talkly_ai_learning_summaries.sql` after the owner selected summary-only storage. Adds nullable `ai_members.learning_summary_consent_at`, owner-readable/server-written `ai_learning_summaries`, and server-only invoker `ai_monthly_activity` with pinned search_path. Production RLS and grants verified; empty report returns zero values; advisors found no new summary/activity findings. No existing classroom or payment schemas changed.
+
+`/talkly-ai/reports` uses verified owner queries and displays Seoul-month settled connected time, active days, learning topics, grounded expressions/corrections and next practice. Separate consent is required before collection; sessions started before consent are excluded. This is a dynamic monthly review, **not scheduled month-end issuance/delivery**. No improvement percentages or pronunciation/CEFR scores. Summary data is AI-generated and browser-transcript-derived, not a verified assessment.
+
+`session/summary` requires an owned closed session and active AI member, consent, conversation text and a start within one hour. One unique session claim prevents repeated provider cost. No raw transcript is stored by this addition. GPT-4.1-mini uses Responses strict JSON schema, store:false, bounded input/output and a 20-second timeout. Exact expression and correction quotations are checked against transcript. Failures are marked, not fabricated; failed/pending rows do not retry automatically. Summary work never delays settlement or automatic voice renewal. Browser close/failed delivery can omit a summary; report coverage discloses this. Latest 1,000 summary records are included with a truncation notice. Report retention/withdrawal/deletion workflows remain required before public launch.
+
+New checks: `node tests/talkly-ai/reports.mjs`, `node tests/talkly-ai/summary-route.mjs`; PostgreSQL tests now cover summary RLS, insert-claim uniqueness and monthly totals/RPC grants. Production build and local HTTP anonymous401/cross-origin403 passed. Live provider/model access, summary accuracy and real browser/microphone remain unverified.

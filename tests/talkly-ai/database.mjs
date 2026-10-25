@@ -27,6 +27,15 @@ await db.exec(
     "utf8",
   ),
 );
+await db.exec(
+  await readFile(
+    new URL(
+      "../../supabase/migrations/20261025011913_talkly_ai_learning_summaries.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 const a = "11111111-1111-4111-8111-111111111111",
   b = "22222222-2222-4222-8222-222222222222";
 await db.query(`insert into auth.users values($1),($2)`, [a, b]);
@@ -224,6 +233,67 @@ await db.exec("reset role; set role anon");
 await assert.rejects(
   () => db.query("select * from ai_members"),
   /permission denied/,
+);
+await assert.rejects(
+  () => db.query("select * from ai_learning_summaries"),
+  /permission denied/,
+);
+await db.exec("reset role");
+const summarySession = (
+  await db.query("select id,day from ai_sessions where user_id=$1 limit 1", [a])
+).rows[0];
+await db.query(
+  "insert into ai_learning_summaries(session_id,user_id,day,status,summary) values($1,$2,$3,'ready','{}')",
+  [summarySession.id, a, summarySession.day],
+);
+await assert.rejects(
+  () =>
+    db.query(
+      "insert into ai_learning_summaries(session_id,user_id,day) values($1,$2,$3)",
+      [summarySession.id, a, summarySession.day],
+    ),
+  /duplicate key/,
+);
+const activity = (
+  await db.query(
+    "select ai_monthly_activity($1,'2020-01-01','2040-01-01') as report",
+    [a],
+  )
+).rows[0].report;
+assert.ok(activity.seconds >= 600);
+assert.ok(activity.days >= 1);
+assert.equal(
+  (
+    await db.query(
+      "select ai_monthly_activity($1,'2020-01-01','2020-02-01') as report",
+      [a],
+    )
+  ).rows[0].report.seconds,
+  0,
+);
+await db.exec(
+  `set role authenticated; select set_config('test.uid','${b}',false)`,
+);
+assert.equal(
+  (await db.query("select * from ai_learning_summaries")).rows.length,
+  0,
+);
+await db.exec(`select set_config('test.uid','${a}',false)`);
+assert.equal(
+  (await db.query("select * from ai_learning_summaries")).rows.length,
+  1,
+);
+await assert.rejects(
+  () => db.query("delete from ai_learning_summaries"),
+  /permission denied/,
+);
+await assert.rejects(
+  () =>
+    db.query("select ai_monthly_activity($1,'2020-01-01','2040-01-01')", [b]),
+  /permission denied/,
+);
+console.log(
+  "PASS: learning summary ownership/RLS, duplicate API claim exclusion, monthly activity bounds and server-only RPC.",
 );
 console.log(
   "PASS: migration; expired pass; duplicate tabs; ownership; failure refund; idempotent finish; 600-second cap; payment key binding; activation replay; 30-day extension; RLS; RPC grants; 180-second lifetime trial, pause/refund/rejoin, no signup reset, paid/trial separation.",
