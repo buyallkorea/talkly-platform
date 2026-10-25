@@ -2,6 +2,10 @@ import { getCurrentUser } from "@/lib/server-user";
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { notFound } from "next/navigation";
+import {
+  outreachCandidate,
+  OUTREACH_DRAFTS,
+} from "@/lib/talkly-ai/reengagement";
 export const dynamic = "force-dynamic";
 export default async function AdminAiPage() {
   const {
@@ -29,7 +33,7 @@ export default async function AdminAiPage() {
     db
       .from("ai_members")
       .select(
-        "user_id,status,consented_at,valid_until,last_tutor_id,trial_used_seconds",
+        "user_id,status,consented_at,consent_version,valid_until,last_tutor_id,trial_used_seconds",
       )
       .order("created_at", { ascending: false })
       .limit(100),
@@ -53,14 +57,109 @@ export default async function AdminAiPage() {
     );
   const ids = [...new Set((members.data ?? []).map((m) => m.user_id))];
   const { data: names } = ids.length
-    ? await db.from("profiles").select("id,name").in("id", ids)
+    ? await db.from("profiles").select("id,name,role").in("id", ids)
     : { data: [] };
   const nameMap = new Map((names ?? []).map((n) => [n.id, n.name]));
   const name = (id: string) => nameMap.get(id) || id;
+  const { data: activity, error: activityError } = ids.length
+    ? await db
+        .from("ai_sessions")
+        .select("user_id,state,ended_at,charged_seconds")
+        .in("user_id", ids)
+        .order("started_at", { ascending: false })
+        .limit(1000)
+    : { data: [], error: null };
+  const roleMap = new Map((names ?? []).map((n) => [n.id, n.role]));
+  const candidates = activityError
+    ? []
+    : (members.data ?? []).flatMap((m) => {
+        const sessions = (activity ?? []).filter(
+          (s) => s.user_id === m.user_id,
+        );
+        const last =
+          sessions
+            .filter(
+              (s) =>
+                s.state === "closed" && s.charged_seconds > 0 && s.ended_at,
+            )
+            .map((s) => s.ended_at)
+            .sort()
+            .at(-1) ?? null;
+        const orders = (payments.data ?? []).filter(
+          (p) => p.user_id === m.user_id,
+        );
+        const candidate = outreachCandidate({
+          id: m.user_id,
+          role: roleMap.get(m.user_id) ?? "",
+          status: m.status,
+          consentVersion: m.consent_version,
+          validUntil: m.valid_until,
+          trialUsed: m.trial_used_seconds,
+          lastActivity: last,
+          hasPaid: orders.some((p) => p.status === "paid"),
+          activeSession: sessions.some((s) => s.state !== "closed"),
+          paymentPending: orders.some((p) => p.status === "confirming"),
+        });
+        return candidate ? [candidate] : [];
+      });
   return (
     <section>
       <h1>TALKLY AI 운영</h1>
       <p>하루 10분 · 30일 13,900원 · 수동 재결제 / 각 목록 최근 100건</p>
+      <section
+        style={{
+          border: "1px solid #d8b4fe",
+          borderRadius: 12,
+          padding: 20,
+          margin: "20px 0",
+        }}
+      >
+        <h2>재이용·재결제 안내 준비</h2>
+        <p>
+          <strong>실제 발송 OFF</strong> · 관리자 검토용 대상 조건과 문안입니다.
+        </p>
+        <p>
+          최근 회원 100명·결제 100건·해당 회원 연결 기록 1,000건 범위의
+          미리보기입니다. 전체 대상 집계나 발송 예약 수가 아닙니다.
+        </p>
+        {activityError ? (
+          <p>대상 조건 미리보기를 불러오지 못했습니다.</p>
+        ) : (
+          <p>
+            체험 후 24시간 지난 조건:{" "}
+            {candidates.filter((c) => c.kind === "trial_followup").length}명 /
+            유료 이용권 만료 후 24시간 지난 조건:{" "}
+            {candidates.filter((c) => c.kind === "pass_expired").length}명
+          </p>
+        )}
+        <p>
+          현재 별도 이메일·카카오 광고 수신동의와 발송 이력 저장이 연결되지 않아
+          발송 가능 대상은 0명입니다. 관리자·강사·정지 회원·성인 이용 확인 전
+          회원·이용 중인 회원·결제 확인 중인 회원은 제외합니다.
+        </p>
+        <p>
+          기본안: 체험 후 안내는 회원당 1회, 만료 안내는 이용권 만료 회차당 1회.
+          한국시간 09–18시, 동의한 채널 한 곳에만 안내합니다. 실제 발송 직전
+          재결제·재이용·수신거부를 다시 확인해야 합니다.
+        </p>
+        {Object.entries(OUTREACH_DRAFTS).map(([kind, draft]) => (
+          <details key={kind}>
+            <summary>
+              {kind === "trial_followup"
+                ? "무료 체험 후 안내 문안"
+                : "이용권 만료 후 안내 문안"}{" "}
+              (초안)
+            </summary>
+            <p>{draft.title}</p>
+            <pre style={{ whiteSpace: "pre-wrap" }}>{draft.text}</pre>
+          </details>
+        ))}
+        <p>
+          초안의 서비스 링크·운영 연락처·무료 수신거부 방법을 확정하고, 채널별
+          수신동의·중복 방지·발송 기록·제공업체 설정을 완료해야 실제 발송을 켤
+          수 있습니다. 카카오는 광고성 브랜드 메시지 연동이 별도로 필요합니다.
+        </p>
+      </section>
       <h2>AI 가입 회원</h2>
       <div style={{ overflowX: "auto" }}>
         <table>
