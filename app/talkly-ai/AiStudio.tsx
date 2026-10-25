@@ -102,6 +102,7 @@ export default function AiStudio() {
     holdingRef.current = false;
     setHolding(false);
     pending.current = false;
+    deferred.current = false;
   }
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
   async function checkpoint(id: string) {
@@ -142,6 +143,9 @@ export default function AiStudio() {
   // pagehide uses keepalive; server watchdog independently expires abandoned calls.
   useEffect(() => {
     const leave = () => {
+      active.current = false;
+      if (timer.current) clearInterval(timer.current);
+      timer.current = null;
       stream.current?.getTracks().forEach((t) => t.stop());
       pc.current?.close();
       if (session.current) {
@@ -163,13 +167,22 @@ export default function AiStudio() {
         });
       }
     };
+    const restore = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      session.current = null;
+      localClose();
+      setState("paused");
+      void refresh().catch((e) => setError(e.message));
+    };
     window.addEventListener("pagehide", leave);
+    window.addEventListener("pageshow", restore);
     return () => {
       window.removeEventListener("pagehide", leave);
+      window.removeEventListener("pageshow", restore);
       leave();
       if (timer.current) clearInterval(timer.current);
     };
-  }, []);
+  }, [refresh]);
   function add(role: Turn["role"], text: string) {
     if (!text) return;
     history.current = [...history.current, { role, text }].slice(-100);
