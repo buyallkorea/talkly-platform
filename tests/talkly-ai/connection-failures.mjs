@@ -42,15 +42,16 @@ const factory = `export function make(live=true,stopFails=false){
  const connectionEpoch={current:{current:id=>id===generation,cancel:()=>generation++}};
  const stream={current:{getTracks:()=>[{stop(){stoppedTracks++;}}]}},audio={current:{srcObject:null,play:()=>Promise.reject(Error('autoplay'))}};
  const timer={current:1},replyTimer={current:2},turnCoordinator={current:{reset(){events.push('turn-reset')}}};
+ const disconnectTimer={current:null},timeouts=new Map();let nextTimer=10;
  const session={current:'owned-session'},segmentTurns={current:[]};
  const setState=s=>events.push('state:'+s),setError=s=>errors.push(s);
- const clearInterval=()=>{},clearTimeout=()=>{},timeout=1,reject=()=>rejections++;
+ const clearInterval=()=>{},clearTimeout=id=>timeouts.delete(id),setTimeout=(fn,ms)=>{const id=++nextTimer;timeouts.set(id,{fn,ms});return id;},timeout=1,reject=()=>rejections++;
  const checkpoint=async id=>{assertId(id);events.push('checkpoint');};
  function assertId(id){if(id!=='owned-session')throw Error('wrong owner session');}
  const api=async(path,data)=>{assertId(data.sessionId);events.push(path);if(stopFails&&path==='session/stop')throw Error('offline');return {};};
  const refresh=async()=>({remaining:90}),renew=async()=>{renewals++;};
  ${functions.localClose}\n${functions.stop}\n${functions.failConnection}
- return {close:${handlers["channel.onclose"]},error:${handlers["channel.onerror"]},peerChange:${handlers["peer.onconnectionstatechange"]},trackEnd:${handlers["track.onended"]},ontrack:${handlers["peer.ontrack"]},stop,pc,peer,active,deadline,audio,events,errors,stats:()=>({renewals,rejections,closed,stoppedTracks})};
+ return {close:${handlers["channel.onclose"]},error:${handlers["channel.onerror"]},peerChange:${handlers["peer.onconnectionstatechange"]},trackEnd:${handlers["track.onended"]},ontrack:${handlers["peer.ontrack"]},stop,pc,peer,active,deadline,audio,events,errors,timeouts,expire(){for(const [id,t] of [...timeouts]){timeouts.delete(id);t.fn();}},stats:()=>({renewals,rejections,closed,stoppedTracks})};
 }`;
 const js = ts.transpileModule(factory, {
   compilerOptions: {
@@ -64,7 +65,7 @@ const { make } = await import(
 const flush = () => new Promise((r) => setImmediate(r));
 for (const kind of ["close", "error", "trackEnd", "peerChange", "ontrack"]) {
   const h = make();
-  if (kind === "peerChange") h.peer.connectionState = "disconnected";
+  if (kind === "peerChange") h.peer.connectionState = "failed";
   if (kind === "ontrack") h.ontrack({ streams: [{}] });
   else h[kind]();
   await flush();
@@ -87,6 +88,39 @@ for (const kind of ["close", "error", "trackEnd", "peerChange", "ontrack"]) {
     "late events cannot settle again",
   );
 }
+const brief = make();
+brief.peer.connectionState = "disconnected";
+brief.peerChange();
+brief.peerChange();
+assert.equal(brief.timeouts.size, 1);
+assert.equal([...brief.timeouts.values()][0].ms, 3000);
+assert.equal(brief.active.current, true);
+assert.equal(brief.events.length, 0);
+brief.peer.connectionState = "connected";
+brief.peerChange();
+assert.equal(brief.timeouts.size, 0);
+brief.expire();
+assert.equal(brief.events.length, 0);
+const lasting = make();
+lasting.peer.connectionState = "disconnected";
+lasting.peerChange();
+lasting.expire();
+await flush();
+assert.equal(lasting.active.current, false);
+assert.equal(lasting.events.filter((x) => x === "session/stop").length, 1);
+const cancelled = make();
+cancelled.peer.connectionState = "disconnected";
+cancelled.peerChange();
+await cancelled.stop();
+assert.equal(cancelled.timeouts.size, 0);
+cancelled.expire();
+assert.equal(cancelled.errors.length, 0);
+const replaced = make();
+replaced.peer.connectionState = "disconnected";
+replaced.peerChange();
+replaced.pc.current = {};
+replaced.expire();
+assert.equal(replaced.events.length, 0);
 const setup = make(false);
 setup.error();
 await flush();

@@ -7,7 +7,7 @@
 - Signup benefit: one lifetime 180-second free trial per AI membership, no payment, no daily reset; unused seconds remain after pausing. It is separate from the admin test pass.
 - One paid plan: KRW 13,900 / 30 days, 600 connected seconds per Asia/Seoul calendar day. No automatic renewal, no daily rollover. Payment extends from the later of current expiration and approval processing time. It does not reset today's quota.
 - Ten AI tutor profiles (US/UK/AU/CA/ZA, male/female presentations) use cedar/marin plus locale prompts. These are AI personalities, not ten recorded native speakers. Accent fidelity needs listening tests.
-- `gpt-realtime-2.1-mini`; semantic VAD low eagerness; no unsolicited idle timeout. Thinking control suppresses automatic responses; pause disconnects and settles usage. Paused time is not charged.
+- `gpt-realtime-2.1-mini`; semantic VAD low eagerness; no unsolicited idle timeout. Automatic speech-aware waiting replaces the removed thinking button; pause disconnects and settles usage. Paused time is not charged.
 - Last 20 text turns (max 1,000 characters each), kept only in member memory, are passed as explicitly untrusted previous-conversation data. Audio recordings are not stored by TALKLY AI. Provider processing is disclosed at AI enrollment. No validated pronunciation scores.
 - `/admin/talkly-ai`: verified admin-only membership, payment and daily usage views, limited to latest 100 rows per list. Existing profiles.role authorization preserved.
 
@@ -68,7 +68,7 @@ See `docs/TALKLY_AI_REQUIREMENTS.md` for agreed features and remaining work, inc
 1. Apply migration to isolated staging and run Supabase security advisors.
 2. Verify login → separate consent → owned membership and admin views.
 3. Use matching Toss TEST keys: approved, cancelled, duplicate confirm, mismatched price/owner/key, timeout after approval; reconcile refunds before paid launch.
-4. Grant staging-only test access to a controlled tester, then verify OpenAI model access and real microphone/audio, 10 tutor voice profiles, Korean scaffolding, slow answers, thinking/pause/resume, last-topic continuity.
+4. Grant staging-only test access to a controlled tester, then verify OpenAI model access and real microphone/audio, 10 tutor voice profiles, Korean scaffolding, slow answers, automatic waiting/pause/resume, last-topic continuity.
 5. Run a full 10-minute session, a two-tab race, browser close, network failure, midnight/expiry boundary and watchdog enforcement on Vercel. Inspect provider call termination and actual token usage; do not trust the UI timer alone.
 6. Review AI-specific privacy/terms, retention, refund policy and child enrollment/consent requirements before sale to minors. The initial join disclosure is not a complete legal policy.
 7. Confirm UI on desktop/mobile and no regression to enrollment, teacher/student classroom, admin and existing checkout.
@@ -298,3 +298,9 @@ API는 동일 출처와 서버 profiles.role=admin을 매번 확인하며, 명�
 독립 PostgreSQL에서 trial/paid/closing의 복구·중복 실행·늦은 등록 차단·미만료/등록 통화 보존·100건 처리 상한·서버 전용 권한을 검증했다. 동시 행 잠금 경합은 로컬 단일 인스턴스 테스트로 실증하지 않으며, 운영 고객 예약을 검증용으로 생성하거나 변경하지 않았다.
 
 운영 예약 작업은 2026-10-25 23:53 UTC(한국시간 26일 08:53) 첫 실행 succeeded를 확인했다. 초기 만료 미연결 예약 0건이므로 실제 고객 시간 복구 사례를 검증한 것은 아니다.
+
+## 2026-10-26 짧은 전송 끊김 복구 대기
+
+브라우저 peer의 disconnected 상태만 최대 3초 복구를 기다린다. 같은 연결이 connected로 돌아오면 예약/새 OpenAI 호출/인사 재생성 없이 이어간다. 반복 disconnected 이벤트는 대기를 연장하지 않으며 기존 이용권 deadline과 만료 타이머는 유지한다. failed/closed, 마이크 종료, 데이터 채널 오류/종료는 기존 종료 경로를 사용한다. 사용자의 종료·페이지 이탈은 복구 타이머를 지우며 교체된 연결의 지연 이벤트는 무시한다.
+
+실제 컴포넌트 핸들러를 추출한 가상 시계 테스트에서 복구·지속 끊김·반복 이벤트·취소·교체·확정 실패와 기존 정산을 확인했다. 실기기 네트워크 전환이나 소리 복원 성공을 검증한 것은 아니며, 재협상/ICE restart를 구현한 것도 아니다. 일시 끊김도 기존 서버 연결 시간 기준에 포함되며 공짜 추가 시간을 만들지 않는다.

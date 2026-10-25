@@ -101,6 +101,7 @@ export default function AiStudio() {
     timer = useRef<ReturnType<typeof setInterval> | null>(null),
     turnCoordinator = useRef(new TurnCoordinator()),
     replyTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
+    disconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
     busyRef = useRef(false),
     stopping = useRef(false),
     active = useRef(false),
@@ -133,6 +134,8 @@ export default function AiStudio() {
   function localClose() {
     connectionEpoch.current.cancel();
     active.current = false;
+    if (disconnectTimer.current) clearTimeout(disconnectTimer.current);
+    disconnectTimer.current = null;
     if (timer.current) clearInterval(timer.current);
     timer.current = null;
     dc.current?.close();
@@ -196,6 +199,8 @@ export default function AiStudio() {
     const leave = () => {
       connectionEpoch.current.cancel();
       active.current = false;
+      if (disconnectTimer.current) clearTimeout(disconnectTimer.current);
+      disconnectTimer.current = null;
       if (timer.current) clearInterval(timer.current);
       timer.current = null;
       stream.current?.getTracks().forEach((t) => t.stop());
@@ -346,9 +351,26 @@ export default function AiStudio() {
         }
       };
       peer.onconnectionstatechange = () => {
+        if (pc.current !== peer || !connectionEpoch.current.current(attempt))
+          return;
+        if (peer.connectionState === "disconnected") {
+          // Brief transport loss can recover without another paid API call.
+          // Repeated events must not extend the grace period or lease deadline.
+          if (!disconnectTimer.current)
+            disconnectTimer.current = setTimeout(() => {
+              disconnectTimer.current = null;
+              if (peer.connectionState !== "connected")
+                failConnection("연결이 끊어졌어요. 다시 시작해 주세요.", true);
+            }, 3000);
+          return;
+        }
+        if (peer.connectionState === "connected") {
+          if (disconnectTimer.current) clearTimeout(disconnectTimer.current);
+          disconnectTimer.current = null;
+          return;
+        }
         if (
           peer.connectionState === "failed" ||
-          peer.connectionState === "disconnected" ||
           peer.connectionState === "closed"
         ) {
           failConnection("연결이 끊어졌어요. 다시 시작해 주세요.", true);
