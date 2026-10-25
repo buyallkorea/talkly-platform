@@ -7,6 +7,7 @@ import {
   ConnectionEpoch,
   leaseMilliseconds,
 } from "@/lib/talkly-ai/client-connection";
+import { CheckpointQueue } from "@/lib/talkly-ai/checkpoint-queue";
 import { TurnCoordinator } from "@/lib/talkly-ai/turn-coordinator";
 type Account = {
   needsAdultConsent: boolean;
@@ -141,16 +142,13 @@ export default function AiStudio() {
     replyTimer.current = null;
     turnCoordinator.current.reset();
   }
-  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const saveQueue = useRef<CheckpointQueue | null>(null);
   async function checkpoint(id: string) {
-    const snapshot = history.current.slice(-20);
-    const save = saveQueue.current
-      .catch(() => {})
-      .then(() =>
-        api("session/checkpoint", { sessionId: id, turns: snapshot }),
+    if (!saveQueue.current)
+      saveQueue.current = new CheckpointQueue((sessionId, turns) =>
+        api("session/checkpoint", { sessionId, turns }),
       );
-    saveQueue.current = save;
-    await save;
+    await saveQueue.current.save(id, history.current.slice(-20));
   }
   async function stop(paused = true) {
     if (stopping.current) return;
