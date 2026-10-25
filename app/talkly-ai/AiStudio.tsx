@@ -634,6 +634,11 @@ export default function AiStudio() {
           <section className="tai-card">
             <Link href="/talkly-ai/reports">나의 월간 학습 리포트 →</Link>
             <p>
+              <Link href="/talkly-ai/notifications">
+                카카오톡·이메일 안내 수신 설정 →
+              </Link>
+            </p>
+            <p>
               학습 요약 저장에 동의하면 다음 회화부터 복습 기록을 모을 수
               있어요.
             </p>
