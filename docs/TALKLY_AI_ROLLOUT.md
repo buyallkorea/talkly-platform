@@ -120,3 +120,11 @@ Initial greetings and text replies use the same pending gate. Automatic renewal 
 Tests exercise TurnCoordinator and extract/execute the actual AiStudio onmessage/think/replyWhenReady functions with a fake channel. Checks cover commitment before response, releasing hold while speaking, deferred input during response, duplicate events, idle and provider-error stop. Existing async microphone/time/quota/report gates are regression-tested. No schema, model, paid flag or quota constants changed. Real microphone/listening verification remains pending in docs/TALKLY_AI_VOICE_QA.md.
 
 Official references: https://developers.openai.com/api/docs/guides/realtime-vad and https://developers.openai.com/api/docs/guides/realtime-conversations (keep VAD while controlling response creation). No live OpenAI request or secret value read was needed for these event tests.
+
+## Superseding manual thinking: automatic continuation grace
+
+Owner explicitly removed the thinking button requirement. Removed hold UI/state/think handler and hold payload; pause/end remain. TurnCoordinator now delays only committed audio turns: default1.5s, short1–3 words2.5s, trailing incomplete/filler expressions3.5s, long7+ word statements0.8s; a local rolling short-answer pattern raises default to2.2s. These are initial heuristics, not language-level scores. Transcript updates are anchored to the original commit time, so unrelated events do not continually extend the timer. No new model calls or DB writes.
+
+Speech restart cancels the timer. The coordinator tracks the new speech item and waits for its own commit, so an old/duplicate commit cannot release a new utterance. Text submissions bypass voice grace. Timers clear on local stop and are rebuilt only for pending input on renewal. No silence-only idle event creates a question. Long mid-sentence pauses can still be misjudged; VAD latency is additional to grace, and real listening remains required.
+
+Replaced earlier manual-hold tests with fake-clock/fake-scheduler tests of the actual client handler plus timing rules, resume-before-reply, new-commit matching, duplicate suppression and idle. Manual QA document was rewritten for hands-free use; prior hold instructions in this history are superseded. Existing schema, model, quota and paid flags are unchanged.

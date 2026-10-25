@@ -79,7 +79,6 @@ export default function AiStudio() {
     [state, setState] = useState<"idle" | "connecting" | "live" | "paused">(
       "idle",
     ),
-    [holding, setHolding] = useState(false),
     [remaining, setRemaining] = useState(600),
     [turns, setTurns] = useState<Turn[]>([]),
     [input, setInput] = useState(""),
@@ -94,7 +93,7 @@ export default function AiStudio() {
     segmentTurns = useRef<Turn[]>([]),
     timer = useRef<ReturnType<typeof setInterval> | null>(null),
     turnCoordinator = useRef(new TurnCoordinator()),
-    holdingRef = useRef(false),
+    replyTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
     busyRef = useRef(false),
     stopping = useRef(false),
     active = useRef(false),
@@ -126,8 +125,8 @@ export default function AiStudio() {
     pc.current = null;
     stream.current = null;
     if (audio.current) audio.current.srcObject = null;
-    holdingRef.current = false;
-    setHolding(false);
+    if (replyTimer.current) clearTimeout(replyTimer.current);
+    replyTimer.current = null;
     turnCoordinator.current.reset();
   }
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
@@ -235,6 +234,8 @@ export default function AiStudio() {
       );
   }
   function replyWhenReady() {
+    if (replyTimer.current) clearTimeout(replyTimer.current);
+    replyTimer.current = null;
     if (!active.current || dc.current?.readyState !== "open") return;
     if (turnCoordinator.current.takeResponse()) {
       try {
@@ -243,17 +244,19 @@ export default function AiStudio() {
         setError("응답 연결이 끊어졌어요. 다시 시작해 주세요.");
         void stop(true);
       }
+    } else {
+      const delay = turnCoordinator.current.responseDelay();
+      if (delay !== null)
+        replyTimer.current = setTimeout(replyWhenReady, Math.max(1, delay));
     }
   }
   async function renew() {
-    const wasHolding = holdingRef.current;
     const queued = turnCoordinator.current.queued;
     const a = await stop(true);
-    if (a && a.remaining > 0) await start(true, wasHolding, true, queued);
+    if (a && a.remaining > 0) await start(true, true, queued);
   }
   async function start(
     continuation = false,
-    resumeHold = false,
     automatic = false,
     queued = false,
   ) {
@@ -261,10 +264,8 @@ export default function AiStudio() {
     busyRef.current = true;
     setConnectionBusy(true);
     const attempt = connectionEpoch.current.begin();
-    holdingRef.current = resumeHold;
-    turnCoordinator.current.reset(resumeHold);
-    turnCoordinator.current.queued = queued;
-    setHolding(resumeHold);
+    turnCoordinator.current.reset();
+    if (queued) turnCoordinator.current.restoreQueued();
     setError("");
     setState("connecting");
     try {
@@ -375,7 +376,6 @@ export default function AiStudio() {
       const result = await api("session", {
         sdp: offer.sdp,
         tutorId: tutor,
-        hold: resumeHold,
       });
       if (!connectionEpoch.current.current(attempt)) {
         await api("session/stop", { sessionId: result.sessionId });
@@ -449,14 +449,6 @@ export default function AiStudio() {
       busyRef.current = false;
       setConnectionBusy(false);
     }
-  }
-  function think() {
-    const hold = !holdingRef.current;
-    holdingRef.current = hold;
-    turnCoordinator.current.holding = hold;
-    setHolding(hold);
-    // No session.update race: automatic response creation stays off throughout.
-    replyWhenReady();
   }
   async function join() {
     setBusy(true);
@@ -688,9 +680,7 @@ export default function AiStudio() {
               <div className="tai-studio-top">
                 <span>
                   {state === "live"
-                    ? holding
-                      ? "생각할 시간이에요"
-                      : "편하게 이야기해 주세요"
+                    ? "천천히, 편하게 이야기해 주세요"
                     : state === "connecting"
                       ? "음성 연결 중…"
                       : state === "paused"
@@ -715,9 +705,6 @@ export default function AiStudio() {
               <div className="tai-controls">
                 {state === "live" ? (
                   <>
-                    <button onClick={think} aria-pressed={holding}>
-                      {holding ? "답변 준비됐어요" : "생각 중"}
-                    </button>
                     <button onClick={() => stop(true)}>일시정지</button>
                     <button onClick={() => stop(false)}>대화 종료</button>
                   </>
@@ -743,8 +730,8 @@ export default function AiStudio() {
                 )}
               </div>
               <small>
-                ‘생각 중’에는 시간이 차감돼요. 쉬어 갈 때는 ‘일시정지’를 눌러
-                주세요.
+                잠깐 멈추면 자동으로 기다려요. 연결된 동안에는 시간이 차감되며,
+                쉬어 갈 때는 ‘일시정지’를 눌러 주세요.
               </small>
               <audio ref={audio} autoPlay />
               <div className="tai-transcript" aria-live="polite">
@@ -771,7 +758,7 @@ export default function AiStudio() {
                     state !== "live" ||
                     turnCoordinator.current.pending ||
                     turnCoordinator.current.speaking ||
-                    holdingRef.current ||
+                    turnCoordinator.current.awaitingCommit ||
                     dc.current?.readyState !== "open"
                   )
                     return;
@@ -786,7 +773,7 @@ export default function AiStudio() {
                       },
                     }),
                   );
-                  turnCoordinator.current.queued = true;
+                  turnCoordinator.current.queueText();
                   replyWhenReady();
                   add("user", text);
                   setInput("");
@@ -799,7 +786,7 @@ export default function AiStudio() {
                   onChange={(e) => setInput(e.target.value)}
                   disabled={state !== "live"}
                 />
-                <button disabled={state !== "live" || holding}>보내기</button>
+                <button disabled={state !== "live"}>보내기</button>
               </form>
             </section>
           </div>
