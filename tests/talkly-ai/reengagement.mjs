@@ -78,7 +78,7 @@ assert.equal(
     new Set(),
     now,
   ).channel,
-  "email",
+  "kakao",
 );
 assert.equal(
   outreachDelivery(

@@ -75,10 +75,10 @@ export function outreachDelivery(
   if (hour < 9 || hour >= 18)
     return { channel: null, reason: "outside_hours" } as const;
   // One channel per event. Do not automatically fall back after an uncertain send.
-  if (preferences.email && available.email)
-    return { channel: "email", reason: "ready" } as const;
   if (preferences.kakao && available.kakao)
     return { channel: "kakao", reason: "ready" } as const;
+  if (preferences.email && available.email)
+    return { channel: "email", reason: "ready" } as const;
   return { channel: null, reason: "no_consent_or_channel" } as const;
 }
 export const OUTREACH_DRAFTS = {
