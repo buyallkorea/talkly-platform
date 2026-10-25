@@ -84,7 +84,8 @@ export default function AiStudio() {
     [remaining, setRemaining] = useState(600),
     [turns, setTurns] = useState<Turn[]>([]),
     [input, setInput] = useState(""),
-    [connectionBusy, setConnectionBusy] = useState(false);
+    [connectionBusy, setConnectionBusy] = useState(false),
+    [paymentMessage, setPaymentMessage] = useState("");
   const connectionEpoch = useRef(new ConnectionEpoch());
   const audio = useRef<HTMLAudioElement>(null),
     pc = useRef<RTCPeerConnection | null>(null),
@@ -553,6 +554,47 @@ export default function AiStudio() {
       setBusy(false);
     }
   }
+  async function recoverPayment(orderId: string) {
+    if (
+      busy ||
+      busyRef.current ||
+      active.current ||
+      stopping.current ||
+      connectionBusy
+    )
+      return;
+    busyRef.current = true;
+    setBusy(true);
+    setPaymentMessage("기존 주문의 승인 여부를 조회 중이에요.");
+    let confirmed = false;
+    try {
+      const result = await api("payment/confirm", {
+        orderId,
+        amount: PLAN.amount,
+        lookupOnly: true,
+      });
+      if (result.success !== true)
+        throw new Error("결제 상태를 확인하지 못했어요.");
+      confirmed = true;
+      await refresh();
+      setPaymentMessage(
+        result.alreadyActivated
+          ? "이미 이용권에 반영된 주문입니다."
+          : "승인된 결제를 확인해 이용권에 반영했어요.",
+      );
+    } catch (error) {
+      setPaymentMessage(
+        confirmed
+          ? "이용권 반영은 확인했지만 내역을 새로 불러오지 못했어요. 페이지를 새로고침해 주세요."
+          : error instanceof Error
+            ? error.message
+            : "같은 주문의 결제 상태를 확인하지 못했어요.",
+      );
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }
   const paid = account?.activePass ?? false;
   return (
     <>
@@ -761,6 +803,7 @@ export default function AiStudio() {
                 ) : (
                   <button
                     disabled={
+                      busy ||
                       connectionBusy ||
                       remaining < 1 ||
                       account.member.status !== "active"
@@ -852,12 +895,32 @@ export default function AiStudio() {
                       : p.status === "confirming"
                         ? "확인 중"
                         : p.status}
+                  {p.status === "confirming" && (
+                    <>
+                      {" "}
+                      ·{" "}
+                      <button
+                        disabled={
+                          busy ||
+                          connectionBusy ||
+                          state === "live" ||
+                          state === "connecting"
+                        }
+                        onClick={() => recoverPayment(p.order_id)}
+                      >
+                        승인 여부 다시 확인
+                      </button>
+                    </>
+                  )}
                 </p>
               ))
             ) : (
               <p>아직 결제 내역이 없어요.</p>
             )}
           </details>
+          <p role="status" aria-live="polite">
+            {paymentMessage}
+          </p>
         </>
       )}
     </>
