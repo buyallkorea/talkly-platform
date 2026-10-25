@@ -94,7 +94,8 @@ globalThis.fetch = (url, options) => {
 try {
   reset();
   let cleanup = run();
-  assert.deepEqual(busy, [true]);
+  assert.equal(busy.length, 0);
+  await flush();
   assert.equal(timers[0].delay, 50000);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].options.cache, "no-store");
@@ -111,6 +112,7 @@ try {
   cleanup();
   reset();
   cleanup = run();
+  await flush();
   timers[0].callback();
   await flush();
   assert.equal(done.length, 0);
@@ -125,10 +127,20 @@ try {
   await flush();
   assert.equal(messages.length, before);
   assert.equal(done.length, 0);
+  assert.equal(calls.length, 0);
+  reset();
+  cleanup = run();
+  await flush();
+  const pendingMessages = messages.length;
+  cleanup();
+  await flush();
   assert.equal(calls[0].options.signal.aborted, true);
+  assert.equal(messages.length, pendingMessages);
+  assert.equal(done.length, 0);
   reset();
   globalThis.location.search = "";
   run();
+  await flush();
   assert.equal(calls.length, 0);
   assert.equal(allowed.at(-1), false);
   assert.equal(busy.at(-1), false);

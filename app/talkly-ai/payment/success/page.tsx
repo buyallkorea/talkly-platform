@@ -6,42 +6,42 @@ export default function AiPaymentSuccess() {
     [retry, setRetry] = useState(0),
     [done, setDone] = useState(false),
     [busy, setBusy] = useState(true),
-    [retryAllowed, setRetryAllowed] = useState(false);
+    [retryAllowed, setRetryAllowed] = useState(true);
   useEffect(() => {
     let cancelled = false;
     let timedOut = false;
     const params = new URLSearchParams(location.search);
-    if (
-      !params.get("orderId") ||
-      !params.get("paymentKey") ||
-      !params.get("amount")
-    ) {
-      setMessage(
-        "결제 확인 정보를 찾지 못했어요. 이용권·결제 내역에서 상태를 확인해 주세요.",
-      );
-      setBusy(false);
-      setRetryAllowed(false);
-      return;
-    }
     const controller = new AbortController();
     const timeout = setTimeout(() => {
       timedOut = true;
       controller.abort();
     }, 50000);
-    setBusy(true);
-    setRetryAllowed(true);
-    setMessage("기존 주문의 결제와 이용권을 확인 중이에요.");
-    void fetch("/api/talkly-ai/payment/confirm", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        orderId: params.get("orderId"),
-        paymentKey: params.get("paymentKey"),
-        amount: Number(params.get("amount")),
-      }),
-      signal: controller.signal,
-      cache: "no-store",
-    })
+    void Promise.resolve()
+      .then(() => {
+        if (cancelled || controller.signal.aborted)
+          throw new DOMException("Aborted", "AbortError");
+        if (
+          !params.get("orderId") ||
+          !params.get("paymentKey") ||
+          !params.get("amount")
+        ) {
+          setRetryAllowed(false);
+          throw new Error(
+            "결제 확인 정보를 찾지 못했어요. 이용권·결제 내역에서 상태를 확인해 주세요.",
+          );
+        }
+        return fetch("/api/talkly-ai/payment/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: params.get("orderId"),
+            paymentKey: params.get("paymentKey"),
+            amount: Number(params.get("amount")),
+          }),
+          signal: controller.signal,
+          cache: "no-store",
+        });
+      })
       .then(async (r) => {
         const d = await r.json();
         if (!r.ok || d.success !== true)
@@ -85,6 +85,7 @@ export default function AiPaymentSuccess() {
           disabled={busy}
           onClick={() => {
             setBusy(true);
+            setMessage("기존 주문의 결제와 이용권을 확인 중이에요.");
             setRetry((r) => r + 1);
           }}
         >

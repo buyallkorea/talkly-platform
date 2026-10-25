@@ -110,12 +110,22 @@ export default function AiStudio() {
     return result;
   }, []);
   useEffect(() => {
-    refresh()
+    let cancelled = false;
+    void Promise.resolve()
+      .then(() => (cancelled ? null : api("account")))
       .then((a) => {
+        if (cancelled || !a) return;
+        setAccount(a as Account);
+        setRemaining(a.remaining);
         if (a.member?.last_tutor_id) setTutor(a.member.last_tutor_id);
       })
-      .catch((e) => setError(e.message));
-  }, [refresh]);
+      .catch((e) => {
+        if (!cancelled) setError(e.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   function localClose() {
     connectionEpoch.current.cancel();
     active.current = false;
