@@ -47,10 +47,9 @@ export async function POST(request: Request) {
     for (const row of stale ?? []) await closeSession(user.id, row.id);
     // Count only authenticated, syntactically valid connection starts. Stop and
     // settlement routes remain available during a cooldown. No quota is reserved yet.
-    const { data: attempt, error: attemptError } = await db.rpc(
-      "ai_claim_connection_attempt",
-      { p_user: user.id },
-    );
+    const { data: attempt, error: attemptError } = await db
+      .rpc("ai_claim_connection_attempt", { p_user: user.id })
+      .abortSignal(AbortSignal.timeout(3000));
     if (attemptError || typeof attempt?.allowed !== "boolean")
       throw new AiError(
         "연결 요청을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.",

@@ -82,13 +82,18 @@ const lease = {
   reserved_seconds: 180,
 };
 const db = {
-  async rpc(name, args) {
+  rpc(name, args) {
     rpcCalls.push(name);
     if (name === "ai_claim_connection_attempt") {
       assert.equal(args.p_user, "owner");
       return {
-        data: { allowed: rateAllowed, retry_after_seconds: 42 },
-        error: rateError,
+        abortSignal: async (signal) => {
+          assert.ok(signal instanceof AbortSignal);
+          return {
+            data: { allowed: rateAllowed, retry_after_seconds: 42 },
+            error: rateError,
+          };
+        },
       };
     }
     assert.equal(name, "ai_reserve");
