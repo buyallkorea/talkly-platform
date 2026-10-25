@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { context, requireMember, AiError } from "@/lib/talkly-ai/server";
-import { reportMonth, type LearningSummary } from "@/lib/talkly-ai/reports";
+import {
+  reportMonth,
+  summaryRetentionCutoff,
+  type LearningSummary,
+} from "@/lib/talkly-ai/reports";
 import SummaryConsent from "./SummaryConsent";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "나의 월간 학습 리포트 | TALKLY AI" };
@@ -24,6 +28,7 @@ export default async function Reports({
         .from("ai_learning_summaries")
         .select("session_id,day,status,summary,created_at", { count: "exact" })
         .eq("user_id", user.id)
+        .gt("created_at", summaryRetentionCutoff())
         .gte("day", period.from)
         .lt("day", period.to)
         .order("created_at", { ascending: false })
@@ -74,7 +79,7 @@ export default async function Reports({
       <h1>{period.month} 학습 리포트</h1>
       <p>
         {period.complete ? "월간 정리" : "이번 달 중간 기록"} · 한국시간 기준.
-        월말까지 쌓인 기록은 다음 달에도 조회할 수 있어요.
+        학습 요약은 저장 시점부터 3개월 동안 조회할 수 있어요.
       </p>
       <form>
         <label>

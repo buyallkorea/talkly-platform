@@ -18,9 +18,10 @@ const js = ts.transpileModule(
     },
   },
 ).outputText;
-const { reportMonth, summaryTurns, validateSummary } = await import(
-  "data:text/javascript;base64," + Buffer.from(js).toString("base64")
-);
+const { reportMonth, summaryTurns, validateSummary, summaryRetentionCutoff } =
+  await import(
+    "data:text/javascript;base64," + Buffer.from(js).toString("base64")
+  );
 assert.deepEqual(reportMonth("2026-12", new Date("2026-12-31T15:01:00Z")), {
   month: "2026-12",
   from: "2026-12-01",
@@ -73,4 +74,20 @@ assert.equal(summary.corrections.length, 1);
 assert.throws(() => validateSummary(null, turns));
 console.log(
   "PASS: Seoul month/year boundaries, future month rejection, bounded transcript, evidenced expressions and corrections.",
+);
+
+assert.equal(
+  summaryRetentionCutoff(new Date("2026-05-31T14:59:00Z")),
+  "2026-02-28T14:59:00.000Z",
+);
+assert.equal(
+  summaryRetentionCutoff(new Date("2024-05-31T14:59:00Z")),
+  "2024-02-29T14:59:00.000Z",
+);
+assert.equal(
+  summaryRetentionCutoff(new Date("2026-03-31T15:00:00Z")),
+  "2025-12-31T15:00:00.000Z",
+);
+console.log(
+  "PASS: 3-calendar-month retention clamps short/leap months using Seoul date boundaries.",
 );

@@ -43,8 +43,10 @@ export default function SummaryConsent({ enabled }: { enabled: boolean }) {
           : "개인적인 이야기 대신 영어 학습에 필요한 내용을 남깁니다. 다시 켜면 그 이후 시작한 회화부터 기록해요."}
       </p>
       <p>
-        현재 개발 검증 단계이며, 정식 서비스 전 보유기간과 기존 기록 삭제 절차를
-        확정합니다.
+        학습 요약은 저장 시점부터 3개월 동안 보관합니다. 기간이 지나면 조회에서
+        제외하고 매일 한국시간 오전 5시에 운영 DB에서 자동 정리합니다.
+        결제·사용량 기록과 기존 화상수업 기록에는 이 보관 기간을 적용하지
+        않습니다.
       </p>
       <button disabled={busy} onClick={changeConsent}>
         {busy

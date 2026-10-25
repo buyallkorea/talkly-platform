@@ -45,6 +45,19 @@ await db.exec(
     "utf8",
   ),
 );
+// pg_cron has no worker in WASM; record its registration, then test the real purge separately.
+await db.exec(
+  `create schema cron; create table cron.job(jobname text primary key,schedule text,command text); create function cron.schedule(text,text,text) returns bigint language sql as $$ insert into cron.job values($1,$2,$3) on conflict(jobname) do update set schedule=excluded.schedule,command=excluded.command returning 1::bigint $$;`,
+);
+await db.exec(
+  await readFile(
+    new URL(
+      "../../supabase/migrations/20261025061233_talkly_ai_summary_retention.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 const a = "11111111-1111-4111-8111-111111111111",
   b = "22222222-2222-4222-8222-222222222222";
 await db.query(`insert into auth.users values($1),($2)`, [a, b]);
@@ -378,6 +391,60 @@ assert.notEqual(
 ); // Opt-out retains existing records.
 console.log(
   "PASS: withdrawn/renewed consent blocks in-flight results, owner binding, one-time save, existing record preservation and RPC grants.",
+);
+await db.exec("reset role");
+assert.equal(
+  (
+    await db.query(
+      "select schedule from cron.job where jobname='talkly-ai-summary-retention'",
+    )
+  ).rows[0].schedule,
+  "0 20 * * *",
+);
+await db.query(
+  "update ai_learning_summaries set created_at=now()-interval '4 months' where session_id=$1",
+  [summarySession.id],
+);
+await db.exec(
+  `set role authenticated; select set_config('test.uid','${a}',false)`,
+);
+assert.equal(
+  (await db.query("select * from ai_learning_summaries")).rows.length,
+  0,
+); // Expired rows are hidden before cleanup runs.
+await assert.rejects(
+  () => db.query("select ai_purge_expired_learning_summaries()"),
+  /permission denied/,
+);
+await db.exec("reset role; set role service_role");
+assert.equal(
+  (await db.query("select ai_purge_expired_learning_summaries() as n")).rows[0]
+    .n,
+  1,
+);
+assert.equal(
+  (await db.query("select ai_purge_expired_learning_summaries() as n")).rows[0]
+    .n,
+  0,
+);
+await db.exec("reset role");
+await db.query(
+  "insert into ai_learning_summaries(session_id,user_id,day,status,summary) values($1,$2,$3,'ready','{}')",
+  [summarySession.id, a, summarySession.day],
+);
+assert.equal(
+  (await db.query("select ai_purge_expired_learning_summaries() as n")).rows[0]
+    .n,
+  0,
+);
+assert.ok(
+  (await db.query("select count(*)::int as n from ai_sessions")).rows[0].n > 0,
+);
+assert.ok(
+  (await db.query("select count(*)::int as n from ai_members")).rows[0].n > 0,
+);
+console.log(
+  "PASS: 3-calendar-month RLS expiry, daily cleanup registration, server-only purge, idempotence and current/related record preservation.",
 );
 console.log(
   "PASS: learning summary ownership/RLS, duplicate API claim exclusion, monthly activity bounds and server-only RPC.",

@@ -17,6 +17,27 @@ export function reportMonth(value: unknown, now = new Date()) {
   const next = new Date(Date.UTC(year, m, 1)).toISOString().slice(0, 10);
   return { month, from: `${month}-01`, to: next, complete: month < current };
 }
+// Match PostgreSQL calendar-month subtraction in Asia/Seoul, including month-end clamping.
+export function summaryRetentionCutoff(now = new Date()) {
+  const offset = 9 * 60 * 60 * 1000;
+  const local = new Date(now.getTime() + offset);
+  const target = new Date(
+    Date.UTC(
+      local.getUTCFullYear(),
+      local.getUTCMonth() - 3,
+      1,
+      local.getUTCHours(),
+      local.getUTCMinutes(),
+      local.getUTCSeconds(),
+      local.getUTCMilliseconds(),
+    ),
+  );
+  const lastDay = new Date(
+    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  target.setUTCDate(Math.min(local.getUTCDate(), lastDay));
+  return new Date(target.getTime() - offset).toISOString();
+}
 // The browser transcript is a learning aid, not a verified assessment record.
 export function summaryTurns(value: unknown): Turn[] {
   if (!Array.isArray(value)) return [];
