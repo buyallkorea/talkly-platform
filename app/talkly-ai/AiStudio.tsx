@@ -780,23 +780,23 @@ export default function AiStudio() {
                     : "무료 체험을 마쳤어요! 30일 이용권으로 하루 10분씩 회화를 이어갈 수 있어요."}
               </p>
             </div>
-            <button
-              disabled={
-                !account.paymentsEnabled ||
-                busy ||
-                state === "live" ||
-                state === "connecting"
-              }
-              onClick={purchase}
-            >
-              {!account.paymentsEnabled
-                ? "유료 결제 비활성화"
-                : paid
-                  ? "30일 추가 구매"
-                  : remaining > 0
-                    ? "30일 이용권 · 13,900원"
-                    : "영어회화 계속하기 · 30일 13,900원"}
-            </button>
+            {(paid || remaining > 0) && (
+              <button
+                disabled={
+                  !account.paymentsEnabled ||
+                  busy ||
+                  state === "live" ||
+                  state === "connecting"
+                }
+                onClick={purchase}
+              >
+                {!account.paymentsEnabled
+                  ? "유료 결제 비활성화"
+                  : paid
+                    ? "30일 추가 구매"
+                    : "30일 이용권 · 13,900원"}
+              </button>
+            )}
             <div>
               <b>
                 {paid ? "오늘 남은 시간" : "무료 체험 남은 시간"}{" "}
