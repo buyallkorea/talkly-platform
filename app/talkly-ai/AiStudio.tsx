@@ -765,7 +765,7 @@ export default function AiStudio() {
                   ? `만료: ${new Date(account.member.valid_until!).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
                   : remaining > 0
                     ? "결제 없이 체험하세요. 일시정지 후 남은 시간을 이어 쓸 수 있어요."
-                    : "계정당 1회 제공되는 3분 체험을 모두 사용했어요."}
+                    : "무료 체험을 마쳤어요! 30일 이용권으로 하루 10분씩 회화를 이어갈 수 있어요."}
               </p>
             </div>
             <button
@@ -781,7 +781,9 @@ export default function AiStudio() {
                 ? "유료 결제 비활성화"
                 : paid
                   ? "30일 추가 구매"
-                  : "이용권 구매"}
+                  : remaining > 0
+                    ? "30일 이용권 · 13,900원"
+                    : "영어회화 계속하기 · 30일 13,900원"}
             </button>
             <div>
               <b>
@@ -794,6 +796,11 @@ export default function AiStudio() {
                   : "무료 체험은 매일 초기화되지 않아요."}
               </p>
             </div>
+            {!paid && !account.paymentsEnabled && (
+              <p role="status">
+                정식 결제 오픈 전입니다. 결제 기능이 활성화되기 전에는 청구되지 않아요.
+              </p>
+            )}
           </section>
           <div className="tai-grid">
             <section className="tai-card">
