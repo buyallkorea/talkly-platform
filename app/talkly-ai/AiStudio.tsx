@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CONSENT_VERSION, TUTORS, PLAN, Turn } from "@/lib/talkly-ai/config";
+import { CONSENT_VERSION, TUTORS, PLAN, Turn, normalizeTutorId } from "@/lib/talkly-ai/config";
 import {
   CancelledConnection,
   ConnectionEpoch,
@@ -81,7 +81,7 @@ export default function AiStudio() {
     [consent, setConsent] = useState(false),
     [adultConfirmed, setAdultConfirmed] = useState(false),
     [busy, setBusy] = useState(false),
-    [tutor, setTutor] = useState("us-female"),
+    [tutor, setTutor] = useState("lively-female"),
     [state, setState] = useState<"idle" | "connecting" | "live" | "paused">(
       "idle",
     ),
@@ -122,7 +122,7 @@ export default function AiStudio() {
         if (cancelled || !a) return;
         setAccount(a as Account);
         setRemaining(a.remaining);
-        if (a.member?.last_tutor_id) setTutor(a.member.last_tutor_id);
+        if (a.member?.last_tutor_id) setTutor(normalizeTutorId(a.member.last_tutor_id));
       })
       .catch((e) => {
         if (!cancelled) setError(e.message);
@@ -799,7 +799,7 @@ export default function AiStudio() {
             <section className="tai-card">
               <p className="tai-kicker">YOUR CONVERSATION PARTNER</p>
               <h2>나의 AI 튜터</h2>
-              <p>국가별 억양·표현을 사용하는 AI예요.</p>
+              <p>성격에 맞는 AI 강사를 선택하세요. 강사를 바꿔도 학습기록은 이어집니다.</p>
               <div className="tai-tutors">
                 {TUTORS.map((t) => (
                   <button
@@ -811,7 +811,7 @@ export default function AiStudio() {
                   >
                     <b>{t.name}</b>
                     <small>
-                      {t.country} · {t.gender}
+                      {t.style} · {t.gender}
                     </small>
                   </button>
                 ))}
