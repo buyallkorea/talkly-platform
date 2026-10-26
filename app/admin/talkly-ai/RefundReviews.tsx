@@ -32,7 +32,9 @@ export default function RefundReviews({ rows }: { rows: Row[] }) {
   const router = useRouter(),
     guard = useRef(false);
   const [busy, setBusy] = useState(false),
-    [message, setMessage] = useState("");
+    [message, setMessage] = useState(""),
+    [auditNotes, setAuditNotes] = useState<Record<string, string>>({}),
+    [auditTypes, setAuditTypes] = useState<Record<string, string>>({});
   async function update(row: Row) {
     if (guard.current) return;
     guard.current = true;
@@ -63,6 +65,42 @@ export default function RefundReviews({ rows }: { rows: Row[] }) {
           ? error.message
           : "처리 결과를 확인하지 못했습니다. 새로고침 후 상태를 확인해 주세요.",
       );
+    } finally {
+      guard.current = false;
+      setBusy(false);
+    }
+  }
+  async function recordAudit(row: Row) {
+    if (guard.current) return;
+    const note = (auditNotes[row.id] ?? "").trim();
+    if (!note || note.length > 1000) {
+      setMessage("정산 검토 내용을 1~1000자로 입력해 주세요.");
+      return;
+    }
+    guard.current = true;
+    setBusy(true);
+    setMessage("");
+    const eventKey = crypto.randomUUID();
+    try {
+      const response = await fetch("/api/talkly-ai/admin/refund-audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId: row.id,
+          eventKey,
+          eventType: auditTypes[row.id] ?? "entitlement_reviewed",
+          note,
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+      const result = await response.json();
+      if (!response.ok || result.success !== true)
+        throw new Error(result.error || "정산 검토 이력을 저장하지 못했습니다.");
+      setAuditNotes((current) => ({ ...current, [row.id]: "" }));
+      setMessage("정산 검토 이력을 저장했습니다. 실제 환불이나 이용권 변경은 하지 않았습니다.");
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "저장 여부를 확인하지 못했습니다. 중복 입력 전 이력을 확인해 주세요.");
     } finally {
       guard.current = false;
       setBusy(false);
@@ -118,6 +156,31 @@ export default function RefundReviews({ rows }: { rows: Row[] }) {
                 timeZone: "Asia/Seoul",
               })}
             </p>
+            <div>
+              <label htmlFor={`refund-audit-type-${row.id}`}>정산 검토 기록 유형</label>
+              <select
+                id={`refund-audit-type-${row.id}`}
+                value={auditTypes[row.id] ?? "entitlement_reviewed"}
+                disabled={busy}
+                onChange={(e) => setAuditTypes((current) => ({ ...current, [row.id]: e.target.value }))}
+              >
+                <option value="provider_checked">Toss 결제 확인</option>
+                <option value="entitlement_reviewed">이용권 정산 검토</option>
+                <option value="manual_action_required">수동 조치 필요</option>
+              </select>
+              <label htmlFor={`refund-audit-note-${row.id}`}>정산 검토 메모</label>
+              <textarea
+                id={`refund-audit-note-${row.id}`}
+                maxLength={1000}
+                value={auditNotes[row.id] ?? ""}
+                disabled={busy}
+                onChange={(e) => setAuditNotes((current) => ({ ...current, [row.id]: e.target.value }))}
+                placeholder="확인한 사실과 후속 조치만 기록하세요. 결제키나 개인정보를 입력하지 마세요."
+              />
+              <button disabled={busy || !(auditNotes[row.id] ?? "").trim()} onClick={() => recordAudit(row)}>
+                정산 검토 이력 저장
+              </button>
+            </div>
             <button disabled={busy || !row.orderId} onClick={() => update(row)}>
               {row.state === "reviewing"
                 ? "검토 기록 후 추가 처리 대기로"
