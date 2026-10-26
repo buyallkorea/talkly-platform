@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     .select("id,user_id")
     .not("call_id", "is", null)
     .in("state", ["connecting", "active", "closing"])
-    .lte("deadline", new Date().toISOString())
+    .lt("deadline", new Date(Date.now() - 15000).toISOString())
     .order("deadline", { ascending: true })
     .limit(10)
     .abortSignal(AbortSignal.timeout(5000));
@@ -29,7 +29,10 @@ export async function GET(request: Request) {
   }
   let recovered = 0;
   let failed = 0;
+  const startedAt = Date.now();
   for (const session of data ?? []) {
+    // Preserve sufficient execution time for the HTTP response and next retry.
+    if (Date.now() - startedAt > 35000) break;
     try {
       await closeSession(session.user_id, session.id);
       recovered++;
