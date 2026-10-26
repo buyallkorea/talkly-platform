@@ -36,5 +36,6 @@ jobs:
       - run: node tests/talkly-ai/payment-reconcile.mjs
       - run: node tests/talkly-ai/refund-audit.mjs
       - run: node tests/talkly-ai/refund-history.mjs
+      - run: node tests/talkly-ai/learning-ux.mjs
       - run: node tests/talkly-ai/connection-failures.mjs
       - run: node tests/talkly-ai/client-connection.mjs
