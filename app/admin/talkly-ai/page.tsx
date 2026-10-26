@@ -6,6 +6,7 @@ import OutreachOperations from "./OutreachOperations";
 import { REFUND_STATES } from "@/lib/talkly-ai/refunds";
 import VoiceUsagePanel from "./VoiceUsagePanel";
 import RefundReviews from "./RefundReviews";
+import RefundHistoryLookup from "./RefundHistoryLookup";
 import SessionOperations from "./SessionOperations";
 import {
   outreachCandidate,
@@ -602,6 +603,7 @@ export default async function AdminAiPage() {
         )}
         {(refundAudit.data ?? []).length >= 500 && <p>최근 500건까지만 조회했습니다. 전체 이력은 아닙니다.</p>}
       </details>
+      <RefundHistoryLookup />
       <h2>결제 내역</h2>
       <div style={{ overflowX: "auto" }}>
         <table>
