@@ -241,14 +241,14 @@ export default async function Reports({
           const seconds = row.activity?.seconds ?? 0;
           const percent = Math.round((seconds / maxSeconds) * 100);
           return (
-            <div key={row.period.month} style={{ marginBottom: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <div key={row.period.month} className="tai-report-activity">
+              <div className="tai-report-activity-head">
                 <strong>{row.period.month}</strong>
                 <span>{row.activity ? `${Math.floor(seconds / 60)}분 ${seconds % 60}초 · ${row.activity.days}일` : "기록 조회 실패"}</span>
               </div>
               <div aria-label={`${row.period.month} 학습 연결시간 ${Math.floor(seconds / 60)}분 ${seconds % 60}초`} role="img"
-                style={{ height: 12, borderRadius: 10, background: "var(--tai-surface, #e9edf2)", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${percent}%`, background: "var(--tai-accent, #6376b7)", borderRadius: 10 }} />
+                className="tai-report-bar">
+                <div className="tai-report-bar-fill" style={{ width: `${percent}%` }} />
               </div>
             </div>
           );
