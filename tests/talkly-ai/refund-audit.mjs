@@ -3,6 +3,7 @@ import ts from "typescript";
 import { readFile } from "node:fs/promises";
 const source=await readFile(new URL("../../app/api/talkly-ai/admin/refund-audit/route.ts",import.meta.url),"utf8");
 const migration=await readFile(new URL("../../supabase/migrations/20261026113000_talkly_ai_refund_audit.sql",import.meta.url),"utf8");
+const client=await readFile(new URL("../../app/admin/talkly-ai/RefundReviews.tsx",import.meta.url),"utf8");
 const page=await readFile(new URL("../../app/admin/talkly-ai/page.tsx",import.meta.url),"utf8");
 class AiError extends Error {constructor(message,status=400){super(message);this.status=status;}}
 let role="student",count=0;
@@ -26,6 +27,9 @@ try{
  assert.match(migration,/actor_id is distinct from p_actor/);
  assert.match(migration,/request_id is distinct from p_request/);
  assert.match(migration,/revoke all on function public\.ai_record_refund_audit/);
+ assert.match(client,/pendingAudit\.current\[row\.id\] \?\?/);
+ assert.match(client,/eventKey: entry\.eventKey/);
+ assert.match(client,/delete pendingAudit\.current\[row\.id\]/);
  assert.match(page,/환불 요청별 정산 감사 이력/);
  assert.match(page,/log\.request_id === request\.id/);
  console.log("PASS: admin-only refund audit API; replay/conflict guard SQL and grouped admin display present.");
