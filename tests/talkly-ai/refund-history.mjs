@@ -1,0 +1,14 @@
+import assert from "node:assert/strict";
+import {readFile} from "node:fs/promises";
+const route=await readFile(new URL("../../app/api/talkly-ai/admin/refund-history/route.ts",import.meta.url),"utf8");
+const page=await readFile(new URL("../../app/admin/talkly-ai/page.tsx",import.meta.url),"utf8");
+const ui=await readFile(new URL("../../app/admin/talkly-ai/RefundHistoryLookup.tsx",import.meta.url),"utf8");
+assert.match(route,/profile\?\.role !== "admin"/);
+assert.match(route,/requestId/);
+assert.match(route,/orderId/);
+assert.match(route,/\.eq\("request_id", refund\.id\)/);
+assert.match(route,/Cache-Control": "no-store"/);
+assert.doesNotMatch(route,/\.update\(|\.insert\(|\.delete\(|\/cancel/);
+assert.match(page,/<RefundHistoryLookup \/>/);
+assert.match(ui,/refund-history\?/);
+console.log("PASS: refund exact-lookup route remains admin-only and read-only and is linked in the admin UI.");
