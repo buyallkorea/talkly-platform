@@ -222,6 +222,28 @@ export default async function Reports({
         </p>
       </section>
       <section className="tai-card">
+        <h2>최근 3개월 학습 습관</h2>
+        <p>아래 막대는 종료·정산된 실제 연결시간을 같은 화면의 가장 긴 달과 비교한 것입니다. 영어 실력 점수나 향상률이 아닙니다.</p>
+        {result.history.rows.map((row) => {
+          const maxSeconds = Math.max(1, ...result.history.rows.map((item) => item.activity?.seconds ?? 0));
+          const seconds = row.activity?.seconds ?? 0;
+          const percent = Math.round((seconds / maxSeconds) * 100);
+          return (
+            <div key={row.period.month} style={{ marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <strong>{row.period.month}</strong>
+                <span>{row.activity ? `${Math.floor(seconds / 60)}분 ${seconds % 60}초 · ${row.activity.days}일` : "기록 조회 실패"}</span>
+              </div>
+              <div aria-label={`${row.period.month} 학습 연결시간 ${Math.floor(seconds / 60)}분 ${seconds % 60}초`} role="img"
+                style={{ height: 12, borderRadius: 10, background: "var(--tai-surface, #e9edf2)", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${percent}%`, background: "var(--tai-accent, #6376b7)", borderRadius: 10 }} />
+              </div>
+            </div>
+          );
+        })}
+        <p>학습일수와 연결시간이 늘어나도 영어 실력의 향상을 단독으로 입증하지는 않습니다. 표현·교정 기록은 학습 요약 동의 이후에만 제공돼요.</p>
+      </section>
+      <section className="tai-card">
         <h2>이달의 학습 주제</h2>
         {topics.length ? (
           <ul>
