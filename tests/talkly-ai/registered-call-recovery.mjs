@@ -1,0 +1,16 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+const route = await readFile(new URL("../../app/api/talkly-ai/internal/recover-calls/route.ts", import.meta.url), "utf8");
+const close = await readFile(new URL("../../lib/talkly-ai/session.ts", import.meta.url), "utf8");
+assert.match(route, /CRON_SECRET/);
+assert.match(route, /TALKLY_AI_REGISTERED_CALL_RECOVERY_ENABLED/);
+assert.match(route, /\.not\("call_id", "is", null\)/);
+assert.match(route, /\.in\("state", \["connecting", "active", "closing"\]\)/);
+assert.match(route, /Date\.now\(\) - 15000/);
+assert.match(route, /\.limit\(10\)/);
+assert.match(route, /Date\.now\(\) - startedAt > 35000/);
+assert.match(route, /await closeSession\(session\.user_id, session\.id\)/);
+assert.doesNotMatch(route, /cron\.schedule|schedule\s*:/);
+assert.match(close, /if \(s\.state !== "closed" && s\.call_id\) await hangup\(s\.call_id\)/);
+assert.match(close, /p_failed: failed \|\| !s\.call_id/);
+console.log("PASS: registered-call recovery is opt-in, authenticated, bounded, grace-delayed and reuses hangup-first settlement.");
