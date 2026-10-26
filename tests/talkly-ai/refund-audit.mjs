@@ -28,6 +28,9 @@ try{
  assert.match(migration,/request_id is distinct from p_request/);
  assert.match(migration,/revoke all on function public\.ai_record_refund_audit/);
  assert.match(client,/pendingAudit\.current\[row\.id\] \?\?/);
+ assert.match(client,/const filtered = rows\.filter/);
+ assert.match(client,/stateFilter === "all"/);
+ assert.match(client,/filtered\.map\(\(row\)/);
  assert.match(client,/eventKey: entry\.eventKey/);
  assert.match(client,/delete pendingAudit\.current\[row\.id\]/);
  assert.match(page,/환불 요청별 정산 감사 이력/);
