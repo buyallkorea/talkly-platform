@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import {readFile} from "node:fs/promises";
+const landing=await readFile(new URL("../../app/talkly-ai/page.tsx",import.meta.url),"utf8");
+const report=await readFile(new URL("../../app/talkly-ai/reports/page.tsx",import.meta.url),"utf8");
+const studio=await readFile(new URL("../../app/talkly-ai/AiStudio.tsx",import.meta.url),"utf8");
+assert.match(landing,/3가지 성격의 AI 튜터 6명/);
+assert.doesNotMatch(landing,/5개국 AI 튜터|국가별 억양/);
+assert.match(report,/최근 3개월 학습 습관/);
+assert.match(report,/row\.activity\?\.seconds/);
+assert.match(report,/영어 실력 점수나 향상률이 아닙니다/);
+assert.match(studio,/영어회화 계속하기 · 30일 13,900원/);
+assert.match(studio,/!account\.paymentsEnabled/);
+console.log("PASS: updated personality tutors, honest learning activity visualization and gated paid conversion.");
