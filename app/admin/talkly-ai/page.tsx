@@ -63,6 +63,7 @@ export default async function AdminAiPage() {
     apiEvents,
     refundRequests,
     refundReviews,
+    refundAudit,
     voiceUsage,
     voiceObservations,
   ] = await Promise.all([
@@ -119,6 +120,11 @@ export default async function AdminAiPage() {
       .order("created_at", { ascending: false })
       .limit(100),
     db
+      .from("ai_refund_audit")
+      .select("id,request_id,actor_id,event_type,note,created_at")
+      .order("created_at", { ascending: false })
+      .limit(500),
+    db
       .from("ai_voice_usage")
       .select(
         "input_tokens,output_tokens,cached_input_tokens,input_audio_tokens,input_text_tokens,output_audio_tokens,output_text_tokens,cached_audio_tokens,cached_text_tokens",
@@ -143,6 +149,7 @@ export default async function AdminAiPage() {
     ...new Set([
       ...memberIds,
       ...(refundRequests.data ?? []).map((row) => row.user_id),
+      ...(refundAudit.data ?? []).map((row) => row.actor_id),
       ...(refundReviews.data ?? []).flatMap((row) =>
         row.actor_id ? [row.actor_id] : [],
       ),
@@ -559,6 +566,38 @@ export default async function AdminAiPage() {
             ))}
           </ul>
         )}
+      </details>
+      <details>
+        <summary>환불 요청별 정산 감사 이력 · 최근 500건</summary>
+        <p>이 내역은 관리자의 점검 기록이며 실제 Toss 환불 완료나 이용권 회수를 의미하지 않습니다.</p>
+        {refundAudit.error ? (
+          <p>정산 감사 이력을 조회하지 못했습니다.</p>
+        ) : !(refundAudit.data ?? []).length ? (
+          <p>등록된 감사 이력이 없습니다.</p>
+        ) : (
+          (refundRequests.data ?? []).map((request) => {
+            const logs = (refundAudit.data ?? []).filter((log) => log.request_id === request.id);
+            if (!logs.length) return null;
+            const order = refundOrderMap.get(request.payment_id);
+            return (
+              <div key={request.id}>
+                <h3>{order?.order_id ?? request.id} · {name(request.user_id)}</h3>
+                <ul>
+                  {logs.map((log) => (
+                    <li key={log.id}>
+                      {new Date(log.created_at).toLocaleString("ko-KR", {timeZone:"Asia/Seoul"})} ·
+                      {name(log.actor_id)} ·
+                      {log.event_type === "provider_checked" ? "Toss 결제 대조" :
+                       log.event_type === "entitlement_reviewed" ? "이용권 정산 검토" : "수동 조치 필요"}
+                      : {log.note}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })
+        )}
+        {(refundAudit.data ?? []).length >= 500 && <p>최근 500건까지만 조회했습니다. 전체 이력은 아닙니다.</p>}
       </details>
       <h2>결제 내역</h2>
       <div style={{ overflowX: "auto" }}>
