@@ -1,0 +1,37 @@
+name: TALKLY AI safety checks
+on:
+  pull_request:
+    paths:
+      - "app/talkly-ai/**"
+      - "app/api/talkly-ai/**"
+      - "lib/talkly-ai/**"
+      - "tests/talkly-ai/**"
+      - "supabase/migrations/**"
+      - ".github/workflows/talkly-ai-checks.yml"
+  push:
+    branches: [feat/talkly-ai-integration]
+    paths:
+      - "app/talkly-ai/**"
+      - "app/api/talkly-ai/**"
+      - "lib/talkly-ai/**"
+      - "tests/talkly-ai/**"
+      - "supabase/migrations/**"
+      - ".github/workflows/talkly-ai-checks.yml"
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx tsc --noEmit
+      - run: node tests/talkly-ai/config.mjs
+      - run: node tests/talkly-ai/registered-call-recovery.mjs
+      - run: node tests/talkly-ai/connection-failures.mjs
+      - run: node tests/talkly-ai/client-connection.mjs
