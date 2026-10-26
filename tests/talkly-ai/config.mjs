@@ -11,13 +11,13 @@ const js = ts.transpileModule(source, {
     target: ts.ScriptTarget.ES2020,
   },
 }).outputText;
-const { TUTORS, cleanTurns, seoulDay, PLAN, tutorInstructions } = await import(
+const { TUTORS, normalizeTutorId, cleanTurns, seoulDay, PLAN, tutorInstructions } = await import(
   "data:text/javascript;base64," + Buffer.from(js).toString("base64")
 );
-assert.equal(TUTORS.length, 10);
-assert.equal(new Set(TUTORS.map((t) => t.id)).size, 10);
-for (const country of new Set(TUTORS.map((t) => t.country))) {
-  const tutors = TUTORS.filter((t) => t.country === country);
+assert.equal(TUTORS.length, 6);
+assert.equal(new Set(TUTORS.map((t) => t.id)).size, 6);
+for (const country of new Set(TUTORS.map((t) => t.style))) {
+  const tutors = TUTORS.filter((t) => t.style === country);
   assert.equal(tutors.length, 2);
   assert.equal(new Set(tutors.map((t) => t.gender)).size, 2);
 }
@@ -43,8 +43,10 @@ assert.equal(
     .length,
   20,
 );
-assert(tutorInstructions("uk-female", []).includes("British"));
-assert(tutorInstructions("za-male", []).includes("South African"));
+assert(tutorInstructions("lively-female", []).includes("cheerful"));
+assert(tutorInstructions("intellectual-male", []).includes("thoughtful"));
+assert(tutorInstructions("calm-female", []).includes("patient"));
+assert.equal(normalizeTutorId("uk-female"), "lively-female");
 console.log(
-  "PASS: 10 unique tutors, 5 locales x 2 voice profiles, plan constants, Seoul midnight, bounded untrusted memory.",
+  "PASS: 6 unique tutors, 3 personalities x 2 voice profiles, plan constants, Seoul midnight, bounded untrusted memory.",
 );
