@@ -597,6 +597,9 @@ export default async function AdminAiPage() {
             );
           })
         )}
+        {(refundAudit.data ?? []).some((log) => !(refundRequests.data ?? []).some((request) => request.id === log.request_id)) && (
+          <p>최근 100건의 환불 요청 목록에 포함되지 않은 오래된 요청의 이력은 이 화면에서 제외됩니다. 전체 정산 내역은 별도 조회가 필요합니다.</p>
+        )}
         {(refundAudit.data ?? []).length >= 500 && <p>최근 500건까지만 조회했습니다. 전체 이력은 아닙니다.</p>}
       </details>
       <h2>결제 내역</h2>
