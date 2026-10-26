@@ -140,6 +140,18 @@ export default async function Reports({
         )}
       />
       <section className="tai-card">
+        <h2>이번 달 한눈에 보기</h2>
+        <p><strong>{result.activity.days}일</strong> 학습 · <strong>{Math.floor(result.activity.seconds / 60)}분 {result.activity.seconds % 60}초</strong> 연결</p>
+        <p>복습용 요약 <strong>{ready.length}개</strong> · 종료된 연결 구간 <strong>{result.activity.segments}개</strong></p>
+        {result.activity.segments > ready.length && (
+          <p role="status">일부 대화의 학습 요약이 없어요. 기록 저장 동의 전 대화, 창 닫기, 연결 장애 또는 분석 실패 등이 원인일 수 있습니다. 누락된 내용을 임의로 생성하지 않습니다.</p>
+        )}
+        {!result.member.learning_summary_consent_at && (
+          <p>학습 주제와 표현을 리포트에 기록하려면 학습 요약 저장에 별도로 동의해야 합니다.</p>
+        )}
+        <p>이 수치는 학습 활동을 보여 주며 영어 능력이나 향상 점수가 아닙니다.</p>
+      </section>
+      <section className="tai-card">
         <h2>꾸준히 이야기한 시간</h2>
         <p>
           학습한 날 <strong>{result.activity.days}일</strong> · 총 연결시간{" "}
