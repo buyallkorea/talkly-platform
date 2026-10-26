@@ -60,6 +60,8 @@ export default function RefundReviews({ rows }: { rows: Row[] }) {
         signal: AbortSignal.timeout(15000),
       });
       const result = await response.json();
+      if (response.status === 409) throw new Error("다른 관리자가 먼저 처리했거나 상태가 변경됐습니다. 새로고침 후 다시 확인해 주세요.");
+      if (response.status === 403) throw new Error("관리자 권한이 없어 저장할 수 없습니다.");
       if (!response.ok || result.success !== true)
         throw new Error(result.error || "검토 상태를 저장하지 못했습니다.");
       setMessage(
@@ -107,6 +109,8 @@ export default function RefundReviews({ rows }: { rows: Row[] }) {
         signal: AbortSignal.timeout(15000),
       });
       const result = await response.json();
+      if (response.status === 403) throw new Error("관리자 권한이 없어 기록을 저장할 수 없습니다.");
+      if (response.status === 409) throw new Error("중복 처리키가 다른 내용과 충돌했거나 요청을 찾을 수 없습니다. 기록을 확인해 주세요.");
       if (!response.ok || result.success !== true)
         throw new Error(result.error || "정산 검토 이력을 저장하지 못했습니다.");
       delete pendingAudit.current[row.id];
