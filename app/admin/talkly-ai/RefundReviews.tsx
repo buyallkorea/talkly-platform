@@ -35,7 +35,14 @@ export default function RefundReviews({ rows }: { rows: Row[] }) {
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [auditNotes, setAuditNotes] = useState<Record<string, string>>({}),
-    [auditTypes, setAuditTypes] = useState<Record<string, string>>({});
+    [auditTypes, setAuditTypes] = useState<Record<string, string>>({}),
+    [search, setSearch] = useState(""),
+    [stateFilter, setStateFilter] = useState("all");
+  const filtered = rows.filter((row) => {
+    const term = search.trim().toLocaleLowerCase();
+    return (stateFilter === "all" || row.state === stateFilter) &&
+      (!term || [row.name, row.orderId ?? "", row.id].some((value) => value.toLocaleLowerCase().includes(term)));
+  });
   async function update(row: Row) {
     if (guard.current) return;
     guard.current = true;
@@ -123,10 +130,22 @@ export default function RefundReviews({ rows }: { rows: Row[] }) {
       <button disabled={busy} onClick={() => router.refresh()}>
         접수 현황 새로고침
       </button>
+      <div>
+        <label htmlFor="refund-search">회원·주문번호·접수번호 검색</label>
+        <input id="refund-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="현재 조회한 최근 100건에서 검색" />
+        <label htmlFor="refund-state">처리 상태</label>
+        <select id="refund-state" value={stateFilter} onChange={(e) => setStateFilter(e.target.value)}>
+          <option value="all">전체</option>
+          <option value="requested">접수</option>
+          <option value="reviewing">검토 중</option>
+          <option value="awaiting_action">추가 처리 대기</option>
+        </select>
+        <p>현재 조회한 {rows.length}건 중 {filtered.length}건 표시 · 전체 환불 건수 검색은 아닙니다.</p>
+      </div>
       {!rows.length ? (
         <p>접수된 요청이 없습니다.</p>
       ) : (
-        rows.map((row) => (
+        filtered.length === 0 ? <p>검색 조건에 맞는 환불 요청이 없습니다.</p> : filtered.map((row) => (
           <article key={row.id}>
             <p>
               회원 {row.name} · 주문 {row.orderId ?? "상세 조회 필요"}
