@@ -752,11 +752,11 @@ export default function AiStudio() {
             </section>
           )}
           {!paid && remaining === 0 && (
-            <section className="tai-card" aria-live="polite">
+            <section className="tai-card tai-trial-complete" aria-live="polite">
               <h2>3분 무료 체험을 완료했어요!</h2>
               <p>방금 나눈 대화를 이어가고 싶으신가요? 30일 이용권으로 한국시간 기준 하루 10분씩 대화할 수 있어요.</p>
               <p><strong>30일 13,900원 · 자동결제 없음</strong></p>
-              <button disabled={!account.paymentsEnabled || busy || state === "live" || state === "connecting"} onClick={purchase}>
+              <button className="tai-trial-cta" disabled={!account.paymentsEnabled || busy || state === "live" || state === "connecting"} onClick={purchase}>
                 {account.paymentsEnabled ? "30일 이용권 구매하고 계속하기" : "정식 결제 오픈 준비 중"}
               </button>
               <p><a href="/talkly-ai/reports">지금까지의 학습 기록 보기</a></p>
