@@ -47,7 +47,7 @@ export default function TalklyAiPage() {
             <span>생각할 시간을 기다려요</span>
             <span>어제의 이야기를 이어가요</span>
             <span>가입하면 3분 무료 체험</span>
-            <span>5개국 AI 튜터</span>
+            <span>3가지 성격의 AI 튜터 6명</span>
             <span>만 19세 이상 성인 대상</span>
           </div>
         </div>
@@ -76,8 +76,7 @@ export default function TalklyAiPage() {
         </section>
       )}
       <footer className="tai-footer">
-        실제 사람이 아닌 AI 튜터예요. 국가별 억양은 AI 지시를 기반으로 하며 실제
-        현지 음성과 차이가 있을 수 있어요.{" "}
+        실제 사람이 아닌 AI 튜터예요. 밝고 활기찬·지적인·차분한 대화 스타일을 선택할 수 있으며, 음성 품질은 실제 이용 환경에서 확인이 필요해요.{" "}
         <Link href="/talkly-ai/privacy">AI 정보 처리 안내</Link> ·{" "}
         <Link href="/talkly-ai/terms">AI 이용 안내</Link>
       </footer>
