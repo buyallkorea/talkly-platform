@@ -579,3 +579,19 @@
     transition: none;
   }
 }
+
+/* TALKLY AI only: mobile-friendly conversion, independent purple theme. */
+.tai-trial-complete { border: 1px solid var(--tai-primary); }
+.tai-trial-complete .tai-trial-cta { display: block; width: 100%; min-height: 52px; text-align: center; font-size: 16px; }
+.tai-trial-complete .tai-trial-cta:focus-visible { outline: 3px solid var(--tai-primary); outline-offset: 3px; }
+.tai-trial-complete .tai-trial-cta:disabled { opacity: .7; cursor: not-allowed; }
+.tai-report-activity { margin-bottom: 14px; }
+.tai-report-activity-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+.tai-report-bar { height: 12px; border-radius: 10px; background: var(--tai-soft); overflow: hidden; }
+.tai-report-bar-fill { height: 100%; background: var(--tai-primary); border-radius: 10px; }
+@media (max-width: 600px) {
+  .tai-trial-complete { padding: 20px 16px; }
+  .tai-trial-complete h2 { font-size: 20px; }
+  .tai-report-activity-head { font-size: 13px; }
+  .tai-account > button { width: 100%; min-height: 48px; }
+}
