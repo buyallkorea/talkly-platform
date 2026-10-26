@@ -9,6 +9,8 @@ assert.match(report,/최근 3개월 학습 습관/);
 assert.match(report,/row\.activity\?\.seconds/);
 assert.match(report,/영어 실력 점수나 향상률이 아닙니다/);
 assert.match(studio,/3분 무료 체험을 완료했어요/);
+assert.match(studio,/<summary>학습 리포트 · 알림 · 지원 메뉴<\/summary>/);
+assert.ok(studio.indexOf('<summary>학습 리포트 · 알림 · 지원 메뉴</summary>') > studio.indexOf('className="tai-grid"'));
 assert.match(studio,/30일 이용권 구매하고 계속하기/);
 assert.match(studio,/\(paid \|\| remaining > 0\) &&/);
 assert.match(report,/이번 달 한눈에 보기/);
