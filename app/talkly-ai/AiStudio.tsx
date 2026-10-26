@@ -708,34 +708,6 @@ export default function AiStudio() {
         </section>
       ) : (
         <>
-          {account.latestReport && (
-            <section className="tai-card" aria-label="월말 리포트 발행 안내">
-              <b>
-                {account.latestReport.month.slice(0, 7)} 리포트가 준비됐어요.
-              </b>
-              <p>한 달 동안 이야기한 주제와 연습 표현을 확인해 보세요.</p>
-              <Link
-                href={`/talkly-ai/reports?month=${account.latestReport.month.slice(0, 7)}`}
-              >
-                월말 리포트 확인 →
-              </Link>
-            </section>
-          )}
-          <section className="tai-card">
-            <Link href="/talkly-ai/reports">나의 월간 학습 리포트 →</Link>
-            <p>
-              <Link href="/talkly-ai/refunds">결제·환불 문의 →</Link>
-            </p>
-            <p>
-              <Link href="/talkly-ai/notifications">
-                카카오톡·이메일 안내 수신 설정 →
-              </Link>
-            </p>
-            <p>
-              학습 요약 저장에 동의하면 다음 회화부터 복습 기록을 모을 수
-              있어요.
-            </p>
-          </section>
           {account.canTestAccess && (
             <section className="tai-card">
               <b>관리자 전용 음성 테스트</b>
@@ -951,6 +923,37 @@ export default function AiStudio() {
               </form>
             </section>
           </div>
+          <details className="tai-card">
+            <summary>학습 리포트 · 알림 · 지원 메뉴</summary>
+          {account.latestReport && (
+            <section className="tai-card" aria-label="월말 리포트 발행 안내">
+              <b>
+                {account.latestReport.month.slice(0, 7)} 리포트가 준비됐어요.
+              </b>
+              <p>한 달 동안 이야기한 주제와 연습 표현을 확인해 보세요.</p>
+              <Link
+                href={`/talkly-ai/reports?month=${account.latestReport.month.slice(0, 7)}`}
+              >
+                월말 리포트 확인 →
+              </Link>
+            </section>
+          )}
+          <section className="tai-card">
+            <Link href="/talkly-ai/reports">나의 월간 학습 리포트 →</Link>
+            <p>
+              <Link href="/talkly-ai/refunds">결제·환불 문의 →</Link>
+            </p>
+            <p>
+              <Link href="/talkly-ai/notifications">
+                카카오톡·이메일 안내 수신 설정 →
+              </Link>
+            </p>
+            <p>
+              학습 요약 저장에 동의하면 다음 회화부터 복습 기록을 모을 수
+              있어요.
+            </p>
+          </section>
+          </details>
           <details className="tai-card">
             <summary>내 AI 결제 내역</summary>
             {account.payments.length ? (
