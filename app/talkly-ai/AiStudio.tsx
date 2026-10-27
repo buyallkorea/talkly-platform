@@ -162,13 +162,18 @@ export default function AiStudio() {
     const snapshot = history.current.slice(-20).map((turn) => ({ ...turn }));
     try {
       await saveQueue.current.save(id, snapshot);
-      if (failedMemory.current?.id === id) {
+      if (failedMemory.current?.id === id &&
+          JSON.stringify(failedMemory.current.turns) === JSON.stringify(snapshot)) {
         failedMemory.current = null;
         setPendingMemoryRetry(false);
       }
     } catch (error) {
-      failedMemory.current = { id, turns: snapshot };
-      setPendingMemoryRetry(true);
+      const previous = failedMemory.current;
+      if (!previous || previous.id !== id ||
+          previous.turns.length <= snapshot.length) {
+        failedMemory.current = { id, turns: snapshot };
+        setPendingMemoryRetry(true);
+      }
       throw error;
     }
   }
@@ -178,7 +183,10 @@ export default function AiStudio() {
     setMemoryRetryBusy(true);
     try {
       if (!saveQueue.current) throw new Error("대화 저장 기능을 사용할 수 없어요.");
-      await saveQueue.current.save(pending.id, pending.turns);
+      const latest = session.current === pending.id
+        ? history.current.slice(-20).map((turn) => ({ ...turn }))
+        : pending.turns;
+      await saveQueue.current.save(pending.id, latest);
       if (failedMemory.current === pending) {
         failedMemory.current = null;
         setPendingMemoryRetry(false);
