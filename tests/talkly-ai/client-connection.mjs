@@ -69,6 +69,16 @@ try {
 }
 assert.equal(leaseMilliseconds("2026-10-25T02:59:59Z", server, 240), 0);
 assert.equal(leaseMilliseconds("2026-10-25T04:00:00Z", server, 120), 120000);
+assert.equal(leaseMilliseconds("2026-10-25T03:03:00Z", server, 180), 180000,
+  "three-minute trial lease must not exceed 180 seconds");
+assert.equal(leaseMilliseconds("2026-10-25T03:03:50Z", server, 180), 180000,
+  "excess server deadline cannot extend trial lease");
+assert.equal(leaseMilliseconds("2026-10-25T03:00:01Z", server, 180), 1000,
+  "near-expired trial only receives actual remaining server lease");
+assert.throws(() => leaseMilliseconds("2026-10-25T03:03:00Z", server, 0));
+assert.throws(() => leaseMilliseconds("2026-10-25T03:03:00Z", server, -1));
+assert.throws(() => leaseMilliseconds("2026-10-25T03:03:00Z", server, 241));
+
 assert.throws(() => leaseMilliseconds("invalid", server, 240));
 assert.throws(() => leaseMilliseconds(deadline, server, 999));
 console.log(
