@@ -174,6 +174,12 @@ export default function AiStudio() {
         setPendingMemoryRetry(false);
       }
     } catch (error) {
+      if (error && typeof error === "object" && "terminal" in error && error.terminal === true) {
+        // The server rejected ownership or ordering. Do not offer a retry that cannot succeed.
+        if (failedMemory.current?.id === id) failedMemory.current = null;
+        setPendingMemoryRetry(Boolean(failedMemory.current));
+        throw error;
+      }
       const previous = failedMemory.current;
       if (!previous || previous.version <= version) {
         failedMemory.current = { id, turns: snapshot, version };
