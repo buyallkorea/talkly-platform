@@ -47,3 +47,10 @@ The Supabase project has no separate database development branch. No branch was 
 - Reuse of the same writer for different sessions is acceptable because ownership is scoped to session ID.
 - Legacy checkpoint path remains intentionally separate while feature flag is off.
 - Do not activate payments, call recovery, or alter live voice quotas as part of this work.
+
+## Vercel Preview environment verification — 2026-10-27
+- Latest verified Preview deployment from this branch: commit `ed63abf6`, state **READY**. This confirms a build/deployment, **not** an authenticated end-to-end lesson.
+- Vercel environment inventory (variable **metadata only**, values never retrieved): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` each target **both** `production` and `preview` without a branch constraint. Identical variable targeting does **not** prove identical values, but it provides **no proof of database isolation**.
+- `TALKLY_AI_TEST_MODE` and `TALKLY_AI_PAYMENTS_ENABLED` have branch-scoped Preview entries. Test mode is **not** a substitute for an isolated database.
+- **NO GO** for live API, account creation, trial consumption, concurrent session writes, migrations or other write-side Preview testing until an isolated project and branch-scoped Supabase variables are provisioned and verified. Do not copy production secrets into testing documentation.
+- Once isolation exists, verify the Preview host uses the dedicated project's ID using a safe, authenticated diagnostics method (never disclose its service-role key) before any test account is created. Confirm normal TALKLY classroom pages remain unchanged.
