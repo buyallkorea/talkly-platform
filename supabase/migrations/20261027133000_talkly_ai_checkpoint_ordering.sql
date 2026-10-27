@@ -26,7 +26,7 @@ begin
              and memory_session_at > s.started_at) then
     raise exception 'OLDER_SESSION_CHECKPOINT';
   end if;
-  if s.checkpoint_writer is not null and s.checkpoint_writer <> p_writer then
+  if s.checkpoint_writer is null or s.checkpoint_writer <> p_writer then
     raise exception 'CHECKPOINT_WRITER_CONFLICT';
   end if;
   incoming_digest := md5(p_turns::text);
@@ -34,7 +34,7 @@ begin
   if p_version <= s.checkpoint_version then raise exception 'STALE_CHECKPOINT'; end if;
   -- A previous (older) session must never overwrite a newer session's memory.
   update public.ai_sessions set checkpoint_version=p_version, checkpoint_digest=incoming_digest,
-       checkpoint_writer=coalesce(s.checkpoint_writer,p_writer) where id=s.id;
+       checkpoint_writer=s.checkpoint_writer where id=s.id;
   update public.ai_members
      set memory=p_turns, memory_session_at=s.started_at
    where user_id=p_user
