@@ -191,6 +191,8 @@ try {
   const refused = await POST(new Request("https://example.invalid", { method: "POST" }));
   assert.equal(refused.status, 200);
   assert.equal((await refused.json()).status, "not_saved");
+  assert.equal(failedUpdates, 3, "refused storage must clear the pending summary claim");
+  assert.equal(refused.headers.get("cache-control"), "no-store");
   assert.equal(events.at(-1).outcome, "failed", "refused DB save must not produce success telemetry");
   assert.equal(current.providerCalls, 1);
 
@@ -201,6 +203,7 @@ try {
   const ready = await POST(new Request("https://example.invalid", { method: "POST" }));
   assert.equal(ready.status, 200);
   assert.equal((await ready.json()).status, "ready");
+  assert.equal(ready.headers.get("cache-control"), "no-store");
   assert.equal(events.at(-1).outcome, "succeeded");
   assert.equal(current.providerCalls, 1);
 
@@ -209,7 +212,7 @@ try {
   storageError = { message: "storage unavailable" };
   const dbFailure = await POST(new Request("https://example.invalid", { method: "POST" }));
   assert.equal(dbFailure.status, 503);
-  assert.equal(failedUpdates, 3);
+  assert.equal(failedUpdates, 4);
   assert.equal(events.at(-1).outcome, "failed");
   assert.equal(current.providerCalls, 1);
 
