@@ -104,6 +104,7 @@ export default function AiStudio() {
     disconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
     busyRef = useRef(false),
     stopping = useRef(false),
+    renewing = useRef(false),
     active = useRef(false),
     deadline = useRef(0),
     dailyStart = useRef(600),
@@ -270,9 +271,15 @@ export default function AiStudio() {
     }
   }
   async function renew() {
-    const queued = turnCoordinator.current.queued;
-    const a = await stop(true);
-    if (a && a.remaining > 0) await start(true, true, queued);
+    if (renewing.current || stopping.current) return;
+    renewing.current = true;
+    try {
+      const queued = turnCoordinator.current.queued;
+      const a = await stop(true);
+      if (a && a.remaining > 0) await start(true, true, queued);
+    } finally {
+      renewing.current = false;
+    }
   }
   async function start(
     continuation = false,
