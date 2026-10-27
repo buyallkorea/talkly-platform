@@ -15,6 +15,8 @@ assert.doesNotMatch(sql,/checkpoint_writer=s\.checkpoint_writer/);
 assert.match(sql,/OLDER_SESSION_CHECKPOINT/);
 assert.match(sql,/memory_session_at > s\.started_at/);
 assert.match(sql,/memory_session_at <= s\.started_at/);
+assert.match(sql,/jsonb_array_length\(p_turns\) = 0/);
+assert.match(sql,/jsonb_typeof\(p_turns\) is distinct from 'array'/);
 assert.match(sql,/jsonb_array_length\(p_turns\) > 20/);
 assert.match(sql,/revoke all .* from public,anon,authenticated/);
 assert.match(sql,/grant execute .* to service_role/);
