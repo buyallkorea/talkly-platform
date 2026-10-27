@@ -23,9 +23,20 @@ export function previewTestMode() {
     process.env.TALKLY_AI_PAYMENTS_ENABLED !== "true"
   );
 }
+// Preview write operations stay disabled until a dedicated database is verified.
+export function requireIsolatedPreviewWrite(request: Request) {
+  if (process.env.VERCEL_ENV !== "preview") return;
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(request.method.toUpperCase())) return;
+  const expected = process.env.TALKLY_AI_PREVIEW_DB_PROJECT_REF;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!expected || !/^[a-z0-9]{20}$/.test(expected) ||
+      !url || new URL(url).hostname !== expected + ".supabase.co")
+    throw new AiError("개발용 AI 데이터베이스 분리가 확인되지 않았어요.", 503);
+}
 export async function context(request?: Request) {
   if (!enabled()) throw new AiError("TALKLY AI를 준비 중이에요.", 503);
   if (request) {
+    requireIsolatedPreviewWrite(request);
     let origin: URL;
     try {
       origin = new URL(request.headers.get("origin") ?? "");
