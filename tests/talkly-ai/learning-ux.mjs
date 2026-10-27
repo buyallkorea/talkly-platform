@@ -11,6 +11,7 @@ assert.match(landing,/3가지 성격의 AI 튜터 6명/);
 assert.match(adminAi,/학습 요약 DB 저장 상태/);
 assert.match(adminAi,/summaryEventsBySession/);
 assert.match(adminAi,/학습 요약 실패·지연 세션 확인/);
+assert.match(adminAi,/API 로그의 성공은 요약 DB 저장 완료를 보장하지 않으며/);
 assert.match(adminAi,/session_id,kind,model,outcome/);
 assert.match(adminAi,/learningSummaries\.error/);
 assert.match(adminAi,/row\.status === "pending"/);
