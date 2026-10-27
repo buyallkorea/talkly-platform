@@ -54,3 +54,9 @@ The Supabase project has no separate database development branch. No branch was 
 - `TALKLY_AI_TEST_MODE` and `TALKLY_AI_PAYMENTS_ENABLED` have branch-scoped Preview entries. Test mode is **not** a substitute for an isolated database.
 - **NO GO** for live API, account creation, trial consumption, concurrent session writes, migrations or other write-side Preview testing until an isolated project and branch-scoped Supabase variables are provisioned and verified. Do not copy production secrets into testing documentation.
 - Once isolation exists, verify the Preview host uses the dedicated project's ID using a safe, authenticated diagnostics method (never disclose its service-role key) before any test account is created. Confirm normal TALKLY classroom pages remain unchanged.
+
+## Preview AI write guard (2026-10-27)
+- Preview AI mutating requests now fail with 503 unless `TALKLY_AI_PREVIEW_DB_PROJECT_REF` and `TALKLY_AI_PRODUCTION_DB_PROJECT_REF` are both configured to **different** 20-character project refs, and `NEXT_PUBLIC_SUPABASE_URL` resolves to the Preview ref.
+- These are explicit safety signals, not an automatic attestation: before setting them, inspect actual Vercel branch-specific Supabase connection variables and confirm that both public client and service-role credentials belong to the isolated project. Do not enable merely to bypass the 503 gate.
+- Keep the guard blocked while Supabase has no development branch/test project. Do not execute AI signup, trial or session write requests against a shared database.
+- New test: `tests/talkly-ai/preview-db-isolation.mjs`, covering missing config, same production ref, shared URL and approved distinct refs. This guards configuration mistakes but does not replace the two-connection transaction test.
