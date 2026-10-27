@@ -36,4 +36,11 @@ const versioned=new CheckpointQueue(async(id,turns,version)=>{
 await versioned.save("session-versioned",[{role:"user",text:"Versioned"}],7);
 assert.deepEqual(versions,[7,7],"both attempts must preserve checkpoint version");
 
+let conflictAttempts=0;
+const conflictQueue=new CheckpointQueue(async()=> {
+  conflictAttempts++;
+  throw Object.assign(new Error("STALE_CHECKPOINT"),{terminal:true});
+});
+await assert.rejects(()=>conflictQueue.save("session-conflict",[{role:"user",text:"Old"}],2),/STALE_CHECKPOINT/);
+assert.equal(conflictAttempts,1,"deterministic conflict must not be retried");
 console.log("PASS: checkpoint serialization preserves the latest conversation snapshot order.");
