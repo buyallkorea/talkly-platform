@@ -56,10 +56,10 @@ try{
  assert.equal(requests.length,1,"invalid version must not reach RPC");
  payload={...payload,version:4};
  forcedRpcError={message:"CHECKPOINT_WRITER_CONFLICT"};
- assert.equal((await POST(fake())).status,503,"writer conflict must fail closed");
+ assert.equal((await POST(fake())).status,409,"writer conflict must fail closed");
  assert.equal(requests.length,2,"writer conflict must not fall back to unordered storage");
  forcedRpcError={message:"STALE_CHECKPOINT"};
- assert.equal((await POST(fake())).status,503,"stale checkpoint must fail closed");
+ assert.equal((await POST(fake())).status,409,"stale checkpoint must fail closed");
  assert.equal(requests.length,3,"stale version must not fall back to unordered storage");
  forcedRpcError=null;
  payload={...payload,turns:[]};
