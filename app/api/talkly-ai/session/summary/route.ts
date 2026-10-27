@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const { user, db } = await context(request);
     const member = await requireMember(db, user.id);
     if (!member.learning_summary_consent_at)
-      return Response.json({ status: "not_enabled" });
+      return Response.json({ status: "not_enabled" }, { headers: { "Cache-Control": "no-store" } });
     const data = await body(request);
     if (
       typeof data.sessionId !== "string" ||
@@ -32,13 +32,13 @@ export async function POST(request: Request) {
     if (
       Date.parse(s.started_at) < Date.parse(member.learning_summary_consent_at)
     )
-      return Response.json({ status: "before_consent" });
+      return Response.json({ status: "before_consent" }, { headers: { "Cache-Control": "no-store" } });
     // No arbitrary historical calls or repeated API costs. A session can claim once.
     if (Date.now() - Date.parse(s.started_at) > 60 * 60 * 1000)
       throw new AiError("요약 저장 시간이 지났어요.", 409);
     const turns = summaryTurns(data.turns);
     if (s.charged_seconds < 1 || !turns.some((t) => t.role === "user"))
-      return Response.json({ status: "no_conversation" });
+      return Response.json({ status: "no_conversation" }, { headers: { "Cache-Control": "no-store" } });
     const { error: claim } = await db
       .from("ai_learning_summaries")
       .insert({ session_id: s.id, user_id: user.id, day: s.day });
