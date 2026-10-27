@@ -37,6 +37,7 @@ jobs:
       - run: node tests/talkly-ai/refund-audit.mjs
       - run: node tests/talkly-ai/refund-history.mjs
       - run: node tests/talkly-ai/learning-ux.mjs
+      - run: node tests/talkly-ai/summary-duplicate-flow.mjs
       - run: node tests/talkly-ai/connection-failures.mjs
       - run: node tests/talkly-ai/client-connection.mjs
       - run: node tests/talkly-ai/checkpoint-retry.mjs
