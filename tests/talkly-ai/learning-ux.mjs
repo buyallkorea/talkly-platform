@@ -9,6 +9,10 @@ const studio=await readFile(new URL("../../app/talkly-ai/AiStudio.tsx",import.me
 assert.match(landing,/3가지 성격의 AI 튜터 6명/);
 assert.doesNotMatch(landing,/5개국 AI 튜터|국가별 억양/);
 assert.match(report,/최근 3개월 학습 습관/);
+assert.match(report,/pendingCount/);
+assert.match(report,/failedCount/);
+assert.match(report,/처리 중이거나 실패한 요약은 주제·표현·교정 집계에 포함하지 않습니다/);
+assert.match(report,/r\.status === "ready" && r\.summary/);
 assert.match(report,/row\.activity\?\.seconds/);
 assert.match(report,/영어 실력 점수나 향상률이 아닙니다/);
 assert.match(studio,/3분 무료 체험을 완료했어요/);
