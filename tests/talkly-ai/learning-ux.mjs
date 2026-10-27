@@ -14,6 +14,8 @@ assert.match(studio,/tai-mic-help/);
 assert.match(studio,/NotReadableError/);
 assert.match(studio,/OverconstrainedError/);
 assert.match(studio,/PermissionDeniedError/);
+assert.match(studio,/if \(renewing\.current \|\| stopping\.current\) return/);
+assert.match(studio,/renewing\.current = false/);
 assert.match(studio,/<summary>학습 리포트 · 알림 · 지원 메뉴<\/summary>/);
 assert.ok(studio.indexOf('<summary>학습 리포트 · 알림 · 지원 메뉴</summary>') > studio.indexOf('className="tai-grid"'));
 assert.match(studio,/30일 이용권 구매하고 계속하기/);
