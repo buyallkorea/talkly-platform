@@ -27,4 +27,7 @@ assert.ok(closing.indexOf("await hangup(s.call_id)") < closing.indexOf('.rpc("ai
 assert.match(stop, /await closeSession\(user\.id, data\.sessionId\)/);
 assert.doesNotMatch(stop, /ai_finish|ai_members|ai_daily_usage/,
  "stop endpoint must not bypass the atomic settlement helper");
+assert.ok(session.includes("after(async () => {"));
+assert.ok(session.includes("attempt < 3"));
+assert.ok(session.includes("await closeSession(capturedUser, capturedSession)"));
 console.log("PASS: reservation before provider connection, expired lease closure, provider hangup before settlement.");
