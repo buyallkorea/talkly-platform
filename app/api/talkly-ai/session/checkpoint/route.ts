@@ -17,6 +17,9 @@ export async function POST(request: Request) {
       .single();
     if (error || !s) throw new AiError("대화를 찾을 수 없어요.", 404);
     const transcript = cleanTurns(data.turns);
+    // Never replace remembered conversation with an empty or invalid snapshot.
+    if (!transcript.length)
+      return Response.json({ success: true }, { headers: { "Cache-Control": "no-store" } });
     if (process.env.TALKLY_AI_ORDERED_CHECKPOINTS_ENABLED === "true") {
       if (typeof data.writerId !== "string" || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(data.writerId) ||
           !Number.isSafeInteger(data.version) || data.version < 1 || data.version > 2147483647)
