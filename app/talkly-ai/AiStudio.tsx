@@ -183,10 +183,10 @@ export default function AiStudio() {
             );
           }),
         ]);
-        if (result.some((r) => r.status === "rejected"))
-          throw new Error(
-            "대화 저장 또는 종료 확인에 실패했어요. 새로고침 후 이용 상태를 확인해 주세요.",
-          );
+        if (result[1].status === "rejected")
+          throw new Error("수업 종료 확인에 실패했어요. 이용시간이 정산됐는지 확인할 수 없으므로 상태를 새로고침해 확인해 주세요.");
+        if (result[0].status === "rejected")
+          setError("수업은 종료됐지만 대화 기억 저장에 실패했어요. 현재 화면의 자막을 확인해 주세요. 페이지를 떠나면 복구하지 못할 수 있어요.");
       }
       return await refresh();
     } catch (e) {
@@ -250,7 +250,7 @@ export default function AiStudio() {
     setTurns([...history.current]);
     if (session.current)
       void checkpoint(session.current).catch(() =>
-        setError("대화 기억을 저장하지 못했어요. 연결 상태를 확인해 주세요."),
+        setError("대화 기억을 저장하지 못했어요. 현재 화면에는 대화가 남아 있지만 페이지를 떠나면 복구되지 않을 수 있어요. 연결 상태를 확인해 주세요."),
       );
   }
   function replyWhenReady() {
