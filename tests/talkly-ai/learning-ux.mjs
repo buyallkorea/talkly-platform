@@ -13,7 +13,7 @@ assert.match(studio,/3분 무료 체험을 완료했어요/);
 assert.match(studio,/tai-primary-controls/);
 assert.match(studio,/tai-mic-help/);
 assert.match(studio,/async function retryMemory\(\)/);
-assert.match(studio,/failedMemory\.current = \{ id, turns: snapshot \}/);
+assert.match(studio,/failedMemory\.current = \{ id, turns: snapshot, version \}/);
 assert.match(studio,/대화 기억 다시 저장/);
 assert.match(studio,/failedMemory\.current\.version <= version/);
 assert.match(studio,/\+\+memoryVersion\.current/);
