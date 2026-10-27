@@ -12,8 +12,10 @@ language plpgsql security invoker set search_path = ''
 as $$
 declare s public.ai_sessions; incoming_digest text;
 begin
-  if p_writer is null or p_version is null or p_version < 1 or p_version > 2147483647
-    or jsonb_typeof(p_turns) <> 'array' or jsonb_array_length(p_turns) > 20
+  if p_turns is null or p_writer is null or p_version is null or p_version < 1 or p_version > 2147483647
+    or jsonb_typeof(p_turns) is distinct from 'array'
+  then raise exception 'INVALID_CHECKPOINT'; end if;
+  if jsonb_array_length(p_turns) = 0 or jsonb_array_length(p_turns) > 20
   then raise exception 'INVALID_CHECKPOINT'; end if;
   -- Lock order member -> session matches existing session accounting functions.
   perform 1 from public.ai_members where user_id=p_user for update;
