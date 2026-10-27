@@ -107,7 +107,7 @@ export default async function AdminAiPage() {
     db
       .from("ai_api_events")
       .select(
-        "kind,model,outcome,failure_kind,http_status,duration_ms,input_tokens,output_tokens,cached_input_tokens,created_at",
+        "session_id,kind,model,outcome,failure_kind,http_status,duration_ms,input_tokens,output_tokens,cached_input_tokens,created_at",
       )
       .order("created_at", { ascending: false })
       .limit(1000),
@@ -140,7 +140,7 @@ export default async function AdminAiPage() {
       .limit(100),
     db
       .from("ai_learning_summaries")
-      .select("status,created_at")
+      .select("session_id,status,created_at")
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(100),
@@ -152,6 +152,27 @@ export default async function AdminAiPage() {
         <p>AI 관리 정보를 불러오지 못했습니다. DB 적용 상태를 확인해 주세요.</p>
       </section>
     );
+  // Only compare event metadata and persistence state; never display transcripts.
+  const summaryEventsBySession = new Map<string, {
+    outcome: string;
+    failure_kind: string | null;
+    http_status: number | null;
+  }>();
+  for (const event of apiEvents.data ?? []) {
+    if (event.kind !== "learning_summary" || !event.session_id) continue;
+    if (!summaryEventsBySession.has(event.session_id))
+      summaryEventsBySession.set(event.session_id, {
+        outcome: event.outcome,
+        failure_kind: event.failure_kind,
+        http_status: event.http_status,
+      });
+  }
+  const summariesNeedingReview = (learningSummaries.data ?? [])
+    .filter((summary) =>
+      summary.status === "failed" ||
+      (summary.status === "pending" && Date.parse(summary.created_at) < Date.now() - 2 * 60 * 1000),
+    )
+    .slice(0, 20);
   const memberIds = [...new Set((members.data ?? []).map((m) => m.user_id))];
   const ids = [
     ...new Set([
@@ -249,6 +270,34 @@ export default async function AdminAiPage() {
           </p>
         )}
       </section>
+      <details>
+        <summary>학습 요약 실패·지연 세션 확인 (최근 20건)</summary>
+        {learningSummaries.error || apiEvents.error ? (
+          <p>상태 비교를 위한 DB 기록을 조회하지 못했습니다.</p>
+        ) : summariesNeedingReview.length === 0 ? (
+          <p>조회 범위에서 실패하거나 지연된 요약이 없습니다.</p>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead><tr><th>세션</th><th>DB 요약</th><th>최근 API 결과</th><th>오류 분류 / HTTP</th></tr></thead>
+              <tbody>
+                {summariesNeedingReview.map((summary) => {
+                  const event = summaryEventsBySession.get(summary.session_id);
+                  return (
+                    <tr key={summary.session_id}>
+                      <td><code>{summary.session_id.slice(0, 8)}…</code></td>
+                      <td>{summary.status === "failed" ? "저장 실패" : "처리 지연"}</td>
+                      <td>{event?.outcome ?? "기록 없음"}</td>
+                      <td>{event ? `${event.failure_kind ?? "분류 없음"} / ${event.http_status ?? "응답 정보 없음"}` : "연결 가능한 기록 없음"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p>최신 API 기록 최대 1,000건과 요약 저장 기록 최대 100건을 비교합니다. 로그가 없다는 사실만으로 API 미호출 또는 무과금을 뜻하지 않습니다.</p>
+      </details>
       <section>
         <h2>API 요청·사용량 관찰</h2>
         <p>
