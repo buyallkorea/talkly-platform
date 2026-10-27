@@ -134,6 +134,17 @@ try {
   assert.equal(events.length, 0);
 
 
+  const freshMember = member;
+  const freshSession = session;
+  session = { ...session, started_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() };
+  member = { learning_summary_consent_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() };
+  const expired = await POST(new Request("https://example.invalid", { method: "POST" }));
+  assert.equal(expired.status, 409, "summary generation should expire after one hour");
+  assert.equal(current.providerCalls, 0);
+  session = freshSession;
+  member = freshMember;
+  assert.equal(events.length, 0);
+
   // A newly claimed summary with a provider failure must mark its claim failed,
   // emit a failure event, and never report a successful write.
   current = { claim: "new", status: null, readError: false, providerCalls: 0 };
