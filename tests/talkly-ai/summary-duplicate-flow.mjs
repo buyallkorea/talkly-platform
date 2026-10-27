@@ -163,6 +163,18 @@ try {
   assert.equal(events.length, 1);
   assert.equal(events[0].outcome, "failed");
   assert.equal(events[0].httpStatus, 503);
+  // HTTP 200 without a completed response is not a valid learning summary.
+  current = { claim: "new", status: null, readError: false, providerCalls: 0 };
+  globalThis.fetch = async () => {
+    current.providerCalls++;
+    return { ok: true, status: 200, json: async () => ({ status: "incomplete", output: [] }) };
+  };
+  const incomplete = await POST(new Request("https://example.invalid", { method: "POST" }));
+  assert.equal(incomplete.status, 503);
+  assert.equal(current.providerCalls, 1);
+  assert.equal(failedUpdates, 2);
+  assert.equal(events.at(-1).outcome, "failed");
+
   // Provider succeeds but storage RPC returns false: never record success.
   const responseBody = {
     status: "completed",
@@ -197,7 +209,7 @@ try {
   storageError = { message: "storage unavailable" };
   const dbFailure = await POST(new Request("https://example.invalid", { method: "POST" }));
   assert.equal(dbFailure.status, 503);
-  assert.equal(failedUpdates, 2);
+  assert.equal(failedUpdates, 3);
   assert.equal(events.at(-1).outcome, "failed");
   assert.equal(current.providerCalls, 1);
 
