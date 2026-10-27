@@ -31,7 +31,16 @@ export async function POST(request: Request) {
         p_turns: transcript,
         p_writer: data.writerId,
       });
-      if (orderedError) throw new AiError("대화기록을 저장하지 못했어요. 다시 시도해 주세요.", 503);
+      if (orderedError) {
+        const code = String(orderedError.message ?? "");
+        if (code.includes("STALE_CHECKPOINT") || code.includes("OLDER_SESSION_CHECKPOINT") ||
+            code.includes("CHECKPOINT_WRITER_CONFLICT"))
+          return Response.json(
+            { error: "이 대화의 저장 권한 또는 순번이 변경됐어요. 기존 기록을 덮어쓰지 않았습니다.", terminal: true },
+            { status: 409, headers: { "Cache-Control": "no-store" } },
+          );
+        throw new AiError("대화기록을 저장하지 못했어요. 다시 시도해 주세요.", 503);
+      }
       return Response.json({ success: true }, { headers: { "Cache-Control": "no-store" } });
     }
     if (transcript.length) {
