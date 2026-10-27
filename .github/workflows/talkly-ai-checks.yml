@@ -33,6 +33,7 @@ jobs:
       - run: npx tsc --noEmit
       - run: node tests/talkly-ai/config.mjs
       - run: node tests/talkly-ai/report-boundaries.mjs
+      - run: node tests/talkly-ai/account-entitlement.mjs
       - run: node tests/talkly-ai/registered-call-recovery.mjs
       - run: node tests/talkly-ai/payment-reconcile.mjs
       - run: node tests/talkly-ai/refund-audit.mjs
