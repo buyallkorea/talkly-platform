@@ -1,9 +1,10 @@
 import { createAdminClient } from "@/lib/supabase-admin";
-import { AiError, body, failure } from "@/lib/talkly-ai/server";
+import { AiError, body, failure, requireIsolatedPreviewWrite } from "@/lib/talkly-ai/server";
 import { validUnsubscribeToken } from "@/lib/talkly-ai/unsubscribe-token";
 import { unsubscribeHash } from "@/lib/talkly-ai/unsubscribe";
 export async function POST(request: Request) {
   try {
+    requireIsolatedPreviewWrite(request);
     // No login, active-member, new-opt-in or AI-enabled gate on withdrawal.
     let origin: URL;
     try {
