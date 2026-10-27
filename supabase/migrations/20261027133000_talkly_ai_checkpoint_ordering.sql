@@ -19,7 +19,7 @@ begin
   select * into s from public.ai_sessions
    where id=p_session and user_id=p_user for update;
   if not found then raise exception 'SESSION_NOT_FOUND'; end if;
-  if p_version <= s.checkpoint_version then return false; end if;
+  if p_version <= s.checkpoint_version then raise exception 'STALE_CHECKPOINT'; end if;
   -- A previous (older) session must never overwrite a newer session's memory.
   update public.ai_sessions set checkpoint_version=p_version where id=s.id;
   update public.ai_members
