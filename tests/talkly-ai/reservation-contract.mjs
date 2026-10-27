@@ -14,6 +14,8 @@ const order = (...tokens) => {
  }
 };
 order('.rpc("ai_claim_connection_attempt"', '.rpc("ai_reserve"', 'sessionId = lease.id;', 'fetch("https://api.openai.com/v1/realtime/calls"');
+assert.ok(session.indexOf('typeof data.writerId !== "string"') < session.indexOf('.rpc("ai_claim_connection_attempt"'), "invalid checkpoint writer must be rejected before connection attempts");
+assert.ok(session.indexOf('typeof data.writerId !== "string"') < session.indexOf('.rpc("ai_reserve"'), "invalid checkpoint writer must not reserve minutes");
 assert.match(session, /\.neq\("state", "closed"\)/);
 assert.match(session, /for \(const row of stale \?\? \[\]\) await closeSession\(user\.id, row\.id\)/);
 assert.match(session, /if \(!process\.env\.OPENAI_API_KEY\)/);
