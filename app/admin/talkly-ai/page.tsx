@@ -287,8 +287,10 @@ export default async function AdminAiPage() {
                     <tr key={summary.session_id}>
                       <td><code>{summary.session_id.slice(0, 8)}…</code></td>
                       <td>{summary.status === "failed" ? "저장 실패" : "처리 지연"}</td>
-                      <td>{event?.outcome ?? "기록 없음"}</td>
-                      <td>{event ? `${event.failure_kind ?? "분류 없음"} / ${event.http_status ?? "응답 정보 없음"}` : "연결 가능한 기록 없음"}</td>
+                      <td>{event ? (event.outcome === "succeeded" ? "API 로그 성공" : "API 로그 실패") : "로그 없음"}</td>
+                      <td>{event
+                        ? `${event.failure_kind ?? "분류 없음"} / ${event.http_status ?? "응답 정보 없음"}`
+                        : "연결 가능한 기록 없음"}</td>
                     </tr>
                   );
                 })}
@@ -296,7 +298,7 @@ export default async function AdminAiPage() {
             </table>
           </div>
         )}
-        <p>최신 API 기록 최대 1,000건과 요약 저장 기록 최대 100건을 비교합니다. 로그가 없다는 사실만으로 API 미호출 또는 무과금을 뜻하지 않습니다.</p>
+        <p>최신 API 기록 최대 1,000건과 요약 저장 기록 최대 100건을 비교합니다. API 로그의 성공은 요약 DB 저장 완료를 보장하지 않으며, 로그가 없다는 사실만으로 API 미호출 또는 무과금을 뜻하지 않습니다.</p>
       </details>
       <section>
         <h2>API 요청·사용량 관찰</h2>
