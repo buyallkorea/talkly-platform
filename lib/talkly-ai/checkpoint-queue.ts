@@ -35,9 +35,11 @@ export class CheckpointQueue {
       try {
         try {
           await this.send(sessionId, job.turns, job.version);
-        } catch {
-          // A second identical snapshot is safe: the checkpoint endpoint
-          // overwrites the latest memory for this owned session.
+        } catch (error) {
+          // Conflicts cannot be resolved by repeating the same stale write.
+          if (error && typeof error === "object" && "terminal" in error && error.terminal === true)
+            throw error;
+          // Retry one transient failure with the same version and snapshot.
           await this.send(sessionId, job.turns, job.version);
         }
         for (const waiter of job.waiters) waiter.resolve();
