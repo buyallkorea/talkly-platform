@@ -243,7 +243,7 @@ export default function AiStudio() {
             turns: summarySnapshot,
           }).then((summary) => {
             // "not_saved" is a valid HTTP response but not a successful report write.
-            if (summary?.status === "not_saved")
+            if (summary?.status === "not_saved" || summary?.status === "failed")
               throw new Error("Learning summary not persisted");
           }).catch(() => {
             // Preserve more important transcript, settlement and subsequent lesson warnings.
