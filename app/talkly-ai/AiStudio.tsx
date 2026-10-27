@@ -153,25 +153,25 @@ export default function AiStudio() {
     turnCoordinator.current.reset();
   }
   const saveQueue = useRef<CheckpointQueue | null>(null);
-  const failedMemory = useRef<{ id: string; turns: Turn[] } | null>(null);
+  const failedMemory = useRef<{ id: string; turns: Turn[]; version: number } | null>(null);
+  const memoryVersion = useRef(0);
   async function checkpoint(id: string) {
     if (!saveQueue.current)
       saveQueue.current = new CheckpointQueue((sessionId, turns) =>
         api("session/checkpoint", { sessionId, turns }),
       );
     const snapshot = history.current.slice(-20).map((turn) => ({ ...turn }));
+    const version = ++memoryVersion.current;
     try {
       await saveQueue.current.save(id, snapshot);
-      if (failedMemory.current?.id === id &&
-          JSON.stringify(failedMemory.current.turns) === JSON.stringify(snapshot)) {
+      if (failedMemory.current?.id === id && failedMemory.current.version <= version) {
         failedMemory.current = null;
         setPendingMemoryRetry(false);
       }
     } catch (error) {
       const previous = failedMemory.current;
-      if (!previous || previous.id !== id ||
-          previous.turns.length <= snapshot.length) {
-        failedMemory.current = { id, turns: snapshot };
+      if (!previous || previous.version <= version) {
+        failedMemory.current = { id, turns: snapshot, version };
         setPendingMemoryRetry(true);
       }
       throw error;
