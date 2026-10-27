@@ -157,13 +157,13 @@ export default function AiStudio() {
   const memoryVersion = useRef(0);
   async function checkpoint(id: string) {
     if (!saveQueue.current)
-      saveQueue.current = new CheckpointQueue((sessionId, turns) =>
-        api("session/checkpoint", { sessionId, turns }),
+      saveQueue.current = new CheckpointQueue((sessionId, turns, version) =>
+        api("session/checkpoint", { sessionId, turns, version }),
       );
     const snapshot = history.current.slice(-20).map((turn) => ({ ...turn }));
     const version = ++memoryVersion.current;
     try {
-      await saveQueue.current.save(id, snapshot);
+      await saveQueue.current.save(id, snapshot, version);
       if (failedMemory.current?.id === id && failedMemory.current.version <= version) {
         failedMemory.current = null;
         setPendingMemoryRetry(false);
@@ -186,7 +186,7 @@ export default function AiStudio() {
       const latest = session.current === pending.id
         ? history.current.slice(-20).map((turn) => ({ ...turn }))
         : pending.turns;
-      await saveQueue.current.save(pending.id, latest);
+      await saveQueue.current.save(pending.id, latest, session.current === pending.id ? ++memoryVersion.current : pending.version);
       if (failedMemory.current === pending) {
         failedMemory.current = null;
         setPendingMemoryRetry(false);
