@@ -19,6 +19,7 @@ const events = [];
 let requestedId = sessionId;
 let learnerTurns = [{ role: "user", text: "Hello" }];
 let failedUpdates = 0;
+let insertCalls = 0;
 let storedValue = false;
 let storageError = null;
 let current = { claim: "duplicate", status: "ready", readError: false, providerCalls: 0 };
@@ -48,6 +49,7 @@ function db() {
         then(resolve) { return Promise.resolve({ error: null }).then(resolve); },
         async insert() {
           assert.equal(table, "ai_learning_summaries");
+          insertCalls++;
           return { error: current.claim === "duplicate" ? { code: "23505" } : null };
         },
       };
@@ -144,6 +146,8 @@ try {
   session = freshSession;
   member = freshMember;
   assert.equal(events.length, 0);
+
+  assert.equal(insertCalls, 5, "ineligible lessons must not claim summaries");
 
   // A newly claimed summary with a provider failure must mark its claim failed,
   // emit a failure event, and never report a successful write.
