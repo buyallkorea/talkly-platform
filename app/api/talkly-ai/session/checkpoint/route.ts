@@ -17,6 +17,18 @@ export async function POST(request: Request) {
       .single();
     if (error || !s) throw new AiError("대화를 찾을 수 없어요.", 404);
     const transcript = cleanTurns(data.turns);
+    if (process.env.TALKLY_AI_ORDERED_CHECKPOINTS_ENABLED === "true") {
+      if (!Number.isSafeInteger(data.version) || data.version < 1 || data.version > 2147483647)
+        throw new AiError("대화 저장 순번을 확인하지 못했어요.");
+      const { error: orderedError } = await db.rpc("ai_checkpoint_ordered", {
+        p_user: user.id,
+        p_session: data.sessionId,
+        p_version: data.version,
+        p_turns: transcript,
+      });
+      if (orderedError) throw new AiError("대화기록을 저장하지 못했어요. 다시 시도해 주세요.", 503);
+      return Response.json({ success: true }, { headers: { "Cache-Control": "no-store" } });
+    }
     if (transcript.length) {
       const { error: memoryError } = await db
         .from("ai_members")
