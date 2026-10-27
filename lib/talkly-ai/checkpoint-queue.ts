@@ -29,7 +29,13 @@ export class CheckpointQueue {
       const [sessionId, job] = this.pending.entries().next().value!;
       this.pending.delete(sessionId);
       try {
-        await this.send(sessionId, job.turns);
+        try {
+          await this.send(sessionId, job.turns);
+        } catch {
+          // A second identical snapshot is safe: the checkpoint endpoint
+          // overwrites the latest memory for this owned session.
+          await this.send(sessionId, job.turns);
+        }
         for (const waiter of job.waiters) waiter.resolve();
       } catch (error) {
         for (const waiter of job.waiters) waiter.reject(error);
