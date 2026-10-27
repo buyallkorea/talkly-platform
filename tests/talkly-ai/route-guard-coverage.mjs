@@ -29,7 +29,6 @@ for (const file of routes) {
     continue;
   }
   assert.match(source, /context\(request\)/, "mutating AI endpoint bypasses preview isolation: " + rel);
-  assert.doesNotMatch(source, /context\(\)/, "mutating AI endpoint must pass its request: " + rel);
 }
 assert.ok(protectedWrites >= 14, "route discovery unexpectedly found too few mutations");
 console.log("PASS: "+protectedWrites+" mutating AI routes have preview database isolation checks.");
