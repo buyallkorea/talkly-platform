@@ -106,6 +106,7 @@ try {
   current = { claim: "new", status: null, readError: false, providerCalls: 0 };
   const noConsent = await POST(new Request("https://example.invalid", { method: "POST" }));
   assert.equal((await noConsent.json()).status, "not_enabled");
+  assert.equal(noConsent.headers.get("cache-control"), "no-store");
   assert.equal(current.providerCalls, 0);
   member = originalMember;
   const originalClosedSession = session;
@@ -117,6 +118,7 @@ try {
   member = { learning_summary_consent_at: new Date(Date.now() + 60000).toISOString() };
   const beforeConsent = await POST(new Request("https://example.invalid", { method: "POST" }));
   assert.equal((await beforeConsent.json()).status, "before_consent");
+  assert.equal(beforeConsent.headers.get("cache-control"), "no-store");
   assert.equal(current.providerCalls, 0);
   member = originalMember;
   assert.equal(events.length, 0, "ineligible sessions must not generate usage events");
@@ -126,11 +128,13 @@ try {
   current = { claim: "new", status: null, readError: false, providerCalls: 0 };
   const freeSession = await POST(new Request("https://example.invalid", { method: "POST" }));
   assert.equal((await freeSession.json()).status, "no_conversation");
+  assert.equal(freeSession.headers.get("cache-control"), "no-store");
   assert.equal(current.providerCalls, 0);
   session = originalCharged;
   learnerTurns = [{ role: "assistant", text: "Hello" }];
   const noLearner = await POST(new Request("https://example.invalid", { method: "POST" }));
   assert.equal((await noLearner.json()).status, "no_conversation");
+  assert.equal(noLearner.headers.get("cache-control"), "no-store");
   learnerTurns = [{ role: "user", text: "Hello" }];
   assert.equal(current.providerCalls, 0);
   assert.equal(events.length, 0);
