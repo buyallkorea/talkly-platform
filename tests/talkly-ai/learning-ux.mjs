@@ -15,6 +15,8 @@ assert.match(studio,/tai-mic-help/);
 assert.match(studio,/async function retryMemory\(\)/);
 assert.match(studio,/failedMemory\.current = \{ id, turns: snapshot \}/);
 assert.match(studio,/대화 기억 다시 저장/);
+assert.match(studio,/JSON\.stringify\(failedMemory\.current\.turns\) === JSON\.stringify\(snapshot\)/);
+assert.match(studio,/session\.current === pending\.id/);
 assert.match(studio,/result\[1\]\.status === "rejected"/);
 assert.match(studio,/result\[0\]\.status === "rejected"/);
 assert.match(studio,/페이지를 떠나면 복구하지 못할 수 있어요/);
