@@ -16,6 +16,7 @@ const started = new Date(Date.now() - 30000).toISOString();
 const session = { id: sessionId, day: "2026-10-27", state: "closed", charged_seconds: 30, started_at: started };
 const member = { learning_summary_consent_at: new Date(Date.now() - 60000).toISOString() };
 const events = [];
+let failedUpdates = 0;
 let current = { claim: "duplicate", status: "ready", readError: false, providerCalls: 0 };
 function db() {
   return {
@@ -30,6 +31,13 @@ function db() {
               : { data: current.status === null ? null : { status: current.status }, error: null };
           throw Error("Unexpected select " + table);
         },
+        update(values) {
+          assert.equal(table, "ai_learning_summaries");
+          assert.equal(values.status, "failed");
+          failedUpdates++;
+          return this;
+        },
+        then(resolve) { return Promise.resolve({ error: null }).then(resolve); },
         async insert() {
           assert.equal(table, "ai_learning_summaries");
           return { error: current.claim === "duplicate" ? { code: "23505" } : null };
@@ -69,6 +77,20 @@ try {
   current = { claim: "duplicate", status: "ready", readError: true, providerCalls: 0 };
   assert.equal((await POST(new Request("https://example.invalid"))).status, 503, "failed status read must not look completed");
   assert.equal(events.length, 0, "duplicate requests must not produce new provider usage events");
+  // A newly claimed summary with a provider failure must mark its claim failed,
+  // emit a failure event, and never report a successful write.
+  current = { claim: "new", status: null, readError: false, providerCalls: 0 };
+  globalThis.fetch = async () => {
+    current.providerCalls++;
+    return { ok: false, status: 503 };
+  };
+  const providerFailure = await POST(new Request("https://example.invalid", { method: "POST" }));
+  assert.equal(providerFailure.status, 503);
+  assert.equal(current.providerCalls, 1);
+  assert.equal(failedUpdates, 1, "failed provider call must mark pending claim failed");
+  assert.equal(events.length, 1);
+  assert.equal(events[0].outcome, "failed");
+  assert.equal(events[0].httpStatus, 503);
 } finally {
   globalThis.fetch = originalFetch;
   delete globalThis.__summaryHarness;
