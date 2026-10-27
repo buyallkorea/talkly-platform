@@ -24,6 +24,10 @@ try {
  assert.throws(()=>guard(request("POST")),e=>e.status===503,"same production and preview project must be blocked");
  process.env.TALKLY_AI_PREVIEW_DB_PROJECT_REF=preview;
  assert.throws(()=>guard(request("POST")),e=>e.status===503,"shared production URL must be blocked");
+ process.env.NEXT_PUBLIC_SUPABASE_URL="not-a-url";
+ assert.throws(()=>guard(request("POST")),e=>e.status===503);
+ process.env.NEXT_PUBLIC_SUPABASE_URL="http://"+preview+".supabase.co";
+ assert.throws(()=>guard(request("POST")),e=>e.status===503,"HTTP must not be accepted for Preview database");
  process.env.NEXT_PUBLIC_SUPABASE_URL="https://"+preview+".supabase.co";
  guard(request("POST"));
  guard(request("PATCH"));
