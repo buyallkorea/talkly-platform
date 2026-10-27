@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
+const adminAi=await readFile(new URL("../../app/admin/talkly-ai/page.tsx",import.meta.url),"utf8");
 const landing=await readFile(new URL("../../app/talkly-ai/page.tsx",import.meta.url),"utf8");
 const report=await readFile(new URL("../../app/talkly-ai/reports/page.tsx",import.meta.url),"utf8");
 const checkpointRoute=await readFile(new URL("../../app/api/talkly-ai/session/checkpoint/route.ts",import.meta.url),"utf8");
@@ -7,6 +8,9 @@ const summaryRoute=await readFile(new URL("../../app/api/talkly-ai/session/summa
 const stopRoute=await readFile(new URL("../../app/api/talkly-ai/session/stop/route.ts",import.meta.url),"utf8");
 const studio=await readFile(new URL("../../app/talkly-ai/AiStudio.tsx",import.meta.url),"utf8");
 assert.match(landing,/3가지 성격의 AI 튜터 6명/);
+assert.match(adminAi,/학습 요약 DB 저장 상태/);
+assert.match(adminAi,/learningSummaries\.error/);
+assert.match(adminAi,/row\.status === "pending"/);
 assert.doesNotMatch(landing,/5개국 AI 튜터|국가별 억양/);
 assert.match(report,/최근 3개월 학습 습관/);
 assert.match(report,/pendingCount/);
