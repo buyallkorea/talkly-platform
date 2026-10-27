@@ -38,6 +38,11 @@ export async function POST(request: Request) {
       data.sdp.length > 65000
     )
       throw new AiError("음성 연결 정보를 확인해 주세요.");
+    if (process.env.TALKLY_AI_ORDERED_CHECKPOINTS_ENABLED === "true") {
+      if (typeof data.writerId !== "string" ||
+          !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(data.writerId))
+        throw new AiError("대화 저장 연결 정보를 확인해 주세요.");
+    }
     // Recover expired leases before accepting a new connection. Never refund an
     // expired lease without first hanging up its provider call.
     const { data: stale, error: staleError } = await db
@@ -98,9 +103,6 @@ export async function POST(request: Request) {
     sessionId = lease.id;
     // Bind the writer at reservation time, before any transcript checkpoint.
     if (process.env.TALKLY_AI_ORDERED_CHECKPOINTS_ENABLED === "true") {
-      if (typeof data.writerId !== "string" ||
-          !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(data.writerId))
-        throw new AiError("대화 저장 연결 정보를 확인해 주세요.");
       const { data: writerBound, error: writerError } = await db.from("ai_sessions")
         .update({ checkpoint_writer: data.writerId })
         .eq("id", lease.id).eq("user_id", user.id).eq("state", "connecting")
