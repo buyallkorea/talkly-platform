@@ -14,6 +14,11 @@ Status: **BLOCKED — do not enable in production.**
 
 These checks do **not** establish correctness of the production function under actual parallel transactions or of real Supabase RLS and API integration.
 
+## Verified lock order in the existing database (2026-10-27)
+The current `ai_reserve`, `ai_begin_close`, and `ai_finish` SQL functions acquire the member row lock first. The latter two then acquire the session row lock; the ordered checkpoint function uses the same member-before-session ordering. This reduces lock-order inversion, but does **not** replace a real two-connection concurrency test.
+
+The Supabase project has no separate database development branch. No branch was created and no paid infrastructure was provisioned.
+
 ## Before enabling
 1. Use a dedicated **isolated database** with the exact migration applied. Do not experiment on production member records.
 2. Confirm migration, database privilege grants, real API service role, and `ai_reserve` session creation compatibility.
