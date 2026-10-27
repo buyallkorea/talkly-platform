@@ -241,8 +241,12 @@ export default function AiStudio() {
           void api("session/summary", {
             sessionId: id,
             turns: summarySnapshot,
+          }).then((summary) => {
+            // "not_saved" is a valid HTTP response but not a successful report write.
+            if (summary?.status === "not_saved")
+              throw new Error("Learning summary not persisted");
           }).catch(() => {
-            // Preserve more important transcript and settlement warnings.
+            // Preserve more important transcript, settlement and subsequent lesson warnings.
             if (result[0].status === "fulfilled")
               setError((current) => current || "수업은 종료됐지만 학습 요약 저장에 실패했어요. 월간 리포트에 일부 기록이 빠질 수 있어요.");
           });
