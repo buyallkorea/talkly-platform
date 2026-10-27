@@ -26,6 +26,12 @@ assert.match(report,/r\.status === "ready" && r\.summary/);
 assert.match(report,/row\.activity\?\.seconds/);
 assert.match(report,/영어 실력 점수나 향상률이 아닙니다/);
 assert.match(studio,/3분 무료 체험을 완료했어요/);
+const unload = studio.slice(studio.indexOf('const leave = () => {'), studio.indexOf('const restore = (event: PageTransitionEvent)'));
+assert.match(unload,/session\/checkpoint/,"pagehide must checkpoint the last learner turns");
+assert.match(unload,/session\/stop/,"pagehide must request provider close and settlement");
+assert.equal((unload.match(/keepalive: true/g) ?? []).length,2,"both unload requests must be keepalive");
+assert.equal((unload.match(/\.catch\(\(\) => \{/g) ?? []).length,2,"rejected keepalive requests must not produce unhandled rejections");
+
 assert.match(studio,/tai-primary-controls/);
 assert.match(studio,/tai-mic-help/);
 assert.match(studio,/async function retryMemory\(\)/);
