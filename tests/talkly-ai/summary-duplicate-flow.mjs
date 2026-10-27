@@ -17,6 +17,7 @@ let session = { id: sessionId, day: "2026-10-27", state: "closed", charged_secon
 let member = { learning_summary_consent_at: new Date(Date.now() - 60000).toISOString() };
 const events = [];
 let requestedId = sessionId;
+let learnerTurns = [{ role: "user", text: "Hello" }];
 let failedUpdates = 0;
 let storedValue = false;
 let storageError = null;
@@ -57,7 +58,7 @@ function db() {
 const harness = {
   context: async () => ({ user: { id: userId }, db: db() }),
   requireMember: async () => member,
-  body: async () => ({ sessionId: requestedId, turns: [{ role: "user", text: "Hello" }] }),
+  body: async () => ({ sessionId: requestedId, turns: learnerTurns }),
   summaryTurns: (turns) => turns,
   validateSummary: (value) => value,
   failure: (error) => Response.json({ error: error.message }, { status: error.status ?? 500 }),
@@ -125,11 +126,10 @@ try {
   assert.equal((await freeSession.json()).status, "no_conversation");
   assert.equal(current.providerCalls, 0);
   session = originalCharged;
-  const previousSummaryTurns = harness.summaryTurns;
-  harness.summaryTurns = () => [{ role: "assistant", text: "Hello" }];
+  learnerTurns = [{ role: "assistant", text: "Hello" }];
   const noLearner = await POST(new Request("https://example.invalid", { method: "POST" }));
   assert.equal((await noLearner.json()).status, "no_conversation");
-  harness.summaryTurns = previousSummaryTurns;
+  learnerTurns = [{ role: "user", text: "Hello" }];
   assert.equal(current.providerCalls, 0);
   assert.equal(events.length, 0);
 
