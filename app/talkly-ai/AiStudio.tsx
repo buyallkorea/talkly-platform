@@ -502,9 +502,13 @@ export default function AiStudio() {
       setError(
         e instanceof DOMException && e.name === "NotFoundError"
           ? "마이크가 있는 헤드셋을 연결하고 PC 설정 → 소리 → 입력 장치를 확인해 주세요."
-          : e instanceof DOMException && e.name === "NotAllowedError"
-            ? "주소창의 사이트 설정에서 마이크를 허용해 주세요."
-            : e instanceof Error
+          : e instanceof DOMException && (e.name === "NotAllowedError" || e.name === "PermissionDeniedError")
+            ? "마이크 권한이 거부됐어요. 주소창의 사이트 설정에서 마이크를 허용한 후 다시 시작해 주세요."
+            : e instanceof DOMException && (e.name === "NotReadableError" || e.name === "TrackStartError")
+              ? "마이크가 다른 프로그램에서 사용 중이거나 입력 장치에 문제가 있어요. 다른 앱을 닫고 다시 시도해 주세요."
+              : e instanceof DOMException && e.name === "OverconstrainedError"
+                ? "선택한 마이크 설정을 사용할 수 없어요. 다른 입력 장치를 연결해 주세요."
+                : e instanceof Error
               ? e.message
               : "음성 연결에 실패했어요.",
       );
