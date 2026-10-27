@@ -78,7 +78,9 @@ export default async function Reports({
       </main>
     );
   }
-  const ready = result.records.filter((r) => r.status === "ready");
+  const ready = result.records.filter((r) => r.status === "ready" && r.summary && typeof r.summary === "object" && !Array.isArray(r.summary));
+  const pendingCount = result.records.filter((r) => r.status === "pending").length;
+  const failedCount = result.records.filter((r) => r.status === "failed").length;
   const topics = [
     ...new Set(
       ready.flatMap((r) => (r.summary as LearningSummary)?.topics ?? []),
@@ -143,6 +145,9 @@ export default async function Reports({
         <h2>이번 달 한눈에 보기</h2>
         <p><strong>{result.activity.days}일</strong> 학습 · <strong>{Math.floor(result.activity.seconds / 60)}분 {result.activity.seconds % 60}초</strong> 연결</p>
         <p>복습용 요약 <strong>{ready.length}개</strong> · 종료된 연결 구간 <strong>{result.activity.segments}개</strong></p>
+        {(pendingCount > 0 || failedCount > 0) && (
+          <p role="status">학습 요약 처리 중 {pendingCount}개 · 저장 실패 {failedCount}개. 처리 중이거나 실패한 요약은 주제·표현·교정 집계에 포함하지 않습니다.</p>
+        )}
         {result.activity.segments > ready.length && (
           <p role="status">일부 대화의 학습 요약이 없어요. 기록 저장 동의 전 대화, 창 닫기, 연결 장애 또는 분석 실패 등이 원인일 수 있습니다. 누락된 내용을 임의로 생성하지 않습니다.</p>
         )}
