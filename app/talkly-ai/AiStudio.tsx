@@ -493,6 +493,7 @@ export default function AiStudio() {
       const result = await api("session", {
         sdp: offer.sdp,
         tutorId: tutor,
+        writerId: writerId(),
       });
       if (!connectionEpoch.current.current(attempt)) {
         await api("session/stop", { sessionId: result.sessionId });
