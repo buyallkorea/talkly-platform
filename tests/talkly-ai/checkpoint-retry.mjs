@@ -11,18 +11,6 @@ assert.equal(attempts,2,"failed checkpoint retried once");
 let fails=0;const permanent=new CheckpointQueue(async()=>{fails++;throw Error("offline");});
 await assert.rejects(()=>permanent.save("session-b",[{role:"user",text:"Hello"}]),/offline/);
 assert.equal(fails,2,"permanent failure not retried endlessly");
-let releaseFirst;
-const persisted=[];
-const ordered=new CheckpointQueue(async (_id,turns)=>{
- if (turns[0]?.text==="first") await new Promise(resolve=>{releaseFirst=resolve;});
- persisted.push(turns[0]?.text);
-});
-const first=ordered.save("session-a",[{role:"user",text:"first"}]);
-const second=ordered.save("session-a",[{role:"user",text:"second"}]);
-assert.equal(typeof releaseFirst,"function");
-releaseFirst();
-await Promise.all([first,second]);
-assert.deepEqual(persisted,["first","second"],"a later checkpoint must be persisted after the in-flight one");
 console.log("PASS: checkpoint retry retains identical content, succeeds after temporary failure and stops after repeated failure.");
 
 let releaseFirst;
