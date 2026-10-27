@@ -231,20 +231,20 @@ export default function AiStudio() {
       if (id) {
         const result = await Promise.allSettled([
           checkpoint(id),
-          api("session/stop", { sessionId: id }).then(() => {
-            // Summary must not delay lease renewal or settlement.
-            void api("session/summary", {
-              sessionId: id,
-              turns: summarySnapshot,
-            }).catch(() =>
-              setError(
-                "회화는 종료됐지만 학습 요약을 저장하지 못했어요. 리포트에 일부 기록이 빠질 수 있어요.",
-              ),
-            );
-          }),
+          api("session/stop", { sessionId: id }),
         ]);
         if (result[1].status === "rejected")
           throw new Error("수업 종료 확인에 실패했어요. 이용시간이 정산됐는지 확인할 수 없으므로 상태를 새로고침해 확인해 주세요.");
+        // Summaries are best-effort and cannot change settlement outcome.
+        // Await their result so a late callback cannot overwrite a more important stop error.
+        const summaryResult = summarySnapshot.length
+          ? await Promise.allSettled([api("session/summary", {
+              sessionId: id,
+              turns: summarySnapshot,
+            })])
+          : [];
+        if (summaryResult[0]?.status === "rejected" && result[0].status === "fulfilled")
+          setError("수업 종료 요청은 처리됐지만 학습 요약을 저장하지 못했어요. 월간 리포트에 일부 기록이 빠질 수 있어요.");
         if (result[0].status === "rejected") {
           const reason = result[0].reason;
           const terminal = reason && typeof reason === "object" && "terminal" in reason && reason.terminal === true;
