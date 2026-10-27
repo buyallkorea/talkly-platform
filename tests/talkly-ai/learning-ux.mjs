@@ -33,6 +33,7 @@ assert.match(studio,/void api\("session\/summary"/);
 assert.match(studio,/summary\?\.status === "not_saved"/);
 assert.match(studio,/summary\?\.status === "failed"/);
 assert.match(summaryRoute,/existing\.status === "ready"/);
+assert.match(summaryRoute,/succeeded = stored === true/);
 assert.match(summaryRoute,/existing\.status === "failed"/);
 assert.match(summaryRoute,/: "pending"/);
 assert.match(studio,/Learning summary not persisted/);
