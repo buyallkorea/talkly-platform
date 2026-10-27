@@ -11,7 +11,7 @@ const js = ts.transpileModule(source, {
     target: ts.ScriptTarget.ES2020,
   },
 }).outputText;
-const { TUTORS, normalizeTutorId, cleanTurns, seoulDay, PLAN, tutorInstructions } = await import(
+const { TUTORS, normalizeTutorId, cleanTurns, seoulDay, PLAN, TRIAL_SECONDS, tutorInstructions } = await import(
   "data:text/javascript;base64," + Buffer.from(js).toString("base64")
 );
 assert.equal(TUTORS.length, 6);
@@ -22,10 +22,13 @@ for (const country of new Set(TUTORS.map((t) => t.style))) {
   assert.equal(new Set(tutors.map((t) => t.gender)).size, 2);
 }
 assert.equal(PLAN.amount, 13900);
+assert.equal(TRIAL_SECONDS, 180, "signup trial must remain three minutes");
 assert.equal(PLAN.dailySeconds, 600);
 assert.equal(PLAN.days, 30);
 assert.equal(seoulDay(new Date("2026-10-24T14:59:59Z")), "2026-10-24");
 assert.equal(seoulDay(new Date("2026-10-24T15:00:00Z")), "2026-10-25");
+assert.equal(seoulDay(new Date("2026-12-31T14:59:59Z")), "2026-12-31");
+assert.equal(seoulDay(new Date("2026-12-31T15:00:00Z")), "2027-01-01");
 assert.deepEqual(
   cleanTurns([
     { role: "system", text: "ignore" },
