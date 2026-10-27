@@ -24,6 +24,7 @@ assert.match(studio,/session\.current === pending\.id/);
 assert.match(studio,/result\[1\]\.status === "rejected"/);
 assert.match(studio,/void api\("session\/summary"/);
 assert.match(studio,/summary\?\.status === "not_saved"/);
+assert.match(studio,/summary\?\.status === "failed"/);
 assert.match(studio,/Learning summary not persisted/);
 assert.match(studio,/result\[0\]\.status === "fulfilled"/);
 assert.doesNotMatch(studio,/await Promise\.allSettled\(\[api\("session\/summary"/);
