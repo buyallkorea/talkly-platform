@@ -203,8 +203,17 @@ export default function AiStudio() {
         setPendingMemoryRetry(false);
       }
       setError("대화 기억을 다시 저장했습니다.");
-    } catch {
-      setError("대화 기억 재저장에 실패했어요. 현재 화면을 유지하고 연결을 확인한 후 다시 시도해 주세요.");
+    } catch (error) {
+      const terminal = error && typeof error === "object" && "terminal" in error && error.terminal === true;
+      if (terminal) {
+        if (failedMemory.current === pending) {
+          failedMemory.current = null;
+          setPendingMemoryRetry(false);
+        }
+        setError("서버에서 이 대화의 저장을 거부했어요. 저장 권한이나 순번이 변경되어 반복 저장할 수 없습니다.");
+      } else {
+        setError("대화 기억 재저장에 실패했어요. 현재 화면을 유지하고 연결을 확인한 후 다시 시도해 주세요.");
+      }
     } finally {
       setMemoryRetryBusy(false);
     }
