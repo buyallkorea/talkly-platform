@@ -77,6 +77,13 @@ try {
   assert.equal(invalidSession.status, 400, "malformed 36-character session ID must be rejected");
   assert.equal(events.length, 0);
   requestedId = sessionId;
+  // A well-formed but foreign session must not expose summaries or contact the provider.
+  const originalSession = session;
+  session = null;
+  const foreign = await POST(new Request("https://example.invalid", { method: "POST" }));
+  assert.equal(foreign.status, 404);
+  assert.equal(events.length, 0);
+  session = originalSession;
 
   for (const status of ["ready", "pending", "failed"]) {
     current = { claim: "duplicate", status, readError: false, providerCalls: 0 };
@@ -98,12 +105,12 @@ try {
   assert.equal((await noConsent.json()).status, "not_enabled");
   assert.equal(current.providerCalls, 0);
   member = originalMember;
-  const originalSession = session;
+  const originalClosedSession = session;
   session = { ...session, state: "closing" };
   const unclosed = await POST(new Request("https://example.invalid", { method: "POST" }));
   assert.equal(unclosed.status, 409, "unclosed sessions cannot generate a learning report");
   assert.equal(current.providerCalls, 0);
-  session = originalSession;
+  session = originalClosedSession;
   member = { learning_summary_consent_at: new Date(Date.now() + 60000).toISOString() };
   const beforeConsent = await POST(new Request("https://example.invalid", { method: "POST" }));
   assert.equal((await beforeConsent.json()).status, "before_consent");
