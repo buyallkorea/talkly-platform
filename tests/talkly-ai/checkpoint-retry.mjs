@@ -43,4 +43,21 @@ const conflictQueue=new CheckpointQueue(async()=> {
 });
 await assert.rejects(()=>conflictQueue.save("session-conflict",[{role:"user",text:"Old"}],2),/STALE_CHECKPOINT/);
 assert.equal(conflictAttempts,1,"deterministic conflict must not be retried");
+// A stale queued version must not replace the newer snapshot waiting behind an in-flight write.
+let releaseBlocked;
+const captured=[];
+const race=new CheckpointQueue(async(id,turns,version)=>{
+  captured.push({id,version,text:turns.map(t=>t.text).join("|")});
+  if(captured.length===1) await new Promise(resolve=>{releaseBlocked=resolve;});
+});
+const block=race.save("session-race",[{role:"user",text:"Start"}],1);
+const newer=race.save("session-race",[{role:"user",text:"Newer"}],5);
+const stale=race.save("session-race",[{role:"user",text:"Stale"}],3);
+releaseBlocked();
+await Promise.all([block,newer,stale]);
+assert.deepEqual(captured,[
+  {id:"session-race",version:1,text:"Start"},
+  {id:"session-race",version:5,text:"Newer"},
+],"older queued version must never displace newer unsent transcript");
+
 console.log("PASS: checkpoint serialization preserves the latest conversation snapshot order.");
