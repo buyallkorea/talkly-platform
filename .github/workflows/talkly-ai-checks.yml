@@ -41,4 +41,5 @@ jobs:
       - run: node tests/talkly-ai/client-connection.mjs
       - run: node tests/talkly-ai/checkpoint-retry.mjs
       - run: node tests/talkly-ai/checkpoint-ordering-migration.mjs
+      - run: node tests/talkly-ai/checkpoint-writer-flow.mjs
       - run: node tests/talkly-ai/session-hangup.mjs
