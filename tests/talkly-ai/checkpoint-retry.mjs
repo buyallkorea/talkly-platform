@@ -26,4 +26,14 @@ const second=ordered.save("session-c",[{role:"user",text:"First"},{role:"assista
 releaseFirst();
 await Promise.all([first,second]);
 assert.deepEqual(transmitted,["First","First|Second"],"newer transcript is saved after an older pending write");
+
+const versions=[];
+let transient=0;
+const versioned=new CheckpointQueue(async(id,turns,version)=>{
+  versions.push(version);
+  if(++transient===1) throw Error("network interrupted");
+});
+await versioned.save("session-versioned",[{role:"user",text:"Versioned"}],7);
+assert.deepEqual(versions,[7,7],"both attempts must preserve checkpoint version");
+
 console.log("PASS: checkpoint serialization preserves the latest conversation snapshot order.");
