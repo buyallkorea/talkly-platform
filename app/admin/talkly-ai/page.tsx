@@ -67,6 +67,7 @@ export default async function AdminAiPage() {
     refundAudit,
     voiceUsage,
     voiceObservations,
+    learningSummaries,
   ] = await Promise.all([
     db
       .from("ai_members")
@@ -136,6 +137,12 @@ export default async function AdminAiPage() {
       .from("ai_voice_observations")
       .select("state,reason,recording_errors,dropped_events,started_at")
       .order("started_at", { ascending: false })
+      .limit(100),
+    db
+      .from("ai_learning_summaries")
+      .select("status,created_at")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
       .limit(100),
   ]);
   if (members.error || payments.error || usage.error)
@@ -228,6 +235,20 @@ export default async function AdminAiPage() {
     <section>
       <h1>TALKLY AI 운영</h1>
       <p>하루 10분 · 30일 13,900원 · 수동 재결제 / 각 목록 최근 100건</p>
+      <section>
+        <h2>학습 요약 DB 저장 상태</h2>
+        <p>최근 100개 요약 기록 기준입니다. API 요청 로그와 별개로 실제 저장 상태를 확인하며, 전체 기간의 성공률이나 실제 청구 비용을 뜻하지 않습니다.</p>
+        {learningSummaries.error ? (
+          <p>학습 요약 저장 상태를 조회하지 못했습니다.</p>
+        ) : (
+          <p>
+            저장 완료 {(learningSummaries.data ?? []).filter((row) => row.status === "ready").length}건 ·
+            처리 중 {(learningSummaries.data ?? []).filter((row) => row.status === "pending" && Date.parse(row.created_at) >= Date.now() - 2 * 60 * 1000).length}건 ·
+            처리 지연 {(learningSummaries.data ?? []).filter((row) => row.status === "pending" && Date.parse(row.created_at) < Date.now() - 2 * 60 * 1000).length}건 ·
+            실패 {(learningSummaries.data ?? []).filter((row) => row.status === "failed").length}건
+          </p>
+        )}
+      </section>
       <section>
         <h2>API 요청·사용량 관찰</h2>
         <p>
