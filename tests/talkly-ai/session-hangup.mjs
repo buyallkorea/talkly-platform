@@ -52,5 +52,21 @@ try{
  finishError={message:"offline"};
  await assert.rejects(()=>closeSession("user","session"),e=>e?.message==="offline");
  finishError=null;
+ // A successful retry after a DB settlement error must settle rather than silently succeed.
+ callId="test-call";sessionState="closing";
+ const beforeRetry=finishes;
+ await closeSession("user","session");
+ assert.equal(finishes,beforeRetry+1);
+ assert.equal(lastFailed,false);
+ // A failed close request with no registered provider call must never invoke hangup.
+ callId=null;mode="hangup-fails";
+ const beforeCalllessHangups=hangups;
+ await closeSession("user","session",true);
+ assert.equal(hangups,beforeCalllessHangups);
+ assert.equal(lastFailed,true);
+ // Passing failed=true must propagate to the database even for a registered call.
+ mode="success";callId="test-call";
+ await closeSession("user","session",true);
+ assert.equal(lastFailed,true);
 }finally{delete globalThis.__sessionHarness;}
 console.log("PASS: failed provider hangup retains reservation; successful retry settles only after hangup.");
