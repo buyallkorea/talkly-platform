@@ -37,6 +37,7 @@ jobs:
       - run: node tests/talkly-ai/reservation-contract.mjs
       - run: node tests/talkly-ai/rollout-gates.mjs
       - run: node tests/talkly-ai/preview-db-isolation.mjs
+      - run: node tests/talkly-ai/route-guard-coverage.mjs
       - run: node tests/talkly-ai/registered-call-recovery.mjs
       - run: node tests/talkly-ai/payment-reconcile.mjs
       - run: node tests/talkly-ai/refund-audit.mjs
