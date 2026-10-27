@@ -37,6 +37,8 @@ assert.match(studio,/!account\.paymentsEnabled/);
 assert.match(checkpointRoute,/Cache-Control/);
 assert.match(checkpointRoute,/TALKLY_AI_ORDERED_CHECKPOINTS_ENABLED/);
 assert.match(checkpointRoute,/ai_checkpoint_ordered/);
+assert.match(checkpointRoute,/p_writer: data.writerId/);
+assert.match(studio,/writerId: writerId\(\)/);
 assert.match(studio,/version: \+\+memoryVersion\.current/);
 assert.match(checkpointRoute,/memory_session_at\.lte/);
 assert.match(stopRoute,/Cache-Control/);
