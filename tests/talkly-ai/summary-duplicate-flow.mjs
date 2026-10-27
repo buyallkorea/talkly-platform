@@ -16,6 +16,7 @@ const started = new Date(Date.now() - 30000).toISOString();
 let session = { id: sessionId, day: "2026-10-27", state: "closed", charged_seconds: 30, started_at: started };
 let member = { learning_summary_consent_at: new Date(Date.now() - 60000).toISOString() };
 const events = [];
+let requestedId = sessionId;
 let failedUpdates = 0;
 let storedValue = false;
 let storageError = null;
@@ -56,7 +57,7 @@ function db() {
 const harness = {
   context: async () => ({ user: { id: userId }, db: db() }),
   requireMember: async () => member,
-  body: async () => ({ sessionId, turns: [{ role: "user", text: "Hello" }] }),
+  body: async () => ({ sessionId: requestedId, turns: [{ role: "user", text: "Hello" }] }),
   summaryTurns: (turns) => turns,
   validateSummary: (value) => value,
   failure: (error) => Response.json({ error: error.message }, { status: error.status ?? 500 }),
@@ -71,12 +72,11 @@ const originalFetch = globalThis.fetch;
 try {
   const { POST } = await import("data:text/javascript;base64," + Buffer.from(compiled).toString("base64"));
   globalThis.fetch = async () => { current.providerCalls++; throw Error("Provider must not be contacted for duplicate requests"); };
-  const originalBody = harness.body;
-  harness.body = async () => ({ sessionId: "--------------------abcdefabcdefabcd", turns: [{ role: "user", text: "Hi" }] });
+  requestedId = "not-a-valid-uuid";
   const invalidSession = await POST(new Request("https://example.invalid", { method: "POST" }));
   assert.equal(invalidSession.status, 400, "malformed 36-character session ID must be rejected");
   assert.equal(events.length, 0);
-  harness.body = originalBody;
+  requestedId = sessionId;
 
   for (const status of ["ready", "pending", "failed"]) {
     current = { claim: "duplicate", status, readError: false, providerCalls: 0 };
