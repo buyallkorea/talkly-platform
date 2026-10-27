@@ -117,6 +117,22 @@ try {
   assert.equal(current.providerCalls, 0);
   member = originalMember;
   assert.equal(events.length, 0, "ineligible sessions must not generate usage events");
+  // No charged time or learner turns must never claim a summary or call the provider.
+  const originalCharged = session;
+  session = { ...session, charged_seconds: 0 };
+  current = { claim: "new", status: null, readError: false, providerCalls: 0 };
+  const freeSession = await POST(new Request("https://example.invalid", { method: "POST" }));
+  assert.equal((await freeSession.json()).status, "no_conversation");
+  assert.equal(current.providerCalls, 0);
+  session = originalCharged;
+  const previousSummaryTurns = harness.summaryTurns;
+  harness.summaryTurns = () => [{ role: "assistant", text: "Hello" }];
+  const noLearner = await POST(new Request("https://example.invalid", { method: "POST" }));
+  assert.equal((await noLearner.json()).status, "no_conversation");
+  harness.summaryTurns = previousSummaryTurns;
+  assert.equal(current.providerCalls, 0);
+  assert.equal(events.length, 0);
+
 
   // A newly claimed summary with a provider failure must mark its claim failed,
   // emit a failure event, and never report a successful write.
