@@ -142,8 +142,10 @@ export async function POST(request: Request) {
         },
       );
       if (save) throw save;
-      succeeded = true;
-      return Response.json({ status: stored ? "ready" : "not_saved" });
+      // The storage RPC may deliberately refuse a write if consent was revoked
+      // or the session state changed. An HTTP-successful RPC is not proof of storage.
+      succeeded = stored === true;
+      return Response.json({ status: succeeded ? "ready" : "not_saved" });
     } catch (summaryError) {
       timedOut =
         summaryError instanceof Error &&
