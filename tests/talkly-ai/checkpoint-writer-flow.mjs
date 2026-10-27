@@ -19,14 +19,14 @@ const failure=e=>Response.json({error:e.message},{status:e.status??500});
 const writer="11111111-1111-4111-8111-111111111111";
 const sessionId="22222222-2222-4222-8222-222222222222";
 const requests=[];
-let query;
+let forcedRpcError=null;
 function db(){
  return {
   from(table){assert.equal(table,"ai_sessions");return {
    select(){return this;},eq(){return this;},
    async single(){return {data:{id:sessionId,started_at:"2026-10-27T01:00:00Z"},error:null};}
   };},
-  async rpc(name,args){requests.push({name,args});return {error:null,data:true};}
+  async rpc(name,args){requests.push({name,args});return {error:forcedRpcError,data:forcedRpcError?null:true};}
  };
 }
 let payload={sessionId,writerId:writer,version:3,turns:[{role:"user",text:"Hello"}]};
@@ -54,6 +54,13 @@ try{
  payload={...payload,writerId:writer,version:0};
  assert.equal((await POST(fake())).status,400);
  assert.equal(requests.length,1,"invalid version must not reach RPC");
+ payload={...payload,version:4};
+ forcedRpcError={message:"CHECKPOINT_WRITER_CONFLICT"};
+ assert.equal((await POST(fake())).status,503,"writer conflict must fail closed");
+ assert.equal(requests.length,2,"writer conflict must not fall back to unordered storage");
+ forcedRpcError={message:"STALE_CHECKPOINT"};
+ assert.equal((await POST(fake())).status,503,"stale checkpoint must fail closed");
+ assert.equal(requests.length,3,"stale version must not fall back to unordered storage");
 }finally{
  if(old===undefined)delete process.env.TALKLY_AI_ORDERED_CHECKPOINTS_ENABLED;
  else process.env.TALKLY_AI_ORDERED_CHECKPOINTS_ENABLED=old;
