@@ -13,8 +13,8 @@ class AiError extends Error {
 const userId = "33333333-3333-4333-8333-333333333333";
 const sessionId = "22222222-2222-4222-8222-222222222222";
 const started = new Date(Date.now() - 30000).toISOString();
-const session = { id: sessionId, day: "2026-10-27", state: "closed", charged_seconds: 30, started_at: started };
-const member = { learning_summary_consent_at: new Date(Date.now() - 60000).toISOString() };
+let session = { id: sessionId, day: "2026-10-27", state: "closed", charged_seconds: 30, started_at: started };
+let member = { learning_summary_consent_at: new Date(Date.now() - 60000).toISOString() };
 const events = [];
 let failedUpdates = 0;
 let storedValue = false;
@@ -83,6 +83,27 @@ try {
   current = { claim: "duplicate", status: "ready", readError: true, providerCalls: 0 };
   assert.equal((await POST(new Request("https://example.invalid"))).status, 503, "failed status read must not look completed");
   assert.equal(events.length, 0, "duplicate requests must not produce new provider usage events");
+  // Consent withdrawal and changed session state must stop before claiming or contacting provider.
+  const originalMember = member;
+  member = { learning_summary_consent_at: null };
+  current = { claim: "new", status: null, readError: false, providerCalls: 0 };
+  const noConsent = await POST(new Request("https://example.invalid", { method: "POST" }));
+  assert.equal((await noConsent.json()).status, "not_enabled");
+  assert.equal(current.providerCalls, 0);
+  member = originalMember;
+  const originalSession = session;
+  session = { ...session, state: "closing" };
+  const unclosed = await POST(new Request("https://example.invalid", { method: "POST" }));
+  assert.equal(unclosed.status, 409, "unclosed sessions cannot generate a learning report");
+  assert.equal(current.providerCalls, 0);
+  session = originalSession;
+  member = { learning_summary_consent_at: new Date(Date.now() + 60000).toISOString() };
+  const beforeConsent = await POST(new Request("https://example.invalid", { method: "POST" }));
+  assert.equal((await beforeConsent.json()).status, "before_consent");
+  assert.equal(current.providerCalls, 0);
+  member = originalMember;
+  assert.equal(events.length, 0, "ineligible sessions must not generate usage events");
+
   // A newly claimed summary with a provider failure must mark its claim failed,
   // emit a failure event, and never report a successful write.
   current = { claim: "new", status: null, readError: false, providerCalls: 0 };
