@@ -10,6 +10,8 @@ assert.match(landing,/3가지 성격의 AI 튜터 6명/);
 assert.doesNotMatch(landing,/5개국 AI 튜터|국가별 억양/);
 assert.match(report,/최근 3개월 학습 습관/);
 assert.match(report,/pendingCount/);
+assert.match(report,/stalePendingCount/);
+assert.match(report,/처리 지연·확인 필요/);
 assert.match(report,/failedCount/);
 assert.match(report,/처리 중이거나 실패한 요약은 주제·표현·교정 집계에 포함하지 않습니다/);
 assert.match(report,/r\.status === "ready" && r\.summary/);
