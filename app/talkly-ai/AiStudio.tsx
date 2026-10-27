@@ -236,8 +236,13 @@ export default function AiStudio() {
         ]);
         if (result[1].status === "rejected")
           throw new Error("수업 종료 확인에 실패했어요. 이용시간이 정산됐는지 확인할 수 없으므로 상태를 새로고침해 확인해 주세요.");
-        if (result[0].status === "rejected")
-          setError("수업은 종료됐지만 대화 기억 저장에 실패했어요. 현재 화면의 자막을 확인해 주세요. 페이지를 떠나면 복구하지 못할 수 있어요.");
+        if (result[0].status === "rejected") {
+          const reason = result[0].reason;
+          const terminal = reason && typeof reason === "object" && "terminal" in reason && reason.terminal === true;
+          setError(terminal
+            ? "수업 종료 요청은 처리됐지만 대화 기억 저장은 서버에서 거부됐어요. 저장 순번이나 작성자 권한을 확인해야 합니다. 재시도해도 해결되지 않을 수 있어요."
+            : "수업 종료 요청은 처리됐지만 대화 기억 저장에 실패했어요. 현재 화면을 유지하고 다시 저장해 주세요. 페이지를 떠나면 복구하지 못할 수 있어요.");
+        }
       }
       return await refresh();
     } catch (e) {
