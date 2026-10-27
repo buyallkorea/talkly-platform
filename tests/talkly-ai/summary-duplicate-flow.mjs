@@ -17,9 +17,15 @@ const session = { id: sessionId, day: "2026-10-27", state: "closed", charged_sec
 const member = { learning_summary_consent_at: new Date(Date.now() - 60000).toISOString() };
 const events = [];
 let failedUpdates = 0;
+let storedValue = false;
+let storageError = null;
 let current = { claim: "duplicate", status: "ready", readError: false, providerCalls: 0 };
 function db() {
   return {
+    async rpc(name) {
+      assert.equal(name, "ai_store_learning_summary");
+      return { data: storedValue, error: storageError };
+    },
     from(table) {
       const q = {
         select() { return this; },
@@ -91,6 +97,34 @@ try {
   assert.equal(events.length, 1);
   assert.equal(events[0].outcome, "failed");
   assert.equal(events[0].httpStatus, 503);
+  // Provider succeeds but storage RPC returns false: never record success.
+  const responseBody = {
+    status: "completed",
+    usage: { input_tokens: 12, output_tokens: 8 },
+    output: [{ content: [{ type: "output_text", text: '{"topics":[],"expressions":[],"corrections":[],"nextPractice":""}' }] }],
+  };
+  globalThis.fetch = async () => {
+    current.providerCalls++;
+    return { ok: true, status: 200, json: async () => responseBody };
+  };
+  current = { claim: "new", status: null, readError: false, providerCalls: 0 };
+  storedValue = false;
+  storageError = null;
+  const refused = await POST(new Request("https://example.invalid", { method: "POST" }));
+  assert.equal(refused.status, 200);
+  assert.equal((await refused.json()).status, "not_saved");
+  assert.equal(events.at(-1).outcome, "failed", "refused DB save must not produce success telemetry");
+  assert.equal(current.providerCalls, 1);
+
+  // A storage error must fail request and transition pending claim to failed.
+  current = { claim: "new", status: null, readError: false, providerCalls: 0 };
+  storageError = { message: "storage unavailable" };
+  const dbFailure = await POST(new Request("https://example.invalid", { method: "POST" }));
+  assert.equal(dbFailure.status, 503);
+  assert.equal(failedUpdates, 2);
+  assert.equal(events.at(-1).outcome, "failed");
+  assert.equal(current.providerCalls, 1);
+
 } finally {
   globalThis.fetch = originalFetch;
   delete globalThis.__summaryHarness;
