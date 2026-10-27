@@ -77,6 +77,7 @@ export default function HomeMobileMenu() {
           </MobileSection>
 
           <MobileSection title="TALKLY AI">
+            <MobileLink href="/talkly-ai" onClick={closeMenu}>AI 영어 회화 바로가기</MobileLink>
             <MobileLink href="#ai" onClick={closeMenu}>
               AI 수업리포트
             </MobileLink>

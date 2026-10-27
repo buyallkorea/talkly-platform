@@ -1,3 +1,4 @@
+import { signupPhoneProof } from "@/lib/talkly-ai/phone-proof";
 import { NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase-admin";
@@ -272,6 +273,8 @@ export async function POST(request: Request) {
       email,
       password,
       email_confirm: false,
+      // Server attestation only: no extra SMS, opt-in, or privileged role grant.
+      app_metadata: signupPhoneProof(phone, verification.verified_at),
       user_metadata: {
         name,
         role,

@@ -237,10 +237,11 @@ export default function Home() {
             </div>
 
             <div className="talkly-nav-item">
-              <a href="#ai" className="talkly-nav-link">
-                TALKLY AI ▾
-              </a>
+              <Link href="/talkly-ai" className="talkly-nav-link" style={{ color: "#6840ce", background: "#f0eafa", borderRadius: 10 }}>
+                TALKLY AI ↗
+              </Link>
               <div className="talkly-dropdown">
+                <Link href="/talkly-ai">AI 영어 회화</Link>
                 <a href="#ai">AI 수업리포트</a>
                 <a href="#ai">AI 성장리포트</a>
                 <a href="#ai">AI Writing</a>
@@ -1120,6 +1121,12 @@ export default function Home() {
         </div>
       </section>
 
+      <section aria-label="TALKLY AI 영어 회화" style={{ background: "linear-gradient(125deg, #382253, #60368d)", color: "#fff", padding: "48px 24px", textAlign: "center" }}>
+        <p style={{ color: "#dfc7ff", fontWeight: 800, letterSpacing: ".5px" }}>TALKLY AI · 나의 속도로 말하는 영어</p>
+        <h2 style={{ fontSize: "clamp(24px, 4vw, 36px)", margin: "12px 0" }}>하루 10분, 오늘의 이야기를 영어로.</h2>
+        <p style={{ color: "#e4d5f5" }}>가입 후 3분 무료 체험 · 하루 10분, 30일 13,900원</p>
+        <Link href="/talkly-ai" style={{ display: "inline-block", background: "#f2e9ff", color: "#512d7b", padding: "14px 24px", borderRadius: 12, marginTop: 16 }}>3분 무료 체험 만나보기 ↗</Link>
+      </section>
       <footer
         style={{
           background: "#1b2a4a",

@@ -15,6 +15,7 @@ type MenuGroup = {
 };
 
 const menuGroups: MenuGroup[] = [
+  { title: "TALKLY AI", items: [{ label: "AI 회원 · 결제 · 사용량", href: "/admin/talkly-ai" }] },
   {
     title: "운영 현황",
     items: [
