@@ -27,6 +27,12 @@ The Supabase project has no separate database development branch. No branch was 
 - Supabase security advisors flag RLS-without-policy and security-definer grants elsewhere in the project; examine each target before any repair. Do not automatically create permissive policies.
 - **Go/no-go**: no actual AI lesson, checkout, account creation, or production migration until a preview-only DB target is proven or an isolated test environment is approved. The ordered-checkpoint flag remains OFF.
 
+## Reservation and settlement read-only audit (2026-10-27)
+- Verified the deployed database function bodies **without invoking them**: `ai_reserve` locks the member row before inspecting an unclosed session and reserves the full lease against either trial usage or the daily usage row. For a valid paid pass its maximum reservation is 240 seconds and its daily allowance is 600 seconds; trial total cap is 180 seconds. Reservation is bounded by the Seoul day boundary.
+- `ai_begin_close` and `ai_finish` also lock the member row before the session row. `ai_finish` calculates a capped charge and returns unused reserved time; this is server-side source inspection, **not a real multi-connection race or a production settlement test**.
+- Added `tests/talkly-ai/reservation-contract.mjs` to CI. It guards application call ordering: cooldown check → DB reservation → provider connection, and provider hangup before DB settlement. This static guard does not prove the database transaction is race-free.
+- The actual two-connection contention, simultaneous API requests, abandoned-call provider state, and test-user quota accounting still require an isolated DB plus controlled test calls. Keep operations and migration gates blocked until then.
+
 ## Before enabling
 1. Use a dedicated **isolated database** with the exact migration applied. Do not experiment on production member records.
 2. Confirm migration, database privilege grants, real API service role, and `ai_reserve` session creation compatibility.
