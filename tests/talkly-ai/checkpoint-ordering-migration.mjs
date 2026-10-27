@@ -10,6 +10,8 @@ assert.match(sql,/CHECKPOINT_WRITER_CONFLICT/);
 assert.match(sql,/s\.checkpoint_writer is null or s\.checkpoint_writer <> p_writer/);
 assert.match(sql,/s\.checkpoint_digest = incoming_digest/);
 assert.match(sql,/STALE_CHECKPOINT/);
+assert.match(sql,/MEMBER_MEMORY_NOT_UPDATED/);
+assert.doesNotMatch(sql,/checkpoint_writer=s\.checkpoint_writer/);
 assert.match(sql,/OLDER_SESSION_CHECKPOINT/);
 assert.match(sql,/memory_session_at > s\.started_at/);
 assert.match(sql,/memory_session_at <= s\.started_at/);
