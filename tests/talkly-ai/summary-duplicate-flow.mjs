@@ -137,6 +137,16 @@ try {
   assert.equal(events.at(-1).outcome, "failed", "refused DB save must not produce success telemetry");
   assert.equal(current.providerCalls, 1);
 
+  // A completed provider response and committed database write is the only ready outcome.
+  current = { claim: "new", status: null, readError: false, providerCalls: 0 };
+  storedValue = true;
+  storageError = null;
+  const ready = await POST(new Request("https://example.invalid", { method: "POST" }));
+  assert.equal(ready.status, 200);
+  assert.equal((await ready.json()).status, "ready");
+  assert.equal(events.at(-1).outcome, "succeeded");
+  assert.equal(current.providerCalls, 1);
+
   // A storage error must fail request and transition pending claim to failed.
   current = { claim: "new", status: null, readError: false, providerCalls: 0 };
   storageError = { message: "storage unavailable" };
