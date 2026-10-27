@@ -61,6 +61,10 @@ try{
  forcedRpcError={message:"STALE_CHECKPOINT"};
  assert.equal((await POST(fake())).status,503,"stale checkpoint must fail closed");
  assert.equal(requests.length,3,"stale version must not fall back to unordered storage");
+ forcedRpcError=null;
+ payload={...payload,turns:[]};
+ assert.equal((await POST(fake())).status,200);
+ assert.equal(requests.length,3,"empty transcript must not erase saved memory");
 }finally{
  if(old===undefined)delete process.env.TALKLY_AI_ORDERED_CHECKPOINTS_ENABLED;
  else process.env.TALKLY_AI_ORDERED_CHECKPOINTS_ENABLED=old;
