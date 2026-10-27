@@ -8,7 +8,7 @@ assert.ok(fn);
 class AiError extends Error { constructor(message,status=400){super(message);this.status=status;} }
 const js=ts.transpileModule("const AiError=globalThis.__previewAiError;\n"+fn.getText(ast),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
 globalThis.__previewAiError=AiError;
-const old = Object.fromEntries(["VERCEL_ENV","TALKLY_AI_PREVIEW_DB_PROJECT_REF","TALKLY_AI_PRODUCTION_DB_PROJECT_REF","NEXT_PUBLIC_SUPABASE_URL"].map(k=>[k,process.env[k]]));
+const old = Object.fromEntries(["VERCEL_ENV","TALKLY_AI_PREVIEW_DB_PROJECT_REF","TALKLY_AI_PRODUCTION_DB_PROJECT_REF","NEXT_PUBLIC_SUPABASE_URL","TALKLY_AI_PREVIEW_AUTH_ISSUER"].map(k=>[k,process.env[k]]));
 try {
  const { requireIsolatedPreviewWrite:guard } = await import("data:text/javascript;base64,"+Buffer.from(js).toString("base64"));
  const request=(method)=>new Request("https://example.invalid",{method});
@@ -29,6 +29,10 @@ try {
  process.env.NEXT_PUBLIC_SUPABASE_URL="http://"+preview+".supabase.co";
  assert.throws(()=>guard(request("POST")),e=>e.status===503,"HTTP must not be accepted for Preview database");
  process.env.NEXT_PUBLIC_SUPABASE_URL="https://"+preview+".supabase.co";
+ assert.throws(()=>guard(request("POST")),e=>e.status===503,"missing auth issuer must block");
+ process.env.TALKLY_AI_PREVIEW_AUTH_ISSUER="https://"+production+".supabase.co/auth/v1";
+ assert.throws(()=>guard(request("POST")),e=>e.status===503,"production auth issuer must block");
+ process.env.TALKLY_AI_PREVIEW_AUTH_ISSUER="https://"+preview+".supabase.co/auth/v1";
  guard(request("POST"));
  guard(request("PATCH"));
  process.env.VERCEL_ENV="production";
