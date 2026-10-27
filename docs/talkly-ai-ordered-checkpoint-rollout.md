@@ -19,6 +19,14 @@ The current `ai_reserve`, `ai_begin_close`, and `ai_finish` SQL functions acquir
 
 The Supabase project has no separate database development branch. No branch was created and no paid infrastructure was provisioned.
 
+## Current read-only verification (2026-10-27)
+- GitHub Actions run [40471788022](https://github.com/buyallkorea/talkly-platform/actions/runs/40471788022) completed successfully (TypeScript and 13 dedicated test commands). This is not an end-to-end browser, production DB migration, or two-connection race test.
+- The protected Vercel feature preview is READY, but the Supabase URL and server key variable entries target both production and preview; an isolated preview database has **not** been demonstrated. Do not execute write-producing end-to-end tests against this deployment.
+- Supabase branching returned zero development branches. Creating a separate project/branch may be chargeable and requires explicit user approval.
+- Live DB **read-only grants audit**: `ai_api_events`, `ai_payments`, and `ai_sessions` have RLS enabled, no select permission for `anon` or `authenticated`, and service-role select access. `ai_members`, `ai_daily_usage`, and `ai_learning_summaries` have RLS enabled, one policy, authenticated select privilege, and no anon select privilege. Privilege alone does not establish policy correctness.
+- Supabase security advisors flag RLS-without-policy and security-definer grants elsewhere in the project; examine each target before any repair. Do not automatically create permissive policies.
+- **Go/no-go**: no actual AI lesson, checkout, account creation, or production migration until a preview-only DB target is proven or an isolated test environment is approved. The ordered-checkpoint flag remains OFF.
+
 ## Before enabling
 1. Use a dedicated **isolated database** with the exact migration applied. Do not experiment on production member records.
 2. Confirm migration, database privilege grants, real API service role, and `ai_reserve` session creation compatibility.
