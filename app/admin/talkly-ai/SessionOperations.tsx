@@ -21,6 +21,7 @@ export default function SessionOperations({
   const [message, setMessage] = useState("");
   const [closed, setClosed] = useState<Set<string>>(() => new Set());
   const visible = sessions.filter((session) => !closed.has(session.id));
+  const overdue = (session: Session) => Date.parse(session.deadline) < Date.now();
   async function stop(session: Session) {
     setBusy(true);
     setMessage("");
@@ -67,6 +68,9 @@ export default function SessionOperations({
         않습니다.
       </p>
       <p>
+        예약 종료시각이 지난 연결은 아래에 “기한 경과 · 확인 필요”로 표시합니다. 실제 음성 연결이 종료됐다는 뜻은 아닙니다. 자동 복구가 비활성화된 환경에서는 관리자가 상태를 확인해야 합니다.
+      </p>
+      <p>
         연결 정리는 학습자의 실제 회화를 종료합니다. 장애 확인 또는 회원 요청이
         있을 때만 사용해 주세요. 기존 정산 규칙으로 처리하며 사용 시간을 임의로
         초기화하지 않습니다.
@@ -94,6 +98,7 @@ export default function SessionOperations({
                 <tr key={session.id}>
                   <td>{session.name}</td>
                   <td>
+                    {overdue(session) && <strong>기한 경과 · 확인 필요 · </strong>}
                     {{
                       connecting: "연결 준비",
                       active: "회화 중",
