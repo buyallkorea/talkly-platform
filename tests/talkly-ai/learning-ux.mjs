@@ -24,6 +24,8 @@ assert.match(studio,/session\.current === pending\.id/);
 assert.match(studio,/result\[1\]\.status === "rejected"/);
 assert.match(studio,/result\[0\]\.status === "rejected"/);
 assert.match(studio,/페이지를 떠나면 복구하지 못할 수 있어요/);
+assert.match(studio,/수업 종료 요청은 처리됐지만 대화 기억 저장은 서버에서 거부됐어요/);
+assert.match(studio,/const terminal = reason/);
 assert.match(studio,/NotReadableError/);
 assert.match(studio,/OverconstrainedError/);
 assert.match(studio,/PermissionDeniedError/);
