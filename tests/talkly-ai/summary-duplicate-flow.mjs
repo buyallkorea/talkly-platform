@@ -72,7 +72,7 @@ const originalFetch = globalThis.fetch;
 try {
   const { POST } = await import("data:text/javascript;base64," + Buffer.from(compiled).toString("base64"));
   globalThis.fetch = async () => { current.providerCalls++; throw Error("Provider must not be contacted for duplicate requests"); };
-  requestedId = "not-a-valid-uuid";
+  requestedId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa-";
   const invalidSession = await POST(new Request("https://example.invalid", { method: "POST" }));
   assert.equal(invalidSession.status, 400, "malformed 36-character session ID must be rejected");
   assert.equal(events.length, 0);
