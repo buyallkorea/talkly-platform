@@ -42,8 +42,22 @@ export async function POST(request: Request) {
     const { error: claim } = await db
       .from("ai_learning_summaries")
       .insert({ session_id: s.id, user_id: user.id, day: s.day });
-    if (claim?.code === "23505")
-      return Response.json({ status: "already_requested" });
+    if (claim?.code === "23505") {
+      // A duplicate claim is not evidence of a completed report.
+      const { data: existing, error: existingError } = await db
+        .from("ai_learning_summaries")
+        .select("status")
+        .eq("session_id", s.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (existingError || !existing)
+        throw new AiError("학습 요약 상태를 확인하지 못했어요.", 503);
+      return Response.json({
+        status: existing.status === "ready" ? "ready"
+          : existing.status === "failed" ? "failed"
+          : "pending",
+      }, { headers: { "Cache-Control": "no-store" } });
+    }
     if (claim) throw claim;
     let providerStarted: number | undefined,
       providerStatus: number | undefined,
