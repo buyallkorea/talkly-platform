@@ -32,7 +32,8 @@ export function requireIsolatedPreviewWrite(request: Request) {
   const production = process.env.TALKLY_AI_PRODUCTION_DB_PROJECT_REF;
   if (!expected || !/^[a-z0-9]{20}$/.test(expected) ||
       !production || !/^[a-z0-9]{20}$/.test(production) || expected === production ||
-      !url || new URL(url).hostname !== expected + ".supabase.co")
+      !url || !URL.canParse(url) || new URL(url).protocol !== "https:" ||
+      new URL(url).hostname !== expected + ".supabase.co")
     throw new AiError("개발용 AI 데이터베이스 분리가 확인되지 않았어요.", 503);
 }
 export async function context(request?: Request) {
