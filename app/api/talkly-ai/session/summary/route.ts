@@ -145,7 +145,19 @@ export async function POST(request: Request) {
       // The storage RPC may deliberately refuse a write if consent was revoked
       // or the session state changed. An HTTP-successful RPC is not proof of storage.
       succeeded = stored === true;
-      return Response.json({ status: succeeded ? "ready" : "not_saved" });
+      if (!succeeded) {
+        // A revoked consent or changed session may make the RPC decline the write.
+        // Clear the pending claim so monitoring does not treat it as running.
+        await db.from("ai_learning_summaries")
+          .update({ status: "failed" })
+          .eq("session_id", s.id)
+          .eq("user_id", user.id)
+          .eq("status", "pending");
+      }
+      return Response.json(
+        { status: succeeded ? "ready" : "not_saved" },
+        { headers: { "Cache-Control": "no-store" } },
+      );
     } catch (summaryError) {
       timedOut =
         summaryError instanceof Error &&
