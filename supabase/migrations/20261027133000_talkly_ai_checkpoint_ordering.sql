@@ -2,13 +2,14 @@
 -- Atomic per-session order, with newer lesson timestamps taking precedence.
 alter table public.ai_sessions
   add column if not exists checkpoint_version bigint not null default 0;
+alter table public.ai_sessions add column if not exists checkpoint_digest text;
 
 create or replace function public.ai_checkpoint_ordered(
   p_user uuid, p_session uuid, p_version bigint, p_turns jsonb
 ) returns boolean
 language plpgsql security invoker set search_path = ''
 as $$
-declare s public.ai_sessions;
+declare s public.ai_sessions; incoming_digest text;
 begin
   if p_version is null or p_version < 1 or p_version > 2147483647
     or jsonb_typeof(p_turns) <> 'array' or jsonb_array_length(p_turns) > 20
@@ -19,9 +20,11 @@ begin
   select * into s from public.ai_sessions
    where id=p_session and user_id=p_user for update;
   if not found then raise exception 'SESSION_NOT_FOUND'; end if;
+  incoming_digest := md5(p_turns::text);
+  if p_version = s.checkpoint_version and s.checkpoint_digest = incoming_digest then return true; end if;
   if p_version <= s.checkpoint_version then raise exception 'STALE_CHECKPOINT'; end if;
   -- A previous (older) session must never overwrite a newer session's memory.
-  update public.ai_sessions set checkpoint_version=p_version where id=s.id;
+  update public.ai_sessions set checkpoint_version=p_version, checkpoint_digest=incoming_digest where id=s.id;
   update public.ai_members
      set memory=p_turns, memory_session_at=s.started_at
    where user_id=p_user
