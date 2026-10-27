@@ -51,4 +51,10 @@ assert.match(admin, /const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL/);
 assert.match(serverClient, /process.env.NEXT_PUBLIC_SUPABASE_URL!/);
 assert.match(admin, /process.env.SUPABASE_SERVICE_ROLE_KEY/);
 assert.match(serverClient, /process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!/);
+const contextStart = source.indexOf("export async function context(");
+const guardInsideContext = source.indexOf("requireIsolatedPreviewWrite(request);", contextStart);
+const clientInsideContext = source.indexOf("const supabase = await createClient();", contextStart);
+assert.ok(contextStart >= 0 && guardInsideContext > contextStart && clientInsideContext > guardInsideContext,
+  "Preview AI mutating requests must fail before authenticated or admin database client creation");
+assert.match(source, /TALKLY_AI_PREVIEW_AUTH_ISSUER/);
 console.log("PASS: Preview AI writes blocked until explicit distinct database refs match the configured Preview URL.");
