@@ -20,6 +20,11 @@ begin
   select * into s from public.ai_sessions
    where id=p_session and user_id=p_user for update;
   if not found then raise exception 'SESSION_NOT_FOUND'; end if;
+  -- A different, newer lesson owns the current memory; reject a delayed old lesson.
+  if exists (select 1 from public.ai_members where user_id=p_user
+             and memory_session_at > s.started_at) then
+    raise exception 'OLDER_SESSION_CHECKPOINT';
+  end if;
   incoming_digest := md5(p_turns::text);
   if p_version = s.checkpoint_version and s.checkpoint_digest = incoming_digest then return true; end if;
   if p_version <= s.checkpoint_version then raise exception 'STALE_CHECKPOINT'; end if;
