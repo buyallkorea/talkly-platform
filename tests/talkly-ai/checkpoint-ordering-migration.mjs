@@ -3,6 +3,11 @@ import {readFile} from "node:fs/promises";
 const sql=await readFile(new URL("../../supabase/migrations/20261027133000_talkly_ai_checkpoint_ordering.sql",import.meta.url),"utf8");
 assert.match(sql,/checkpoint_version bigint not null default 0/);
 assert.match(sql,/for update/);
+assert.ok(sql.indexOf("from public.ai_members where user_id=p_user for update") <
+          sql.indexOf("from public.ai_sessions"),
+          "member lock must be acquired before session lock");
+assert.match(sql,/security invoker set search_path = ''/);
+assert.doesNotMatch(sql,/security definer/i);
 assert.match(sql,/p_version <= s\.checkpoint_version/);
 assert.match(sql,/checkpoint_digest/);
 assert.match(sql,/checkpoint_writer uuid/);
