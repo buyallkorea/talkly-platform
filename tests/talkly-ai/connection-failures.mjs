@@ -74,10 +74,8 @@ for (const kind of ["close", "error", "trackEnd", "peerChange", "ontrack"]) {
   assert.equal(h.stats().stoppedTracks, 1, kind);
   assert.equal(h.events.filter((x) => x === "session/stop").length, 1, kind);
   assert.ok(h.errors.length > 0, kind);
-  assert.ok(
-    h.events.indexOf("session/summary") > h.events.indexOf("session/stop"),
-    kind,
-  );
+  // The harness has no learner turns; empty segments must not request a summary.
+  assert.equal(h.events.includes("session/summary"), false, kind);
   h.close();
   h.error();
   h.trackEnd();
