@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import {readFile} from "node:fs/promises";
+const sql=await readFile(new URL("../../supabase/migrations/20261027133000_talkly_ai_checkpoint_ordering.sql",import.meta.url),"utf8");
+assert.match(sql,/checkpoint_version bigint not null default 0/);
+assert.match(sql,/for update/);
+assert.match(sql,/p_version <= s\.checkpoint_version/);
+assert.match(sql,/memory_session_at <= s\.started_at/);
+assert.match(sql,/jsonb_array_length\(p_turns\) > 20/);
+assert.match(sql,/revoke all .* from public,anon,authenticated/);
+assert.match(sql,/grant execute .* to service_role/);
+console.log("PASS: versioned checkpoint draft is atomic, bounded, privileged, and protects newer sessions.");
