@@ -6,11 +6,11 @@ export async function POST(request: Request) {
     const data = await body(request);
     if (
       typeof data.sessionId !== "string" ||
-      !/^[0-9a-f-]{36}$/i.test(data.sessionId)
+      !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(data.sessionId)
     )
       throw new AiError("대화 정보를 확인해 주세요.");
     await closeSession(user.id, data.sessionId);
-    return Response.json({ success: true });
+    return Response.json({ success: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     return failure(e);
   }
