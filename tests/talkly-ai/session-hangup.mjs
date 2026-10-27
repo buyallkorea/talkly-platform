@@ -50,7 +50,7 @@ try{
  assert.equal(hangups,2);
  beginError=null;
  finishError={message:"offline"};
- await assert.rejects(()=>closeSession("user","session"),/offline/);
+ await assert.rejects(()=>closeSession("user","session"),e=>e?.message==="offline");
  finishError=null;
 }finally{delete globalThis.__sessionHarness;}
 console.log("PASS: failed provider hangup retains reservation; successful retry settles only after hangup.");
