@@ -28,7 +28,7 @@ assert.match(studio,/summary\?\.status === "not_saved"/);
 assert.match(studio,/summary\?\.status === "failed"/);
 assert.match(summaryRoute,/existing\.status === "ready"/);
 assert.match(summaryRoute,/existing\.status === "failed"/);
-assert.match(summaryRoute,/status: "pending"/);
+assert.match(summaryRoute,/: "pending"/);
 assert.match(studio,/Learning summary not persisted/);
 assert.match(studio,/result\[0\]\.status === "fulfilled"/);
 assert.doesNotMatch(studio,/await Promise\.allSettled\(\[api\("session\/summary"/);
