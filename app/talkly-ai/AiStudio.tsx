@@ -155,10 +155,15 @@ export default function AiStudio() {
   const saveQueue = useRef<CheckpointQueue | null>(null);
   const failedMemory = useRef<{ id: string; turns: Turn[]; version: number } | null>(null);
   const memoryVersion = useRef(0);
+  const checkpointWriter = useRef<string | null>(null);
+  function writerId() {
+    if (!checkpointWriter.current) checkpointWriter.current = crypto.randomUUID();
+    return checkpointWriter.current;
+  }
   async function checkpoint(id: string) {
     if (!saveQueue.current)
       saveQueue.current = new CheckpointQueue((sessionId, turns, version) =>
-        api("session/checkpoint", { sessionId, turns, version }),
+        api("session/checkpoint", { sessionId, turns, version, writerId: writerId() }),
       );
     const snapshot = history.current.slice(-20).map((turn) => ({ ...turn }));
     const version = ++memoryVersion.current;
@@ -255,6 +260,7 @@ export default function AiStudio() {
             sessionId: session.current,
             turns: history.current.slice(-20),
             version: ++memoryVersion.current,
+            writerId: writerId(),
           }),
           keepalive: true,
         });
