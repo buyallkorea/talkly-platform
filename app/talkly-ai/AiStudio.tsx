@@ -830,11 +830,11 @@ export default function AiStudio() {
               <p>
                 잠깐 멈춰도 괜찮아요. 막히면 짧은 한국어로 도움을 요청해 보세요.
               </p>
-              <p className="tai-guide">
-                PC는 마이크가 있는 헤드셋·입력 장치를 먼저 연결해 주세요. 대화를
-                시작하면 마이크 권한을 허용해 주세요.
-              </p>
-              <div className="tai-controls">
+              <details className="tai-mic-help">
+                <summary>마이크 연결 안내</summary>
+                <p>PC는 마이크가 있는 헤드셋·입력 장치를 먼저 연결해 주세요. 대화를 시작하면 마이크 권한을 허용해 주세요.</p>
+              </details>
+              <div className="tai-controls tai-primary-controls">
                 {state === "live" ? (
                   <>
                     <button onClick={() => stop(true)}>일시정지</button>
