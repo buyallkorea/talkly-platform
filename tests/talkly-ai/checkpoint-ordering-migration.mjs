@@ -7,7 +7,7 @@ assert.match(sql,/p_version <= s\.checkpoint_version/);
 assert.match(sql,/checkpoint_digest/);
 assert.match(sql,/checkpoint_writer uuid/);
 assert.match(sql,/CHECKPOINT_WRITER_CONFLICT/);
-assert.match(sql,/checkpoint_writer=coalesce\(s\.checkpoint_writer,p_writer\)/);
+assert.match(sql,/s\.checkpoint_writer is null or s\.checkpoint_writer <> p_writer/);
 assert.match(sql,/s\.checkpoint_digest = incoming_digest/);
 assert.match(sql,/STALE_CHECKPOINT/);
 assert.match(sql,/OLDER_SESSION_CHECKPOINT/);
