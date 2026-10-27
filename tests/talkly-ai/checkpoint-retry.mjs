@@ -12,3 +12,18 @@ let fails=0;const permanent=new CheckpointQueue(async()=>{fails++;throw Error("o
 await assert.rejects(()=>permanent.save("session-b",[{role:"user",text:"Hello"}]),/offline/);
 assert.equal(fails,2,"permanent failure not retried endlessly");
 console.log("PASS: checkpoint retry retains identical content, succeeds after temporary failure and stops after repeated failure.");
+
+let releaseFirst;
+const transmitted=[];
+let call=0;
+const ordered=new CheckpointQueue(async(id,turns)=>{
+ call++;
+ transmitted.push(turns.map(t=>t.text).join("|"));
+ if(call===1) await new Promise(resolve=>{releaseFirst=resolve;});
+});
+const first=ordered.save("session-c",[{role:"user",text:"First"}]);
+const second=ordered.save("session-c",[{role:"user",text:"First"},{role:"assistant",text:"Second"}]);
+releaseFirst();
+await Promise.all([first,second]);
+assert.deepEqual(transmitted,["First","First|Second"],"newer transcript is saved after an older pending write");
+console.log("PASS: checkpoint serialization preserves the latest conversation snapshot order.");
