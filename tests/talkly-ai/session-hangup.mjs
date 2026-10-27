@@ -6,16 +6,17 @@ const ast=ts.createSourceFile("session.ts",source,ts.ScriptTarget.Latest,true,ts
 const fn=ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name?.text==="closeSession");
 assert.ok(fn,"closeSession must exist");
 let mode="hangup-fails",finishes=0,hangups=0,begin=0;
+let sessionState="closing",callId="test-call",beginError=null,finishError=null,lastFailed=null;
 const fakeDb={
  rpc(name,args){
   if(name==="ai_begin_close"){
    begin++;
-   return {abortSignal:async()=>({data:{state:"closing",call_id:"test-call"},error:null})};
+   return {abortSignal:async()=>({data:beginError?null:{state:sessionState,call_id:callId},error:beginError})};
   }
   if(name==="ai_finish"){
    finishes++;
-   assert.equal(args.p_failed,false);
-   return {abortSignal:async()=>({error:null})};
+   lastFailed=args.p_failed;
+   return {abortSignal:async()=>({error:finishError})};
   }
   throw Error("unexpected RPC");
  }
@@ -33,5 +34,23 @@ try{
  assert.equal(finishes,1,"verified retry settles once");
  assert.equal(hangups,2);
  assert.equal(begin,2);
+ // An already closed session must not issue a second provider hangup.
+ sessionState="closed";callId="test-call";
+ await closeSession("user","session");
+ assert.equal(hangups,2,"closed session must not hang up twice");
+ assert.equal(lastFailed,false);
+ // A reservation without a provider call must be marked failed for settlement.
+ sessionState="closing";callId=null;
+ await closeSession("user","session");
+ assert.equal(lastFailed,true,"call-less reservation must be marked failed");
+ assert.equal(hangups,2);
+ // Database begin/finish errors must not be treated as successful settlement.
+ beginError={message:"offline"};
+ await assert.rejects(()=>closeSession("user","session"),/Session not found/);
+ assert.equal(hangups,2);
+ beginError=null;
+ finishError={message:"offline"};
+ await assert.rejects(()=>closeSession("user","session"),/offline/);
+ finishError=null;
 }finally{delete globalThis.__sessionHarness;}
 console.log("PASS: failed provider hangup retains reservation; successful retry settles only after hangup.");
