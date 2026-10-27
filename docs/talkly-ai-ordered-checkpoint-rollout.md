@@ -60,3 +60,18 @@ The Supabase project has no separate database development branch. No branch was 
 - These are explicit safety signals, not an automatic attestation: before setting them, inspect actual Vercel branch-specific Supabase connection variables and confirm that both public client and service-role credentials belong to the isolated project. Do not enable merely to bypass the 503 gate.
 - Keep the guard blocked while Supabase has no development branch/test project. Do not execute AI signup, trial or session write requests against a shared database.
 - New test: `tests/talkly-ai/preview-db-isolation.mjs`, covering missing config, same production ref, shared URL and approved distinct refs. This guards configuration mistakes but does not replace the two-connection transaction test.
+
+## Isolated test environment launch checklist — 2026-10-27
+
+Status: **STOP** — the connected Supabase TALKLY project has no development branch, and Vercel Preview does not yet contain the three isolation attestations (`TALKLY_AI_PREVIEW_DB_PROJECT_REF`, `TALKLY_AI_PRODUCTION_DB_PROJECT_REF`, `TALKLY_AI_PREVIEW_AUTH_ISSUER`). No live lesson can safely be attempted.
+
+1. **Owner/cost decision:** choose a Supabase branch on the existing TALKLY project or a separate temporary project. A branch may incur hourly costs; obtain an actual quote and explicit approval before creation. A fresh development branch does **not** copy production users or lessons.
+2. **Data minimization:** use synthetic test accounts only; no production personal data, payment orders, lesson recordings, secrets or member exports.
+3. **Migration parity:** compare branch schema and required RPCs with the development migration set; validate privileges and rollback in isolation. Do not apply any pending migration to production.
+4. **Vercel Preview branch-scoped variables:** assign the isolated project's `NEXT_PUBLIC_SUPABASE_URL`, its **own** `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and its **own** `SUPABASE_SERVICE_ROLE_KEY`. Existing project-wide Preview variables must not shadow the intended branch values.
+5. **Independent attestation:** determine the actual production and Preview project IDs from the provider dashboards, then configure the three TALKLY isolation attestations. `TALKLY_AI_PREVIEW_AUTH_ISSUER` must match `https://<preview-ref>.supabase.co/auth/v1`. Matching strings alone is **not** proof of key ownership; validate credentials using controlled isolated-project access, never by printing secrets.
+6. **Negative smoke check:** on Preview, before any test account login, verify a protected AI POST is rejected with HTTP 503 when an attestation is missing. Do **not** run this against production or work around the gate.
+7. **End-to-end order:** after isolation, use only a test user: adult consent → 180-second trial → disconnect and reload → concurrent session attempt (expect one active session) → quota settlement → ten-minute daily paid entitlement mock (no real charge) → conversation summary → monthly report.
+8. **Exit:** document results, delete synthetic data, disable feature flags, and terminate any hourly-billed test resources after explicit review. Keep `main` and existing TALKLY classroom behavior unchanged throughout.
+
+The staged code guards are *fail-closed* and intentionally block Preview AI writes today. Do not set attestations to arbitrary values to make tests pass.
