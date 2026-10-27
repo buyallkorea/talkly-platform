@@ -10,6 +10,7 @@ const closeSource = await readFile(new URL("../../lib/talkly-ai/session.ts", imp
 const ast = ts.createSourceFile("route.ts", source, ts.ScriptTarget.Latest, true);
 const executable = ast.statements.filter((node) => !ts.isImportDeclaration(node)).map((node) => node.getText(ast)).join("\n");
 const calls = [];
+let previewWriteAllowed = true;
 let rows = [], readError = null, closesFail = new Set();
 const query = {
   select(...args) { calls.push(["select", ...args]); return this; },
@@ -21,6 +22,8 @@ const query = {
   async abortSignal(...args) { calls.push(["abortSignal", ...args]); return { data: rows, error: readError }; },
 };
 globalThis.__recoveryHarness = {
+  requireIsolatedPreviewWrite() { if (!previewWriteAllowed) throw Object.assign(new Error("Preview blocked"), {status:503}); },
+  failure(error) { return Response.json({error:error.message}, {status:error.status??500}); },
   createAdminClient() { return { from(name) { calls.push(["from", name]); return query; } }; },
   async closeSession(userId, id) {
     calls.push(["close", userId, id]);
@@ -28,7 +31,7 @@ globalThis.__recoveryHarness = {
   },
 };
 const js = ts.transpileModule(
-  "const { createAdminClient, closeSession } = globalThis.__recoveryHarness;\n" + executable,
+  "const { createAdminClient, closeSession, requireIsolatedPreviewWrite, failure } = globalThis.__recoveryHarness;\n" + executable,
   { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } },
 ).outputText;
 const { GET } = await import("data:text/javascript;base64," + Buffer.from(js).toString("base64"));
@@ -49,6 +52,10 @@ try {
   assert.equal((await GET(request("Bearer wrong"))).status, 404);
   assert.equal(calls.length, 0, "unavailable requests must not query the DB");
 
+  previewWriteAllowed = false;
+  assert.equal((await GET(request("Bearer secret"))).status, 503);
+  assert.equal(calls.length, 0, "preview guard must block before DB access");
+  previewWriteAllowed = true;
   readError = { message: "unavailable" };
   assert.equal((await GET(request("Bearer secret"))).status, 503);
   readError = null;
