@@ -244,7 +244,7 @@ export default function AiStudio() {
           }).catch(() => {
             // Preserve more important transcript and settlement warnings.
             if (result[0].status === "fulfilled")
-              setError("수업은 종료됐지만 학습 요약 저장에 실패했어요. 월간 리포트에 일부 기록이 빠질 수 있어요.");
+              setError((current) => current || "수업은 종료됐지만 학습 요약 저장에 실패했어요. 월간 리포트에 일부 기록이 빠질 수 있어요.");
           });
         }
         if (result[0].status === "rejected") {
