@@ -39,4 +39,12 @@ try {
  for(const [key,value] of Object.entries(old)){if(value===undefined)delete process.env[key];else process.env[key]=value;}
  delete globalThis.__previewAiError;
 }
+const [admin, serverClient] = await Promise.all([
+ readFile(new URL("../../lib/supabase-admin.ts", import.meta.url),"utf8"),
+ readFile(new URL("../../lib/supabase-server.ts", import.meta.url),"utf8")
+]);
+assert.match(admin, /const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL/);
+assert.match(serverClient, /process.env.NEXT_PUBLIC_SUPABASE_URL!/);
+assert.match(admin, /process.env.SUPABASE_SERVICE_ROLE_KEY/);
+assert.match(serverClient, /process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!/);
 console.log("PASS: Preview AI writes blocked until explicit distinct database refs match the configured Preview URL.");
