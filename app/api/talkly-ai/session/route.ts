@@ -96,6 +96,18 @@ export async function POST(request: Request) {
       throw new AiError(message, 409);
     }
     sessionId = lease.id;
+    // Bind the writer at reservation time, before any transcript checkpoint.
+    if (process.env.TALKLY_AI_ORDERED_CHECKPOINTS_ENABLED === "true") {
+      if (typeof data.writerId !== "string" ||
+          !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(data.writerId))
+        throw new AiError("대화 저장 연결 정보를 확인해 주세요.");
+      const { data: writerBound, error: writerError } = await db.from("ai_sessions")
+        .update({ checkpoint_writer: data.writerId })
+        .eq("id", lease.id).eq("user_id", user.id).eq("state", "connecting")
+        .is("checkpoint_writer", null).select("id").maybeSingle();
+      if (writerError || !writerBound)
+        throw new AiError("대화 저장 작성자를 연결하지 못했어요.", 503);
+    }
     // Leave runtime headroom for the 240-second lease and bounded close retries.
     // The catch path releases a call-less reservation without consuming minutes.
     if (performance.now() - requestStarted > 10000)
