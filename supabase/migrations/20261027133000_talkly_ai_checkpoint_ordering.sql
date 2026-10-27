@@ -33,12 +33,13 @@ begin
   if p_version = s.checkpoint_version and s.checkpoint_digest = incoming_digest then return true; end if;
   if p_version <= s.checkpoint_version then raise exception 'STALE_CHECKPOINT'; end if;
   -- A previous (older) session must never overwrite a newer session's memory.
-  update public.ai_sessions set checkpoint_version=p_version, checkpoint_digest=incoming_digest,
-       checkpoint_writer=s.checkpoint_writer where id=s.id;
+  update public.ai_sessions set checkpoint_version=p_version, checkpoint_digest=incoming_digest
+    where id=s.id;
   update public.ai_members
      set memory=p_turns, memory_session_at=s.started_at
    where user_id=p_user
      and (memory_session_at is null or memory_session_at <= s.started_at);
+  if not found then raise exception 'MEMBER_MEMORY_NOT_UPDATED'; end if;
   return true;
 end;
 $$;
