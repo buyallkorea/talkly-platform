@@ -289,12 +289,18 @@ export default function AiStudio() {
             writerId: writerId(),
           }),
           keepalive: true,
+        }).catch(() => {
+          // Navigation can cancel keepalive requests. The server lease watchdog
+          // and the next authenticated visit handle eventual reconciliation.
         });
         void fetch("/api/talkly-ai/session/stop", {
           method: "POST",
           headers,
           body: JSON.stringify({ sessionId: session.current }),
           keepalive: true,
+        }).catch(() => {
+          // Best-effort unload: avoid unhandled browser rejection; the lease
+          // watchdog closes an abandoned registered provider call.
         });
       }
     };
