@@ -7,6 +7,8 @@ assert.match(sql,/p_version <= s\.checkpoint_version/);
 assert.match(sql,/checkpoint_digest/);
 assert.match(sql,/s\.checkpoint_digest = incoming_digest/);
 assert.match(sql,/STALE_CHECKPOINT/);
+assert.match(sql,/OLDER_SESSION_CHECKPOINT/);
+assert.match(sql,/memory_session_at > s\.started_at/);
 assert.match(sql,/memory_session_at <= s\.started_at/);
 assert.match(sql,/jsonb_array_length\(p_turns\) > 20/);
 assert.match(sql,/revoke all .* from public,anon,authenticated/);
