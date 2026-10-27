@@ -89,7 +89,9 @@ export default function AiStudio() {
     [turns, setTurns] = useState<Turn[]>([]),
     [input, setInput] = useState(""),
     [connectionBusy, setConnectionBusy] = useState(false),
-    [paymentMessage, setPaymentMessage] = useState("");
+    [paymentMessage, setPaymentMessage] = useState(""),
+    [pendingMemoryRetry, setPendingMemoryRetry] = useState(false),
+    [memoryRetryBusy, setMemoryRetryBusy] = useState(false);
   const connectionEpoch = useRef(new ConnectionEpoch());
   const audio = useRef<HTMLAudioElement>(null),
     pc = useRef<RTCPeerConnection | null>(null),
@@ -151,12 +153,42 @@ export default function AiStudio() {
     turnCoordinator.current.reset();
   }
   const saveQueue = useRef<CheckpointQueue | null>(null);
+  const failedMemory = useRef<{ id: string; turns: Turn[] } | null>(null);
   async function checkpoint(id: string) {
     if (!saveQueue.current)
       saveQueue.current = new CheckpointQueue((sessionId, turns) =>
         api("session/checkpoint", { sessionId, turns }),
       );
-    await saveQueue.current.save(id, history.current.slice(-20));
+    const snapshot = history.current.slice(-20).map((turn) => ({ ...turn }));
+    try {
+      await saveQueue.current.save(id, snapshot);
+      if (failedMemory.current?.id === id) {
+        failedMemory.current = null;
+        setPendingMemoryRetry(false);
+      }
+    } catch (error) {
+      failedMemory.current = { id, turns: snapshot };
+      setPendingMemoryRetry(true);
+      throw error;
+    }
+  }
+  async function retryMemory() {
+    const pending = failedMemory.current;
+    if (!pending || memoryRetryBusy) return;
+    setMemoryRetryBusy(true);
+    try {
+      if (!saveQueue.current) throw new Error("대화 저장 기능을 사용할 수 없어요.");
+      await saveQueue.current.save(pending.id, pending.turns);
+      if (failedMemory.current === pending) {
+        failedMemory.current = null;
+        setPendingMemoryRetry(false);
+      }
+      setError("대화 기억을 다시 저장했습니다.");
+    } catch {
+      setError("대화 기억 재저장에 실패했어요. 현재 화면을 유지하고 연결을 확인한 후 다시 시도해 주세요.");
+    } finally {
+      setMemoryRetryBusy(false);
+    }
   }
   async function stop(paused = true) {
     if (stopping.current) return;
@@ -660,6 +692,14 @@ export default function AiStudio() {
       <div className="tai-error" role="status" aria-live="polite">
         {error}
       </div>
+      {pendingMemoryRetry && (
+        <div className="tai-card" role="status">
+          <p>대화 기록 일부가 서버에 저장되지 않았어요. 페이지를 닫기 전에 다시 저장할 수 있습니다.</p>
+          <button disabled={memoryRetryBusy} onClick={retryMemory}>
+            {memoryRetryBusy ? "대화 기억 저장 중…" : "대화 기억 다시 저장"}
+          </button>
+        </div>
+      )}
       {!account ? (
         <section className="tai-card">
           <h2>TALKLY 계정으로 시작해요</h2>
