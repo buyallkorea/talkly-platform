@@ -1,3 +1,4 @@
+import { requireIsolatedPreviewWrite, failure } from "@/lib/talkly-ai/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { closeSession } from "@/lib/talkly-ai/session";
 export const runtime = "nodejs";
@@ -11,6 +12,11 @@ export async function GET(request: Request) {
     request.headers.get("authorization") !== `Bearer ${secret}`
   ) {
     return Response.json({ error: "Not available" }, { status: 404 });
+  }
+  try {
+    requireIsolatedPreviewWrite(new Request(request.url, { method: "POST" }));
+  } catch (error) {
+    return failure(error);
   }
   const db = createAdminClient();
   // Only overdue registered calls; never refund a registered call without hangup.
