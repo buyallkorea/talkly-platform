@@ -254,6 +254,7 @@ export default function AiStudio() {
           body: JSON.stringify({
             sessionId: session.current,
             turns: history.current.slice(-20),
+            version: ++memoryVersion.current,
           }),
           keepalive: true,
         });
