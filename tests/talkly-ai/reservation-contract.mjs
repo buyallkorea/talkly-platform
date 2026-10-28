@@ -43,4 +43,9 @@ const retention = session.indexOf('.update({ call_id: callId })');
 assert.ok(retention >= 0 && retention < failedHangup, "unattached provider call must be registered for recovery before returning from failed hangup");
 assert.ok(session.includes('.eq("state", "connecting")') && session.includes('.is("call_id", null)'),
  "orphan call retention must not overwrite an already attached or closed call");
+const recoveryRetry = session.indexOf("await closeSession(owner, sessionId);", retention);
+assert.ok(recoveryRetry > retention && recoveryRetry < failedHangup,
+  "retained orphan call must get immediate safe close retry before returning");
+assert.ok(session.indexOf("if (retainError || !retained)") < recoveryRetry,
+  "never close an orphan provider call before its call ID is stored");
 console.log("PASS: reservation before provider connection, expired lease closure, provider hangup before settlement.");
