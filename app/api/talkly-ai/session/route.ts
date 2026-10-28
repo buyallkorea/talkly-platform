@@ -271,8 +271,17 @@ export async function POST(request: Request) {
               .is("call_id", null)
               .select("id")
               .maybeSingle();
-            if (retainError || !retained)
+            if (retainError || !retained) {
               console.error("[TALKLY AI] provider call recovery ID not retained");
+            } else {
+              // Retry using the standard close path. Repeated hangup failure
+              // keeps the provider call registered and the quota reserved.
+              try {
+                await closeSession(owner, sessionId);
+              } catch {
+                console.error("[TALKLY AI] retained provider call needs recovery");
+              }
+            }
           } catch {
             console.error("[TALKLY AI] provider call recovery ID retention failed");
           }
