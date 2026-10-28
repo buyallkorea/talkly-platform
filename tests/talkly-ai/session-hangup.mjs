@@ -55,9 +55,10 @@ try{
  assert.equal(lastFailed,false,"registered live calls settle according to actual usage");
  sessionState="closing";callId=null;
  // Database begin/finish errors must not be treated as successful settlement.
+ const hangupsBeforeDbFailure=hangups;
  beginError={message:"offline"};
  await assert.rejects(()=>closeSession("user","session"),/Session not found/);
- assert.equal(hangups,2);
+ assert.equal(hangups,hangupsBeforeDbFailure);
  beginError=null;
  finishError={message:"offline"};
  await assert.rejects(()=>closeSession("user","session"),e=>e?.message==="offline");
