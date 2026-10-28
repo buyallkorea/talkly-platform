@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase-admin";
 import { queueVoiceObservation } from "@/lib/talkly-ai/voice-observer";
 import { after } from "next/server";
 import {
@@ -257,6 +258,25 @@ export async function POST(request: Request) {
       try {
         await hangup(callId);
       } catch {
+        // A provider call may still be running. Preserve its ID on the reserved
+        // session, rather than making the call invisible to overdue-call recovery.
+        if (owner && sessionId) {
+          try {
+            const { data: retained, error: retainError } = await createAdminClient()
+              .from("ai_sessions")
+              .update({ call_id: callId })
+              .eq("id", sessionId)
+              .eq("user_id", owner)
+              .eq("state", "connecting")
+              .is("call_id", null)
+              .select("id")
+              .maybeSingle();
+            if (retainError || !retained)
+              console.error("[TALKLY AI] provider call recovery ID not retained");
+          } catch {
+            console.error("[TALKLY AI] provider call recovery ID retention failed");
+          }
+        }
         console.error("[TALKLY AI] failed negotiation hangup");
         return failure(e);
       }
