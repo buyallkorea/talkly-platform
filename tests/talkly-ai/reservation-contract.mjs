@@ -48,4 +48,11 @@ assert.ok(recoveryRetry > retention && recoveryRetry < failedHangup,
   "retained orphan call must get immediate safe close retry before returning");
 assert.ok(session.indexOf("if (retainError || !retained)") < recoveryRetry,
   "never close an orphan provider call before its call ID is stored");
+const failedRetention = session.indexOf("if (retainError || !retained)");
+const lastHangup = session.indexOf("await hangup(callId);", failedRetention);
+const lastClose = session.indexOf("await closeSession(owner, sessionId);", failedRetention);
+assert.ok(failedRetention > 0 && lastHangup > failedRetention && lastClose > lastHangup,
+  "if call registration fails, retry provider hangup before any settlement");
+assert.ok(session.indexOf("await closeSession(owner, sessionId, true);", failedRetention) === -1,
+  "uncertain call persistence must not force a full failed-call refund");
 console.log("PASS: reservation before provider connection, expired lease closure, provider hangup before settlement.");
