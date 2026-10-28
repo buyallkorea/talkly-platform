@@ -44,6 +44,16 @@ try{
  await closeSession("user","session");
  assert.equal(lastFailed,true,"call-less reservation must be marked failed");
  assert.equal(hangups,2);
+ // A provider call that cannot be stopped must never be marked failed/refunded,
+ // even if the upstream negotiation itself had already failed.
+ sessionState="connecting";callId="rtc_live";mode="hangup-fails";
+ const noRefundBefore=finishes;
+ await assert.rejects(()=>closeSession("user","session",true),/provider unavailable/);
+ assert.equal(finishes,noRefundBefore,"failed hangup must preserve reserved time");
+ mode="success";
+ await closeSession("user","session");
+ assert.equal(lastFailed,false,"registered live calls settle according to actual usage");
+ sessionState="closing";callId=null;
  // Database begin/finish errors must not be treated as successful settlement.
  beginError={message:"offline"};
  await assert.rejects(()=>closeSession("user","session"),/Session not found/);
