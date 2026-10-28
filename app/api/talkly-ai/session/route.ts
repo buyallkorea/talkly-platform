@@ -273,6 +273,13 @@ export async function POST(request: Request) {
               .maybeSingle();
             if (retainError || !retained) {
               console.error("[TALKLY AI] provider call recovery ID not retained");
+              // Retention failed: retry hangup before any reservation settlement.
+              try {
+                await hangup(callId);
+                await closeSession(owner, sessionId, true);
+              } catch {
+                console.error("[TALKLY AI] unregistered call needs manual review");
+              }
             } else {
               // Retry using the standard close path. Repeated hangup failure
               // keeps the provider call registered and the quota reserved.
