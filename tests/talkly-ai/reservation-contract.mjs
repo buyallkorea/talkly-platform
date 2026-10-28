@@ -38,4 +38,9 @@ assert.match(session, /if \(callId && !callAttached\)/);
 assert.match(session, /await closeSession\(owner, sessionId, !callAttached\)/);
 assert.ok(session.indexOf("callAttached = true;") > session.indexOf('if (!attached)'),
   "only confirmed provider call attachment may set callAttached");
+const failedHangup = session.indexOf('console.error("[TALKLY AI] failed negotiation hangup")');
+const retention = session.indexOf('.update({ call_id: callId })');
+assert.ok(retention >= 0 && retention < failedHangup, "unattached provider call must be registered for recovery before returning from failed hangup");
+assert.ok(session.includes('.eq("state", "connecting")') && session.includes('.is("call_id", null)'),
+ "orphan call retention must not overwrite an already attached or closed call");
 console.log("PASS: reservation before provider connection, expired lease closure, provider hangup before settlement.");
