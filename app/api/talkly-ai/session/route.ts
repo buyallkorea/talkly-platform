@@ -270,6 +270,7 @@ export async function POST(request: Request) {
               .eq("state", "connecting")
               .is("call_id", null)
               .select("id")
+              .abortSignal(AbortSignal.timeout(3000))
               .maybeSingle();
             if (retainError || !retained) {
               console.error("[TALKLY AI] provider call recovery ID not retained");
