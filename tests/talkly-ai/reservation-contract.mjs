@@ -32,4 +32,10 @@ assert.doesNotMatch(stop, /ai_finish|ai_members|ai_daily_usage/,
 assert.ok(session.includes("after(async () => {"));
 assert.ok(session.includes("attempt < 3"));
 assert.ok(session.includes("await closeSession(capturedUser, capturedSession)"));
+assert.match(session, /let callAttached = false/);
+assert.match(session, /callAttached = true;/);
+assert.match(session, /if \(callId && !callAttached\)/);
+assert.match(session, /await closeSession\(owner, sessionId, !callAttached\)/);
+assert.ok(session.indexOf("callAttached = true;") > session.indexOf('if (!attached)'),
+  "only confirmed provider call attachment may set callAttached");
 console.log("PASS: reservation before provider connection, expired lease closure, provider hangup before settlement.");
