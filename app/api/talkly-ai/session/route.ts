@@ -276,6 +276,8 @@ export async function POST(request: Request) {
               // Retention failed: retry hangup before any reservation settlement.
               try {
                 await hangup(callId);
+                // The provider call was verified stopped; finish only after
+                // checking the database, which may have retained its ID.
                 await closeSession(owner, sessionId);
               } catch {
                 console.error("[TALKLY AI] unregistered call needs manual review");
