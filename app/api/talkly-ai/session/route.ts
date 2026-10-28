@@ -18,6 +18,7 @@ export async function POST(request: Request) {
   let owner: string | undefined,
     sessionId: string | undefined,
     callId: string | undefined;
+  let callAttached = false;
   let providerStarted: number | undefined,
     providerStatus: number | undefined,
     providerDuration: number | undefined,
@@ -190,6 +191,7 @@ export async function POST(request: Request) {
         "음성 연결 준비 중 대화가 종료됐어요. 다시 시작해 주세요.",
         409,
       );
+    callAttached = true;
     const capturedUser = user.id,
       capturedSession = lease.id;
     // Bounded server watchdog. This must pass real Vercel runtime verification
@@ -249,7 +251,9 @@ export async function POST(request: Request) {
   } catch (e) {
     timedOut =
       e instanceof Error && ["TimeoutError", "AbortError"].includes(e.name);
-    if (callId) {
+    // Once attached, closeSession owns hangup and settlement atomically.
+    // Never hang up twice or refund an already registered provider call.
+    if (callId && !callAttached) {
       try {
         await hangup(callId);
       } catch {
@@ -259,7 +263,7 @@ export async function POST(request: Request) {
     }
     if (owner && sessionId) {
       try {
-        await closeSession(owner, sessionId, true);
+        await closeSession(owner, sessionId, !callAttached);
       } catch {
         console.error("[TALKLY AI] failed reservation recovery");
       }
