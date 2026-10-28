@@ -55,11 +55,15 @@ const b = queue.save("new", turn(102));
 const c = queue.save("new", turn(103));
 const failure = assert.rejects(a, /network failure/);
 gates[2].reject();
+await Promise.resolve();
+assert.equal(sent[3][0], "old", "retry must keep the failed session");
+assert.deepEqual(sent[3][1], turn(101), "retry must keep the failed snapshot");
+gates[3].reject();
 await failure;
 await Promise.resolve();
-assert.equal(sent[3][0], "new");
-assert.equal(sent[3][1][0].text, "103");
-gates[3].resolve();
+assert.equal(sent[4][0], "new");
+assert.equal(sent[4][1][0].text, "103");
+gates[4].resolve();
 await Promise.all([b, c]);
 const original = Array.from({ length: 30 }, (_, i) => ({
   role: "user",
@@ -67,9 +71,9 @@ const original = Array.from({ length: 30 }, (_, i) => ({
 }));
 const final = queue.save("last", original);
 original.at(-1).text = "mutated";
-assert.equal(sent[4][1].length, 20);
-assert.equal(sent[4][1].at(-1).text, "29");
-gates[4].resolve();
+assert.equal(sent[5][1].length, 20);
+assert.equal(sent[5][1].at(-1).text, "29");
+gates[5].resolve();
 await final;
 assert.equal(active, 0);
 console.log(

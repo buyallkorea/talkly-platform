@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check:routes": "node scripts/check-internal-routes.mjs"
+    "check:routes": "node scripts/check-internal-routes.mjs",
+    "test:talkly-ai": "node scripts/test-talkly-ai.mjs",
+    "test:regression": "node --test tests/*.test.cjs"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.9",
@@ -25,6 +27,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
     "@tailwindcss/postcss": "^4",
     "@types/adm-zip": "^0.5.8",
     "@types/node": "^20",

@@ -61,7 +61,7 @@ const db = {
       },
     };
   },
-  from(table) {
+  from() {
     const q = {
       select() {
         return q;
@@ -86,7 +86,11 @@ const db = {
     return q;
   },
 };
+const { requireIsolatedPreviewWrite } = await compile(
+  "lib/talkly-ai/server.ts",
+);
 globalThis.unsubHarness = {
+  requireIsolatedPreviewWrite,
   AiError,
   createAdminClient: () => db,
   validUnsubscribeToken,
@@ -103,7 +107,7 @@ const helpers = await compile(
 globalThis.unsubHarness.unsubscribeHash = helpers.unsubscribeHash;
 const { POST } = await compile(
   "app/api/talkly-ai/unsubscribe/route.ts",
-  "const {AiError,createAdminClient,validUnsubscribeToken,body,failure,unsubscribeHash}=globalThis.unsubHarness;",
+  "const {AiError,createAdminClient,validUnsubscribeToken,body,failure,unsubscribeHash,requireIsolatedPreviewWrite}=globalThis.unsubHarness;",
 );
 const send = (data, origin = "https://test.example") =>
   POST(
@@ -113,6 +117,11 @@ const send = (data, origin = "https://test.example") =>
       body: JSON.stringify(data),
     }),
   );
+const oldVercelEnv = process.env.VERCEL_ENV;
+process.env.VERCEL_ENV = "preview";
+assert.equal((await send({ token, confirm: true })).status, 503);
+assert.equal(calls.length, 0, "unisolated preview cannot touch the database");
+process.env.VERCEL_ENV = "development";
 assert.equal(
   (await send({ token, confirm: true }, "https://other.example")).status,
   403,
@@ -167,3 +176,6 @@ await assert.rejects(
 console.log(
   "PASS: no-login confirmation, origin/format validation, only hash crosses DB boundary, no browser owner/channel override, failure visibility, consent-gated fragment link and no raw-token storage",
 );
+
+if (oldVercelEnv === undefined) delete process.env.VERCEL_ENV;
+else process.env.VERCEL_ENV = oldVercelEnv;

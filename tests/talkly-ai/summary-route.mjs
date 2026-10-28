@@ -50,7 +50,7 @@ const db = {
     if (storeAllowed) saved.push({ status: "ready", summary: args.p_summary });
     return { data: storeAllowed, error: null };
   },
-  from(table) {
+  from() {
     let op = "read",
       value;
     const q = {
@@ -181,7 +181,7 @@ storeAllowed = false;
 const withdrawnResponse = await POST(request());
 assert.equal(withdrawnResponse.status, 200);
 assert.equal((await withdrawnResponse.json()).status, "not_saved");
-assert.equal(saved.length, 0);
+assert.deepEqual(saved, [{ status: "failed" }], "declined storage clears only the pending claim, without summary content");
 globalThis.fetch = originalFetch;
 console.log(
   "PASS: summary route consent, owned closed session, duplicate exclusion, bounded provider request, validated saved output and failure state.",

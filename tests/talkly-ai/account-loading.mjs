@@ -24,11 +24,15 @@ function visit(node) {
 }
 visit(ast);
 assert.ok(effect);
+const configSource = await readFile(new URL("../../lib/talkly-ai/config.ts", import.meta.url), "utf8");
+const configJs = ts.transpileModule(configSource, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
+const { normalizeTutorId } = await import("data:text/javascript;base64," + Buffer.from(configJs).toString("base64"));
 let calls = 0,
   events = [],
   resolveApi,
   rejectApi;
 globalThis.accountHarness = {
+  normalizeTutorId,
   api: (path) => {
     assert.equal(path, "account");
     calls++;
@@ -43,7 +47,7 @@ globalThis.accountHarness = {
   setError: (value) => events.push(["error", value]),
 };
 const code =
-  "const {api,setAccount,setRemaining,setTutor,setError}=globalThis.accountHarness;export const effect=" +
+  "const {api,setAccount,setRemaining,setTutor,setError,normalizeTutorId}=globalThis.accountHarness;export const effect=" +
   effect +
   ";";
 const js = ts.transpileModule(code, {
@@ -70,8 +74,15 @@ await flush();
 assert.deepEqual(events, [
   ["account", account],
   ["remaining", 180],
-  ["tutor", "uk-female"],
+  ["tutor", "lively-female"],
 ]);
+cleanup();
+events = [];
+cleanup = run();
+await flush();
+resolveApi({ remaining: 120, member: { last_tutor_id: "calm-male" } });
+await flush();
+assert.deepEqual(events.at(-1), ["tutor", "calm-male"], "current tutor IDs remain selected");
 cleanup();
 events = [];
 cleanup = run();

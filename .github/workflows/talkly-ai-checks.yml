@@ -5,6 +5,15 @@ on:
       - "app/talkly-ai/**"
       - "app/api/talkly-ai/**"
       - "lib/talkly-ai/**"
+      - "lib/supabase-admin.ts"
+      - "lib/email.ts"
+      - "lib/solapi.ts"
+      - "app/api/auth/signup/route.ts"
+      - "app/admin/talkly-ai/**"
+      - "tests/*.test.cjs"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
       - "tests/talkly-ai/**"
       - "supabase/migrations/**"
       - ".github/workflows/talkly-ai-checks.yml"
@@ -14,6 +23,15 @@ on:
       - "app/talkly-ai/**"
       - "app/api/talkly-ai/**"
       - "lib/talkly-ai/**"
+      - "lib/supabase-admin.ts"
+      - "lib/email.ts"
+      - "lib/solapi.ts"
+      - "app/api/auth/signup/route.ts"
+      - "app/admin/talkly-ai/**"
+      - "tests/*.test.cjs"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
       - "tests/talkly-ai/**"
       - "supabase/migrations/**"
       - ".github/workflows/talkly-ai-checks.yml"
@@ -31,22 +49,5 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npx tsc --noEmit
-      - run: node tests/talkly-ai/config.mjs
-      - run: node tests/talkly-ai/report-boundaries.mjs
-      - run: node tests/talkly-ai/account-entitlement.mjs
-      - run: node tests/talkly-ai/reservation-contract.mjs
-      - run: node tests/talkly-ai/rollout-gates.mjs
-      - run: node tests/talkly-ai/preview-db-isolation.mjs
-      - run: node tests/talkly-ai/route-guard-coverage.mjs
-      - run: node tests/talkly-ai/registered-call-recovery.mjs
-      - run: node tests/talkly-ai/payment-reconcile.mjs
-      - run: node tests/talkly-ai/refund-audit.mjs
-      - run: node tests/talkly-ai/refund-history.mjs
-      - run: node tests/talkly-ai/learning-ux.mjs
-      - run: node tests/talkly-ai/summary-duplicate-flow.mjs
-      - run: node tests/talkly-ai/connection-failures.mjs
-      - run: node tests/talkly-ai/client-connection.mjs
-      - run: node tests/talkly-ai/checkpoint-retry.mjs
-      - run: node tests/talkly-ai/checkpoint-ordering-migration.mjs
-      - run: node tests/talkly-ai/checkpoint-writer-flow.mjs
-      - run: node tests/talkly-ai/session-hangup.mjs
+      - run: npm run test:talkly-ai
+      - run: npm run test:regression
