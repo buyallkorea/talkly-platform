@@ -15,6 +15,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "tests/talkly-ai/**"
+      - "tests/fixtures/talkly-ai-*.sql"
       - "supabase/migrations/**"
       - ".github/workflows/talkly-ai-checks.yml"
   push:
@@ -33,6 +34,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "tests/talkly-ai/**"
+      - "tests/fixtures/talkly-ai-*.sql"
       - "supabase/migrations/**"
       - ".github/workflows/talkly-ai-checks.yml"
 permissions:

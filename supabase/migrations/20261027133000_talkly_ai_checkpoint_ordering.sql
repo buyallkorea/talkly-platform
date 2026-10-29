@@ -46,4 +46,4 @@ begin
 end;
 $$;
 revoke all on function public.ai_checkpoint_ordered(uuid,uuid,bigint,jsonb,uuid) from public,anon,authenticated;
-grant execute on function public.ai_checkpoint_ordered(uuid,uuid,bigint,jsonb) to service_role;
+grant execute on function public.ai_checkpoint_ordered(uuid,uuid,bigint,jsonb,uuid) to service_role;
