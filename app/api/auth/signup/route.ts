@@ -1,3 +1,4 @@
+import { signupConfirmationRedirect } from "@/lib/auth/signup-redirect";
 import { signupPhoneProof } from "@/lib/talkly-ai/phone-proof";
 import { NextResponse } from "next/server";
 
@@ -403,7 +404,7 @@ export async function POST(request: Request) {
         const { error: confirmationError } = await admin.auth.resend({
           type: "signup",
           email,
-          options: { emailRedirectTo: "https://www.talkly.co.kr/login" },
+          options: { emailRedirectTo: signupConfirmationRedirect(body?.next) },
         });
         confirmationEmailSent = !confirmationError;
         if (confirmationError) {

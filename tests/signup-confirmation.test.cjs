@@ -33,6 +33,7 @@ async function signup({confirmed = false, mailError = false, mailThrows = false,
   const exports = {};
   vm.runInNewContext(code, {exports, Date, console: {error() {}}, require(name) {
     if (name === 'next/server') return {NextResponse: {json: (body, init) => Response.json(body, init)}};
+    if (name === '@/lib/auth/signup-redirect') return {signupConfirmationRedirect: () => 'https://www.talkly.co.kr/login'};
     if (name === '@/lib/supabase-admin') return {createAdminClient: () => admin};
     if (name === '@/lib/talkly-ai/phone-proof') return {signupPhoneProof: () => ({})};
     if (name === '@/lib/solapi') return {hashPhoneVerificationValue: () => 'hash', isValidKoreanMobilePhone: () => true, normalizeKoreanPhone: x => x};

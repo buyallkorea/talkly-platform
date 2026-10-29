@@ -74,6 +74,8 @@ function SignupPageContent() {
     setSuccessMessage,
   ] = useState("");
 
+  const [signupCompleted, setSignupCompleted] = useState(false);
+
   const [
     loading,
     setLoading,
@@ -114,7 +116,7 @@ function SignupPageContent() {
   }
 
   async function handleSendVerificationCode() {
-    if (sendingCode || loading || resendLocked) {
+    if (signupCompleted || sendingCode || loading || resendLocked) {
       return;
     }
 
@@ -147,15 +149,6 @@ function SignupPageContent() {
       if (!response.ok) {
         setErrorMessage(
           result?.error ?? "인증번호를 발송하지 못했습니다."
-        );
-        return;
-      }
-
-      if (result?.requiresEmailConfirmation) {
-        setSuccessMessage(
-          result.confirmationEmailSent
-            ? "회원가입이 완료되었습니다. 이메일의 인증 링크를 클릭한 뒤 로그인해주세요. 스팸메일함도 확인해주세요."
-            : "계정은 생성되었으나 인증메일을 보내지 못했습니다. 다시 가입하지 말고 고객센터에 문의해주세요."
         );
         return;
       }
@@ -238,7 +231,7 @@ function SignupPageContent() {
   ) {
     event.preventDefault();
 
-    if (loading) {
+    if (signupCompleted || loading) {
       return;
     }
 
@@ -294,6 +287,7 @@ function SignupPageContent() {
           role,
           phone: normalizedPhone,
           verificationToken,
+          next: safeNextPath,
         }),
       });
 
@@ -306,9 +300,23 @@ function SignupPageContent() {
         return;
       }
 
+      if (result?.ok !== true) {
+        throw new Error("Signup result unavailable");
+      }
+      setSignupCompleted(true);
+
+      if (result?.requiresEmailConfirmation) {
+        setSuccessMessage(
+          result.confirmationEmailSent
+            ? "회원가입이 완료되었습니다. 이메일의 인증 링크를 클릭한 뒤 로그인해주세요. 스팸메일함도 확인해주세요."
+            : "계정은 생성되었으나 인증메일을 보내지 못했습니다. 다시 가입하지 말고 고객센터에 문의해주세요."
+        );
+        return;
+      }
+
       setSuccessMessage(
         safeNextPath
-          ? "회원가입이 완료되었습니다. 로그인 후 레벨테스트를 계속할 수 있습니다."
+          ? "회원가입이 완료되었습니다. 로그인 후 요청하신 페이지로 이동할 수 있습니다."
           : "회원가입이 완료되었습니다. 로그인 페이지로 이동합니다."
       );
 
@@ -1308,7 +1316,7 @@ function SignupPageContent() {
               <button
                 type="submit"
                 disabled={
-                  loading || !phoneVerified
+                  signupCompleted || loading || !phoneVerified
                 }
                 style={{
                   width:
@@ -1324,7 +1332,7 @@ function SignupPageContent() {
                     "10px",
 
                   background:
-                    loading || !phoneVerified
+                    signupCompleted || loading || !phoneVerified
                       ? "#91a9d7"
                       : "#3f75dc",
 
@@ -1338,7 +1346,7 @@ function SignupPageContent() {
                     900,
 
                   cursor:
-                    loading || !phoneVerified
+                    signupCompleted || loading || !phoneVerified
                       ? "default"
                       : "pointer",
 
@@ -1346,7 +1354,9 @@ function SignupPageContent() {
                     "0 10px 24px rgba(63,117,220,0.24)",
                 }}
               >
-                {loading
+                {signupCompleted
+                  ? "회원가입 완료"
+                  : loading
                   ? "가입 처리 중..."
                   : !phoneVerified
                   ? "휴대폰 인증 후 가입할 수 있습니다"
