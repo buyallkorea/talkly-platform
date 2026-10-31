@@ -153,6 +153,10 @@ function SignupPageContent() {
         return;
       }
 
+      if (result?.ok !== true) {
+        throw new Error("SMS result unavailable");
+      }
+
       setSuccessMessage(
         "인증번호를 발송했습니다. 5분 안에 입력해주세요."
       );
@@ -782,7 +786,7 @@ function SignupPageContent() {
               }}
             >
               {safeNextPath
-                ? "레벨테스트를 계속하려면 회원 유형을 선택하고 가입해주세요."
+                ? "계속하려면 회원 유형을 선택하고 가입해주세요."
                 : "회원 유형을 선택하고 기본 정보를 입력해주세요."}
             </p>
 
@@ -1170,6 +1174,76 @@ function SignupPageContent() {
                 </div>
               </div>
 
+              {errorMessage && (
+                <div
+                  role="alert"
+                  style={{
+                    marginBottom:
+                      "16px",
+
+                    padding:
+                      "13px 14px",
+
+                    borderRadius:
+                      "9px",
+
+                    border:
+                      "1px solid #f1c6c6",
+
+                    background:
+                      "#fff7f7",
+
+                    color:
+                      "#c43c3c",
+
+                    fontSize:
+                      "13px",
+
+                    lineHeight:
+                      1.55,
+                  }}
+                >
+                  {
+                    errorMessage
+                  }
+                </div>
+              )}
+
+              {successMessage && (
+                <div
+                  role="status"
+                  style={{
+                    marginBottom:
+                      "16px",
+
+                    padding:
+                      "13px 14px",
+
+                    borderRadius:
+                      "9px",
+
+                    border:
+                      "1px solid #c9e8d4",
+
+                    background:
+                      "#f4fbf6",
+
+                    color:
+                      "#237443",
+
+                    fontSize:
+                      "13px",
+
+                    lineHeight:
+                      1.55,
+                  }}
+                >
+                  {
+                    successMessage
+                  }
+                </div>
+              )}
+
               <SignupField
                 id="password"
                 label="비밀번호"
@@ -1242,76 +1316,6 @@ function SignupPageContent() {
                   ? "학부모 가입 후 자녀를 등록하면 수업 일정, 출결, 학습평가를 확인할 수 있습니다."
                   : "연령과 관계없이 본인 계정으로 직접 가입할 수 있습니다. 어린 수강생은 학부모 계정의 자녀 관리 방식도 이용할 수 있습니다."}
               </div>
-
-              {errorMessage && (
-                <div
-                  role="alert"
-                  style={{
-                    marginBottom:
-                      "16px",
-
-                    padding:
-                      "13px 14px",
-
-                    borderRadius:
-                      "9px",
-
-                    border:
-                      "1px solid #f1c6c6",
-
-                    background:
-                      "#fff7f7",
-
-                    color:
-                      "#c43c3c",
-
-                    fontSize:
-                      "13px",
-
-                    lineHeight:
-                      1.55,
-                  }}
-                >
-                  {
-                    errorMessage
-                  }
-                </div>
-              )}
-
-              {successMessage && (
-                <div
-                  role="status"
-                  style={{
-                    marginBottom:
-                      "16px",
-
-                    padding:
-                      "13px 14px",
-
-                    borderRadius:
-                      "9px",
-
-                    border:
-                      "1px solid #c9e8d4",
-
-                    background:
-                      "#f4fbf6",
-
-                    color:
-                      "#237443",
-
-                    fontSize:
-                      "13px",
-
-                    lineHeight:
-                      1.55,
-                  }}
-                >
-                  {
-                    successMessage
-                  }
-                </div>
-              )}
 
               <button
                 type="submit"

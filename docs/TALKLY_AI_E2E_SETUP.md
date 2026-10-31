@@ -119,3 +119,26 @@ After it passes:
 The agent's cloud browser cannot access the user's physical microphone. A
 virtual audio device may verify transport, but the user's actual browser/device
 must still complete the real microphone check. Do not label it passed otherwise.
+
+## Checkpoint — 2026-10-31
+
+- Operator installed isolated branch Supabase server credentials and temporary
+  SOLAPI credentials directly into branch-scoped Preview Secrets. Production
+  SOLAPI entries remain unchanged. Temporary SOLAPI key expires after one day.
+- Preview redeploy `dpl_EbVkkYX97zQNe3mNB8gRGjAkcL1E` at commit `53635ef6`
+  passed the read-only readiness check (HTTP 200, configuration_checked).
+- Operator completed real SMS receipt/verification with the corrected phone
+  number and submitted signup. One student Auth account and profile were created.
+  Email confirmation remains incomplete: test SMTP returned Gmail 535
+  BadCredentials on confirmation resend. Do not recreate the existing account.
+- SMTP repair and real microphone verification are deferred by the operator.
+  The test branch remains retained at the operator's request and continues to
+  incur its approved hourly charge. No production migration or live payment
+  activation was performed.
+- Signup feedback now appears immediately after phone verification controls,
+  before password inputs; malformed SMS success cannot start a success cooldown.
+  SOLAPI send-many/detail requires exactly one accepted registration and no
+  failed messages. This proves provider acceptance, not handset delivery.
+  Raw provider error bodies are no longer logged because they may include PII.
+- The first missing SMS was traced to an operator-entered incorrect recipient;
+  it is not evidence of a provider rejection. Email and voice E2E remain open.

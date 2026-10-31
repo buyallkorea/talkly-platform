@@ -59,3 +59,10 @@ test('SMS success stays in SMS flow and applies resend cooldown',async()=>{
  assert.ok(t.events.some(e=>e[0]==='success'&&e[1].includes('인증번호를 발송')));
  assert.ok(!t.events.some(e=>e[0]==='success'&&e[1].includes('회원가입이 완료')));
 });
+test('malformed SMS success does not start resend cooldown',async()=>{
+ const t=harness({});await t.send();assert.equal(t.h.resendLocked,false);assert.equal(t.timers.length,0);assert.ok(t.events.some(e=>e[0]==='error'));
+});
+test('verification notices appear before password fields',()=>{
+ assert.ok(source.indexOf('{errorMessage && (')<source.indexOf('id="password"'));
+ assert.ok(source.indexOf('{successMessage && (')<source.indexOf('id="password"'));
+});

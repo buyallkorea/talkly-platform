@@ -111,8 +111,27 @@ export async function sendTalklyVerificationSms(
   const responseText = await response.text();
 
   if (!response.ok) {
-    console.error("SOLAPI SEND ERROR:", response.status, responseText);
+    console.error("SOLAPI SEND ERROR:", response.status);
     throw new Error("인증문자 발송에 실패했습니다.");
+  }
+
+  // HTTP success means the request was handled, not that this SMS was accepted.
+  // Never log the raw provider body: it can contain phone numbers and OTP text.
+  let result;
+  try {
+    result = JSON.parse(responseText);
+  } catch {
+    throw new Error("문자 접수 결과를 확인하지 못했습니다.");
+  }
+  const count = result?.groupInfo?.count;
+  if (
+    !Array.isArray(result?.failedMessageList) ||
+    result.failedMessageList.length !== 0 ||
+    count?.total !== 1 ||
+    count?.registeredSuccess !== 1 ||
+    count?.registeredFailed !== 0
+  ) {
+    throw new Error("인증문자가 정상 접수되지 않았습니다.");
   }
 
   return responseText;
