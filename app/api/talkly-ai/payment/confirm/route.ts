@@ -99,8 +99,21 @@ export async function POST(request: Request) {
       `https://api.tosspayments.com/v1/payments/${encodeURIComponent(paymentKey)}`,
       { headers, signal: AbortSignal.timeout(15000), cache: "no-store" },
     );
-    if (lookup.ok) payment = await lookup.json();
-    else if (lookup.status !== 404)
+    if (lookup.ok) {
+      payment = await lookup.json();
+      // Validate the retrieved identity before any approval request, including
+      // READY/IN_PROGRESS responses. A successful HTTP response alone is not proof.
+      if (
+        !payment ||
+        typeof payment !== "object" ||
+        Array.isArray(payment) ||
+        payment.orderId !== order.order_id ||
+        payment.paymentKey !== paymentKey ||
+        payment.totalAmount !== order.amount ||
+        payment.currency !== "KRW"
+      )
+        throw new AiError("조회된 결제 정보가 주문과 일치하지 않습니다.", 409);
+    } else if (lookup.status !== 404)
       throw new AiError(
         "결제 상태를 조회하지 못했어요. 새로 구매하지 말고 이 화면에서 다시 확인해 주세요.",
         502,
@@ -173,6 +186,9 @@ export async function POST(request: Request) {
       );
     }
     if (
+      !payment ||
+      typeof payment !== "object" ||
+      Array.isArray(payment) ||
       payment.status !== "DONE" ||
       payment.orderId !== order.order_id ||
       payment.paymentKey !== paymentKey ||

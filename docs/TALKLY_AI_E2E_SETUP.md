@@ -158,3 +158,18 @@ with simulated network failures, checking repeated failure, later success,
 summary retention, and prevention of a new microphone connection before settlement.
 These checks make no external provider or production database calls. Real microphone
 and SMTP validation remain deferred.
+
+### 2026-10-31: validate payment lookup before approval
+
+Payment confirmation now checks the provider lookup's order ID, payment key,
+amount and KRW currency before proceeding from READY/IN_PROGRESS to an approval
+request. A mismatched or malformed successful lookup cannot trigger approval.
+Malformed approval responses also cannot activate an entitlement. The existing
+404 lookup path, idempotency key, paid replay, lookup-only recovery while checkout
+is disabled, terminal failure handling, and activation retry remain covered.
+
+Added mocked cases cover each identity mismatch in both pending statuses and
+null/array/string/empty-object/number lookup and approval responses. No real Toss
+requests or payments are made. The account entitlement, refund review and admin
+reconciliation suites continue to check expiry, daily limits, ownership and
+read-only provider reconciliation; live payment sandbox verification is pending.

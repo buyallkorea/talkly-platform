@@ -10,6 +10,8 @@ class AiError extends Error {
 let order,
   lookupStatus = "DONE",
   providerOverride = {},
+  rawLookup,
+  rawConfirm,
   activationError = false,
   claimAllowed = true,
   terminalAllowed = true,
@@ -28,6 +30,8 @@ function reset() {
   };
   lookupStatus = "DONE";
   providerOverride = {};
+  rawLookup = undefined;
+  rawConfirm = undefined;
   activationError = false;
   claimAllowed = true;
   terminalAllowed = true;
@@ -149,6 +153,8 @@ globalThis.fetch = async (url, options) => {
   }
   if (!confirm && typeof lookupStatus === "number")
     return new Response("{}", { status: lookupStatus });
+  const raw = confirm ? rawConfirm : rawLookup;
+  if (raw !== undefined) return Response.json(raw);
   return new Response(
     JSON.stringify({
       status: confirm ? "DONE" : lookupStatus,
@@ -237,6 +243,25 @@ try {
     providerOverride = { approvedAt: null };
     terminalAllowed = false;
     assert.equal((await request()).status, 409);
+  }
+  // A provider lookup must match the local order before a money-changing call.
+  for (const status of ["READY", "IN_PROGRESS"]) {
+    for (const mismatch of [
+      { orderId: "another-order" }, { paymentKey: "another-key" },
+      { totalAmount: 1 }, { currency: "USD" },
+    ]) {
+      reset(); lookupStatus = status; providerOverride = mismatch;
+      assert.equal((await request()).status, 409);
+      assert.deepEqual(events, [["lookup"]], "mismatched pending payment must never be approved");
+    }
+  }
+  for (const malformed of [null, [], "invalid", {}, 42]) {
+    reset(); rawLookup = malformed;
+    assert.equal((await request()).status, 409);
+    assert.deepEqual(events, [["lookup"]]);
+    reset(); lookupStatus = 404; rawConfirm = malformed;
+    assert.equal((await request()).status, 409);
+    assert.deepEqual(events, [["lookup"], ["confirm"]], "malformed approval must not activate a pass");
   }
   reset();
   order.payment_key = null;
