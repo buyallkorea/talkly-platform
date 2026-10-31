@@ -223,9 +223,7 @@ export default function AiStudio() {
     stopping.current = true;
     localClose();
     const id = session.current;
-    session.current = null;
     const summarySnapshot = [...segmentTurns.current];
-    segmentTurns.current = [];
     setState(paused ? "paused" : "idle");
     try {
       if (id) {
@@ -234,7 +232,10 @@ export default function AiStudio() {
           api("session/stop", { sessionId: id }),
         ]);
         if (result[1].status === "rejected")
-          throw new Error("수업 종료 확인에 실패했어요. 이용시간이 정산됐는지 확인할 수 없으므로 상태를 새로고침해 확인해 주세요.");
+          throw new Error("수업 종료 확인에 실패했어요. 이용시간이 정산됐는지 확인할 수 없으므로 다시 시작하면 이전 수업 종료를 먼저 재시도해요.");
+        // Keep the session and summary available until settlement is acknowledged.
+        session.current = null;
+        segmentTurns.current = [];
         // Settlement and memory status determine the primary message.
         // Summary recording is optional and must not hold up renewal or account refresh.
         if (summarySnapshot.length) {
@@ -366,6 +367,11 @@ export default function AiStudio() {
     queued = false,
   ) {
     if (busyRef.current || active.current || stopping.current) return;
+    // A failed close must be retried before reserving another lesson.
+    if (session.current) {
+      const settled = await stop(true);
+      if (!settled) return;
+    }
     busyRef.current = true;
     setConnectionBusy(true);
     const attempt = connectionEpoch.current.begin();

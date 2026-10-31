@@ -142,3 +142,19 @@ must still complete the real microphone check. Do not label it passed otherwise.
   Raw provider error bodies are no longer logged because they may include PII.
 - The first missing SMS was traced to an operator-entered incorrect recipient;
   it is not evidence of a provider rejection. Email and voice E2E remain open.
+
+### 2026-10-31: retry failed lesson settlement before reconnecting
+
+The studio now keeps the session ID and segment summary until the stop endpoint
+acknowledges settlement. Starting again first retries that same stop request;
+when it fails, microphone setup and a new reservation do not proceed. Successful
+settlement clears the retry target and submits the retained optional summary.
+The server's existing idempotent close and provider-hangup requirements remain
+in effect. This retry target is held in browser memory; page unload still relies
+on keepalive and server recovery.
+
+The new `stop-retry.mjs` executes the studio's stop function and start preflight
+with simulated network failures, checking repeated failure, later success,
+summary retention, and prevention of a new microphone connection before settlement.
+These checks make no external provider or production database calls. Real microphone
+and SMTP validation remain deferred.
