@@ -53,6 +53,7 @@ export default async function AdminAiPage() {
         </p>
       </section>
     );
+  const observedAt = new Date().getTime();
   const db = createAdminClient();
   const [
     members,
@@ -170,7 +171,7 @@ export default async function AdminAiPage() {
   const summariesNeedingReview = (learningSummaries.data ?? [])
     .filter((summary) =>
       summary.status === "failed" ||
-      (summary.status === "pending" && Date.parse(summary.created_at) < Date.now() - 2 * 60 * 1000),
+      (summary.status === "pending" && Date.parse(summary.created_at) < observedAt - 2 * 60 * 1000),
     )
     .slice(0, 20);
   const memberIds = [...new Set((members.data ?? []).map((m) => m.user_id))];
@@ -264,8 +265,8 @@ export default async function AdminAiPage() {
         ) : (
           <p>
             저장 완료 {(learningSummaries.data ?? []).filter((row) => row.status === "ready").length}건 ·
-            처리 중 {(learningSummaries.data ?? []).filter((row) => row.status === "pending" && Date.parse(row.created_at) >= Date.now() - 2 * 60 * 1000).length}건 ·
-            처리 지연 {(learningSummaries.data ?? []).filter((row) => row.status === "pending" && Date.parse(row.created_at) < Date.now() - 2 * 60 * 1000).length}건 ·
+            처리 중 {(learningSummaries.data ?? []).filter((row) => row.status === "pending" && Date.parse(row.created_at) >= observedAt - 2 * 60 * 1000).length}건 ·
+            처리 지연 {(learningSummaries.data ?? []).filter((row) => row.status === "pending" && Date.parse(row.created_at) < observedAt - 2 * 60 * 1000).length}건 ·
             실패 {(learningSummaries.data ?? []).filter((row) => row.status === "failed").length}건
           </p>
         )}
@@ -406,6 +407,7 @@ export default async function AdminAiPage() {
         <p>연결 현황을 불러오지 못했습니다.</p>
       ) : (
         <SessionOperations
+          observedAt={observedAt}
           sessions={(liveSessions.data ?? []).map((s) => ({
             id: s.id,
             state: s.state,

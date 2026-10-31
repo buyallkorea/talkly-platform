@@ -5,7 +5,20 @@ import { readFile } from "node:fs/promises";
 const source = await readFile(new URL("../../app/api/talkly-ai/internal/recover-calls/route.ts", import.meta.url), "utf8");
 const adminSessions=await readFile(new URL("../../app/admin/talkly-ai/SessionOperations.tsx",import.meta.url),"utf8");
 assert.match(adminSessions,/기한 경과 · 확인 필요/);
-assert.match(adminSessions,/Date\.parse\(session\.deadline\) < Date\.now\(\)/);
+const uiAst = ts.createSourceFile("sessions.tsx", adminSessions, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+let overdueExpression;
+function findOverdue(node) {
+  if (ts.isVariableDeclaration(node) && node.name.getText(uiAst) === "overdue")
+    overdueExpression = node.initializer.body.getText(uiAst);
+  ts.forEachChild(node, findOverdue);
+}
+findOverdue(uiAst);
+assert.ok(overdueExpression);
+const observedAt = Date.parse("2026-10-31T03:00:00Z");
+const overdue = new Function("session", "observedAt", "return " + overdueExpression);
+assert.equal(overdue({deadline:"2026-10-31T02:59:59Z"}, observedAt), true);
+assert.equal(overdue({deadline:"2026-10-31T03:00:00Z"}, observedAt), false);
+assert.equal(overdue({deadline:"2026-10-31T03:00:01Z"}, observedAt), false);
 const closeSource = await readFile(new URL("../../lib/talkly-ai/session.ts", import.meta.url), "utf8");
 const ast = ts.createSourceFile("route.ts", source, ts.ScriptTarget.Latest, true);
 const executable = ast.statements.filter((node) => !ts.isImportDeclaration(node)).map((node) => node.getText(ast)).join("\n");

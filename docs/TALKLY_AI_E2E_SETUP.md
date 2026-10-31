@@ -188,3 +188,20 @@ still renders valid learning content and a warning, keeps both deletion targets,
 and checks that summary queries are scoped to the authenticated member. Existing
 DB ownership/deletion, month boundary and snapshot suites remain part of CI.
 No production database, provider calls or schema changes are involved.
+
+### 2026-10-31: administrator session close acknowledgement
+
+The administrator session control now guards immediately against concurrent clicks
+and requires an explicit `success: true` response before hiding a session or
+refreshing the page. Failed, missing or malformed acknowledgements preserve the
+session and allow retry. A successful settlement with an unconfirmed audit update
+continues to display the audit warning. The endpoint's role check, pre-action
+audit and provider-hangup-before-settlement requirements are unchanged.
+
+A client-handler test reproduces duplicate clicks while a response is pending,
+negative/null/missing acknowledgements, and a successful retry with an audit
+warning. Tests use mocked requests and do not stop any real member's call.
+
+Overdue session labels use the server-provided observation timestamp instead of
+reading the browser clock during rendering. Refreshing the administrator page
+provides a new timestamp, consistent with the existing manual-refresh behavior.

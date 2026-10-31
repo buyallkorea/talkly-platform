@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 type Session = {
   id: string;
@@ -11,18 +11,23 @@ type Session = {
 };
 export default function SessionOperations({
   sessions,
+  observedAt,
 }: {
   sessions: Session[];
+  observedAt: number;
 }) {
   const router = useRouter();
+  const guard = useRef(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [reason, setReason] = useState("connection_issue");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [closed, setClosed] = useState<Set<string>>(() => new Set());
   const visible = sessions.filter((session) => !closed.has(session.id));
-  const overdue = (session: Session) => Date.parse(session.deadline) < Date.now();
+  const overdue = (session: Session) => Date.parse(session.deadline) < observedAt;
   async function stop(session: Session) {
+    if (guard.current) return;
+    guard.current = true;
     setBusy(true);
     setMessage("");
     try {
@@ -33,8 +38,8 @@ export default function SessionOperations({
         signal: AbortSignal.timeout(45000),
       });
       const result = await response.json();
-      if (!response.ok)
-        throw new Error(result.error || "종료 처리를 확인하지 못했어요.");
+      if (!response.ok || result?.success !== true)
+        throw new Error(result?.error || "종료 처리를 확인하지 못했어요.");
       setClosed((previous) => new Set([...previous, session.id]));
       setSelected(null);
       setMessage(
@@ -57,6 +62,7 @@ export default function SessionOperations({
               : "처리하지 못했습니다. 상태를 다시 확인해 주세요.",
       );
     } finally {
+      guard.current = false;
       setBusy(false);
     }
   }
