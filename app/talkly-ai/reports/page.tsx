@@ -8,6 +8,7 @@ import {
   reportMonth,
   reportHistoryMonths,
   summaryRetentionCutoff,
+  storedLearningSummary,
   type LearningSummary,
 } from "@/lib/talkly-ai/reports";
 import MemoryDeletion from "./MemoryDeletion";
@@ -61,7 +62,9 @@ export default async function Reports({
         : null,
       activity: selected.activity,
       history,
-      records: records.data ?? [],
+      records: (records.data ?? []).map((record) => ({
+        ...record, summary: storedLearningSummary(record.summary),
+      })),
       total: records.count ?? 0,
     };
   } catch (e) {
@@ -78,6 +81,7 @@ export default async function Reports({
       </main>
     );
   }
+  const invalidCount = result.records.filter((r) => r.status === "ready" && !r.summary).length;
   const ready = result.records.filter((r) => r.status === "ready" && r.summary && typeof r.summary === "object" && !Array.isArray(r.summary));
   const stalePendingCount = result.records.filter((r) => r.status === "pending" && Date.parse(r.created_at) < now.getTime() - 2 * 60 * 1000).length;
   const pendingCount = result.records.filter((r) => r.status === "pending").length - stalePendingCount;
@@ -146,6 +150,9 @@ export default async function Reports({
         <h2>이번 달 한눈에 보기</h2>
         <p><strong>{result.activity.days}일</strong> 학습 · <strong>{Math.floor(result.activity.seconds / 60)}분 {result.activity.seconds % 60}초</strong> 연결</p>
         <p>복습용 요약 <strong>{ready.length}개</strong> · 종료된 연결 구간 <strong>{result.activity.segments}개</strong></p>
+        {invalidCount > 0 && (
+          <p role="status">형식을 확인하지 못한 학습 요약 {invalidCount}개는 내용 집계에서 제외했어요. 저장된 학습 요약 관리에서 삭제할 수 있어요. 이용 시간 기록은 유지됩니다.</p>
+        )}
         {(pendingCount > 0 || stalePendingCount > 0 || failedCount > 0) && (
           <p role="status">학습 요약 처리 중 {pendingCount}개 · 처리 지연·확인 필요 {stalePendingCount}개 · 저장 실패 {failedCount}개. 처리 중이거나 실패한 요약은 주제·표현·교정 집계에 포함하지 않습니다.</p>
         )}

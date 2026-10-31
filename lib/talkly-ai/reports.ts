@@ -115,3 +115,26 @@ export function validateSummary(
       typeof v.nextPractice === "string" ? v.nextPractice.slice(0, 240) : "",
   };
 }
+
+// Persisted JSON may predate the current writer or contain malformed values.
+// Validate its shape without inventing content or re-assessing transcript evidence.
+export function storedLearningSummary(value: unknown): LearningSummary | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+  const text = (item: unknown, max: number): item is string =>
+    typeof item === "string" && item.length <= max;
+  const list = (items: unknown): items is string[] =>
+    Array.isArray(items) && items.length <= 3 &&
+    items.every((item) => text(item, 160) && item.length > 0);
+  if (!list(v.topics) || !list(v.expressions) ||
+      !Array.isArray(v.corrections) || v.corrections.length > 3 ||
+      !v.corrections.every((item) => item && typeof item === "object" &&
+        !Array.isArray(item) && text(item.before, 160) && item.before.length > 0 &&
+        text(item.after, 160) && item.after.length > 0) ||
+      !text(v.nextPractice, 240)) return null;
+  return {
+    topics: [...v.topics], expressions: [...v.expressions],
+    corrections: v.corrections.map((item) => ({ before: item.before, after: item.after })),
+    nextPractice: v.nextPractice,
+  };
+}

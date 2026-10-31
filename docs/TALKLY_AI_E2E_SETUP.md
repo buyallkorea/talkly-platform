@@ -173,3 +173,18 @@ null/array/string/empty-object/number lookup and approval responses. No real Tos
 requests or payments are made. The account entitlement, refund review and admin
 reconciliation suites continue to check expiry, daily limits, ownership and
 read-only provider reconciliation; live payment sandbox verification is pending.
+
+### 2026-10-31: tolerate malformed persisted learning summaries
+
+The report validates persisted summary JSON before rendering topics, expressions,
+corrections, practice text or deletion labels. A malformed ready record is excluded
+from content totals and explicitly reported, while its deletion control and the
+independent usage totals remain available. Valid summaries retain their content;
+this shape check does not re-assess their original transcript evidence.
+
+Tests exercise malformed nested values, length limits and valid writer output.
+A server-rendered page test mixes valid and malformed records, verifies the page
+still renders valid learning content and a warning, keeps both deletion targets,
+and checks that summary queries are scoped to the authenticated member. Existing
+DB ownership/deletion, month boundary and snapshot suites remain part of CI.
+No production database, provider calls or schema changes are involved.

@@ -19,6 +19,7 @@ const js = ts.transpileModule(
   },
 ).outputText;
 const {
+  storedLearningSummary,
   reportMonth,
   reportHistoryMonths,
   summaryTurns,
@@ -123,3 +124,24 @@ assert.equal(
 console.log(
   "PASS: bounded three-month history across year/leap/Seoul boundaries and earliest supported month",
 );
+
+const validStored = {
+  topics: ["Travel"], expressions: ["I like travelling"],
+  corrections: [{before:"I go yesterday",after:"I went yesterday"}], nextPractice:"Describe a trip",
+};
+assert.deepEqual(storedLearningSummary(validStored), validStored);
+assert.deepEqual(storedLearningSummary(validateSummary({}, [])), {
+  topics:[], expressions:[], corrections:[], nextPractice:"",
+});
+for (const malformed of [null, [], "text", {},
+  {...validStored,topics:{}}, {...validStored,topics:[{}]},
+  {...validStored,expressions:"text"}, {...validStored,corrections:[null]},
+  {...validStored,corrections:[{before:"a",after:{}}]},
+  {...validStored,nextPractice:{}}, {...validStored,nextPractice:"x".repeat(241)},
+  {...validStored,topics:["a","b","c","d"]},
+]) assert.equal(storedLearningSummary(malformed), null, "malformed JSON must not reach report rendering");
+const copied = storedLearningSummary(validStored);
+copied.topics.push("Changed"); copied.corrections[0].after = "Changed";
+assert.equal(validStored.topics.length, 1);
+assert.equal(validStored.corrections[0].after, "I went yesterday");
+console.log("PASS: stored summary validation preserves valid records and excludes malformed content safely.");
