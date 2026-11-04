@@ -1,3 +1,5 @@
+import ClassroomPreparation from "./ClassroomPreparation";
+import ClassroomMaterialStage from "./ClassroomMaterialStage";
 import { getCurrentUser } from "@/lib/server-user";
 import TestStudentStartWatcher from "./TestStudentStartWatcher";
 import { getTestClassroomOptions } from "@/lib/test-classroom-options";
@@ -20,7 +22,7 @@ type PageProps = {
   params: Promise<{
     sessionId: string;
   }>;
-  searchParams: Promise<{ testMode?: string }>;
+  searchParams: Promise<{ testMode?: string; materials?: string }>;
 };
 
 async function getZoomAccessToken() {
@@ -129,7 +131,7 @@ export default async function ClassroomPage({
 }: PageProps) {
   const { sessionId } =
     await params;
-  const { testMode } = await searchParams;
+  const { testMode, materials } = await searchParams;
 
   const numericSessionId =
     Number(sessionId);
@@ -194,6 +196,7 @@ export default async function ClassroomPage({
       started_at,
       ended_at,
       selected_textbook_id,
+      material_mode,
       teacher_user_id,
       original_teacher_user_id,
       is_external_teacher,
@@ -861,6 +864,16 @@ export default async function ClassroomPage({
     );
   }
 
+  const materialMode = session.material_mode === "screen" ? "screen" : "textbook";
+  if (hostMode && materials !== "ready") {
+    return <ClassroomPreparation sessionId={session.id} initialMode={materialMode}
+      selectedTextbookId={session.selected_textbook_id} returnHref="/teacher"
+      textbooks={(assignedTextbooks ?? []).flatMap(item => {
+        const book = Array.isArray(item.textbooks) ? item.textbooks[0] : item.textbooks;
+        return book ? [{ id: book.id, title: book.title }] : [];
+      })} />;
+  }
+
   /*
    * =====================================================
    * Zoom 연결 확인
@@ -1074,6 +1087,16 @@ export default async function ClassroomPage({
           .talkly-classroom-title { font-size: 17px; }
         }
 
+
+        .talkly-material-controls { flex: 0 0 auto; padding: 10px 14px; border: 1px solid #334155; border-radius: 12px; background: #172033; margin-bottom: 10px; font-size: 13px; line-height: 1.6; }
+        .talkly-material-controls select { margin-left: 10px; padding: 7px; background: #0f172a; color: white; border: 1px solid #64748b; border-radius: 8px; max-width: 100%; }
+        .talkly-material-controls p { margin: 4px 0 0; color: #cbd5e1; }
+        .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video { grid-column: 1 / 3; }
+        .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-textbook { display: none; }
+        @media (max-width: 640px) {
+          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video { grid-column: 1; height: 75dvh; min-height: 480px; }
+        }
+
         @media (orientation: landscape) and (max-height: 600px) {
           .talkly-classroom-top {
             min-height: 34px;
@@ -1148,7 +1171,7 @@ export default async function ClassroomPage({
           />
         </section>
 
-        <div className="talkly-classroom-stage">
+        <ClassroomMaterialStage sessionId={session.id} initialMode={materialMode} canControl={hostMode}>
           <section className="talkly-classroom-panel talkly-classroom-video">
             <ClassroomZoomEmbed
               key={`${user.id}-${profile.role}-${session.id}`}
@@ -1230,7 +1253,7 @@ export default async function ClassroomPage({
                 : studentName
           }
         />
-        </div>
+        </ClassroomMaterialStage>
       </main>
     </>
   );

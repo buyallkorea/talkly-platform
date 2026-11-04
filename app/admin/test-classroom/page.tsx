@@ -14,6 +14,7 @@ export default function TestClassroomPage() {
   const [teacherUserId, setTeacherUserId] = useState("");
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
   const [textbooks, setTextbooks] = useState<{ id: number; title: string; pages: number }[]>([]);
+  const [materialMode, setMaterialMode] = useState<"textbook" | "screen">("textbook");
   const [textbookId, setTextbookId] = useState("");
   const [optionsError, setOptionsError] = useState("");
   useEffect(() => {
@@ -56,7 +57,8 @@ export default function TestClassroomPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           teacherUserId,
-          textbookId: Number(textbookId),
+          materialMode,
+          ...(materialMode === "textbook" ? { textbookId: Number(textbookId) } : {}),
           scheduledStart: start.toISOString(),
           durationMinutes,
         }),
@@ -116,13 +118,20 @@ export default function TestClassroomPage() {
 
         {optionsError && <p role="alert" style={{ color: "#b91c1c" }}>{optionsError}</p>}
         <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <strong>교재 방식</strong>
+          <select value={materialMode} onChange={event => setMaterialMode(event.target.value as "textbook" | "screen")} style={{ padding: 12, borderRadius: 8 }}>
+            <option value="textbook">등록 교재</option><option value="screen">온라인 교재 · Zoom 화면 공유</option>
+          </select>
+        </label>
+        {materialMode === "screen" && <p>교재 파일 없이 테스트 수업을 만듭니다. 담당 강사가 입장 후 Zoom의 화면 공유 버튼으로 교재 탭·창을 선택합니다. 관리자는 참관 또는 테스트 학생으로 시청합니다.</p>}
+        {materialMode === "textbook" && <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <strong>수업 교재 선택</strong>
           <select required value={textbookId} onChange={event => setTextbookId(event.target.value)} style={{ padding: 12, borderRadius: 8, border: "1px solid #aaa" }}>
             <option value="">교재를 선택해 주세요</option>
             {textbooks.map(book => <option key={book.id} value={book.id}>{book.title} · {book.pages}페이지</option>)}
           </select>
           <small>페이지 준비가 완료된 활성 교재만 표시됩니다. 선택한 교재가 테스트 수업에 자동 배정됩니다.</small>
-        </label>
+        </label>}
         <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <strong>수업 시작 날짜 및 시간</strong>
           <input
@@ -148,7 +157,7 @@ export default function TestClassroomPage() {
 
         <button
           type="submit"
-          disabled={loading || !teacherUserId || !textbookId || !!optionsError}
+          disabled={loading || !teacherUserId || (materialMode === "textbook" && !textbookId) || !!optionsError}
           style={{
             padding: 14,
             borderRadius: 9,

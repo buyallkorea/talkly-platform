@@ -9,6 +9,7 @@ type RequestBody = {
   teacherUserId?: string;
   scheduledStart?: string;
   textbookId?: number;
+  materialMode?: "textbook" | "screen";
   durationMinutes?: 25 | 50;
 };
 
@@ -112,10 +113,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "미래의 올바른 수업 시작시간을 입력해주세요." }, { status: 400 });
     }
     const end = new Date(start.getTime() + duration * 60000);
-    if (!Number.isSafeInteger(body.textbookId) || Number(body.textbookId) <= 0) return NextResponse.json({ error: "수업 교재를 선택해주세요." }, { status: 400 });
-    const { data: book, error: bookError } = await admin.from("textbooks")
-      .select("id, textbook_pages!inner(id)").eq("id", body.textbookId).eq("status", "ready").eq("is_active", true).maybeSingle();
-    if (bookError || !book?.textbook_pages?.length) return NextResponse.json({ error: "페이지가 준비된 활성 교재를 선택해주세요." }, { status: 400 });
+    const materialMode = body.materialMode ?? "textbook";
+    if (materialMode !== "textbook" && materialMode !== "screen") return NextResponse.json({ error: "교재 방식을 확인해주세요." }, { status: 400 });
+    const textbookId = materialMode === "textbook" ? body.textbookId : null;
+    if (materialMode === "textbook") {
+      if (!Number.isSafeInteger(textbookId) || Number(textbookId) <= 0) return NextResponse.json({ error: "수업 교재를 선택해주세요." }, { status: 400 });
+      const { data: book, error: bookError } = await admin.from("textbooks")
+        .select("id, textbook_pages!inner(id)").eq("id", textbookId).eq("status", "ready").eq("is_active", true).maybeSingle();
+      if (bookError || !book?.textbook_pages?.length) return NextResponse.json({ error: "페이지가 준비된 활성 교재를 선택해주세요." }, { status: 400 });
+    }
 
     const { data: teacher, error: teacherError } = await admin.from("teacher_profiles").select("user_id").eq("user_id", teacherUserId).maybeSingle();
     if (teacherError || !teacher) return NextResponse.json({ error: "등록된 강사 계정을 찾을 수 없습니다." }, { status: 400 });
@@ -140,15 +146,17 @@ export async function POST(request: Request) {
     if (enrollmentError || !enrollment) throw new Error(`테스트 수강 생성 실패: ${enrollmentError?.message || "ID 없음"}`);
     enrollmentId = enrollment.id;
 
-    const { error: assignmentError } = await admin.from("enrollment_textbooks").insert({
-      enrollment_id: enrollmentId, textbook_id: body.textbookId, assigned_by: user.id,
-      status: "assigned", is_primary: true, payment_required: false, admin_note: "관리자 테스트 수업 교재",
-    });
-    if (assignmentError) throw new Error("테스트 교재 배정 실패");
+    if (textbookId != null) {
+      const { error: assignmentError } = await admin.from("enrollment_textbooks").insert({
+        enrollment_id: enrollmentId, textbook_id: textbookId, assigned_by: user.id,
+        status: "assigned", is_primary: true, payment_required: false, admin_note: "관리자 테스트 수업 교재",
+      });
+      if (assignmentError) throw new Error("테스트 교재 배정 실패");
+    }
     const { data: session, error: sessionError } = await admin.from("class_sessions")
       .insert({ enrollment_id: enrollmentId, teacher_user_id: teacherUserId,
         lesson_number: 1, scheduled_start: start.toISOString(), scheduled_end: end.toISOString(),
-        selected_textbook_id: body.textbookId, status: "scheduled", meeting_provider: "zoom", is_test: true })
+        selected_textbook_id: textbookId, material_mode: materialMode, status: "scheduled", meeting_provider: "zoom", is_test: true })
       .select("id").single();
     if (sessionError || !session) throw new Error(`테스트 수업 생성 실패: ${sessionError?.message || "ID 없음"}`);
 
