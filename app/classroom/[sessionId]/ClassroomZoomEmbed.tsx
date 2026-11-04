@@ -444,7 +444,10 @@ export default function ClassroomZoomEmbed({
         // Only public SDK events are observed. Keep the SDK DOM and media transport intact.
         const emitShare = (active: boolean) => window.dispatchEvent(new CustomEvent("talkly-zoom-share-state", { detail: { sessionId, active } }));
         const checkShare = () => {
-          if (client.getAttendeeslist) emitShare(client.getAttendeeslist().some(person => person.sharerOn === true));
+          try {
+            const attendees = client.getAttendeeslist?.();
+            if (Array.isArray(attendees)) emitShare(attendees.some(person => person.sharerOn === true));
+          } catch { /* The SDK can briefly have no participant state while joining/reconnecting. */ }
         };
         const peerShare = (payload: { action?: string }) => {
           const action = payload.action?.toLowerCase();

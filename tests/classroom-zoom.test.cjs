@@ -1,11 +1,11 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),test=require('node:test'),ts=require('typescript');
 const js=ts.transpileModule(fs.readFileSync('app/classroom/[sessionId]/ClassroomZoomEmbed.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
-async function run(hostMode,fail,simulateShare=false) {
+async function run(hostMode,fail,simulateShare=false,throwAttendees=false) {
  const refs=[],states=[],effects=[],requests=[],calls=[];let refIndex=0;
  const root={clientWidth:320,clientHeight:480,innerHTML:''};let initialized,resolveDone;
  const done=new Promise(resolve=>resolveDone=resolve);
  const handlers={},shareEvents=[];let attendees=[];
- const client={getAttendeeslist:()=>attendees,on:(event,fn)=>{handlers[event]=fn;},off:(event)=>{delete handlers[event];},init:async options=>{initialized=options;},join:async options=>{calls.push(options);if(fail)throw {errorCode:3008,reason:'Meeting has not started'};},leaveMeeting:async()=>{}};
+ const client={getAttendeeslist:()=>{if(throwAttendees)throw Error("not ready");return attendees;},on:(event,fn)=>{handlers[event]=fn;},off:(event)=>{delete handlers[event];},init:async options=>{initialized=options;},join:async options=>{calls.push(options);if(fail)throw {errorCode:3008,reason:'Meeting has not started'};},leaveMeeting:async()=>{}};
  const exports={};const timers=[];
  vm.runInNewContext(js,{exports,console,CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail;}},ResizeObserver:class{observe(){} disconnect(){}},document:{querySelector:()=>({dataset:{loaded:'true'}})},fetch:async(url,options)=>{requests.push({url,body:JSON.parse(options.body)});return {ok:true,json:async()=>({success:true,signature:'signed',zak:'host-zak'})};},window:{dispatchEvent:event=>{shareEvents.push(event.detail);},ZoomMtgEmbedded:{createClient:()=>client},setTimeout:callback=>{timers.push(callback);return timers.length;},clearTimeout(){}},require(name){
   if(name==='react/jsx-runtime')return {jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})};
@@ -26,3 +26,5 @@ test('assigned host uses host endpoint and includes ZAK',async()=>{const r=await
 test('participant waiting for host shows waiting rather than opaque connection failure',async()=>{const r=await run(false,true);assert(r.states.includes('waiting'));assert(!r.states.includes('error'));});
 
 test('SDK share events and cleanup update layout without another signature or meeting join',async()=>{const r=await run(true,false,true);assert(r.shareEvents.some(e=>e.sessionId===48&&e.active===true));assert.equal(r.shareEvents.at(-1).active,false);assert.equal(Object.keys(r.handlers).length,0);assert.equal(r.calls.length,1);assert.equal(r.requests.length,1);assert.equal(r.initialized.customize.sharing.options.hideShareAudioOption,false);});
+
+test('temporary SDK participant lookup failure does not fail the meeting join',async()=>{const r=await run(true,false,false,true);assert(r.states.includes('joined'));assert(!r.states.includes('error'));});
