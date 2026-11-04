@@ -25,6 +25,9 @@ declare global {
         }) => Promise<unknown>;
         updateVideoOptions?: (options: Record<string, unknown>) => void;
         leaveMeeting?: () => Promise<unknown>;
+        on?: (event: string, listener: (payload: { action?: string }) => void) => void;
+        off?: (event: string, listener: (payload: { action?: string }) => void) => void;
+        getAttendeeslist?: () => { sharerOn?: boolean }[];
 
       };
     };
@@ -154,10 +157,13 @@ export default function ClassroomZoomEmbed({
     useRef(false);
 
   const clientRef = useRef<ReturnType<NonNullable<Window["ZoomMtgEmbedded"]>["createClient"]> | null>(null);
+  const shareCleanupRef = useRef<(() => void) | null>(null);
   const generationRef = useRef(0);
   const joinedRef = useRef(false);
 
   const disposeClient = useCallback(async () => {
+    shareCleanupRef.current?.();
+    shareCleanupRef.current = null;
     const client = clientRef.current;
     clientRef.current = null;
     const wasJoined = joinedRef.current;
@@ -393,11 +399,12 @@ export default function ClassroomZoomEmbed({
           zoomAppRoot:
             rootRef.current,
           language:
-            "ko-KR",
+            hostMode ? "en-US" : "ko-KR",
           patchJsMedia:
             true,
           leaveOnPageUnload: true,
           customize: {
+            sharing: { options: { hideShareAudioOption: false } },
             video: {
               popper: { disableDraggable: true },
               isResizable:
@@ -434,6 +441,31 @@ export default function ClassroomZoomEmbed({
             ],
           },
         });
+        // Only public SDK events are observed. Keep the SDK DOM and media transport intact.
+        const emitShare = (active: boolean) => window.dispatchEvent(new CustomEvent("talkly-zoom-share-state", { detail: { sessionId, active } }));
+        const checkShare = () => {
+          try {
+            const attendees = client.getAttendeeslist?.();
+            if (Array.isArray(attendees)) emitShare(attendees.some(person => person.sharerOn === true));
+          } catch { /* The SDK can briefly have no participant state while joining/reconnecting. */ }
+        };
+        const peerShare = (payload: { action?: string }) => {
+          const action = payload.action?.toLowerCase();
+          if (action === "start") emitShare(true);
+          else if (action === "stop") {
+            if (client.getAttendeeslist) checkShare(); else emitShare(false);
+          }
+        };
+        client.on?.("peer-share-state-change", peerShare);
+        client.on?.("user-updated", checkShare);
+        client.on?.("user-removed", checkShare);
+        shareCleanupRef.current = () => {
+          client.off?.("peer-share-state-change", peerShare);
+          client.off?.("user-updated", checkShare);
+          client.off?.("user-removed", checkShare);
+          // A retry/unmount must not leave another classroom instance expanded.
+          if (typeof window.dispatchEvent === "function") emitShare(false);
+        };
         setStatus(
           hostMode
             ? "Zoom 호스트로 입장하는 중..."
@@ -456,6 +488,7 @@ export default function ClassroomZoomEmbed({
             : {}),
         });
         joinedRef.current = true;
+        checkShare();
         if (generation !== generationRef.current) {
           try {
             await client.leaveMeeting?.();
