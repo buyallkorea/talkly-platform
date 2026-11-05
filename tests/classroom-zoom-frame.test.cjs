@@ -19,11 +19,13 @@ test('frame page obtains meeting password only after independent authorization',
  assert.equal(passwords,1);
 });
 test('iframe URL contains only lesson/mode and forwards only its own same-origin share messages',()=>{
- const events={},forwarded=[],frameWindow={};let cleanup;
- const component=load('app/classroom/[sessionId]/ClassroomZoomFrame.tsx',{'react':{useRef:()=>({current:{contentWindow:frameWindow}}),useEffect:fn=>{cleanup=fn();}},'react/jsx-runtime':{jsx:(type,props)=>({type,props})}}, {CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail;}},window:{location:{origin:'https://talkly.test'},addEventListener:(type,fn)=>{events[type]=fn;},removeEventListener:type=>{delete events[type];},dispatchEvent:event=>forwarded.push(event)}}).default;
+ const events={},forwarded=[],layoutMessages=[],frameWindow={postMessage:(data,origin)=>layoutMessages.push({data,origin})};let cleanup,mutation,presenter=false;const stage={getAttribute:name=>name==="data-material-mode"?"screen":presenter?"true":"false"};
+ const component=load('app/classroom/[sessionId]/ClassroomZoomFrame.tsx',{'react':{useRef:()=>({current:{contentWindow:frameWindow,closest:()=>stage,addEventListener(){},removeEventListener(){}}}),useEffect:fn=>{cleanup=fn();}},'react/jsx-runtime':{jsx:(type,props)=>({type,props})}}, {MutationObserver:class{constructor(fn){mutation=fn;}observe(){}disconnect(){}},CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail;}},window:{location:{origin:'https://talkly.test'},addEventListener:(type,fn)=>{events[type]=fn;},removeEventListener:type=>{delete events[type];},dispatchEvent:event=>forwarded.push(event)}}).default;
  const tree=component({sessionId:49,testStudentMode:true});assert.equal(tree.props.src,'/classroom/49/zoom?testMode=student');assert(!/password|signature|zak|meetingNumber/.test(tree.props.src));assert(tree.props.allow.includes('display-capture'));assert(tree.props.allow.includes('microphone'));
  const valid={origin:'https://talkly.test',source:frameWindow,data:{type:'talkly-zoom-share-state',sessionId:49,active:true}};
- events.message({...valid,origin:'https://evil.test'});events.message({...valid,source:{}});events.message({...valid,data:{...valid.data,sessionId:1}});assert.equal(forwarded.length,0);events.message(valid);assert.equal(forwarded[0].detail.active,true);cleanup();assert.equal(events.message,undefined);
+ events.message({...valid,origin:'https://evil.test'});events.message({...valid,source:{}});events.message({...valid,data:{...valid.data,sessionId:1}});assert.equal(forwarded.length,0);events.message(valid);assert.equal(forwarded[0].detail.active,true);
+ events.message({...valid,data:{type:'talkly-zoom-ready',sessionId:49}});assert.equal(layoutMessages[0].data.split,true);assert.equal(layoutMessages[0].origin,'https://talkly.test');presenter=true;mutation();assert.equal(layoutMessages[1].data.split,false);
+ cleanup();assert.equal(events.message,undefined);
 });
 test('teacher entry CTA is prominent, points to TALKLY classroom, and is disabled for closed lessons',()=>{
  const mocks={'next/link':{default:'Link'},'react/jsx-runtime':{jsx:(type,props)=>({type,props})}};

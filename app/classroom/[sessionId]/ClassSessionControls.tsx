@@ -544,12 +544,12 @@ export default function ClassSessionControls({
         }
 
         .talkly-session-action {
-          min-height: 40px;
+          min-height: 46px;
           padding: 0 15px;
           border-radius: 10px;
           border: 1px solid rgba(255,255,255,.14);
-          background: #f8fafc;
-          color: #0f172a;
+          background: #1d4ed8;
+          color: #ffffff;
           cursor: pointer;
           font-weight: 900;
           display: inline-flex;
@@ -560,7 +560,8 @@ export default function ClassSessionControls({
         }
 
         .talkly-session-action.end {
-          background: #ffffff;
+          background: #b91c1c;
+          color: #ffffff;
         }
 
         .talkly-session-action:disabled {
@@ -569,13 +570,13 @@ export default function ClassSessionControls({
         }
 
         .talkly-session-action-main {
-          font-size: 11px;
+          font-size: 16px;
         }
 
         .talkly-session-action-sub {
-          font-size: 9px;
+          font-size: 13px;
           font-weight: 700;
-          color: #64748b;
+          color: #ffffff;
         }
 
         .talkly-session-error {

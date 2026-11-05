@@ -5,9 +5,12 @@ async function run(hostMode,fail,simulateShare=false,throwAttendees=false) {
  const root={clientWidth:320,clientHeight:480,innerHTML:''};let initialized,resolveDone;
  const done=new Promise(resolve=>resolveDone=resolve);
  const handlers={},shareEvents=[];let attendees=[];
- const client={getAttendeeslist:()=>{if(throwAttendees)throw Error("not ready");return attendees;},on:(event,fn)=>{handlers[event]=fn;},off:(event)=>{delete handlers[event];},init:async options=>{initialized=options;},join:async options=>{calls.push(options);if(fail)throw {errorCode:3008,reason:'Meeting has not started'};},leaveMeeting:async()=>{}};
+ const helper={};vm.runInNewContext(ts.transpileModule(fs.readFileSync("lib/zoom-ui-controls.ts","utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:helper});
+ const client={getAttendeeslist:()=>{if(throwAttendees)throw Error("not ready");return attendees;},on:(event,fn)=>{(handlers[event]??=[]).push(fn);},off:(event)=>{delete handlers[event];},init:async options=>{initialized=options;},join:async options=>{calls.push(options);if(fail)throw {errorCode:3008,reason:'Meeting has not started'};},leaveMeeting:async()=>{}};
  const exports={};const timers=[];
- vm.runInNewContext(js,{exports,console,CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail;}},ResizeObserver:class{observe(){} disconnect(){}},document:{querySelector:()=>({dataset:{loaded:'true'}})},fetch:async(url,options)=>{requests.push({url,body:JSON.parse(options.body)});return {ok:true,json:async()=>({success:true,signature:'signed',zak:'host-zak'})};},window:{dispatchEvent:event=>{shareEvents.push(event.detail);},ZoomMtgEmbedded:{createClient:()=>client},setTimeout:callback=>{timers.push(callback);return timers.length;},clearTimeout(){}},require(name){
+ vm.runInNewContext(js,{exports,console,CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail;}},ResizeObserver:class{observe(){} disconnect(){}},document:{querySelector:()=>({dataset:{loaded:'true'}})},fetch:async(url,options)=>{requests.push({url,body:JSON.parse(options.body)});return {ok:true,json:async()=>({success:true,signature:'signed',zak:'host-zak'})};},window:{parent:{postMessage(){}},location:{origin:"https://talkly.test"},addEventListener(){},removeEventListener(){},dispatchEvent:event=>{shareEvents.push(event.detail);},ZoomMtgEmbedded:{createClient:()=>client},setTimeout:callback=>{timers.push(callback);return timers.length;},clearTimeout(){}},require(name){
+  if(name==='./zoom-layout.css')return {};
+  if(name==='@/lib/zoom-ui-controls')return helper;
   if(name==='react/jsx-runtime')return {jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})};
   if(name==='react')return {useRef:value=>{const ref={current:refIndex++===0?root:value};refs.push(ref);return ref;},useState:value=>[value,next=>{states.push(next);if(next==='joined'||next==='waiting'||next==='error')resolveDone();}],useCallback:fn=>fn,useEffect:fn=>effects.push(fn)};
   throw Error(name);
@@ -15,7 +18,7 @@ async function run(hostMode,fail,simulateShare=false,throwAttendees=false) {
  exports.default({sessionId:48,meetingNumber:'123456789',password:'fixture',userName:'Admin (Test Student)',hostMode});
  const cleanup=effects.map(effect=>effect());timers[0]();
  await Promise.race([done,new Promise((_,reject)=>setTimeout(()=>reject(Error('Zoom mock timed out')),1000))]);
- if(simulateShare){attendees=[{sharerOn:true}];handlers["peer-share-state-change"]({action:"Start"});attendees=[];handlers["user-updated"]({});}
+ if(simulateShare){attendees=[{sharerOn:true}];handlers["peer-share-state-change"].forEach(fn=>fn({action:"Start"}));attendees=[];handlers["user-updated"].forEach(fn=>fn({}));}
  cleanup.forEach(fn=>fn?.());
  return {requests,calls,states,initialized,shareEvents,handlers};
 }
