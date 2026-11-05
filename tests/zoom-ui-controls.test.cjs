@@ -26,3 +26,7 @@ test('closed iframe and disabled overflow items cannot trigger a media action',a
  const root={isConnected:connected,querySelectorAll:()=>[more],ownerDocument:{querySelectorAll:()=>[target]}};
  assert.equal(await api.activateZoomControlWithOverflow(root,'share'),false);assert.equal(target.clicks,0);}
 });
+
+test('stop sharing targets the separate native presenter toolbar, never starts another share',async()=>{
+ const stop=button('Stop Share'),start=button('Share Screen');const root={querySelectorAll:()=>[start],ownerDocument:{body:{querySelectorAll:()=>[stop]}}};assert.equal(await api.activateZoomControlWithOverflow(root,'stop-share'),true);assert.equal(stop.clicks,1);assert.equal(start.clicks,0);
+});

@@ -207,6 +207,7 @@ export default function ClassroomZoomEmbed({
   const [split, setSplit] = useState(false);
   const splitRef = useRef(false);
   const [receiving, setReceiving] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [audioState, setAudioState] = useState("unknown");
   const [peerAudio, setPeerAudio] = useState("");
   const [controlError, setControlError] = useState("");
@@ -448,6 +449,7 @@ export default function ClassroomZoomEmbed({
         };
         const emitShare = (active: boolean) => {
           setReceiving(active && !hostMode);
+          setSharing(active);
           window.dispatchEvent(new CustomEvent("talkly-zoom-share-state", { detail: { sessionId, active } }));
           if (window.parent !== window && typeof window.parent?.postMessage === "function") {
             window.parent.postMessage({ type: "talkly-zoom-share-state", sessionId, active }, window.location.origin);
@@ -679,7 +681,7 @@ export default function ClassroomZoomEmbed({
           <div className="talkly-zoom-actions">
             <button type="button" onClick={() => void audioAction()} disabled={audioBusy}>{audioState === "ready" ? "Mute · 마이크 끄기" : audioState === "muted" ? "Unmute · 마이크 켜기" : "1. Connect audio · 오디오 연결"}</button>
             <button type="button" onClick={() => void nativeAction("video")}>2. Camera · 카메라 켜기/끄기</button>
-            {hostMode && <button type="button" data-action="share" onClick={() => void nativeAction("share")}>3. Share textbook · 교재 화면 공유</button>}
+            {hostMode && <button type="button" data-action={sharing ? "stop-share" : "share"} onClick={() => void nativeAction(sharing ? "stop-share" : "share")}>{sharing ? "Stop sharing · 공유 중지" : "3. Share textbook · 교재 화면 공유"}</button>}
           </div>
           <details><summary>Sound help · 소리가 안 들릴 때</summary><div className="talkly-zoom-actions">
             <button type="button" onClick={testSpeaker}>Test speaker · 소리 테스트</button>
