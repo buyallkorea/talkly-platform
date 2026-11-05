@@ -928,7 +928,7 @@ export default async function ClassroomPage({
         .talkly-classroom-stage {
           position: relative;
           display: grid;
-          grid-template-columns: minmax(260px, .8fr) minmax(0, 1.9fr) minmax(260px, .85fr);
+          grid-template-columns: minmax(240px, .7fr) minmax(0, 1.9fr) minmax(260px, .85fr);
           gap: 14px;
           align-items: stretch;
           flex: 1 1 auto;
@@ -974,9 +974,12 @@ export default async function ClassroomPage({
 
 
         .talkly-material-controls { flex: 0 0 auto; padding: 10px 14px; border: 1px solid #334155; border-radius: 12px; background: #172033; margin-bottom: 10px; font-size: 13px; line-height: 1.6; }
-        .talkly-material-controls select { margin-left: 10px; padding: 7px; background: #0f172a; color: white; border: 1px solid #64748b; border-radius: 8px; max-width: 100%; }
+        .talkly-classroom button:focus-visible, .talkly-classroom select:focus-visible, .talkly-classroom summary:focus-visible { outline: 3px solid #facc15; outline-offset: 3px; }
+        .talkly-classroom summary { cursor: pointer; padding: 8px 0; font-weight: 700; }
+        .talkly-material-controls select { font-size: 16px; font-weight: 700; min-height: 44px; margin-left: 10px; padding: 7px; background: #0f172a; color: white; border: 1px solid #64748b; border-radius: 8px; max-width: 100%; }
         .talkly-material-controls p { margin: 4px 0 0; color: #cbd5e1; }
-        .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video { grid-column: 1 / 3; }
+        /* The iframe contains camera + shared-material columns, chat stays third. */
+        .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video { grid-column: 1 / 3; min-height: 0; }
         .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-textbook { display: none; }
         .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] { grid-template-columns: minmax(260px, 1fr) minmax(260px, .9fr); }
         .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-video { grid-column: 1; }

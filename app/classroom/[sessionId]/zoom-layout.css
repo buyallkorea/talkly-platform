@@ -1,0 +1,32 @@
+/* Pinned Zoom Meeting SDK 6.2.0. Layout only: no media nodes are moved. */
+.talkly-zoom-shell{--video-column:clamp(240px,26.923%,320px);height:100%;display:flex;flex-direction:column;color:#fff;background:#111216;overflow:auto}
+.talkly-zoom-status{flex:none;padding:10px 12px;background:#172033;font-size:14px;line-height:1.5}
+.talkly-zoom-status p{margin:5px 0}
+.talkly-zoom-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.talkly-zoom-actions button{border:2px solid #93c5fd;border-radius:9px;background:#1d4ed8;color:#fff;min-height:44px;padding:8px 12px;font-size:15px;font-weight:800;cursor:pointer}
+.talkly-zoom-actions button:focus-visible{outline:3px solid #facc15;outline-offset:2px}
+.talkly-zoom-actions button:disabled{opacity:.55;cursor:wait}
+.talkly-zoom-actions button[data-action=share]{background:#15803d;border-color:#86efac}
+.talkly-audio-warning{color:#fde68a;font-weight:700}
+.talkly-zoom-body{position:relative;flex:1;min-height:350px}
+#talkly-zoom-sdk-root{position:relative;width:100%;height:100%;min-height:350px}
+/* SDK hard-codes share paper to min(80vw,1120px). Scope overrides to its
+   accessible share canvas. Default fit-to-window continues to resize the canvas. */
+.talkly-zoom-shell[data-split=true][data-receiving=true] #talkly-zoom-sdk-root [class*="-MuiPaper-root"]:has(> [role=tabpanel] canvas[aria-label="Screen share"]){width:100%!important;max-width:100%!important}
+.talkly-zoom-shell[data-split=true][data-receiving=true] #talkly-zoom-sdk-root [role=tabpanel]:not([hidden])>div:has(canvas[aria-label="Screen share"]){display:flex!important;flex-direction:row-reverse;width:100%;height:100%!important;min-height:220px}
+.talkly-zoom-shell[data-split=true][data-receiving=true] #talkly-zoom-sdk-root [role=tabpanel]>div>div:has(>.react-draggable>canvas[aria-label="Screen share"]){flex:1 1 0;min-width:0;height:100%;border-left:2px solid #475569;background:#090b10}
+.talkly-zoom-shell[data-split=true][data-receiving=true] #talkly-zoom-sdk-root [role=tabpanel]>div:has(canvas[aria-label="Screen share"])>div:last-child{flex:0 0 var(--video-column);max-width:var(--video-column);overflow:auto}
+.talkly-share-waiting{position:absolute;top:0;right:0;bottom:0;left:var(--video-column);display:grid;place-content:center;padding:20px;text-align:center;background:#0c1320;border-left:2px solid #475569;pointer-events:none}
+@media(max-width:640px){.talkly-zoom-shell{--video-column:240px}.talkly-zoom-shell[data-split=true][data-receiving=true] #talkly-zoom-sdk-root [role=tabpanel]:not([hidden])>div:has(canvas[aria-label="Screen share"]){flex-direction:column-reverse;height:auto!important}.talkly-zoom-shell[data-split=true][data-receiving=true] #talkly-zoom-sdk-root [role=tabpanel]>div>div:has(>.react-draggable>canvas[aria-label="Screen share"]){flex:none;height:55dvh;min-height:300px}.talkly-share-waiting{position:relative;left:0;min-height:250px}}
+
+.talkly-zoom-shell[data-split=true][data-receiving=false] #talkly-zoom-sdk-root{width:var(--video-column)}
+
+.talkly-zoom-shell[data-split=true][data-receiving=true] #talkly-zoom-sdk-root [role=tabpanel]:not([hidden]):has(canvas[aria-label="Screen share"]){height:var(--zoom-content-height,450px)}
+@media(max-width:640px){.talkly-zoom-shell[data-split=true][data-receiving=true] #talkly-zoom-sdk-root [role=tabpanel]:not([hidden]):has(canvas[aria-label="Screen share"]){height:auto}}
+/* disableDraggable makes Zoom's video wrapper absolute and shrink-to-fit.
+   Give that wrapper and the widget a real containing width before sizing share. */
+.talkly-zoom-shell[data-split=true][data-receiving=true] #talkly-zoom-sdk-root > .react-draggable:has([aria-label="Zoom Web SDK Widget"]),
+.talkly-zoom-shell[data-split=true][data-receiving=true] #talkly-zoom-sdk-root > .react-draggable > div:has([aria-label="Zoom Web SDK Widget"]),
+.talkly-zoom-shell[data-split=true][data-receiving=true] #talkly-zoom-sdk-root [role=region][aria-label="Zoom Web SDK Widget"]{width:100%;max-width:100%;box-sizing:border-box}
+
+.talkly-zoom-actions button[data-action=stop-share]{background:#b91c1c;border-color:#fca5a5}
