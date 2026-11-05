@@ -6,7 +6,7 @@ const ts = require('typescript');
 function load(file, mocks) {
   const exports = {};
   const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  vm.runInNewContext(code, { exports, console, process, URL, require(name) { if (name in mocks) return mocks[name]; throw Error('Unexpected import: ' + name); } });
+  vm.runInNewContext(code, { exports, console, process, URL, require(name) {if(name === "@/lib/classroom-language") return require("./helpers/classroom-language.cjs"); if (name in mocks) return mocks[name]; throw Error('Unexpected import: ' + name); } });
   return exports;
 }
 const signing = load('lib/storage-signing.ts', {}).signStoragePaths;

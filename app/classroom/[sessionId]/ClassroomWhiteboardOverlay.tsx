@@ -1,4 +1,5 @@
 "use client";
+import { getClassroomText } from "@/lib/classroom-language";
 import {
   PointerEvent as ReactPointerEvent,
   useEffect,
@@ -69,6 +70,8 @@ export default function ClassroomWhiteboardOverlay({
   viewerRole,
   testStudentMode = false,
 }: Props) {
+  const ui = getClassroomText(viewerRole === "teacher");
+
   const isController = viewerRole === "teacher";
 
   const [tool, setTool] =
@@ -707,7 +710,7 @@ export default function ClassroomWhiteboardOverlay({
     if (!canDraw) return;
     if (
       !window.confirm(
-        "Clear all notes on this page?\n이 페이지의 모든 필기를 지울까요?"
+        ui("Clear all notes on this page?\n이 페이지의 모든 필기를 지울까요?")
       )
     ) {
       return;
@@ -1271,35 +1274,35 @@ export default function ClassroomWhiteboardOverlay({
           <ToolButton
             active={tool === "select"}
             onClick={() => setTool("select")}
-            title="Pointer / 포인터"
+            title={ui("Pointer / 포인터")}
             label="Pointer"
             icon="↖"
           />
           <ToolButton
             active={tool === "pen"}
             onClick={() => setTool("pen")}
-            title="Pen / 펜"
+            title={ui("Pen / 펜")}
             label="Pen"
             icon="✎"
           />
           <ToolButton
             active={tool === "highlighter"}
             onClick={() => setTool("highlighter")}
-            title="Highlight / 형광펜"
+            title={ui("Highlight / 형광펜")}
             label="Highlight"
             icon="▰"
           />
           <ToolButton
             active={tool === "line"}
             onClick={() => setTool("line")}
-            title="Line / 선"
+            title={ui("Line / 선")}
             label="Line"
             icon="╱"
           />
           <ToolButton
             active={tool === "eraser"}
             onClick={() => setTool("eraser")}
-            title="Eraser / 지우개"
+            title={ui("Eraser / 지우개")}
             label="Eraser"
             icon="⌫"
           />
@@ -1308,13 +1311,13 @@ export default function ClassroomWhiteboardOverlay({
         <div className="talkly-whiteboard-group">
           <ActionButton
             onClick={undoLast}
-            title="Undo / 실행 취소"
+            title={ui("Undo / 실행 취소")}
             label="Undo"
             icon="↶"
           />
           <ActionButton
             onClick={clearPage}
-            title="Clear page / 전체 지우기"
+            title={ui("Clear page / 전체 지우기")}
             label="Clear"
             icon="×"
             danger

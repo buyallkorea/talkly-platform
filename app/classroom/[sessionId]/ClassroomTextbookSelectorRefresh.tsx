@@ -1,5 +1,6 @@
 "use client";
 
+import { getClassroomText } from "@/lib/classroom-language";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase-browser";
@@ -29,6 +30,8 @@ export default function ClassroomTextbookSelectorRefresh({
   textbooks,
   canControl,
 }: Props) {
+  const ui = getClassroomText(canControl);
+
   const router = useRouter();
   const [supabase] = useState(() => createClient());
   const [currentId, setCurrentId] = useState<number | null>(selectedTextbookId);
@@ -114,7 +117,7 @@ export default function ClassroomTextbookSelectorRefresh({
 
     const channel = channelRef.current;
     if (!channel || !subscribedRef.current) {
-      console.warn("[TALKLY] 교재 변경 알림 채널 미연결: 서버 저장은 완료됨");
+      console.warn(ui("[TALKLY] 교재 변경 알림 채널 미연결: 서버 저장은 완료됨"));
       return;
     }
 
@@ -129,10 +132,10 @@ export default function ClassroomTextbookSelectorRefresh({
         } satisfies TextbookChangedMessage,
       });
       if (result !== "ok") {
-        console.warn("[TALKLY] 교재 변경 알림 전송 결과:", result);
+        console.warn(ui("[TALKLY] 교재 변경 알림 전송 결과:"), result);
       }
     } catch (error) {
-      console.error("[TALKLY] 교재 변경 알림 전송 실패:", error);
+      console.error(ui("[TALKLY] 교재 변경 알림 전송 실패:"), error);
     }
   };
 
@@ -146,12 +149,10 @@ export default function ClassroomTextbookSelectorRefresh({
         onSelected={(id) => { void handleSelected(id); }}
       />
       {isPending && (
-        <p className="mt-2 text-xs text-slate-500">교재 화면을 갱신하고 있습니다.</p>
+        <p className="mt-2 text-xs text-slate-500">{ui("교재 화면을 갱신하고 있습니다.")}</p>
       )}
       {!connected && (
-        <p className="mt-1 text-xs text-amber-600">
-          실시간 연결을 확인하는 중입니다. 교재 상태는 자동으로 다시 확인합니다.
-        </p>
+        <p className="mt-1 text-xs text-amber-600">{ui("실시간 연결을 확인하는 중입니다. 교재 상태는 자동으로 다시 확인합니다.")}</p>
       )}
     </div>
   );

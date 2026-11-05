@@ -1,5 +1,6 @@
 "use client";
 
+import { getClassroomText } from "@/lib/classroom-language";
 import {
   FormEvent,
   KeyboardEvent,
@@ -45,6 +46,8 @@ export default function ClassroomChat({
   testStudentMode = false,
   classInProgress = true,
 }: Props) {
+  const ui = getClassroomText(currentUserRole === "teacher");
+
   const [messages, setMessages] =
     useState<MessageRow[]>([]);
   const [message, setMessage] =
@@ -212,7 +215,7 @@ export default function ClassroomChat({
         });
         const result: { success?: boolean; error?: string } = await response.json();
         if (!response.ok || result.success !== true) {
-          throw new Error(result.error || "테스트 학생 메시지를 보낼 수 없습니다.");
+          throw new Error(result.error || ui("테스트 학생 메시지를 보낼 수 없습니다."));
         }
         setMessage("");
         return;
@@ -303,24 +306,22 @@ export default function ClassroomChat({
 
             <div className="talkly-chat-title-copy">
               <strong>CHAT</strong>
-              <small>채팅</small>
+              <small>{ui("채팅")}</small>
             </div>
           </div>
 
           <div className="talkly-chat-hint">
             {currentUserRole === "admin" && !testStudentMode
-              ? "관리자 참관 · 채팅 읽기 전용"
+              ? ui("관리자 참관 · 채팅 읽기 전용")
               : testStudentMode
-                ? classInProgress ? "테스트 학생 · 실시간 메시지" : "강사가 수업을 시작하면 채팅할 수 있습니다."
-                : "Enter to send · 실시간 메시지"}
+                ? classInProgress ? ui("테스트 학생 · 실시간 메시지") : ui("강사가 수업을 시작하면 채팅할 수 있습니다.")
+                : ui("Enter to send · 실시간 메시지")}
           </div>
         </div>
 
         <div ref={listRef} className="talkly-chat-list">
           {messages.length === 0 ? (
-            <div className="talkly-chat-empty">
-              No messages yet. · 아직 메시지가 없습니다.
-            </div>
+            <div className="talkly-chat-empty">{ui("No messages yet. · 아직 메시지가 없습니다.")}</div>
           ) : (
             messages.map((item) => {
               const mine =
@@ -353,7 +354,7 @@ export default function ClassroomChat({
         {canSend && (
         <form onSubmit={handleSubmit} className="talkly-chat-form">
           <input
-            aria-label="수업 채팅 메시지"
+            aria-label={ui("수업 채팅 메시지")}
             value={message}
             onChange={(event) => {
               setMessage(event.target.value);
@@ -362,7 +363,7 @@ export default function ClassroomChat({
             onKeyDown={handleKeyDown}
             maxLength={1000}
             disabled={loading}
-            placeholder="Type a message... / 메시지를 입력하세요"
+            placeholder={ui("Type a message... / 메시지를 입력하세요")}
             className="talkly-chat-input"
           />
 
@@ -378,7 +379,7 @@ export default function ClassroomChat({
 
         {errorMessage && (
           <div className="talkly-chat-error">
-            {errorMessage}
+            {ui(errorMessage)}
           </div>
         )}
       </section>

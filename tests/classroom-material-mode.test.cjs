@@ -6,7 +6,7 @@ const ts = require('typescript');
 function load(file, mocks, globals = {}) {
   const exports = {};
   const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
-  vm.runInNewContext(code, {exports,URL,console,process,Date,Buffer,...globals,require(name){if(name==='next/server')return {NextResponse:{json:(data,options={})=>({data,status:options.status??200,headers:options.headers})}};if(name in mocks)return mocks[name];throw Error('Unexpected import: '+name);}});return exports;
+  vm.runInNewContext(code, {exports,URL,console,process,Date,Buffer,...globals,require(name){if(name === "@/lib/classroom-language") return require("./helpers/classroom-language.cjs");if(name==='next/server')return {NextResponse:{json:(data,options={})=>({data,status:options.status??200,headers:options.headers})}};if(name in mocks)return mocks[name];throw Error('Unexpected import: '+name);}});return exports;
 }
 function fixture(options={}) {
   const {role='teacher',uid='teacher',sessionTeacher='teacher',fallbackTeacher='teacher',external=false,status='scheduled',ended=null,expired=false,child=true,assignment=true,write=true}=options;

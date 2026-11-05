@@ -22,7 +22,7 @@ export default function ClassroomZoomFrame({ sessionId, testStudentMode }: { ses
     return () => { observer.disconnect(); currentFrame?.removeEventListener("load", configure); window.removeEventListener("message", shareState); };
   }, [sessionId]);
   const source = `/classroom/${sessionId}/zoom`;
-  return <iframe ref={frame} className="talkly-zoom-frame" title="Zoom classroom · 영상 및 공유 교재"
+  return <iframe ref={frame} className="talkly-zoom-frame" title="Zoom classroom"
     src={testStudentMode ? `${source}?testMode=student` : source}
     allow="camera; microphone; display-capture; autoplay; fullscreen" allowFullScreen />;
 }
