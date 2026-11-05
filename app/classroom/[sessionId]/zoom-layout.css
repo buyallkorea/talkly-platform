@@ -29,3 +29,9 @@
  .talkly-zoom-shell[data-split=true][data-receiving=true] .talkly-sdk-share{flex:none;height:55dvh;min-height:260px;border-left:0;border-top:2px solid #475569}
  .talkly-share-waiting{position:relative;left:0;min-height:250px}
 }
+/* Shared lessons use a compact control bar so status/help do not consume the
+   textbook's vertical space. Warnings and actions remain visible and wrap. */
+.talkly-zoom-shell[data-split=true] .talkly-zoom-status{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;padding:8px 12px}
+.talkly-zoom-shell[data-split=true] .talkly-zoom-status>p{margin:0;font-size:13px}
+.talkly-zoom-shell[data-split=true] .talkly-zoom-actions{margin-top:0}
+.talkly-zoom-shell[data-split=true] .talkly-zoom-status>details[open]{flex-basis:100%}
