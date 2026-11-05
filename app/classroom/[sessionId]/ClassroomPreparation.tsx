@@ -41,7 +41,16 @@ export default function ClassroomPreparation({ sessionId, initialMode, selectedT
         </label>}
         <label className="flex gap-3 rounded-xl border border-slate-600 p-4"><input type="radio" name="material" checked={mode === "screen"} onChange={() => setMode("screen")} />Online material / Screen share · 화면 공유</label>
       </fieldset>
-      {mode === "screen" && <p className="mt-4 text-sm leading-7 text-slate-300">Open the online textbook first. After joining Zoom, click its Share Screen button and select the textbook tab or window. Enable “Share tab audio” for listening activities. Students watch your screen; no website link or password is sent.<br />온라인 교재를 미리 열어두세요. 실제 공유 화면은 입장 후 직접 선택합니다.</p>}
+      {mode === "screen" && <div className="mt-4 rounded-xl bg-slate-800 p-4 text-sm leading-7 text-slate-200">
+        <strong>Two-window teaching · 두 창으로 수업하기</strong>
+        <ol className="mt-2 list-decimal space-y-1 pl-5">
+          <li>Open the original online textbook in a separate window. · 교재를 별도 창으로 여세요.</li>
+          <li>Keep TALKLY and the textbook side by side. · 강의실과 교재 창을 나란히 배치하세요.</li>
+          <li>Enter, connect Zoom audio/video, then click Start Class. · 입장·오디오 연결 후 수업을 시작하세요.</li>
+          <li>In Zoom, share the textbook tab/window. Enable Share tab audio for listening. · 원본 교재 창을 공유하세요.</li>
+        </ol>
+        <p className="mt-2 text-blue-200">Do not share the TALKLY classroom tab. Students only need TALKLY; they do not need your textbook login. · 강의실 자체를 공유하지 마세요. 학생은 강의실만 열면 됩니다.</p>
+      </div>}
       {error && <p role="alert" className="mt-4 text-red-300">{error}</p>}
       <button type="button" disabled={busy} onClick={() => void enter()} className="mt-6 w-full rounded-xl bg-blue-600 p-3 font-semibold disabled:opacity-50">{busy ? "Saving…" : "Enter classroom · 강의실 입장"}</button>
       <Link href={returnHref} className="mt-4 block text-center text-sm text-slate-300">Back to lessons · 수업 목록</Link>

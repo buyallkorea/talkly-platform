@@ -1,3 +1,4 @@
+import TeacherClassroomLink from "@/components/teacher/TeacherClassroomLink";
 import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -53,7 +54,9 @@ export default async function TeacherClassDetailPage({
         scheduled_start,
         scheduled_end,
         status,
+        ended_at,
         meeting_provider,
+        meeting_id,
         meeting_url,
         teacher_user_id,
         is_external_teacher,
@@ -687,29 +690,12 @@ export default async function TeacherClassDetailPage({
           화상수업 플랫폼
         </div>
 
-        <div>
-          <strong>Meeting:</strong>{" "}
-          {session.meeting_url ? (
-            <a
-              href={session.meeting_provider === "zoom" ? `/classroom/${session.id}` : session.meeting_url}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Join Class
-            </a>
-          ) : (
-            "Not available yet"
-          )}
-
-          <div
-            style={{
-              marginTop: "3px",
-              fontSize: "12px",
-              opacity: 0.55,
-            }}
-          >
-            수업 입장
-          </div>
+        <div style={{ padding: 18, border: "2px solid #2563eb", borderRadius: 12, background: "#eff6ff" }}>
+          <strong style={{ display: "block", marginBottom: 12 }}>Classroom · 강의실 입장</strong>
+          {session.meeting_provider === "zoom" ? <TeacherClassroomLink sessionId={session.id}
+            enabled={Boolean(session.meeting_id || session.meeting_url) && ["scheduled", "in_progress"].includes(session.status) && !session.ended_at && new Date(session.scheduled_end).getTime() > new Date().getTime()} />
+            : session.meeting_url ? <a href={session.meeting_url} target="_blank" rel="noreferrer" style={{ color: "#1d4ed8", fontWeight: 800 }}>Open external class ↗</a> : <p>Meeting is not available yet.</p>}
+          <p style={{ marginTop: 10, fontSize: 13, color: "#334155" }}>Choose lesson materials, then enter the classroom. · 교재 방식을 선택한 뒤 입장합니다.</p>
         </div>
       </section>
 

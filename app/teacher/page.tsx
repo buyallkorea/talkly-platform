@@ -1,3 +1,4 @@
+import TeacherClassroomLink from "@/components/teacher/TeacherClassroomLink";
 import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -34,6 +35,7 @@ type SessionRow = {
   started_at: string | null;
   ended_at: string | null;
   meeting_provider: string | null;
+  meeting_id: string | null;
   meeting_url: string | null;
 };
 
@@ -318,6 +320,7 @@ export default async function TeacherPage({
         started_at,
         ended_at,
         meeting_provider,
+        meeting_id,
         meeting_url
       `)
       .in("enrollment_id", enrollmentIds)
@@ -816,6 +819,10 @@ export default async function TeacherPage({
               "Start here. These are the classes and level tests you need to handle today.",
           };
 
+  const nextClassroom = sessions
+    .filter(item => !item.ended_at && ["scheduled", "in_progress"].includes(item.status) && item.meeting_provider === "zoom" && Boolean(item.meeting_id || item.meeting_url) && new Date(item.scheduled_end).getTime() > now.getTime())
+    .sort((a, b) => new Date(a.scheduled_start).getTime() - new Date(b.scheduled_start).getTime())[0];
+
   const actionRequiredCount =
     pendingTeacherEvaluations.length;
 
@@ -828,6 +835,7 @@ export default async function TeacherPage({
         color: "#101828",
       }}
     >
+      <style>{`@media (max-width: 1000px) { .talkly-teacher-lesson-row { grid-template-columns: 1fr 1fr !important; gap: 12px !important; } } @media (max-width: 600px) { .talkly-teacher-lesson-row { grid-template-columns: minmax(0, 1fr) !important; } }`}</style>
       <div
         style={{
           maxWidth: "1120px",
@@ -894,6 +902,10 @@ export default async function TeacherPage({
           >
             오늘 해야 할 수업·레벨테스트·월간 및 최종 학생평가를 우선 확인합니다.
           </div>
+          {nextClassroom && <div style={{ marginTop: 22, padding: 16, border: "1px solid #60a5fa", borderRadius: 12 }}>
+            <strong style={{ display: "block", marginBottom: 10 }}>Next classroom · {formatEnglishDateTime(nextClassroom.scheduled_start)}</strong>
+            <TeacherClassroomLink sessionId={nextClassroom.id} enabled />
+          </div>}
         </section>
 
         <section
@@ -1320,9 +1332,9 @@ export default async function TeacherPage({
                   );
 
                 return (
-                  <Link
+                  <article
+                    className="talkly-teacher-lesson-row"
                     key={`class-${session.id}`}
-                    href={`/teacher/classes/${session.id}`}
                     style={{
                       display: "grid",
                       gridTemplateColumns:
@@ -1452,8 +1464,12 @@ export default async function TeacherPage({
                       >
                         {status.label}
                       </span>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", marginTop: 10 }}>
+                        <Link href={`/teacher/classes/${session.id}`} style={{ padding: "10px 12px", border: "1px solid #94a3b8", borderRadius: 9, color: "#1e293b", fontWeight: 700 }}>Lesson details</Link>
+                        <TeacherClassroomLink sessionId={session.id} enabled={session.meeting_provider === "zoom" && Boolean(session.meeting_id || session.meeting_url) && ["scheduled", "in_progress"].includes(session.status) && !session.ended_at && new Date(session.scheduled_end).getTime() > now.getTime()} />
+                      </div>
                     </div>
-                  </Link>
+                  </article>
                 );
               }
             )}

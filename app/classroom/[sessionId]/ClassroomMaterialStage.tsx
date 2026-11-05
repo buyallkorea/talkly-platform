@@ -61,9 +61,9 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
         <option value="textbook">Registered textbook · 등록 교재</option><option value="screen">Screen share · 화면 공유</option>
       </select></label> : <strong>{expanded ? "Online material · 강사 화면 공유" : "Registered textbook · 등록 교재"}</strong>}</div>
       {expanded && <p role="status">{sharing ? "Screen sharing · 화면 공유 중" : canControl ? "Click Share Screen in Zoom, then select the textbook tab/window. · Zoom의 화면 공유 버튼을 눌러 교재 탭을 선택하세요." : "Waiting for the teacher to share. · 강사의 화면 공유를 기다리고 있습니다."}</p>}
-      {canControl && expanded && <p>For listening, enable Share tab audio. Stop sharing in Zoom before returning to a registered textbook. · 듣기는 탭 오디오 공유를 켜주세요. 등록 교재로 전환하려면 먼저 Zoom에서 공유를 중지하세요.</p>}
+      {canControl && expanded && <details><summary>Teaching with online materials · 온라인 교재 사용 안내</summary><p>Keep the original textbook tab/window beside this classroom. Operate the textbook there and watch the student here. Share the textbook in Zoom, not this classroom tab. Enable Share tab audio for listening. Stop sharing before changing materials.<br />교재 창과 강의실 창을 좌우에 배치하세요. 교재는 원본 창에서 조작하고 학생은 강의실에서 확인합니다. 학생은 강의실만 열면 됩니다.</p></details>}
       {error && <p role="alert" style={{ color: "#fca5a5" }}>{error}</p>}
     </section>
-    <div className="talkly-classroom-stage" data-material-mode={expanded ? "screen" : "textbook"}>{children}</div>
+    <div className="talkly-classroom-stage" data-material-mode={expanded ? "screen" : "textbook"} data-presenter={canControl ? "true" : "false"}>{children}</div>
   </>;
 }

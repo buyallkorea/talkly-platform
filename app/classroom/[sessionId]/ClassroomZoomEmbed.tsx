@@ -442,7 +442,12 @@ export default function ClassroomZoomEmbed({
           },
         });
         // Only public SDK events are observed. Keep the SDK DOM and media transport intact.
-        const emitShare = (active: boolean) => window.dispatchEvent(new CustomEvent("talkly-zoom-share-state", { detail: { sessionId, active } }));
+        const emitShare = (active: boolean) => {
+          window.dispatchEvent(new CustomEvent("talkly-zoom-share-state", { detail: { sessionId, active } }));
+          if (window.parent !== window && typeof window.parent?.postMessage === "function") {
+            window.parent.postMessage({ type: "talkly-zoom-share-state", sessionId, active }, window.location.origin);
+          }
+        };
         const checkShare = () => {
           try {
             const attendees = client.getAttendeeslist?.();
@@ -598,7 +603,7 @@ export default function ClassroomZoomEmbed({
     const observer = new ResizeObserver(() => {
       clearTimeout(timer);
       timer = setTimeout(() => {
-        clientRef.current?.updateVideoOptions?.({ viewSizes: { default: { width: Math.max(240, root.clientWidth), height: Math.max(135, root.clientHeight - 110) } } });
+        clientRef.current?.updateVideoOptions?.({ viewSizes: { default: { width: Math.max(240, root.clientWidth), height: Math.max(135, root.clientHeight - 110) }, ribbon: { width: Math.max(240, root.clientWidth), height: Math.max(80, Math.min(120, root.clientHeight - 110)) } } });
       }, 150);
     });
     observer.observe(root);
@@ -641,7 +646,7 @@ export default function ClassroomZoomEmbed({
     >
       <div role="status" style={{ padding: "10px 12px", fontSize: 13, lineHeight: 1.5, background: "#1e293b", color: "#e2e8f0" }}>
         {hostMode ? "강사 · Zoom 호스트" : "학생·참관 · Zoom 참가자"} · {screen === "joined" ? "Zoom 연결됨" : screen === "joining" ? "Zoom 입장 확인 중" : "연결 준비"}
-        <br />마이크·카메라 권한을 허용한 뒤 Zoom의 오디오 연결·비디오 시작을 눌러 주세요.
+        {screen !== "joined" && <><br />Connect Zoom audio and start video · 오디오 연결·비디오 시작을 눌러주세요.</>}
       </div>
       {showOverlay && (
         <div

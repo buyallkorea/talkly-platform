@@ -7,7 +7,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 
-import ClassroomZoomEmbed from "./ClassroomZoomEmbed";
+import ClassroomZoomFrame from "./ClassroomZoomFrame";
 import ClassroomTextbookPanel from "./ClassroomTextbookPanel";
 import ClassSessionControls from "./ClassSessionControls";
 import ClassroomWaitingRoom from "./ClassroomWaitingRoom";
@@ -24,106 +24,6 @@ type PageProps = {
   }>;
   searchParams: Promise<{ testMode?: string; materials?: string }>;
 };
-
-async function getZoomAccessToken() {
-  const accountId =
-    process.env.ZOOM_ACCOUNT_ID;
-
-  const clientId =
-    process.env.ZOOM_CLIENT_ID;
-
-  const clientSecret =
-    process.env.ZOOM_CLIENT_SECRET;
-
-  if (
-    !accountId ||
-    !clientId ||
-    !clientSecret
-  ) {
-    throw new Error(
-      "Zoom Server-to-Server 환경변수가 없습니다."
-    );
-  }
-
-  const credentials =
-    Buffer.from(
-      `${clientId}:${clientSecret}`
-    ).toString("base64");
-
-  const response =
-    await fetch(
-      `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${encodeURIComponent(
-        accountId
-      )}`,
-      {
-        method: "POST",
-
-        headers: {
-          Authorization:
-            `Basic ${credentials}`,
-
-          "Content-Type":
-            "application/x-www-form-urlencoded",
-        },
-
-        cache: "no-store",
-      }
-    );
-
-  const data =
-    await response.json();
-
-  if (
-    !response.ok ||
-    !data.access_token
-  ) {
-    throw new Error(
-      "Zoom Access Token 발급에 실패했습니다."
-    );
-  }
-
-  return data.access_token as string;
-}
-
-async function getZoomMeetingPassword(
-  meetingId: string
-) {
-  const accessToken =
-    await getZoomAccessToken();
-
-  const response =
-    await fetch(
-      `https://api.zoom.us/v2/meetings/${encodeURIComponent(
-        meetingId
-      )}`,
-      {
-        headers: {
-          Authorization:
-            `Bearer ${accessToken}`,
-        },
-
-        cache: "no-store",
-      }
-    );
-
-  const data =
-    await response.json();
-
-  if (!response.ok) {
-    throw new Error(
-      `Zoom 회의정보 조회 실패: ${
-        typeof data?.message === "string"
-          ? data.message
-          : response.status
-      }`
-    );
-  }
-
-  return typeof data.password ===
-    "string"
-    ? data.password
-    : "";
-}
 
 export default async function ClassroomPage({
   params,
@@ -530,18 +430,6 @@ export default async function ClassroomPage({
   /*
    * Zoom 참가자 표시 이름
    */
-  const zoomDisplayName =
-    isVerifiedTestStudent
-      ? "Admin (Test Student)"
-      : profile.role ===
-    "teacher"
-      ? teacherName
-      : profile.role ===
-          "admin"
-        ? profile.name ||
-          "TALKLY Admin"
-        : studentName;
-
   const hostMode =
     profile.role === "teacher" &&
     session.is_external_teacher !== true &&
@@ -917,8 +805,7 @@ export default async function ClassroomPage({
   }
 
 
-  const meetingPassword =
-    await getZoomMeetingPassword(session.meeting_id);
+
   /*
    * =====================================================
    * 실제 Classroom
@@ -1041,10 +928,7 @@ export default async function ClassroomPage({
         .talkly-classroom-stage {
           position: relative;
           display: grid;
-          grid-template-columns:
-            minmax(260px, .85fr)
-            minmax(0, 1.8fr)
-            minmax(260px, .9fr);
+          grid-template-columns: minmax(260px, .8fr) minmax(0, 1.9fr) minmax(260px, .85fr);
           gap: 14px;
           align-items: stretch;
           flex: 1 1 auto;
@@ -1070,7 +954,8 @@ export default async function ClassroomPage({
         }
         .talkly-classroom-textbook > :first-child { flex: 0 0 auto; margin-bottom: 0; }
         .talkly-classroom-textbook > .talkly-textbook-shell { flex: 1 1 0; height: auto !important; min-height: 0; }
-        .talkly-classroom-video { overflow: auto; }
+        .talkly-classroom-video { overflow: hidden; }
+        .talkly-zoom-frame { display: block; width: 100%; height: 100%; border: 0; background: #111216; }
 
 
         @media (max-width: 1050px) {
@@ -1093,8 +978,16 @@ export default async function ClassroomPage({
         .talkly-material-controls p { margin: 4px 0 0; color: #cbd5e1; }
         .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video { grid-column: 1 / 3; }
         .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-textbook { display: none; }
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] { grid-template-columns: minmax(260px, 1fr) minmax(260px, .9fr); }
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-video { grid-column: 1; }
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat { grid-column: 2; grid-row: 1; }
+        @media (min-width: 641px) and (max-width: 1050px) {
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat { height: 65dvh; min-height: 420px; }
+        }
         @media (max-width: 640px) {
-          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video { grid-column: 1; height: 75dvh; min-height: 480px; }
+          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video { grid-column: 1; height: 65dvh; min-height: 420px; }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] { grid-template-columns: minmax(0, 1fr); }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat { grid-column: 1; grid-row: 2; }
         }
 
         @media (orientation: landscape) and (max-height: 600px) {
@@ -1173,13 +1066,10 @@ export default async function ClassroomPage({
 
         <ClassroomMaterialStage sessionId={session.id} initialMode={materialMode} canControl={hostMode}>
           <section className="talkly-classroom-panel talkly-classroom-video">
-            <ClassroomZoomEmbed
+            <ClassroomZoomFrame
               key={`${user.id}-${profile.role}-${session.id}`}
               sessionId={session.id}
-              meetingNumber={session.meeting_id}
-              password={meetingPassword}
-              userName={zoomDisplayName}
-              hostMode={hostMode}
+              testStudentMode={isVerifiedTestStudent}
             />
           </section>
 
