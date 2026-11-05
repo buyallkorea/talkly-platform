@@ -1,5 +1,6 @@
 "use client";
 
+import { getClassroomText } from "@/lib/classroom-language";
 import {
 
   useEffect,
@@ -111,6 +112,8 @@ export default function ClassroomTextbookPanelClient({
   testStudentMode = false,
 
 }: Props) {
+  const ui = getClassroomText(viewerRole === "teacher");
+
 
   const isController = viewerRole === "teacher";
 
@@ -865,11 +868,7 @@ if (
 
         }}
 
-      >
-
-        표시할 교재 페이지가 없습니다.
-
-      </div>
+      >{ui("표시할 교재 페이지가 없습니다.")}</div>
 
     );
 
@@ -1171,9 +1170,9 @@ if (
 
                 realtimeConnected
 
-                  ? "교재 실시간 동기화 연결됨"
+                  ? ui("교재 실시간 동기화 연결됨")
 
-                  : "교재 실시간 동기화 연결 중"
+                  : ui("교재 실시간 동기화 연결 중")
 
               }
 
@@ -1609,7 +1608,7 @@ if (
 
                         }
 
-                        alt={`${page.pageNumber}페이지`}
+                        alt={ui(`${page.pageNumber}페이지`)}
 
                         loading="lazy"
 
@@ -1781,7 +1780,7 @@ if (
 
                 }
 
-                alt={`${title} ${currentPage.pageNumber}페이지`}
+                alt={ui(`${title} ${currentPage.pageNumber}페이지`)}
 
                 draggable={false}
 
@@ -1863,9 +1862,9 @@ if (
 
                         }}
 
-                        aria-label={`${hotspot.label} 재생`}
+                        aria-label={ui(`${hotspot.label} 재생`)}
 
-                        title={`${hotspot.label} 재생`}
+                        title={ui(`${hotspot.label} 재생`)}
 
                         style={{
 

@@ -1,6 +1,8 @@
 "use client";
+import { getClassroomText } from "@/lib/classroom-language";
 import { activateZoomControlWithOverflow, zoomAudioState, type ZoomAction, type ZoomAudioUser } from "@/lib/zoom-ui-controls";
 import "./zoom-layout.css";
+import { markZoomLayout, zoomLayoutSize } from "@/lib/zoom-layout";
 import {
   useCallback,
   useEffect,
@@ -31,6 +33,7 @@ declare global {
         off?: (event: string, listener: (payload: { action?: string }) => void) => void;
         getAttendeeslist?: () => ZoomAudioUser[];
         getCurrentUser?: () => ZoomAudioUser | null;
+        setViewType?: (view: "gallery") => unknown;
         mute?: (muted: boolean) => Promise<unknown>;
 
       };
@@ -153,6 +156,8 @@ export default function ClassroomZoomEmbed({
   userName,
   hostMode,
 }: Props) {
+  const ui = getClassroomText(hostMode);
+
   const rootRef =
     useRef<HTMLDivElement | null>(
       null
@@ -192,7 +197,7 @@ export default function ClassroomZoomEmbed({
     setStatus,
   ] =
     useState(
-      "Zoom Meeting SDK 준비 중..."
+      ui("Zoom Meeting SDK 준비 중...")
     );
   const [
     errorMessage,
@@ -215,10 +220,21 @@ export default function ClassroomZoomEmbed({
   const audioBusyRef = useRef(false);
   const measureVideo = useCallback(() => {
     const root = rootRef.current;
-    const width = root?.clientWidth || 420;
-    const height = Math.max(220, (root?.clientHeight || 430) - 100);
-    root?.style?.setProperty("--zoom-content-height", `${height}px`);
-    return { width: splitRef.current ? Math.max(240, Math.min(320, Math.floor(width * .26923))) : Math.max(240, width), height };
+    const width = root?.parentElement?.clientWidth || root?.clientWidth || 420;
+    const height = root?.parentElement?.clientHeight || root?.clientHeight || 430;
+    const size = zoomLayoutSize(width, height, splitRef.current);
+    root?.style?.setProperty("--zoom-content-height", `${size.height}px`);
+    root?.style?.setProperty("--video-column", `${size.width}px`);
+    root?.parentElement?.style.setProperty("--video-column", `${size.width}px`);
+    return size;
+  }, []);
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const observer = new MutationObserver(() => markZoomLayout(root));
+    observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+    markZoomLayout(root);
+    return () => observer.disconnect();
   }, []);
   useEffect(() => {
     const configure = (event: MessageEvent) => {
@@ -257,8 +273,8 @@ export default function ClassroomZoomEmbed({
         );
         setStatus(
           hostMode
-            ? "Zoom 호스트 인증을 준비하는 중..."
-            : "Zoom SDK를 불러오는 중..."
+            ? ui("Zoom 호스트 인증을 준비하는 중...")
+            : ui("Zoom SDK를 불러오는 중...")
         );
         for (
           const src of
@@ -274,7 +290,7 @@ export default function ClassroomZoomEmbed({
           !rootRef.current
         ) {
           throw new Error(
-            "Zoom Meeting SDK를 초기화할 수 없습니다."
+            ui("Zoom Meeting SDK를 초기화할 수 없습니다.")
           );
         }
         let signature =
@@ -290,7 +306,7 @@ export default function ClassroomZoomEmbed({
          */
         if (hostMode) {
           setStatus(
-            "Zoom 호스트 권한을 확인하는 중..."
+            ui("Zoom 호스트 권한을 확인하는 중...")
           );
           const hostResponse =
             await fetch(
@@ -322,7 +338,7 @@ export default function ClassroomZoomEmbed({
               typeof hostData.error ===
                 "string"
                 ? hostData.error
-                : "Zoom 호스트 인증정보를 발급받지 못했습니다."
+                : ui("Zoom 호스트 인증정보를 발급받지 못했습니다.")
             );
           }
           signature =
@@ -337,7 +353,7 @@ export default function ClassroomZoomEmbed({
            * ===================================================
            */
           setStatus(
-            "TALKLY 인증을 확인하는 중..."
+            ui("TALKLY 인증을 확인하는 중...")
           );
           const signatureResponse =
             await fetch(
@@ -370,7 +386,7 @@ export default function ClassroomZoomEmbed({
               typeof signatureData.error ===
                 "string"
                 ? signatureData.error
-                : "Meeting SDK 서명을 발급받지 못했습니다."
+                : ui("Meeting SDK 서명을 발급받지 못했습니다.")
             );
           }
           signature =
@@ -397,8 +413,8 @@ export default function ClassroomZoomEmbed({
         clientRef.current = client;
         setStatus(
           hostMode
-            ? "Zoom 수업을 시작하는 중..."
-            : "Zoom 수업실을 여는 중..."
+            ? ui("Zoom 수업을 시작하는 중...")
+            : ui("Zoom 수업실을 여는 중...")
         );
         const { width: rootWidth, height: videoHeight } = measureVideo();
         ensureCurrent();
@@ -444,11 +460,19 @@ export default function ClassroomZoomEmbed({
             const me = client.getCurrentUser?.();
             setAudioState(zoomAudioState(me));
             const peers = client.getAttendeeslist?.().filter(person => me?.userId != null && person.userId !== me.userId) || [];
-            setPeerAudio(peers.length === 0 ? "Waiting for the other participant · 상대방 입장 대기" : peers.some(person => zoomAudioState(person) === "disconnected") ? "Other participant: audio not connected · 상대방 오디오 미연결" : peers.some(person => zoomAudioState(person) === "unknown") ? "Other participant: checking audio · 상대방 오디오 확인 중" : peers.some(person => zoomAudioState(person) === "muted") ? "Other participant: microphone muted · 상대방 마이크 음소거" : "Other participant: audio connected · 상대방 오디오 연결됨");
+            setPeerAudio(peers.length === 0 ? ui("Waiting for the other participant · 상대방 입장 대기") : peers.some(person => zoomAudioState(person) === "disconnected") ? ui("Other participant: audio not connected · 상대방 오디오 미연결") : peers.some(person => zoomAudioState(person) === "unknown") ? ui("Other participant: checking audio · 상대방 오디오 확인 중") : peers.some(person => zoomAudioState(person) === "muted") ? ui("Other participant: microphone muted · 상대방 마이크 음소거") : ui("Other participant: audio connected · 상대방 오디오 연결됨"));
           } catch { setAudioState("unknown"); }
         };
         const emitShare = (active: boolean) => {
           setReceiving(active && !hostMode);
+          // Ribbon enforces a 615px base height when receiving a share. Gallery
+          // honours the compact video dimensions and avoids a clipped camera rail.
+          if (active && !hostMode) window.setTimeout(() => {
+            if (clientRef.current === client && joinedRef.current) {
+              client.setViewType?.("gallery");
+              markZoomLayout(rootRef.current!);
+            }
+          }, 150);
           setSharing(active);
           window.dispatchEvent(new CustomEvent("talkly-zoom-share-state", { detail: { sessionId, active } }));
           if (window.parent !== window && typeof window.parent?.postMessage === "function") {
@@ -486,8 +510,8 @@ export default function ClassroomZoomEmbed({
         };
         setStatus(
           hostMode
-            ? "Zoom 호스트로 입장하는 중..."
-            : "Zoom 수업에 입장하는 중..."
+            ? ui("Zoom 호스트로 입장하는 중...")
+            : ui("Zoom 수업에 입장하는 중...")
         );
         /*
          * =====================================================
@@ -594,8 +618,7 @@ export default function ClassroomZoomEmbed({
       userName,
       hostMode,
       disposeClient,
-      measureVideo,
-    ]);
+      measureVideo, ui]);
   useEffect(() => {
     generationRef.current += 1;
     const timer = window.setTimeout(() => void startZoom(), 0);
@@ -622,7 +645,7 @@ export default function ClassroomZoomEmbed({
         clientRef.current?.updateVideoOptions?.({ viewSizes: { default: size, ribbon: size } });
       }, 150);
     });
-    observer.observe(root);
+    observer.observe(root.parentElement || root);
     return () => { clearTimeout(timer); observer.disconnect(); };
   }, [screen, measureVideo]);
   function retryZoom() {
@@ -646,15 +669,15 @@ export default function ClassroomZoomEmbed({
       if (!client?.mute) throw new Error("Use the Zoom microphone button");
       await client.mute(audioState === "ready");
       setAudioState(zoomAudioState(client.getCurrentUser?.()));
-    } catch { setControlError("Microphone change failed. Check browser permissions and Zoom audio settings. · 마이크 변경 실패: 브라우저 권한과 Zoom 오디오 설정을 확인하세요."); }
+    } catch { setControlError(ui("Microphone change failed. Check browser permissions and Zoom audio settings. · 마이크 변경 실패: 브라우저 권한과 Zoom 오디오 설정을 확인하세요.")); }
     finally { audioBusyRef.current = false; setAudioBusy(false); }
   }
   async function nativeAction(action: ZoomAction) {
     setControlError("");
-    if (!rootRef.current || !await activateZoomControlWithOverflow(rootRef.current, action)) setControlError("Use the matching Zoom toolbar button below or its More (…) menu. · 아래 Zoom 도구 모음 또는 더보기(…)에서 해당 버튼을 눌러주세요.");
+    if (!rootRef.current || !await activateZoomControlWithOverflow(rootRef.current, action)) setControlError(ui("Use the matching Zoom toolbar button below or its More (…) menu. · 아래 Zoom 도구 모음 또는 더보기(…)에서 해당 버튼을 눌러주세요."));
   }
   function testSpeaker() {
-    if (typeof AudioContext === "undefined") { setControlError("Speaker test unavailable in this browser · 이 브라우저에서는 소리 테스트를 지원하지 않습니다."); return; }
+    if (typeof AudioContext === "undefined") { setControlError(ui("Speaker test unavailable in this browser · 이 브라우저에서는 소리 테스트를 지원하지 않습니다.")); return; }
     const context = new AudioContext();
     const tone = context.createOscillator(), volume = context.createGain();
     tone.frequency.value = 440; volume.gain.value = .08;
@@ -662,7 +685,7 @@ export default function ClassroomZoomEmbed({
     void context.resume().then(() => {
       tone.onended = () => void context.close();
       tone.start(); tone.stop(context.currentTime + .4);
-    }).catch(() => { void context.close(); setControlError("Speaker playback blocked. Check site sound permission. · 사이트 소리 권한을 확인하세요."); });
+    }).catch(() => { void context.close(); setControlError(ui("Speaker playback blocked. Check site sound permission. · 사이트 소리 권한을 확인하세요.")); });
   }
   const showOverlay =
     screen ===
@@ -672,22 +695,22 @@ export default function ClassroomZoomEmbed({
     screen ===
       "error";
   return (
-    <div className="talkly-zoom-shell" data-split={split ? "true" : "false"} data-receiving={receiving ? "true" : "false"}>
+    <div lang={hostMode ? "en" : "ko"} className="talkly-zoom-shell" data-split={split ? "true" : "false"} data-receiving={receiving ? "true" : "false"}>
       <div className="talkly-zoom-status" role="status">
-        <strong>{hostMode ? "Teacher · 강사" : "Video · 영상"} · {screen === "joined" ? "Zoom connected · Zoom 연결됨" : screen === "joining" ? "Joining · 입장 중" : "Connecting · 연결 준비"}</strong>
+        <strong>{hostMode ? ui("Teacher · 강사") : ui("Video · 영상")} · {screen === "joined" ? ui("Zoom connected · Zoom 연결됨") : screen === "joining" ? ui("Joining · 입장 중") : ui("Connecting · 연결 준비")}</strong>
         {screen === "joined" && <>
-          <p className={audioState !== "ready" ? "talkly-audio-warning" : undefined}>{audioState === "ready" ? "Microphone on · 마이크 켜짐" : audioState === "muted" ? "Microphone muted · 마이크 꺼짐" : audioState === "disconnected" ? "Audio NOT connected — click Connect audio · 오디오 미연결: 오디오 연결을 누르세요" : "Checking audio · 오디오 상태 확인 중"}</p>
-          <p>{peerAudio}</p>
+          <p className={audioState !== "ready" ? "talkly-audio-warning" : undefined}>{audioState === "ready" ? ui("Microphone on · 마이크 켜짐") : audioState === "muted" ? ui("Microphone muted · 마이크 꺼짐") : audioState === "disconnected" ? ui("Audio NOT connected — click Connect audio · 오디오 미연결: 오디오 연결을 누르세요") : ui("Checking audio · 오디오 상태 확인 중")}</p>
+          <p>{ui(peerAudio)}</p>
           <div className="talkly-zoom-actions">
-            <button type="button" onClick={() => void audioAction()} disabled={audioBusy}>{audioState === "ready" ? "Mute · 마이크 끄기" : audioState === "muted" ? "Unmute · 마이크 켜기" : "1. Connect audio · 오디오 연결"}</button>
-            <button type="button" onClick={() => void nativeAction("video")}>2. Camera · 카메라 켜기/끄기</button>
-            {hostMode && <button type="button" data-action={sharing ? "stop-share" : "share"} onClick={() => void nativeAction(sharing ? "stop-share" : "share")}>{sharing ? "Stop sharing · 공유 중지" : "3. Share textbook · 교재 화면 공유"}</button>}
+            <button type="button" onClick={() => void audioAction()} disabled={audioBusy}>{audioState === "ready" ? ui("Mute · 마이크 끄기") : audioState === "muted" ? ui("Unmute · 마이크 켜기") : ui("1. Connect audio · 오디오 연결")}</button>
+            <button type="button" onClick={() => void nativeAction("video")}>{ui("2. Camera · 카메라 켜기/끄기")}</button>
+            {hostMode && <button type="button" data-action={sharing ? "stop-share" : "share"} onClick={() => void nativeAction(sharing ? "stop-share" : "share")}>{sharing ? ui("Stop sharing · 공유 중지") : ui("3. Share textbook · 교재 화면 공유")}</button>}
           </div>
-          <details><summary>Sound help · 소리가 안 들릴 때</summary><div className="talkly-zoom-actions">
-            <button type="button" onClick={testSpeaker}>Test speaker · 소리 테스트</button>
-            <button type="button" onClick={() => void nativeAction("settings")}>Audio settings · 오디오 설정</button>
-          </div><p>Both participants must connect audio and unmute. Allow microphone and sound in browser site settings; check the selected speaker/microphone and device volume. · 양쪽 모두 오디오 연결 후 마이크를 켜세요. 브라우저 사이트 설정의 마이크·소리 허용, 사용 장치와 볼륨을 확인하세요.</p></details>
-          {hostMode && <p className="talkly-audio-warning">Textbook sound: Chrome tab → textbook tab → enable Share tab audio. Window/screen sharing may have no sound.<br />교재 소리: Chrome 탭 → 교재 탭 선택 → ‘탭 오디오 공유’ 체크. 체크하지 않았다면 공유를 중지하고 다시 시작하세요.</p>}
+          <details><summary>{ui("Sound help · 소리가 안 들릴 때")}</summary><div className="talkly-zoom-actions">
+            <button type="button" onClick={testSpeaker}>{ui("Test speaker · 소리 테스트")}</button>
+            <button type="button" onClick={() => void nativeAction("settings")}>{ui("Audio settings · 오디오 설정")}</button>
+          </div><p>{ui("Both participants must connect audio and unmute. Allow microphone and sound in browser site settings; check the selected speaker/microphone and device volume. · 양쪽 모두 오디오 연결 후 마이크를 켜세요. 브라우저 사이트 설정의 마이크·소리 허용, 사용 장치와 볼륨을 확인하세요.")}</p></details>
+          {hostMode && <p className="talkly-audio-warning">Textbook sound: Chrome tab → textbook tab → enable Share tab audio. Window/screen sharing may have no sound.<br />{ui("교재 소리: Chrome 탭 → 교재 탭 선택 → ‘탭 오디오 공유’ 체크. 체크하지 않았다면 공유를 중지하고 다시 시작하세요.")}</p>}
           {controlError && <p role="alert" className="talkly-audio-warning">{controlError}</p>}
         </>}
       </div>
@@ -740,7 +763,7 @@ export default function ClassroomZoomEmbed({
                     "20px",
                 }}
               >
-                {status}
+                {ui(status)}
               </div>
             </div>
           )}
@@ -773,9 +796,7 @@ export default function ClassroomZoomEmbed({
                   marginBottom:
                     "14px",
                 }}
-              >
-                수업 시작 전입니다
-              </div>
+              >{ui("수업 시작 전입니다")}</div>
               <p
                 style={{
                   margin:
@@ -787,11 +808,7 @@ export default function ClassroomZoomEmbed({
                   fontSize:
                     "15px",
                 }}
-              >
-                아직 Zoom 수업이 시작되지 않았습니다.
-                <br />
-                강사가 Zoom을 시작하면 10초 간격으로 자동 재입장합니다.
-              </p>
+              >{ui("아직 Zoom 수업이 시작되지 않았습니다.")}<br />{ui("강사가 Zoom을 시작하면 10초 간격으로 자동 재입장합니다.")}</p>
               <button
                 type="button"
                 onClick={
@@ -800,9 +817,7 @@ export default function ClassroomZoomEmbed({
                 style={
                   primaryButton
                 }
-              >
-                Zoom 수업 입장 다시 시도
-              </button>
+              >{ui("Zoom 수업 입장 다시 시도")}</button>
             </div>
           )}
           {screen ===
@@ -836,8 +851,8 @@ export default function ClassroomZoomEmbed({
                 }}
               >
                 {hostMode
-                  ? "Zoom 호스트 연결 오류"
-                  : "Zoom 연결 오류"}
+                  ? ui("Zoom 호스트 연결 오류")
+                  : ui("Zoom 연결 오류")}
               </div>
               <p
                 style={{
@@ -852,8 +867,8 @@ export default function ClassroomZoomEmbed({
                 }}
               >
                 {hostMode
-                  ? "Zoom 수업을 호스트로 시작하지 못했습니다."
-                  : "Zoom 수업실에 연결하지 못했습니다."}
+                  ? ui("Zoom 수업을 호스트로 시작하지 못했습니다.")
+                  : ui("Zoom 수업실에 연결하지 못했습니다.")}
               </p>
               {errorMessage && (
                 <div
@@ -878,7 +893,7 @@ export default function ClassroomZoomEmbed({
                       "auto",
                   }}
                 >
-                  {errorMessage}
+                  {ui(errorMessage)}
                 </div>
               )}
               <button
@@ -889,9 +904,7 @@ export default function ClassroomZoomEmbed({
                 style={
                   primaryButton
                 }
-              >
-                다시 시도
-              </button>
+              >{ui("다시 시도")}</button>
             </div>
           )}
         </div>
@@ -911,7 +924,7 @@ export default function ClassroomZoomEmbed({
             240,
         }}
       />
-      {split && !receiving && screen === "joined" && <div className="talkly-share-waiting"><strong>Shared textbook · 공유 교재</strong><p>Waiting for the teacher to share · 강사의 교재 화면 공유를 기다립니다.</p></div>}
+      {split && !receiving && screen === "joined" && <div className="talkly-share-waiting"><strong>{ui("Shared textbook · 공유 교재")}</strong><p>{ui("Waiting for the teacher to share · 강사의 교재 화면 공유를 기다립니다.")}</p></div>}
       </div>
     </div>
   );

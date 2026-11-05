@@ -1,6 +1,7 @@
 
 "use client";
 
+import { getClassroomText } from "@/lib/classroom-language";
 import { useState } from "react";
 
 type TextbookOption = {
@@ -23,6 +24,8 @@ export default function ClassroomTextbookSelector({
   canControl,
   onSelected,
 }: Props) {
+  const ui = getClassroomText(canControl);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -58,7 +61,7 @@ export default function ClassroomTextbookSelector({
       if (!response.ok || !result.success) {
         throw new Error(
           result.error ||
-            "교재를 변경하지 못했습니다."
+            ui("교재를 변경하지 못했습니다.")
         );
       }
 
@@ -67,7 +70,7 @@ export default function ClassroomTextbookSelector({
       setError(
         err instanceof Error
           ? err.message
-          : "교재 변경 중 오류가 발생했습니다."
+          : ui("교재 변경 중 오류가 발생했습니다.")
       );
     } finally {
       setSaving(false);
@@ -77,21 +80,17 @@ export default function ClassroomTextbookSelector({
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
       <div className="mb-2 flex items-center justify-between">
-        <strong className="text-sm text-slate-800">
-          수업 교재
-        </strong>
+        <strong className="text-sm text-slate-800">{ui("수업 교재")}</strong>
 
         <span className="text-xs text-slate-500">
           {canControl
-            ? "강사 선택"
-            : "강사와 동기화"}
+            ? ui("강사 선택")
+            : ui("강사와 동기화")}
         </span>
       </div>
 
       {textbooks.length === 0 ? (
-        <p className="text-sm text-slate-500">
-          배정된 교재가 없습니다.
-        </p>
+        <p className="text-sm text-slate-500">{ui("배정된 교재가 없습니다.")}</p>
       ) : (
         <select
           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
@@ -105,9 +104,7 @@ export default function ClassroomTextbookSelector({
             }
           }}
         >
-          <option value="">
-            교재를 선택해주세요
-          </option>
+          <option value="">{ui("교재를 선택해주세요")}</option>
 
           {textbooks.map((textbook) => (
             <option
@@ -121,9 +118,7 @@ export default function ClassroomTextbookSelector({
       )}
 
       {saving && (
-        <p className="mt-2 text-xs text-blue-600">
-          교재 변경 내용을 저장하고 있습니다.
-        </p>
+        <p className="mt-2 text-xs text-blue-600">{ui("교재 변경 내용을 저장하고 있습니다.")}</p>
       )}
 
       {error && (
@@ -131,7 +126,7 @@ export default function ClassroomTextbookSelector({
           role="alert"
           className="mt-2 text-xs text-red-600"
         >
-          {error}
+          {ui(error)}
         </p>
       )}
     </div>

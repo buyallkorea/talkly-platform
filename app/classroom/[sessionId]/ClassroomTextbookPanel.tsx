@@ -1,3 +1,4 @@
+import { getClassroomText } from "@/lib/classroom-language";
 import { signStoragePaths } from "@/lib/storage-signing";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import ClassroomTextbookPanelClient from "./ClassroomTextbookPanelClient";
@@ -31,11 +32,13 @@ export default async function ClassroomTextbookPanel({
   viewerRole,
   testStudentMode = false,
 }: Props) {
+  const ui = getClassroomText(viewerRole === "teacher");
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
-    return <div style={{ padding: "24px", color: "#fff" }}>교재 서버 환경변수가 설정되지 않았습니다.</div>;
+    return <div style={{ padding: "24px", color: "#fff" }}>{ui("교재 서버 환경변수가 설정되지 않았습니다.")}</div>;
   }
 
   const adminSupabase = createSupabaseClient(supabaseUrl, serviceRoleKey, {
@@ -47,7 +50,7 @@ export default async function ClassroomTextbookPanel({
     .eq("id", textbookId).maybeSingle();
 
   if (textbookError || !textbook) {
-    return <div style={{ padding: "24px", color: "#fff" }}>교재를 불러오지 못했습니다.</div>;
+    return <div style={{ padding: "24px", color: "#fff" }}>{ui("교재를 불러오지 못했습니다.")}</div>;
   }
 
   const { data: pageRows, error: pagesError } = await adminSupabase
@@ -55,7 +58,7 @@ export default async function ClassroomTextbookPanel({
     .eq("textbook_id", textbookId).order("page_number", { ascending: true });
 
   if (pagesError || !pageRows || pageRows.length === 0) {
-    return <div style={{ padding: "24px", color: "#fff" }}>아직 준비된 교재 페이지가 없습니다.</div>;
+    return <div style={{ padding: "24px", color: "#fff" }}>{ui("아직 준비된 교재 페이지가 없습니다.")}</div>;
   }
 
   const pageIds = pageRows.map((page) => page.id);
@@ -67,7 +70,7 @@ export default async function ClassroomTextbookPanel({
     .order("sort_order", { ascending: true });
 
   if (hotspotsError) {
-    return <div style={{ padding: "24px", color: "#fff" }}>교재 핫스팟을 불러오지 못했습니다.</div>;
+    return <div style={{ padding: "24px", color: "#fff" }}>{ui("교재 핫스팟을 불러오지 못했습니다.")}</div>;
   }
 
   const audioHotspots = ((hotspotRows ?? []) as HotspotRow[]).filter(h => h.type === "audio" && h.audio_url);
@@ -85,12 +88,12 @@ export default async function ClassroomTextbookPanel({
   }
   const pages = pageRows.map(page => {
     const imageUrl = pageUrls.get(page.page_image_url);
-    if (!imageUrl) throw new Error(`${page.page_number}페이지 이미지를 불러오지 못했습니다.`);
+    if (!imageUrl) throw new Error(ui(`${page.page_number}페이지 이미지를 불러오지 못했습니다.`));
     return {
       id: page.id, pageNumber: page.page_number, imageUrl,
       hotspots: (hotspotsByPage.get(page.id) ?? []).flatMap(h => {
         const audioUrl = audioUrls.get(h.audio_url as string);
-        return audioUrl ? [{ id: h.id, label: h.label || "듣기", xPercent: Number(h.x_percent), yPercent: Number(h.y_percent), widthPercent: Number(h.width_percent), heightPercent: Number(h.height_percent), audioUrl }] : [];
+        return audioUrl ? [{ id: h.id, label: h.label || ui("듣기"), xPercent: Number(h.x_percent), yPercent: Number(h.y_percent), widthPercent: Number(h.width_percent), heightPercent: Number(h.height_percent), audioUrl }] : [];
       }),
     };
   });

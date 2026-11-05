@@ -1,5 +1,6 @@
 "use client";
 
+import { getClassroomText } from "@/lib/classroom-language";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase-browser";
 
@@ -7,6 +8,8 @@ type Mode = "textbook" | "screen";
 export default function ClassroomMaterialStage({ sessionId, initialMode, canControl, children }: {
   sessionId: number; initialMode: Mode; canControl: boolean; children: ReactNode;
 }) {
+  const ui = getClassroomText(canControl);
+
   const [mode, setMode] = useState(initialMode);
   const [sharing, setSharing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -57,12 +60,12 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
   const expanded = mode === "screen" || sharing;
   return <>
     <section className="talkly-material-controls" aria-label="Lesson materials">
-      <div>{canControl ? <label>Lesson materials · 교재 방식 <select aria-label="Lesson materials" value={mode} disabled={busy || sharing} onChange={event => void change(event.target.value as Mode)}>
-        <option value="textbook">Registered textbook · 등록 교재</option><option value="screen">Screen share · 화면 공유</option>
-      </select></label> : <strong>{expanded ? "Online material · 강사 화면 공유" : "Registered textbook · 등록 교재"}</strong>}</div>
-      {expanded && <p role="status">{sharing ? "Screen sharing · 화면 공유 중" : canControl ? "Click Share Screen in Zoom, then select the textbook tab/window. · Zoom의 화면 공유 버튼을 눌러 교재 탭을 선택하세요." : "Waiting for the teacher to share. · 강사의 화면 공유를 기다리고 있습니다."}</p>}
-      {canControl && expanded && <details><summary>Teaching with online materials · 온라인 교재 사용 안내</summary><p>Keep the original textbook tab/window beside this classroom. Operate the textbook there and watch the student here. Share the textbook in Zoom, not this classroom tab. For textbook sound, use Chrome: select Chrome Tab → textbook tab → check Share tab audio (window/entire screen may have no sound). Stop sharing before changing materials.<br />교재 창과 강의실 창을 좌우에 배치하세요. 교재는 원본 창에서 조작하고 학생은 강의실에서 확인합니다. 학생은 강의실만 열면 됩니다. 교재 소리는 Chrome 탭 → 교재 탭 → ‘탭 오디오 공유’를 체크해야 전달됩니다. 일반 창 공유에서 소리가 안 나면 공유를 중지하고 교재 탭으로 다시 공유하세요.</p></details>}
-      {error && <p role="alert" style={{ color: "#fca5a5" }}>{error}</p>}
+      <div>{canControl ? <label>{ui("Lesson materials · 교재 방식")}<select aria-label="Lesson materials" value={mode} disabled={busy || sharing} onChange={event => void change(event.target.value as Mode)}>
+        <option value="textbook">{ui("Registered textbook · 등록 교재")}</option><option value="screen">{ui("Screen share · 화면 공유")}</option>
+      </select></label> : <strong>{expanded ? ui("Online material · 강사 화면 공유") : ui("Registered textbook · 등록 교재")}</strong>}</div>
+      {expanded && <p role="status">{sharing ? ui("Screen sharing · 화면 공유 중") : canControl ? ui("Click Share Screen in Zoom, then select the textbook tab/window. · Zoom의 화면 공유 버튼을 눌러 교재 탭을 선택하세요.") : ui("Waiting for the teacher to share. · 강사의 화면 공유를 기다리고 있습니다.")}</p>}
+      {canControl && expanded && <details><summary>{ui("Teaching with online materials · 온라인 교재 사용 안내")}</summary><p>Keep the original textbook tab/window beside this classroom. Operate the textbook there and watch the student here. Share the textbook in Zoom, not this classroom tab. For textbook sound, use Chrome: select Chrome Tab → textbook tab → check Share tab audio (window/entire screen may have no sound). Stop sharing before changing materials.<br />{ui("교재 창과 강의실 창을 좌우에 배치하세요. 교재는 원본 창에서 조작하고 학생은 강의실에서 확인합니다. 학생은 강의실만 열면 됩니다. 교재 소리는 Chrome 탭 → 교재 탭 → ‘탭 오디오 공유’를 체크해야 전달됩니다. 일반 창 공유에서 소리가 안 나면 공유를 중지하고 교재 탭으로 다시 공유하세요.")}</p></details>}
+      {error && <p role="alert" style={{ color: "#fca5a5" }}>{ui(error)}</p>}
     </section>
     <div className="talkly-classroom-stage" data-material-mode={expanded ? "screen" : "textbook"} data-presenter={canControl ? "true" : "false"}>{children}</div>
   </>;

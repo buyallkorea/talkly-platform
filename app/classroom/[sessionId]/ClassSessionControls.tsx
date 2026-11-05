@@ -1,5 +1,6 @@
 "use client";
 
+import { getClassroomText } from "@/lib/classroom-language";
 import {
   useCallback,
   useEffect,
@@ -40,6 +41,8 @@ export default function ClassSessionControls({
   initialStartedAt,
   initialEndedAt,
 }: Props) {
+  const ui = getClassroomText(viewerRole === "teacher");
+
   const [supabase] = useState(() => createClient());
 
   const [startedAt, setStartedAt] =
@@ -366,7 +369,7 @@ export default function ClassSessionControls({
           typeof data.error ===
             "string"
             ? data.error
-            : "수업 상태를 변경하지 못했습니다."
+            : ui("수업 상태를 변경하지 못했습니다.")
         );
       }
 
@@ -418,7 +421,7 @@ export default function ClassSessionControls({
       setError(
         error instanceof Error
           ? error.message
-          : "수업 상태 변경 오류"
+          : ui("수업 상태 변경 오류")
       );
     } finally {
       setBusy(false);
@@ -436,13 +439,13 @@ export default function ClassSessionControls({
   > = {
     scheduled: {
       primary: "READY",
-      secondary: "수업 시작 전",
+      secondary: ui("수업 시작 전"),
       dot: "#fbbf24",
     },
 
     in_progress: {
       primary: "LIVE",
-      secondary: "수업 진행 중",
+      secondary: ui("수업 진행 중"),
       dot: "#35d07f",
       glow:
         "0 0 0 4px rgba(53,208,127,.10)",
@@ -450,31 +453,31 @@ export default function ClassSessionControls({
 
     completed: {
       primary: "COMPLETED",
-      secondary: "수업 종료",
+      secondary: ui("수업 종료"),
       dot: "#94a3b8",
     },
 
     held: {
       primary: "HELD",
-      secondary: "수업 연기",
+      secondary: ui("수업 연기"),
       dot: "#60a5fa",
     },
 
     cancelled: {
       primary: "CANCELLED",
-      secondary: "수업 취소",
+      secondary: ui("수업 취소"),
       dot: "#f87171",
     },
 
     no_show: {
       primary: "NO SHOW",
-      secondary: "결석",
+      secondary: ui("결석"),
       dot: "#fb7185",
     },
 
     not_held: {
       primary: "NOT HELD",
-      secondary: "미진행",
+      secondary: ui("미진행"),
       dot: "#94a3b8",
     },
   };
@@ -491,7 +494,7 @@ export default function ClassSessionControls({
         .toUpperCase(),
 
       secondary:
-        "수업 상태",
+        ui("수업 상태"),
 
       dot: "#94a3b8",
     };
@@ -658,9 +661,7 @@ export default function ClassSessionControls({
                   : "Start Class"}
               </span>
 
-              <span className="talkly-session-action-sub">
-                수업 시작
-              </span>
+              <span className="talkly-session-action-sub">{ui("수업 시작")}</span>
             </button>
           )}
 
@@ -683,15 +684,13 @@ export default function ClassSessionControls({
                   : "End Class"}
               </span>
 
-              <span className="talkly-session-action-sub">
-                수업 종료
-              </span>
+              <span className="talkly-session-action-sub">{ui("수업 종료")}</span>
             </button>
           )}
 
         {error && (
           <div className="talkly-session-error">
-            {error}
+            {ui(error)}
           </div>
         )}
       </div>

@@ -14,7 +14,7 @@ async function check(status, endedAt, mode, expected) {
   }};
   function Chooser() {}
   const exports = {};
-  const context = {exports, process: {env: {TALKLY_ENABLE_TEST_CLASSROOM: 'true'}}, require(name) {
+  const context = {exports, process: {env: {TALKLY_ENABLE_TEST_CLASSROOM: 'true'}}, require(name) {if(name === "@/lib/classroom-language") return require("./helpers/classroom-language.cjs");
     if (name === 'react/jsx-runtime') return require(process.cwd() + '/node_modules/react/jsx-runtime');
     if (name === '@/lib/server-user') return {getCurrentUser: () => db.auth.getUser()};
     if (name === '@/lib/supabase-server') return {createClient: async () => db};

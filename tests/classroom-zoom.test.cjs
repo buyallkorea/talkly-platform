@@ -2,13 +2,14 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const js=ts.transpileModule(fs.readFileSync('app/classroom/[sessionId]/ClassroomZoomEmbed.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
 async function run(hostMode,fail,simulateShare=false,throwAttendees=false) {
  const refs=[],states=[],effects=[],requests=[],calls=[];let refIndex=0;
- const root={clientWidth:320,clientHeight:480,innerHTML:''};let initialized,resolveDone;
+ const root={clientWidth:320,clientHeight:480,innerHTML:'',querySelector:()=>null};let initialized,resolveDone;
  const done=new Promise(resolve=>resolveDone=resolve);
- const handlers={},shareEvents=[];let attendees=[];
+ const handlers={},shareEvents=[],views=[];let attendees=[];
  const helper={};vm.runInNewContext(ts.transpileModule(fs.readFileSync("lib/zoom-ui-controls.ts","utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:helper});
- const client={getAttendeeslist:()=>{if(throwAttendees)throw Error("not ready");return attendees;},on:(event,fn)=>{(handlers[event]??=[]).push(fn);},off:(event)=>{delete handlers[event];},init:async options=>{initialized=options;},join:async options=>{calls.push(options);if(fail)throw {errorCode:3008,reason:'Meeting has not started'};},leaveMeeting:async()=>{}};
+ const client={setViewType:view=>views.push(view),getAttendeeslist:()=>{if(throwAttendees)throw Error("not ready");return attendees;},on:(event,fn)=>{(handlers[event]??=[]).push(fn);},off:(event)=>{delete handlers[event];},init:async options=>{initialized=options;},join:async options=>{calls.push(options);if(fail)throw {errorCode:3008,reason:'Meeting has not started'};},leaveMeeting:async()=>{}};
  const exports={};const timers=[];
- vm.runInNewContext(js,{exports,console,CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail;}},ResizeObserver:class{observe(){} disconnect(){}},document:{querySelector:()=>({dataset:{loaded:'true'}})},fetch:async(url,options)=>{requests.push({url,body:JSON.parse(options.body)});return {ok:true,json:async()=>({success:true,signature:'signed',zak:'host-zak'})};},window:{parent:{postMessage(){}},location:{origin:"https://talkly.test"},addEventListener(){},removeEventListener(){},dispatchEvent:event=>{shareEvents.push(event.detail);},ZoomMtgEmbedded:{createClient:()=>client},setTimeout:callback=>{timers.push(callback);return timers.length;},clearTimeout(){}},require(name){
+ vm.runInNewContext(js,{exports,console,CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail;}},MutationObserver:class{observe(){}disconnect(){}},ResizeObserver:class{observe(){} disconnect(){}},document:{querySelector:()=>({dataset:{loaded:'true'}})},fetch:async(url,options)=>{requests.push({url,body:JSON.parse(options.body)});return {ok:true,json:async()=>({success:true,signature:'signed',zak:'host-zak'})};},window:{parent:{postMessage(){}},location:{origin:"https://talkly.test"},addEventListener(){},removeEventListener(){},dispatchEvent:event=>{shareEvents.push(event.detail);},ZoomMtgEmbedded:{createClient:()=>client},setTimeout:callback=>{timers.push(callback);return timers.length;},clearTimeout(){}},require(name){if(name === "@/lib/classroom-language") return require("./helpers/classroom-language.cjs");
+  if(name==='@/lib/zoom-layout')return {markZoomLayout:()=>{},zoomLayoutSize:(width,height,split)=>({width:split?260:width,height:Math.max(180,height-100)})};
   if(name==='./zoom-layout.css')return {};
   if(name==='@/lib/zoom-ui-controls')return helper;
   if(name==='react/jsx-runtime')return {jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})};
@@ -18,9 +19,9 @@ async function run(hostMode,fail,simulateShare=false,throwAttendees=false) {
  exports.default({sessionId:48,meetingNumber:'123456789',password:'fixture',userName:'Admin (Test Student)',hostMode});
  const cleanup=effects.map(effect=>effect());timers[0]();
  await Promise.race([done,new Promise((_,reject)=>setTimeout(()=>reject(Error('Zoom mock timed out')),1000))]);
- if(simulateShare){attendees=[{sharerOn:true}];handlers["peer-share-state-change"].forEach(fn=>fn({action:"Start"}));attendees=[];handlers["user-updated"].forEach(fn=>fn({}));}
+ if(simulateShare){attendees=[{sharerOn:true}];handlers["peer-share-state-change"].forEach(fn=>fn({action:"Start"}));for(const fn of timers.slice(1))fn();attendees=[];handlers["user-updated"].forEach(fn=>fn({}));}
  cleanup.forEach(fn=>fn?.());
- return {requests,calls,states,initialized,shareEvents,handlers};
+ return {requests,calls,states,initialized,shareEvents,handlers,views};
 }
 test('admin test participant receives participant signature and never host ZAK',async()=>{
  const r=await run(false);assert.equal(r.requests[0].url,'/api/zoom/sdk-signature');assert.equal(r.requests[0].body.role,0);assert.equal(r.calls[0].zak,undefined);assert(r.states.includes('joining'));assert(r.states.includes('joined'));assert.equal(r.initialized.customize.video.popper.disableDraggable,true);assert(r.initialized.customize.video.viewSizes.default.width>=240);
@@ -31,3 +32,5 @@ test('participant waiting for host shows waiting rather than opaque connection f
 test('SDK share events and cleanup update layout without another signature or meeting join',async()=>{const r=await run(true,false,true);assert(r.shareEvents.some(e=>e.sessionId===48&&e.active===true));assert.equal(r.shareEvents.at(-1).active,false);assert.equal(Object.keys(r.handlers).length,0);assert.equal(r.calls.length,1);assert.equal(r.requests.length,1);assert.equal(r.initialized.customize.sharing.options.hideShareAudioOption,false);});
 
 test('temporary SDK participant lookup failure does not fail the meeting join',async()=>{const r=await run(true,false,false,true);assert(r.states.includes('joined'));assert(!r.states.includes('error'));});
+
+test("receiving a share uses public gallery view without a second join",async()=>{const r=await run(false,false,true);assert(r.views.includes("gallery"));assert.equal(r.calls.length,1);});

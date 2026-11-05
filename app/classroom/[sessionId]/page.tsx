@@ -1,3 +1,4 @@
+import { getClassroomText } from "@/lib/classroom-language";
 import ClassroomPreparation from "./ClassroomPreparation";
 import ClassroomMaterialStage from "./ClassroomMaterialStage";
 import { getCurrentUser } from "@/lib/server-user";
@@ -29,6 +30,7 @@ export default async function ClassroomPage({
   params,
   searchParams,
 }: PageProps) {
+
   const { sessionId } =
     await params;
   const { testMode, materials } = await searchParams;
@@ -72,6 +74,8 @@ export default async function ClassroomPage({
   if (!profile) {
     redirect("/");
   }
+
+  const ui = getClassroomText(profile.role === "teacher");
 
   /*
    * =====================================================
@@ -450,11 +454,11 @@ export default async function ClassroomPage({
     isVerifiedTestStudent
       ? `테스트 학생 / ${teacherName}`
       : profile.role === "teacher"
-      ? "강사"
+      ? ui("강사")
       : profile.role === "student"
-        ? "학생"
+        ? ui("학생")
         : profile.role === "parent"
-          ? "학부모"
+          ? ui("학부모")
           : `${studentName} / ${teacherName}`;
 
   const isLearner =
@@ -465,10 +469,10 @@ export default async function ClassroomPage({
       "parent";
 
   const unavailableMessages: Record<string, string> = {
-    cancelled: "취소된 수업입니다.",
-    held: "연기 또는 결석 승인된 수업입니다.",
-    not_held: "진행되지 않은 수업입니다.",
-    no_show: "결석 처리된 수업입니다.",
+    cancelled: ui("취소된 수업입니다."),
+    held: ui("연기 또는 결석 승인된 수업입니다."),
+    not_held: ui("진행되지 않은 수업입니다."),
+    no_show: ui("결석 처리된 수업입니다."),
   };
 
   const unavailableMessage = unavailableMessages[session.status];
@@ -484,7 +488,7 @@ export default async function ClassroomPage({
             : "/admin";
 
     return (
-      <main
+      <main lang={profile.role === "teacher" ? "en" : "ko"}
         style={{
           minHeight: "100vh",
           padding: "40px 20px",
@@ -498,11 +502,8 @@ export default async function ClassroomPage({
         <div style={{ textAlign: "center" }}>
           <h1>{unavailableMessage}</h1>
           <p>
-            {course?.name || "Online English"} · {session.lesson_number}회차
-          </p>
-          <Link href={returnHref} style={{ color: "#93c5fd" }}>
-            돌아가기 →
-          </Link>
+            {profile.role === "teacher" && /[가-힣]/.test(course?.name || "") ? "Online English" : course?.name || "Online English"} · {profile.role === "teacher" ? `Lesson ${session.lesson_number}` : `${session.lesson_number}회차`}</p>
+          <Link href={returnHref} style={{ color: "#93c5fd" }}>{ui("돌아가기 →")}</Link>
         </div>
       </main>
     );
@@ -558,11 +559,11 @@ export default async function ClassroomPage({
     const returnLabel =
       profile.role ===
       "teacher"
-        ? "수업 상세·평가 작성 →"
-        : "돌아가기";
+        ? ui("수업 상세·평가 작성 →")
+        : ui("돌아가기");
 
     return (
-      <main
+      <main lang={profile.role === "teacher" ? "en" : "ko"}
         style={{
           minHeight:
             "100vh",
@@ -636,9 +637,7 @@ export default async function ClassroomPage({
               fontSize:
                 "28px",
             }}
-          >
-            수업이 종료되었습니다
-          </h1>
+          >{ui("수업이 종료되었습니다")}</h1>
 
           <p
             style={{
@@ -657,10 +656,7 @@ export default async function ClassroomPage({
             ·{" "}
             {
               session.lesson_number
-            }
-            회차
-            <br />
-            담당 강사:{" "}
+            }{ui("회차")}<br />{ui("담당 강사:")}{" "}
             {teacherName}
           </p>
 
@@ -692,15 +688,7 @@ export default async function ClassroomPage({
                 color:
                   "#bfdbfe",
               }}
-            >
-              수업 종료가
-              완료되었습니다.
-              <br />
-              수업 상세 화면에서
-              이번 회차의 학습
-              평가를 작성할 수
-              있습니다.
-            </div>
+            >{ui("수업 종료가 완료되었습니다.")}<br />{ui("수업 상세 화면에서 이번 회차의 학습 평가를 작성할 수 있습니다.")}</div>
           )}
 
           <Link
@@ -773,7 +761,7 @@ export default async function ClassroomPage({
     !session.meeting_id
   ) {
     return (
-      <main
+      <main lang={profile.role === "teacher" ? "en" : "ko"}
         style={{
           minHeight:
             "100vh",
@@ -795,11 +783,7 @@ export default async function ClassroomPage({
           TALKLY Classroom
         </h1>
 
-        <p>
-          이 수업에는 아직
-          Zoom Meeting이
-          연결되어 있지 않습니다.
-        </p>
+        <p>{ui("이 수업에는 아직 Zoom Meeting이 연결되어 있지 않습니다.")}</p>
       </main>
     );
   }
@@ -1019,7 +1003,7 @@ export default async function ClassroomPage({
         }
       `}</style>
 
-      <main className="talkly-classroom">
+      <main className="talkly-classroom" lang={profile.role === "teacher" ? "en" : "ko"}>
         <ClassSessionEndWatcher sessionId={session.id} />
         {isVerifiedTestStudent && session.status === "scheduled" && <TestStudentStartWatcher sessionId={session.id} />}
 
@@ -1042,8 +1026,8 @@ export default async function ClassroomPage({
             </div>
 
             <h1 className="talkly-classroom-title">
-              {course?.name || "Online English"} · Lesson {session.lesson_number}
-              <small>{session.lesson_number}회차</small>
+              {profile.role === "teacher" && /[가-힣]/.test(course?.name || "") ? "Online English" : course?.name || "Online English"} · Lesson {session.lesson_number}
+              <small>{profile.role === "teacher" ? `Lesson ${session.lesson_number}` : `${session.lesson_number}회차`}</small>
             </h1>
           </div>
 
@@ -1056,7 +1040,7 @@ export default async function ClassroomPage({
         <section className="talkly-classroom-control">
           <div className="talkly-control-copy">
             <strong>CLASS CONTROL</strong>
-            <small>수업 제어 · 상태 확인</small>
+            <small>{ui("수업 제어 · 상태 확인")}</small>
           </div>
 
           <ClassSessionControls
@@ -1119,13 +1103,9 @@ export default async function ClassroomPage({
   ) : (
     <div className="flex h-full min-h-[320px] items-center justify-center p-6 text-center">
       <div>
-        <p className="text-base font-semibold text-slate-700">
-          수업 교재가 선택되지 않았습니다.
-        </p>
+        <p className="text-base font-semibold text-slate-700">{ui("수업 교재가 선택되지 않았습니다.")}</p>
 
-        <p className="mt-2 text-sm text-slate-500">
-          담당 강사가 교재를 선택하면 이곳에 표시됩니다.
-        </p>
+        <p className="mt-2 text-sm text-slate-500">{ui("담당 강사가 교재를 선택하면 이곳에 표시됩니다.")}</p>
       </div>
     </div>
   )}
