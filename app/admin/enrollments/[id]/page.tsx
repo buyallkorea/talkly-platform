@@ -1,3 +1,4 @@
+import AssessmentEntry from "@/components/assessments/AssessmentEntry";
 import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -336,6 +337,7 @@ export default async function EnrollmentDetailPage({
           >
             {studentName}
           </h1>
+          <AssessmentEntry administrator kind="monthly" sourceId={enrollment.id} />
 
           <p style={{ margin: 0 }}>
             TALKLY 수강 상세정보

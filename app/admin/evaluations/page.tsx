@@ -1,3 +1,5 @@
+import AssessmentList from "@/components/assessments/AssessmentList";
+import AssessmentEntry from "@/components/assessments/AssessmentEntry";
 import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -9,13 +11,14 @@ function validDate(value: unknown): value is string {
   return Number.isFinite(date.getTime()) && new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(date) === value;
 }
 
-export default async function AdminEvaluationsPage({ searchParams }: { searchParams: Promise<{ date?: string; page?: string }> }) {
+export default async function AdminEvaluationsPage({ searchParams }: { searchParams: Promise<{ date?: string; page?: string; period?: string; legacy?: string }> }) {
   const db = await createClient();
   const { data: { user } } = await getCurrentUser();
   if (!user) redirect("/login");
   const { data: viewer } = await db.from("profiles").select("role").eq("id", user.id).maybeSingle();
   if (viewer?.role !== "admin") redirect("/");
   const params = await searchParams;
+  if (process.env.TALKLY_ASSESSMENTS_ENABLED === "true" && params.legacy !== "1") return <AssessmentList searchParams={searchParams} administrator />;
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
   const date = validDate(params.date) ? params.date : today;
   const parsedPage = Number(params.page);
@@ -45,6 +48,7 @@ export default async function AdminEvaluationsPage({ searchParams }: { searchPar
     <p className="text-xs font-bold tracking-widest text-blue-600">TALKLY · LEARNING EVALUATIONS</p>
     <h1 className="mt-2 text-3xl font-bold text-slate-900">학습 평가</h1>
     <p className="mt-3 text-sm leading-7 text-slate-600">선택한 날짜의 완료된 수업과 등록된 평가를 확인합니다. 월간·최종 평가 작성 시점은 각 강사 상세 화면에서 확인할 수 있습니다.</p>
+    <AssessmentEntry administrator />
     <form className="my-6 flex flex-wrap items-end gap-3"><label className="grid gap-2 text-sm font-semibold">수업 날짜 (한국 시간)<input type="date" name="date" defaultValue={date} required className="rounded-lg border border-slate-300 bg-white px-3 py-2" /></label><button className="rounded-lg bg-blue-600 px-5 py-2 text-white">조회</button><Link href="/admin/teachers" className="px-3 py-2 text-sm text-blue-700">강사별 평가 작성 현황 →</Link></form>
     {!records.length && <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-600">해당 날짜에 완료된 수업이 없습니다.</div>}
     <div className="grid gap-4">{records.map(session => {

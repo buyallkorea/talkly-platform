@@ -1,3 +1,4 @@
+import AssessmentEntry from "@/components/assessments/AssessmentEntry";
 import TeacherClassroomLink from "@/components/teacher/TeacherClassroomLink";
 import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
@@ -1057,16 +1058,21 @@ export default async function TeacherClassDetailPage({
             marginBottom: "4px",
           }}
         >
-          {evaluationLabel?.en ?? (isFinalLesson ? "Final Teacher Evaluation" : "AI Lesson Evaluation")}
+          {process.env.TALKLY_ASSESSMENTS_ENABLED === "true" ? "Student Progress Evaluation" : evaluationLabel?.en ?? (isFinalLesson ? "Final Teacher Evaluation" : "AI Lesson Evaluation")}
         </h2>
 
         <div style={{ fontSize: "13px", opacity: 0.6 }}>
-          {evaluationLabel?.ko ?? (isFinalLesson
+          {process.env.TALKLY_ASSESSMENTS_ENABLED === "true" ? "월간 관찰 평가서 작성·확인" : evaluationLabel?.ko ?? (isFinalLesson
             ? "최종 강사 종합평가"
             : "회차별 평가는 TALKLY AI가 분석합니다.")}
         </div>
 
-        {isRegularTeacher && evaluationRequirement && session.status === "completed" ? (
+        {process.env.TALKLY_ASSESSMENTS_ENABLED === "true" ? (
+          isRegularTeacher ? <><AssessmentEntry kind="monthly" sourceId={enrollment.id} period={evaluationRequirement ? (evaluationRequirement.type === "final" ? "final" : `period-${evaluationRequirement.periodNumber}`) : undefined} />
+            {evaluation && <details className="mt-4"><summary>Previous score evaluation — read only</summary><p>Participation {evaluation.participation_score ?? "—"} · Comprehension {evaluation.comprehension_score ?? "—"} · Speaking {evaluation.speaking_score ?? "—"} · Pronunciation {evaluation.pronunciation_score ?? "—"}</p><p>{evaluation.strengths}</p><p>{evaluation.improvements}</p><p>{evaluation.homework}</p><p>{evaluation.teacher_comment}</p></details>}
+          </>
+            : <p>Only the regular assigned teacher can write the monthly observation review.</p>
+        ) : isRegularTeacher && evaluationRequirement && session.status === "completed" ? (
           <EvaluationForm
             sessionId={session.id}
             evaluationType={evaluationRequirement.type}

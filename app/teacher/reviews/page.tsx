@@ -1,3 +1,5 @@
+import AssessmentList from "@/components/assessments/AssessmentList";
+import AssessmentEntry from "@/components/assessments/AssessmentEntry";
 import { getCurrentUser } from "@/lib/server-user";
 
 import Link from "next/link";
@@ -53,7 +55,7 @@ const cardStyle = {
   background: "#ffffff",
 } as const;
 
-export default async function TeacherReviewsPage() {
+export default async function TeacherReviewsPage({searchParams}: {searchParams: Promise<{legacy?: string; period?: string}>}) {
   const supabase = await createClient();
 
   const {
@@ -72,6 +74,7 @@ export default async function TeacherReviewsPage() {
   if (profileError) throw new Error(profileError.message);
 
   if (profile?.role !== "teacher") redirect("/");
+  if (process.env.TALKLY_ASSESSMENTS_ENABLED === "true" && (await searchParams).legacy !== "1") return <AssessmentList searchParams={searchParams} />;
 
   const { data: enrollmentData, error: enrollmentError } =
   await supabase
@@ -284,6 +287,7 @@ export default async function TeacherReviewsPage() {
           </p>
         </div>
 
+        <AssessmentEntry />
         <section style={{ marginTop: "28px" }}>
           <h2 style={{ fontSize: "22px", marginBottom: "16px" }}>
             Pending Evaluations ({pending.length})
