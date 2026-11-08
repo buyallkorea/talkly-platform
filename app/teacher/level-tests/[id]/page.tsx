@@ -1,3 +1,4 @@
+import AssessmentEntry from "@/components/assessments/AssessmentEntry";
 import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import {
@@ -648,7 +649,9 @@ export default async function TeacherLevelTestDetailPage({
             )}
         </section>
 
+        <AssessmentEntry kind="initial" sourceId={interview.id} />
         <LevelTestEvaluationForm
+          replacementEnabled={process.env.TALKLY_ASSESSMENTS_ENABLED === "true"}
           interviewId={interview.id}
           initialStatus={
             interview.status

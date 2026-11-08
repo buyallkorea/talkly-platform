@@ -5,9 +5,11 @@ import {
   useEffect,
   useState,
 } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type Props = {
+  replacementEnabled?: boolean;
   interviewId: number;
 
   initialStatus: string;
@@ -52,6 +54,7 @@ type ApiResponse = {
 
 export default function LevelTestEvaluationForm({
   interviewId,
+  replacementEnabled = false,
   initialStatus,
   scheduledAt,
   meetingUrl,
@@ -856,6 +859,20 @@ export default function LevelTestEvaluationForm({
    * 완료 상태
    * =====================================================
    */
+
+  if (replacementEnabled && ["in_progress", "completed"].includes(status)) {
+    return <section style={sectionStyle}>
+      <h2>Initial / Diagnostic Assessment</h2>
+      <p>Use the TALKLY diagnostic form for observations, level placement and textbook recommendations.</p>
+      {status === "in_progress" && <button type="button" onClick={handleReEnter} disabled={loading} style={primaryButtonStyle}>Re-enter level test ↗</button>}
+      <p><Link href={`/teacher/assessments/initial/${interviewId}?period=initial`} style={{color:"#1d4ed8",fontWeight:700}}>Write / review diagnostic assessment →</Link></p>
+      {[interview.speaking_level,interview.listening_level,interview.pronunciation_level,interview.comprehension_level].some(score=>score !== null) && <details><summary>Previous numeric evaluation — read only</summary>
+        <p>Speaking {interview.speaking_level ?? "—"} · Listening {interview.listening_level ?? "—"} · Pronunciation {interview.pronunciation_level ?? "—"} · Comprehension {interview.comprehension_level ?? "—"}</p>
+        <p>{interview.suggested_level}</p><p>{interview.strengths}</p><p>{interview.weaknesses}</p><p>{interview.teacher_comment}</p>
+      </details>}
+      {errorMessage && <p role="alert">{errorMessage}</p>}
+    </section>;
+  }
 
   if (
     status ===

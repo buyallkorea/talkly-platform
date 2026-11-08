@@ -77,6 +77,9 @@ export async function POST(
     );
   }
 
+  if (process.env.TALKLY_ASSESSMENTS_ENABLED === "true")
+    return jsonError("Use the new monthly observation review form from My Reviews.", 409);
+
   let body: Record<string, unknown>;
 
   try {

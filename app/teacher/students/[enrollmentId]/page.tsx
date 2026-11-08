@@ -1,3 +1,4 @@
+import AssessmentEntry from "@/components/assessments/AssessmentEntry";
 import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -451,6 +452,7 @@ export default async function TeacherStudentDetailPage({
       />
 
       <main className="talkly-dashboard-main">
+        <AssessmentEntry kind="monthly" sourceId={Number(enrollmentId)} />
         <div style={{ marginBottom: "20px" }}>
           <Link
             href="/teacher/students"

@@ -1,0 +1,31 @@
+name: Teacher assessment checks
+on:
+  push:
+    branches: [feat/teacher-assessment-forms]
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'components/assessments/**'
+      - 'lib/assessments/**'
+      - 'supabase/migrations/*teacher_assessment_forms.sql'
+      - 'tests/**'
+      - 'package*.json'
+      - '.github/workflows/assessment-checks.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx tsc --noEmit
+      - run: npx eslint lib/assessments components/assessments app/api/assessments app/teacher/assessments app/admin/assessments
+      - run: npm run test:assessments
+      - run: npm run test:regression
+      - run: npm run check:routes

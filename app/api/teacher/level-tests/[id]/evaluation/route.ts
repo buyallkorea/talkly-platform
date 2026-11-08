@@ -660,6 +660,9 @@ export async function POST(
     if (
       body.action === "complete"
     ) {
+      if (process.env.TALKLY_ASSESSMENTS_ENABLED === "true")
+        return NextResponse.json({error:"Use the new initial diagnostic assessment form."},{status:409});
+
       if (
         interview.status ===
         "completed"

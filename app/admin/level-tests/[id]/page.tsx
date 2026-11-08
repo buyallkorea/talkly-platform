@@ -1,3 +1,4 @@
+import AssessmentEntry from "@/components/assessments/AssessmentEntry";
 import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import {
@@ -578,6 +579,7 @@ export default async function AdminLevelTestDetailPage({
             {child?.name ??
               "레벨테스트 상세"}
           </h1>
+          <AssessmentEntry administrator />
 
           <p
             style={{
@@ -1077,7 +1079,7 @@ export default async function AdminLevelTestDetailPage({
             "in_progress",
             "completed",
           ].includes(latestInterview.status) ? (
-            <InterviewResultForm
+            process.env.TALKLY_ASSESSMENTS_ENABLED === "true" ? <AssessmentEntry administrator kind="initial" sourceId={latestInterview.id} /> : <InterviewResultForm
               levelTestId={
                 levelTest.id
               }
