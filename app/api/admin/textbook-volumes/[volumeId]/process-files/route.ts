@@ -16,7 +16,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ACCEPTED = new Set(["pdf", "jpg", "jpeg", "png", "webp"]);
 const MAX_FILE_BYTES = 60 * 1024 * 1024;
 const MAX_PAGES = 400;
-const MAX_FILES = 150;
+const MAX_FILES = 400;
 const MAX_PIXELS = 35_000_000;
 const message = (text: string, status: number) => NextResponse.json({ success: false, error: text }, { status });
 
