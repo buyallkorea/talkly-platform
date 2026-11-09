@@ -26,7 +26,7 @@ type ApiResult = {
 const supported = new Set(["pdf", "jpg", "jpeg", "png", "webp"]);
 const extension = (name: string) => name.split(".").pop()?.toLowerCase() || "";
 const collator = new Intl.Collator("ko", { numeric: true, sensitivity: "base" });
-const MAX_FILES = 150;
+const MAX_FILES = 400;
 const MAX_FILE_BYTES = 60 * 1024 * 1024;
 function contentType(file: File): string {
   const ext = extension(file.name);
@@ -58,7 +58,7 @@ export default function VolumePdfManager({textbookId,volumeId,displayTitle,origi
     setError(""); setSuccess(""); setProgress("");
     if (!candidates.length) return;
     if (candidates.length > MAX_FILES) {
-      setFiles([]); setError("한 권에 한 번에 등록할 수 있는 파일은 최대 150개입니다."); return;
+      setFiles([]); setError("한 권에 한 번에 등록할 수 있는 파일은 최대 400개입니다."); return;
     }
     for (const file of candidates) {
       if (!supported.has(extension(file.name)) || file.size < 1 || file.size > MAX_FILE_BYTES) {
@@ -172,7 +172,7 @@ export default function VolumePdfManager({textbookId,volumeId,displayTitle,origi
         <input id="volumePageFiles" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
           disabled={busy} onChange={selectFiles}/>
         <p>자동 정렬: 파일명의 숫자 순서 (예: 1, 2, 10). 아래에서 ▲▼ 버튼으로 순서를 조정할 수 있습니다.</p>
-        <p>파일당 60MB 이하 · 한 번에 최대 150개 · 한 권 최대 400페이지</p>
+        <p>파일당 60MB 이하 · 한 번에 최대 400개 · 한 권 최대 400페이지</p>
       </div>
       {files.length > 0 && <div className="talkly-volume-upload-queue">
         <div className="talkly-volume-upload-queue-header"><strong>선택한 파일 {files.length}개</strong><span>위에서 아래 순서대로 교재 페이지를 생성합니다.</span></div>
