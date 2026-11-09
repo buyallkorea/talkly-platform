@@ -130,9 +130,15 @@ export default async function ClassroomTextbookViewerPage({
 
   if (!pageRows || pageRows.length === 0) {
     return (
-      <main style={{ padding: 40 }}>
-        <h1>{textbook.title}</h1>
-        <p>아직 수업용 교재 페이지가 준비되지 않았습니다.</p>
+      <main className="talkly-page" style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: "24px" }}>
+        <section className="talkly-card" role="status" style={{ width: "100%", maxWidth: 650, padding: "30px", background: "#ffffff" }}>
+          <span className="talkly-badge talkly-badge-blue">TALKLY · TEXTBOOK</span>
+          <h1 className="talkly-dashboard-title" style={{ marginTop: 16, fontSize: 25, overflowWrap: "anywhere" }}>{textbook.title}</h1>
+          <div style={{ marginTop: 18, borderRadius: 12, padding: "20px 22px", border: "1px solid #dce6f5", background: "#f5f8ff" }}>
+            <strong style={{ display: "block", color: "#0a1f44", fontSize: 16 }}>교재 준비 중</strong>
+            <p style={{ margin: "9px 0 0", color: "#667085", lineHeight: 1.85, fontSize: 14 }}>아직 수업용 교재 페이지가 준비되지 않았습니다. 담당자에게 등록 상태를 확인해 주세요.</p>
+          </div>
+        </section>
       </main>
     );
   }

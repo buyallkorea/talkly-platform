@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { signStoragePaths } from "@/lib/storage-signing";
 import { getCurrentUser } from "@/lib/server-user";
 import { notFound, redirect } from "next/navigation";
@@ -68,10 +69,15 @@ export default async function TextbookViewerPage({
 
   if (!pages || pages.length === 0) {
     return (
-      <main style={{ padding: 40 }}>
-        <h1>{textbook.title}</h1>
-        <p>아직 생성된 교재 페이지가 없습니다.</p>
-      </main>
+      <section className="talkly-card" aria-labelledby="textbook-empty-title" style={{ maxWidth: 840, margin: "12px auto", padding: "30px", background: "#ffffff" }}>
+        <span className="talkly-badge talkly-badge-blue">TALKLY · 교재 관리</span>
+        <h1 id="textbook-empty-title" className="talkly-dashboard-title" style={{ marginTop: 16, fontSize: 27, overflowWrap: "anywhere" }}>{textbook.title}</h1>
+        <div style={{ marginTop: 22, padding: "22px", borderRadius: 12, border: "1px dashed #cbd9ef", background: "#f6f9ff" }}>
+          <h2 style={{ margin: 0, color: "#0a1f44", fontWeight: 850, fontSize: 18 }}>교재 페이지 준비 중</h2>
+          <p style={{ margin: "8px 0 0", color: "#667085", fontSize: 14, lineHeight: 1.8 }}>아직 생성된 교재 페이지가 없습니다. 페이지를 등록한 후 이 화면에서 확인할 수 있습니다.</p>
+        </div>
+        <Link className="talkly-button talkly-button-primary" href={"/admin/textbooks/" + textbook.id} style={{ marginTop: 22 }}>교재 상세로 돌아가기 →</Link>
+      </section>
     );
   }
 
