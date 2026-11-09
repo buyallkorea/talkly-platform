@@ -14,11 +14,13 @@ type TossWidgets = {
   }): Promise<void> | void;
 };
 type TossSDK = (clientKey: string) => { widgets(params: { customerKey: string }): TossWidgets };
-declare global { interface Window { TossPayments?: TossSDK } }
+function getSdk(): TossSDK | undefined {
+  return (window as unknown as { TossPayments?: TossSDK }).TossPayments;
+}
 
 const SDK = "https://js.tosspayments.com/v2/standard";
 async function loadSDK(): Promise<void> {
-  if (window.TossPayments) return;
+  if (getSdk()) return;
   await new Promise<void>((resolve, reject) => {
     const existing = document.querySelector<HTMLScriptElement>('script[src="' + SDK + '"]');
     if (existing) {
@@ -57,8 +59,9 @@ export default function TossSandboxCheckout({ clientKey }: { clientKey: string }
         data.amount !== 1000 || data.currency !== "KRW") throw Error(data.error || "테스트 주문 생성 실패");
       setMessage("토스 테스트 결제창을 불러오고 있습니다.");
       await loadSDK();
-      if (!window.TossPayments) throw Error("토스 결제 모듈 초기화 실패");
-      const widgets = window.TossPayments(clientKey).widgets({ customerKey: data.customerKey });
+      const sdk = getSdk();
+      if (!sdk) throw Error("토스 결제 모듈 초기화 실패");
+      const widgets = sdk(clientKey).widgets({ customerKey: data.customerKey });
       await widgets.setAmount({ value: data.amount, currency: "KRW" });
       paymentWindow = await widgets.renderPaymentWindow();
       const activeWindow = paymentWindow;
