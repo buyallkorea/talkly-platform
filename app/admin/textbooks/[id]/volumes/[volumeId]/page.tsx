@@ -370,7 +370,7 @@ export default async function TextbookVolumePage({
           />
 
           <InfoCard
-            label="PDF"
+            label="교재 파일"
             value={
               volume.original_file_url
                 ? "등록"
@@ -458,7 +458,7 @@ export default async function TextbookVolumePage({
         >
           MP3 ZIP과 Audio
           Hotspot 자동 매칭은
-          PDF 페이지 구조가
+          교재 페이지 구조가
           정상적으로 생성되는
           것을 확인한 다음
           연결합니다.

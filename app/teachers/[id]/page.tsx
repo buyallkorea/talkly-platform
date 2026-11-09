@@ -33,38 +33,32 @@ export default async function TeacherProfilePage({params}: Props) {
             <PublicTeacherPhoto src={teacher.profile_image_url} name={teacher.display_name} className="is-detail"/>
           </div>
           <div className="talkly-public-teacher-profile-intro">
-            <span className="talkly-public-teachers-eyebrow">MEET OUR TEACHER</span>
-            <h1>{teacher.display_name}</h1>
-            {teacher.nationality && <p className="talkly-public-teacher-nationality">{teacher.nationality}</p>}
-            <p>학생 한 명 한 명의 성장을 함께하는 TALKLY 강사입니다.</p>
-            {teacher.specialties.length > 0 && <div aria-label="지도 전문 분야" className="talkly-public-teacher-specialties">
-              {teacher.specialties.map((skill,i) => <span key={skill + "-" + i}>{skill}</span>)}
-            </div>}
-            <Link href="/teachers" className="talkly-public-teacher-all-link">← 전체 강사진 보기</Link>
+            <span className="talkly-public-teachers-eyebrow">TEACHER INTRODUCTION</span>
+            <h1>{teacher.display_name} 강사 소개</h1>
+            {teacher.bio
+              ? <p className="talkly-public-teacher-introduction">{teacher.bio}</p>
+              : <p className="talkly-public-teacher-introduction is-empty">강사 소개글을 준비 중입니다.</p>}
           </div>
         </section>
 
         <div className="talkly-public-teacher-profile-sections">
-          {teacher.bio && <section className="talkly-public-teacher-info-card">
-            <span className="talkly-public-teacher-card-kicker">ABOUT</span>
-            <h2>강사 소개</h2>
-            <p className="talkly-public-teacher-prose">{teacher.bio}</p>
-          </section>}
-          {teacher.years_experience !== null && <section className="talkly-public-teacher-info-card">
+          <section className="talkly-public-teacher-info-card">
             <span className="talkly-public-teacher-card-kicker">EXPERIENCE</span>
             <h2>강의 경력</h2>
-            <p className="talkly-public-teacher-experience">{teacher.years_experience}년</p>
-          </section>}
-          {teacher.education && <section className="talkly-public-teacher-info-card">
+            {teacher.years_experience !== null
+              ? <p className="talkly-public-teacher-experience">{teacher.years_experience}년</p>
+              : <p className="talkly-public-teacher-prose is-empty">정보 준비 중</p>}
+          </section>
+          <section className="talkly-public-teacher-info-card">
             <span className="talkly-public-teacher-card-kicker">EDUCATION</span>
             <h2>학력</h2>
-            <p className="talkly-public-teacher-prose">{teacher.education}</p>
-          </section>}
-          {teacher.certifications && <section className="talkly-public-teacher-info-card">
+            <p className={"talkly-public-teacher-prose" + (!teacher.education ? " is-empty" : "")}>{teacher.education || "정보 준비 중"}</p>
+          </section>
+          <section className="talkly-public-teacher-info-card">
             <span className="talkly-public-teacher-card-kicker">CERTIFICATIONS</span>
             <h2>자격 및 인증</h2>
-            <p className="talkly-public-teacher-prose">{teacher.certifications}</p>
-          </section>}
+            <p className={"talkly-public-teacher-prose" + (!teacher.certifications ? " is-empty" : "")}>{teacher.certifications || "정보 준비 중"}</p>
+          </section>
         </div>
         <div className="talkly-public-teacher-cta">
           <div><h2>TALKLY와 함께 영어를 시작해 보세요.</h2><p>학습 목표에 맞는 수업을 안내해 드립니다.</p></div>
