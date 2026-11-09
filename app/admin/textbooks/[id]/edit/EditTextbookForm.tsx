@@ -304,6 +304,40 @@ export default function EditTextbookForm({
   ] =
     useState("");
 
+  const [newVolumeName, setNewVolumeName] = useState("Book " + (volumes.length + 1));
+  const [creatingVolume, setCreatingVolume] = useState(false);
+
+  async function createVolumeForPageUpload() {
+    if (creatingVolume || loading) return;
+    const name = newVolumeName.trim();
+    if (!name || name.length > 100) {
+      setErrorMessage("권 이름을 1~100자로 입력해주세요.");
+      return;
+    }
+    setCreatingVolume(true);
+    setErrorMessage("");
+    try {
+      const usedCodes = new Set(volumes.map(volume => volume.volume_code.toUpperCase()));
+      let number = 1;
+      while (usedCodes.has("V" + number)) number += 1;
+      const db = createClient();
+      const { data, error } = await db.from("textbook_volumes").insert({
+        textbook_id: textbook.id,
+        volume_code: "V" + number,
+        display_title: name,
+        sort_order: (volumes.length + 1) * 10,
+        page_count: 0,
+        status: "draft",
+        is_active: true,
+      }).select("id").single();
+      if (error || !data) throw Error(error?.message || "새 권을 생성하지 못했습니다.");
+      router.push("/admin/textbooks/" + textbook.id + "/volumes/" + data.id);
+      router.refresh();
+    } catch (caught) {
+      setErrorMessage(caught instanceof Error ? caught.message : "새 권 생성 중 오류가 발생했습니다.");
+    } finally { setCreatingVolume(false); }
+  }
+
   function toggleLevel(
     levelId: number
   ) {
@@ -1376,8 +1410,22 @@ export default function EditTextbookForm({
 
         <SectionBox
           title="권별 수업자료"
-          description={`이 대표 교재에 등록된 ${volumes.length}권의 실제 수업용 PDF·오디오 자료를 권별로 관리합니다.`}
+          description={`이 대표 교재에 등록된 ${volumes.length}권의 실제 수업용 PDF·이미지·오디오 자료를 권별로 관리합니다.`}
         >
+          <div className="talkly-volume-create-area">
+            <div>
+              <strong>새 수업용 교재 권 등록</strong>
+              <p>교재 기본정보를 등록한 후 권을 만들어 PDF·JPG·PNG·WEBP 여러 장을 페이지 순서대로 추가할 수 있습니다.</p>
+            </div>
+            <label htmlFor="newVolumeName">권 이름
+              <input id="newVolumeName" type="text" value={newVolumeName} maxLength={100}
+                disabled={creatingVolume || loading} onChange={event => setNewVolumeName(event.target.value)}
+                placeholder="예: Book 1 또는 Student Book"/>
+            </label>
+            <button type="button" onClick={() => void createVolumeForPageUpload()} disabled={creatingVolume || loading}>
+              {creatingVolume ? "권 생성 중..." : "권 만들기 · PDF/이미지 업로드 →"}
+            </button>
+          </div>
           {volumes.length ===
           0 ? (
             <div
@@ -1496,7 +1544,7 @@ export default function EditTextbookForm({
                         }}
                       >
                         <span>
-                          PDF{" "}
+                          PDF/이미지{" "}
                           <strong
                             style={{
                               color:
@@ -1609,7 +1657,7 @@ export default function EditTextbookForm({
             이번 단계에서
             삭제하거나 이동하지
             않습니다. 앞으로
-            실제 수업용 PDF와
+            실제 수업용 PDF·JPG·PNG·WEBP와
             MP3는 각 권의
             자료 관리 화면에서
             등록합니다.
