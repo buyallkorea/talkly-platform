@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import { createClient } from "@/lib/supabase-browser";
+import Link from "next/link";
 
 type Teacher = {
   user_id: string;
@@ -344,6 +345,11 @@ function TeacherCard({
     useState(false);
 
   return (
+    <Link
+      href={"/teachers/" + teacher.user_id}
+      className="talkly-home-teacher-link"
+      aria-label={name + " 강사 상세 소개 보기"}
+    >
     <article
       style={{
         minWidth: 0,
@@ -457,8 +463,17 @@ function TeacherCard({
         >
           {nationality}
         </div>
+        <div style={{
+          marginTop: "12px",
+          color: "#265bb1",
+          fontSize: "12px",
+          fontWeight: 900,
+        }}>
+          강사 프로필 보기 →
+        </div>
       </div>
     </article>
+    </Link>
   );
 }
 
