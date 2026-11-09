@@ -1,767 +1,197 @@
 "use client";
 
-import {
-  ChangeEvent,
-  useState,
-} from "react";
-
-import {
-  useRouter,
-} from "next/navigation";
-
-import {
-  createClient,
-} from "@/lib/supabase-browser";
+import { ChangeEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase-browser";
 
 type Props = {
   textbookId: number;
   volumeId: number;
   displayTitle: string;
-
-  originalFileUrl:
-    | string
-    | null;
-
+  originalFileUrl: string | null;
   pageCount: number;
 };
-
-function sanitizeFilename(
-  filename: string
-) {
-  return filename
-    .normalize("NFKD")
-    .replace(
-      /[^\w.\-]+/g,
-      "_"
-    )
-    .replace(
-      /_+/g,
-      "_"
-    );
+type PageInfo = {
+  page_number: number;
+  page_image_url: string;
+  page_width: number;
+  page_height: number;
+};
+type ApiResult = {
+  success?: boolean;
+  error?: string;
+  pages?: PageInfo[];
+  pageCount?: number;
+};
+const supported = new Set(["pdf", "jpg", "jpeg", "png", "webp"]);
+const extension = (name: string) => name.split(".").pop()?.toLowerCase() || "";
+const collator = new Intl.Collator("ko", { numeric: true, sensitivity: "base" });
+const MAX_FILES = 150;
+const MAX_FILE_BYTES = 60 * 1024 * 1024;
+function contentType(file: File): string {
+  const ext = extension(file.name);
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  return "image/jpeg";
 }
+function safeFilename(name: string): string {
+  const ext = extension(name);
+  const stem = name.slice(0, name.length - ext.length - 1).normalize("NFKD")
+    .replace(/[^a-zA-Z0-9_.-]/g, "_").replace(/_+/g, "_").slice(0, 90) || "page";
+  return stem + "." + ext;
+}
+function fileSize(size: number): string { return (size / 1024 / 1024).toFixed(2) + " MB"; }
 
-export default function VolumePdfManager({
-  textbookId,
-  volumeId,
-  displayTitle,
-  originalFileUrl,
-  pageCount,
-}: Props) {
-  const router =
-    useRouter();
+export default function VolumePdfManager({textbookId,volumeId,displayTitle,originalFileUrl,pageCount}: Props) {
+  const router = useRouter();
+  const [files, setFiles] = useState<File[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const alreadyProcessed = pageCount > 0 || Boolean(originalFileUrl);
 
-  const [
-    pdfFile,
-    setPdfFile,
-  ] =
-    useState<File | null>(
-      null
-    );
-
-  const [
-    loading,
-    setLoading,
-  ] =
-    useState(false);
-
-  const [
-    progressMessage,
-    setProgressMessage,
-  ] =
-    useState("");
-
-  const [
-    errorMessage,
-    setErrorMessage,
-  ] =
-    useState("");
-
-  const [
-    successMessage,
-    setSuccessMessage,
-  ] =
-    useState("");
-
-  const alreadyProcessed =
-    pageCount > 0;
-
-  function handleFileChange(
-    event: ChangeEvent<HTMLInputElement>
-  ) {
-    setErrorMessage("");
-    setSuccessMessage("");
-    setProgressMessage("");
-
-    const file =
-      event.target
-        .files?.[0] ??
-      null;
-
-    if (!file) {
-      setPdfFile(null);
-      return;
+  function selectFiles(event: ChangeEvent<HTMLInputElement>) {
+    const candidates = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    setError(""); setSuccess(""); setProgress("");
+    if (!candidates.length) return;
+    if (candidates.length > MAX_FILES) {
+      setFiles([]); setError("한 권에 한 번에 등록할 수 있는 파일은 최대 150개입니다."); return;
     }
-
-    const extension =
-      file.name
-        .split(".")
-        .pop()
-        ?.toLowerCase();
-
-    if (
-      extension !== "pdf"
-    ) {
-      setPdfFile(null);
-
-      setErrorMessage(
-        "PDF 파일만 등록할 수 있습니다."
-      );
-
-      event.target.value =
-        "";
-
-      return;
+    for (const file of candidates) {
+      if (!supported.has(extension(file.name)) || file.size < 1 || file.size > MAX_FILE_BYTES) {
+        setFiles([]);
+        setError("PDF·JPG·JPEG·PNG·WEBP 파일만 등록할 수 있으며, 파일 하나당 60MB 이하여야 합니다.");
+        return;
+      }
     }
-
-    setPdfFile(file);
+    setFiles(candidates.sort((a,b) => collator.compare(a.name,b.name)));
   }
 
-  async function handleUpload() {
-    if (
-      alreadyProcessed
-    ) {
-      setErrorMessage(
-        "이미 E-Book 페이지가 생성된 권입니다."
-      );
+  function move(index: number, delta: number) {
+    setFiles(current => {
+      const target = index + delta;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index],next[target]] = [next[target],next[index]];
+      return next;
+    });
+  }
 
-      return;
-    }
+  async function callProcessor(batchId: string, data: Record<string, unknown>): Promise<ApiResult> {
+    const response = await fetch("/api/admin/textbook-volumes/" + volumeId + "/process-files", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ textbookId, batchId, ...data }),
+      signal: AbortSignal.timeout(300000),
+    });
+    const raw = await response.text();
+    let result: ApiResult;
+    try { result = JSON.parse(raw) as ApiResult; }
+    catch { throw Error("교재 처리 서버가 올바른 응답을 반환하지 않았습니다. HTTP " + response.status); }
+    if (!response.ok || !result.success) throw Error(result.error || "교재 처리에 실패했습니다. HTTP " + response.status);
+    return result;
+  }
 
-    if (!pdfFile) {
-      setErrorMessage(
-        "등록할 PDF 파일을 선택해주세요."
-      );
-
-      return;
-    }
-
-    setLoading(true);
-    setErrorMessage("");
-    setSuccessMessage("");
-
-    let uploadedPath:
-      | string
-      | null = null;
+  async function upload() {
+    if (busy || alreadyProcessed) return;
+    if (!files.length) { setError("등록할 PDF 또는 이미지 파일을 선택해주세요."); return; }
+    setBusy(true); setError(""); setSuccess("");
+    const batchId = crypto.randomUUID();
+    const originals: string[] = [];
+    const pages: PageInfo[] = [];
+    let finalizationStarted = false;
 
     try {
-      /*
-       * =======================================================
-       * 1. 브라우저 → Supabase Storage
-       *
-       * PDF를 Next.js API payload로 보내지 않습니다.
-       * =======================================================
-       */
-      setProgressMessage(
-        "1/3 PDF 파일을 업로드하고 있습니다..."
-      );
+      const supabase = createClient();
+      for (let index = 0; index < files.length; index++) {
+        const file = files[index];
+        const name = String(index + 1).padStart(3,"0") + "-" + safeFilename(file.name);
+        const path = "textbooks/" + textbookId + "/volumes/" + volumeId + "/original/" + batchId + "/" + name;
+        setProgress("파일 " + (index + 1) + "/" + files.length + " 업로드 중: " + file.name);
+        const { error: uploadError } = await supabase.storage.from("textbook-files").upload(path, file, {
+          upsert: false, contentType: contentType(file), cacheControl: "3600",
+        });
+        if (uploadError) throw Error("원본 업로드 실패 (" + file.name + "): " + uploadError.message);
+        originals.push(path);
 
-      const supabase =
-        createClient();
-
-      const safeFilename =
-        sanitizeFilename(
-          pdfFile.name
-        );
-
-      const uniqueFilename =
-        `${Date.now()}-${crypto.randomUUID()}-${safeFilename}`;
-
-      uploadedPath =
-        `textbooks/${textbookId}/volumes/${volumeId}/original/${uniqueFilename}`;
-
-      const {
-        error:
-          uploadError,
-      } =
-        await supabase.storage
-          .from(
-            "textbook-files"
-          )
-          .upload(
-            uploadedPath,
-            pdfFile,
-            {
-              contentType:
-                "application/pdf",
-
-              cacheControl:
-                "3600",
-
-              upsert:
-                false,
-            }
-          );
-
-      if (uploadError) {
-        throw new Error(
-          `PDF 업로드 실패: ${uploadError.message}`
-        );
+        setProgress("파일 " + (index + 1) + "/" + files.length + " 페이지 생성 중: " + file.name);
+        const result = await callProcessor(batchId, { operation: "render", storagePath: path, startPage: pages.length + 1 });
+        if (!result.pages?.length || result.pageCount !== result.pages.length) throw Error("변환된 페이지 정보를 확인하지 못했습니다.");
+        if (result.pages.some((row, i) => row.page_number !== pages.length + i + 1)) throw Error("페이지 순서가 잘못되었습니다.");
+        pages.push(...result.pages);
+        if (pages.length > 400) throw Error("한 권에는 최대 400페이지만 등록할 수 있습니다.");
+        setProgress("변환 완료: " + pages.length + "페이지 / " + files.length + "개 파일 중 " + (index + 1) + "개");
       }
-
-      /*
-       * =======================================================
-       * 2. 서버 PDF 처리
-       * =======================================================
-       */
-      setProgressMessage(
-        "2/3 PDF를 E-Book 페이지 이미지로 변환하고 있습니다..."
-      );
-
-      const response =
-        await fetch(
-          `/api/admin/textbook-volumes/${volumeId}/process-pdf`,
-          {
-            method:
-              "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            credentials:
-              "same-origin",
-
-            body:
-              JSON.stringify({
-                textbookId,
-                storagePath:
-                  uploadedPath,
-              }),
-          }
-        );
-
-      const responseText =
-        await response.text();
-
-      let data: {
-        success?: boolean;
-        error?: string;
-        message?: string;
-        pageCount?: number;
-        savedPageCount?: number;
-      } = {};
-
-      if (responseText) {
+      finalizationStarted = true;
+      setProgress("E-Book 페이지 " + pages.length + "개를 교재에 저장하고 있습니다...");
+      const result = await callProcessor(batchId, { operation: "finalize", sources: originals, pages });
+      if (result.pageCount !== pages.length) throw Error("최종 저장 페이지 수가 일치하지 않습니다. 관리자에게 문의해주세요.");
+      setSuccess(displayTitle + " · " + files.length + "개 파일을 " + pages.length + "페이지로 등록했습니다.");
+      setProgress("");
+      setFiles([]);
+      router.refresh();
+    } catch (caught) {
+      const detail = caught instanceof Error ? caught.message : "교재 등록 중 오류가 발생했습니다.";
+      if (!finalizationStarted) {
         try {
-          data =
-            JSON.parse(
-              responseText
-            );
-        } catch {
-          throw new Error(
-            `PDF 처리 API가 정상적인 JSON 응답을 반환하지 않았습니다. (HTTP ${response.status})`
-          );
+          // Only ephemeral objects from this batch are discarded, never existing pages.
+          await callProcessor(batchId, {
+            operation: "discard", sources: originals, pages: pages.map(row => row.page_image_url),
+          });
+        } catch (cleanupError) {
+          console.error("TEXTBOOK TEMP CLEANUP ERROR:", cleanupError);
         }
       }
-
-      if (!response.ok) {
-        /*
-         * 서버 처리가 시작되기 전 오류일 수도 있고
-         * 중간 처리 오류일 수도 있으므로
-         * 원본 PDF를 여기서 무조건 삭제하지 않습니다.
-         */
-        throw new Error(
-          data.error ||
-            `PDF 처리에 실패했습니다. (HTTP ${response.status})`
-        );
-      }
-
-      /*
-       * =======================================================
-       * 3. 완료
-       * =======================================================
-       */
-      setProgressMessage(
-        "3/3 권별 E-Book 생성이 완료되었습니다."
-      );
-
-      setSuccessMessage(
-        `${displayTitle} PDF 등록 완료 · ${data.pageCount ?? 0}페이지`
-      );
-
-      setPdfFile(null);
-
-      router.refresh();
-    } catch (error) {
-      console.error(
-        "VOLUME PDF UPLOAD ERROR:",
-        error
-      );
-
-      setProgressMessage("");
-
-      setErrorMessage(
-        error instanceof
-        Error
-          ? error.message
-          : "PDF 등록 중 오류가 발생했습니다."
-      );
+      setError(detail + (finalizationStarted ? " 새로고침하여 등록 상태를 확인해주세요." : " 기존 교재는 변경되지 않았습니다."));
+      setProgress("");
+      console.error("TEXTBOOK MULTI FILE UPLOAD ERROR:", caught);
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   }
 
-  return (
-    <section
-      style={{
-        marginTop:
-          "20px",
-
-        padding:
-          "24px",
-
-        border:
-          "1px solid #e4e7ec",
-
-        borderRadius:
-          "14px",
-
-        background:
-          "#ffffff",
-      }}
-    >
-      <h2
-        style={{
-          margin: 0,
-
-          color:
-            "#101828",
-
-          fontSize:
-            "18px",
-        }}
-      >
-        수업용 PDF
-      </h2>
-
-      <p
-        style={{
-          margin:
-            "9px 0 0",
-
-          color:
-            "#667085",
-
-          fontSize:
-            "12px",
-
-          lineHeight:
-            1.7,
-        }}
-      >
-        이 권에서 실제
-        수업에 사용할 PDF를
-        등록합니다. 등록 후
-        각 페이지가 자동으로
-        이미지로 변환되어
-        TALKLY E-Book에
-        사용됩니다.
-      </p>
-
-      {alreadyProcessed ? (
-        <div
-          style={{
-            marginTop:
-              "20px",
-
-            padding:
-              "18px",
-
-            border:
-              "1px solid #abefc6",
-
-            borderRadius:
-              "11px",
-
-            background:
-              "#ecfdf3",
-          }}
-        >
-          <div
-            style={{
-              color:
-                "#027a48",
-
-              fontSize:
-                "13px",
-
-              fontWeight:
-                900,
-            }}
-          >
-            PDF 등록 완료
+  return <section className="talkly-volume-upload">
+    <h2>수업용 교재 파일 등록</h2>
+    <p className="talkly-volume-upload-description">
+      여러 개의 PDF, JPG, JPEG, PNG, WEBP 파일을 한꺼번에 선택할 수 있습니다.
+      파일마다 한 페이지씩 분리되어 있어도 순서대로 합쳐 하나의 E-Book으로 등록합니다.
+      여러 페이지가 들어 있는 PDF는 각 페이지가 자동으로 분리됩니다.
+    </p>
+    {alreadyProcessed ? <div className="talkly-volume-upload-completed">
+      <strong>교재 페이지 등록 완료</strong>
+      <p>기존 E-Book 페이지 <b>{pageCount}개</b>가 생성되어 있습니다.</p>
+      <p>페이지·오디오 핫스팟을 보호하기 위해 이미 등록된 권의 파일 재등록은 차단되어 있습니다.</p>
+      {originalFileUrl && <small>원본 저장 경로: {originalFileUrl}</small>}
+    </div> : <>
+      <div className="talkly-volume-upload-selection">
+        <label htmlFor="volumePageFiles">PDF / 이미지 파일 여러 개 선택</label>
+        <input id="volumePageFiles" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+          disabled={busy} onChange={selectFiles}/>
+        <p>자동 정렬: 파일명의 숫자 순서 (예: 1, 2, 10). 아래에서 ▲▼ 버튼으로 순서를 조정할 수 있습니다.</p>
+        <p>파일당 60MB 이하 · 한 번에 최대 150개 · 한 권 최대 400페이지</p>
+      </div>
+      {files.length > 0 && <div className="talkly-volume-upload-queue">
+        <div className="talkly-volume-upload-queue-header"><strong>선택한 파일 {files.length}개</strong><span>위에서 아래 순서대로 교재 페이지를 생성합니다.</span></div>
+        <ol>{files.map((file,index)=><li key={index}>
+          <span className="talkly-volume-upload-item-number">{index+1}</span>
+          <span className="talkly-volume-upload-item-name" title={file.name}>{file.name}<small>{fileSize(file.size)}</small></span>
+          <div className="talkly-volume-upload-move">
+            <button type="button" disabled={busy||index===0} onClick={()=>move(index,-1)} aria-label={file.name+" 순서 위로"}>▲</button>
+            <button type="button" disabled={busy||index===files.length-1} onClick={()=>move(index,1)} aria-label={file.name+" 순서 아래로"}>▼</button>
           </div>
-
-          <div
-            style={{
-              marginTop:
-                "8px",
-
-              color:
-                "#475467",
-
-              fontSize:
-                "12px",
-
-              lineHeight:
-                1.7,
-            }}
-          >
-            E-Book 페이지{" "}
-            <strong>
-              {pageCount}
-            </strong>
-            개가 생성되어
-            있습니다.
-          </div>
-
-          {originalFileUrl && (
-            <div
-              style={{
-                marginTop:
-                  "10px",
-
-                color:
-                  "#98a2b3",
-
-                fontSize:
-                  "10px",
-
-                lineHeight:
-                  1.6,
-
-                wordBreak:
-                  "break-all",
-              }}
-            >
-              {
-                originalFileUrl
-              }
-            </div>
-          )}
-
-          <div
-            style={{
-              marginTop:
-                "13px",
-
-              padding:
-                "11px 12px",
-
-              borderRadius:
-                "8px",
-
-              background:
-                "#ffffff",
-
-              color:
-                "#667085",
-
-              fontSize:
-                "11px",
-
-              lineHeight:
-                1.6,
-            }}
-          >
-            기존 페이지와 향후
-            Audio Hotspot을
-            보호하기 위해 PDF
-            재등록은 현재
-            차단되어 있습니다.
-          </div>
-        </div>
-      ) : (
-        <>
-          <div
-            style={{
-              marginTop:
-                "20px",
-
-              padding:
-                "18px",
-
-              border:
-                "1px solid #e4e7ec",
-
-              borderRadius:
-                "11px",
-
-              background:
-                "#f9fafb",
-            }}
-          >
-            <label
-              htmlFor="volumePdf"
-              style={{
-                display:
-                  "block",
-
-                marginBottom:
-                  "8px",
-
-                color:
-                  "#344054",
-
-                fontSize:
-                  "13px",
-
-                fontWeight:
-                  800,
-              }}
-            >
-              PDF 파일 선택
-            </label>
-
-            <input
-              id="volumePdf"
-              type="file"
-              accept=".pdf,application/pdf"
-              disabled={
-                loading
-              }
-              onChange={
-                handleFileChange
-              }
-              style={{
-                width:
-                  "100%",
-
-                boxSizing:
-                  "border-box",
-
-                padding:
-                  "11px",
-
-                border:
-                  "1px solid #d0d5dd",
-
-                borderRadius:
-                  "9px",
-
-                background:
-                  "#ffffff",
-
-                fontFamily:
-                  "inherit",
-
-                fontSize:
-                  "12px",
-              }}
-            />
-
-            {pdfFile && (
-              <div
-                style={{
-                  marginTop:
-                    "12px",
-
-                  color:
-                    "#475467",
-
-                  fontSize:
-                    "11px",
-
-                  lineHeight:
-                    1.6,
-                }}
-              >
-                선택 파일:{" "}
-                <strong>
-                  {
-                    pdfFile.name
-                  }
-                </strong>
-                <br />
-                크기:{" "}
-                {(
-                  pdfFile.size /
-                  1024 /
-                  1024
-                ).toFixed(
-                  2
-                )}{" "}
-                MB
-              </div>
-            )}
-          </div>
-
-          <button
-            type="button"
-            disabled={
-              loading ||
-              !pdfFile
-            }
-            onClick={
-              handleUpload
-            }
-            style={{
-              width:
-                "100%",
-
-              minHeight:
-                "48px",
-
-              marginTop:
-                "14px",
-
-              border:
-                "none",
-
-              borderRadius:
-                "10px",
-
-              background:
-                loading ||
-                !pdfFile
-                  ? "#98a2b3"
-                  : "#0A1F44",
-
-              color:
-                "#ffffff",
-
-              fontFamily:
-                "inherit",
-
-              fontSize:
-                "13px",
-
-              fontWeight:
-                900,
-
-              cursor:
-                loading ||
-                !pdfFile
-                  ? "default"
-                  : "pointer",
-            }}
-          >
-            {loading
-              ? "PDF 처리 중..."
-              : "PDF 등록 및 E-Book 페이지 생성"}
-          </button>
-        </>
-      )}
-
-      {progressMessage && (
-        <div
-          style={{
-            marginTop:
-              "14px",
-
-            padding:
-              "13px 14px",
-
-            border:
-              "1px solid #b2ccff",
-
-            borderRadius:
-              "9px",
-
-            background:
-              "#eff4ff",
-
-            color:
-              "#3538cd",
-
-            fontSize:
-              "11px",
-
-            fontWeight:
-              800,
-
-            lineHeight:
-              1.6,
-          }}
-        >
-          {
-            progressMessage
-          }
-        </div>
-      )}
-
-      {errorMessage && (
-        <div
-          style={{
-            marginTop:
-              "14px",
-
-            padding:
-              "13px 14px",
-
-            border:
-              "1px solid #fda29b",
-
-            borderRadius:
-              "9px",
-
-            background:
-              "#fffbfa",
-
-            color:
-              "#b42318",
-
-            fontSize:
-              "11px",
-
-            fontWeight:
-              700,
-
-            lineHeight:
-              1.6,
-          }}
-        >
-          {errorMessage}
-        </div>
-      )}
-
-      {successMessage && (
-        <div
-          style={{
-            marginTop:
-              "14px",
-
-            padding:
-              "13px 14px",
-
-            border:
-              "1px solid #abefc6",
-
-            borderRadius:
-              "9px",
-
-            background:
-              "#ecfdf3",
-
-            color:
-              "#027a48",
-
-            fontSize:
-              "11px",
-
-            fontWeight:
-              800,
-
-            lineHeight:
-              1.6,
-          }}
-        >
-          {
-            successMessage
-          }
-        </div>
-      )}
-    </section>
-  );
+        </li>)}</ol>
+      </div>}
+      <button type="button" className="talkly-volume-upload-submit" onClick={()=>void upload()} disabled={busy||files.length===0}>
+        {busy ? "파일을 등록하고 있습니다..." : files.length+"개 파일로 E-Book 페이지 생성"}
+      </button>
+      {busy && <p className="talkly-volume-upload-warning">등록이 완료될 때까지 이 페이지를 닫거나 새로고침하지 마세요.</p>}
+    </>}
+    {progress && <p className="talkly-volume-upload-progress" role="status">{progress}</p>}
+    {error && <p className="talkly-volume-upload-error" role="alert">{error}</p>}
+    {success && <p className="talkly-volume-upload-success" role="status">{success}</p>}
+  </section>;
 }
