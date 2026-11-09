@@ -302,6 +302,12 @@ export default function HomeTeachers() {
         </div>
       )}
 
+      <p className="talkly-home-teacher-membership-notice">
+        <span aria-hidden="true">🔒</span>
+        회원가입 시 해당 강사들에 대한 상세한 정보를 확인하실 수 있어요.
+        <Link href="/signup" className="talkly-home-teacher-signup">회원가입하기 →</Link>
+      </p>
+
       <style>{`
         @media (max-width: 1050px) {
           .talkly-home-teacher-grid {
