@@ -10,6 +10,7 @@ on:
       - 'lib/timesheets/**'
       - 'supabase/migrations/*manual_timesheets.sql'
       - 'lib/assessments/**'
+      - 'lib/payments/**'
       - 'supabase/migrations/*teacher_assessment_forms.sql'
       - 'tests/**'
       - 'package*.json'
@@ -35,5 +36,7 @@ jobs:
       - run: npx eslint 'app/api/admin/textbook-volumes/[volumeId]/process-files/route.ts' 'app/admin/textbooks/[id]/volumes/[volumeId]/VolumePdfManager.tsx' 'app/teachers/[id]/page.tsx'
       - run: node --test tests/textbook-multifile.test.cjs
       - run: npm run test:assessments
+      - run: npx eslint lib/payments app/api/admin/payment-test app/admin/payment-test
+      - run: node --test tests/toss-sandbox.test.cjs
       - run: npm run test:regression
       - run: npm run check:routes
