@@ -1521,3 +1521,39 @@ img {
 .talkly-textbook-next-step a{display:inline-flex;background:#0a1f44;color:white;text-decoration:none;padding:11px 15px;border-radius:8px;font-size:12px;font-weight:900}
 @media(max-width:900px){.talkly-volume-create-area{grid-template-columns:1fr 1fr}.talkly-volume-create-area>div{grid-column:1/-1}}
 @media(max-width:600px){.talkly-volume-create-area{grid-template-columns:1fr}.talkly-volume-create-area>div{grid-column:auto}}
+
+
+/* Admin-only Toss virtual payment diagnostic. */
+.talkly-toss-test-page{max-width:1150px;margin:0 auto;color:#1c2d4d}
+.talkly-toss-test-hero{padding:30px 34px;background:linear-gradient(110deg,#0b2248,#214b85);border-radius:17px;color:white;box-shadow:0 12px 28px rgba(12,41,86,.11)}
+.talkly-toss-test-hero>span{font-size:11px;font-weight:900;letter-spacing:.13em;color:#b4cdf6}
+.talkly-toss-test-hero h1{color:#fff;font-size:clamp(23px,3vw,31px);font-weight:900;line-height:1.3;margin:10px 0}
+.talkly-toss-test-hero p{margin:0;color:#d9e7fa;font-size:13px;line-height:1.8}
+.talkly-toss-test-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
+.talkly-toss-test-panel{padding:25px 27px;background:white;border:1px solid #dfe7f3;border-radius:15px;box-shadow:0 7px 19px rgba(15,36,74,.035);margin-top:20px}
+.talkly-toss-test-grid>.talkly-toss-test-panel{margin-top:0}
+.talkly-toss-test-panel h2{font-size:19px;font-weight:900;color:#0d2b58;margin:0 0 16px}
+.talkly-toss-test-panel p{font-size:13px;color:#53637c;line-height:1.85;margin:15px 0}
+.talkly-toss-test-status,.talkly-toss-test-result{padding:12px 15px;border-radius:9px;font-size:13px;font-weight:850;line-height:1.6}
+.talkly-toss-test-status.is-ready,.talkly-toss-test-result.is-approved{color:#067647;background:#ecfdf3;border:1px solid #abefc6}
+.talkly-toss-test-status.is-blocked,.talkly-toss-test-result.is-failed{color:#b42318;background:#fff5f4;border:1px solid #fbc3be}
+.talkly-toss-test-result.is-loading{color:#2256a6;background:#eff5ff;border:1px solid #c3d7ff}
+.talkly-toss-test-result.is-uncertain{color:#955b15;background:#fff9e8;border:1px solid #f3dfa9}
+.talkly-toss-test-amount{display:flex;align-items:center;justify-content:space-between;padding:18px;margin-top:20px;background:#f4f7fc;border-radius:12px;gap:12px}
+.talkly-toss-test-amount span{color:#53637c;font-size:12px;font-weight:800}
+.talkly-toss-test-amount strong{color:#092d62;font-size:28px;font-weight:900;font-variant-numeric:tabular-nums}
+.talkly-toss-test-button{display:block;margin-top:18px;width:100%;padding:16px 20px;border:0;border-radius:10px;background:#245ed6;color:#fff;cursor:pointer;font-weight:900;font-size:14px}
+.talkly-toss-test-button:hover:not(:disabled){background:#1b4fb9}
+.talkly-toss-test-button:disabled{opacity:.55;cursor:not-allowed}
+.talkly-toss-test-notice{background:#f4f7fc;border:1px solid #e0e6f0;border-radius:10px;padding:13px 15px;color:#56677f!important;font-size:12px!important}
+.talkly-toss-test-feedback,.talkly-toss-test-error{border-radius:9px;padding:11px 13px;font-size:12px!important}
+.talkly-toss-test-feedback{background:#eff5ff;border:1px solid #d2e2fb;color:#2d518a!important}
+.talkly-toss-test-error{background:#fff5f4;border:1px solid #f8bbb4;color:#b42318!important}
+.talkly-toss-test-panel ol{padding-left:22px;color:#455772;font-size:13px;line-height:1.95}
+.talkly-toss-test-panel li{padding:6px 0}
+.talkly-toss-test-link{display:inline-flex;padding:11px 14px;border:1px solid #bbcee9;border-radius:9px;color:#1e4d91;text-decoration:none;font-size:12px;font-weight:900;background:#fff}
+.talkly-toss-test-actions{display:flex;flex-wrap:wrap;gap:11px;margin-top:22px}
+.talkly-toss-test-receipt{display:grid;grid-template-columns:max-content 1fr;gap:14px 20px;padding:18px;background:#f7f9fd;border:1px solid #e4eaf5;border-radius:12px;font-size:13px;overflow-wrap:anywhere}
+.talkly-toss-test-receipt dt{color:#6a7892;font-weight:800}.talkly-toss-test-receipt dd{margin:0;color:#193d75;font-weight:850}
+@media(max-width:800px){.talkly-toss-test-grid{grid-template-columns:1fr}.talkly-toss-test-hero{padding:25px 23px}.talkly-toss-test-panel{padding:21px 19px}.talkly-toss-test-receipt{grid-template-columns:1fr;gap:5px}}
+
