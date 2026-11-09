@@ -44,3 +44,20 @@ test("existing members continue to requested teacher profile after signing in",(
   assert.match(signup,/getSafeNextPath\(nextParam\)/);
   assert.match(signup,/router\.replace\(loginHref\)/);
 });
+
+test("existing public teacher-list RPC must use authenticated server user, not service_role",()=>{
+  const src=read("lib/public-teachers.ts");
+  const first=src.indexOf("export const listPublicTeachers");
+  const next=src.indexOf("export const getPublicTeacherProfile");
+  assert.ok(first >= 0 && next > first);
+  const listing=src.slice(first,next);
+  assert.match(src,/import \{ createClient \} from "@\/lib\/supabase-server"/);
+  assert.match(listing,/const db = await createClient\(\)/);
+  assert.match(listing,/db\.rpc\("get_public_teachers"\)/);
+  assert.doesNotMatch(listing,/createAdminClient\(\)/);
+  // The detail query remains separately authorized by the member-only page.
+  const detail=src.slice(next);
+  assert.match(detail,/const db = createAdminClient\(\)/);
+  assert.match(detail,/\.eq\("is_active", true\)/);
+  assert.match(detail,/\.eq\("show_on_homepage", true\)/);
+});
