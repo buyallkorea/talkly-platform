@@ -2,24 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublicTeacherProfile } from "@/lib/public-teachers";
+import { requireTeacherDirectoryMember } from "@/lib/teacher-directory-access";
 import PublicTeacherPhoto from "@/components/teachers/PublicTeacherPhoto";
 import PublicTeacherHeader from "@/components/teachers/PublicTeacherHeader";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ id: string }> };
 
-export async function generateMetadata({params}: Props): Promise<Metadata> {
-  const {id} = await params;
-  const teacher = await getPublicTeacherProfile(id);
-  if (!teacher) return { title: "강사 소개 | TALKLY", robots: { index: false } };
-  return {
-    title: teacher.display_name + " 강사 소개 | TALKLY",
-    description: teacher.bio ? teacher.bio.replace(/\s+/g, " ").slice(0, 150) : teacher.display_name + " 강사의 TALKLY 소개 페이지입니다.",
-  };
+export async function generateMetadata(): Promise<Metadata> {
+  // Member-only content must not leak private profile fields into metadata.
+  return { title: "강사 상세 소개 · 회원 전용 | TALKLY", robots: { index: false, follow: false } };
 }
 
 export default async function TeacherProfilePage({params}: Props) {
   const {id} = await params;
+  await requireTeacherDirectoryMember("/teachers/" + encodeURIComponent(id));
   const teacher = await getPublicTeacherProfile(id);
   if (!teacher) notFound();
   return <div className="talkly-public-teachers-page">
