@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { listPublicTeachers } from "@/lib/public-teachers";
+import { requireTeacherDirectoryMember } from "@/lib/teacher-directory-access";
 import PublicTeacherPhoto from "@/components/teachers/PublicTeacherPhoto";
 import PublicTeacherHeader from "@/components/teachers/PublicTeacherHeader";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "TALKLY 강사진 소개",
-  description: "TALKLY 화상영어 강사진의 프로필을 확인하고 강사의 경력과 전문 분야를 알아보세요.",
+  title: "TALKLY 강사진 소개 · 회원 전용",
+  description: "TALKLY 회원을 위한 강사진 소개 페이지입니다.",
+  robots: { index: false, follow: false },
 };
 
 export default async function TeacherDirectoryPage() {
+  await requireTeacherDirectoryMember("/teachers");
   const teachers = await listPublicTeachers();
   return <div className="talkly-public-teachers-page">
     <PublicTeacherHeader />
