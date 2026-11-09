@@ -1399,3 +1399,65 @@ img {
 @media(max-width:900px){.talkly-timesheet-stat-grid{grid-template-columns:1fr 1fr}.talkly-timesheet-controls{align-items:flex-start}}
 @media(max-width:600px){.talkly-timesheet-hero{padding:23px 20px}.talkly-timesheet-stat-grid{grid-template-columns:1fr;gap:10px}.talkly-timesheet-stat{padding:16px}.talkly-timesheet-controls,.talkly-timesheet-entry-toolbar,.talkly-timesheet-panel-heading{padding-left:16px;padding-right:16px}.talkly-timesheet-week-nav{margin:12px 16px}.talkly-timesheet-panel textarea{width:calc(100% - 32px);margin:8px 16px 18px}.talkly-timesheet-actions{padding:16px}.talkly-timesheet-controls form{width:100%;flex-wrap:wrap}}
 @media print{.talkly-timesheet-week-nav button,.talkly-timesheet-actions,.talkly-timesheet-controls input,.talkly-timesheet-entry-toolbar{display:none!important}.talkly-timesheet-panel{break-inside:avoid}.talkly-timesheet-table-scroller{overflow:visible}.talkly-timesheet-grid{min-width:0}.talkly-timesheet-slot{border:0}}
+
+
+/* TALKLY member-only teacher directory and profile */
+.talkly-home-teacher-link{display:block;text-decoration:none;color:inherit;border-radius:20px;transition:transform .18s,box-shadow .18s}
+.talkly-home-teacher-link:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(10,31,68,.12)}
+.talkly-home-teacher-link:focus-visible,.talkly-public-teachers-card:focus-visible{outline:3px solid #3f75dc;outline-offset:3px}
+.talkly-home-teacher-membership-notice{display:flex;justify-content:center;align-items:center;gap:9px 13px;flex-wrap:wrap;margin:22px 0 0;padding:16px 20px;border:1px solid #d4e2f9;border-radius:12px;background:#eaf2ff;color:#193c73;text-align:center;font-size:13px;font-weight:800;line-height:1.65}
+.talkly-home-teacher-signup{color:#205bad;font-weight:900;text-decoration:underline;text-underline-offset:3px}
+.talkly-public-teachers-page{min-height:100vh;background:#f7f9fc;color:#101828}
+.talkly-public-teachers-header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.97);border-bottom:1px solid #e3e9f3;backdrop-filter:blur(9px)}
+.talkly-public-teachers-header-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;width:min(1200px,calc(100% - 36px));min-height:78px;margin:0 auto}
+.talkly-public-teachers-logo img{display:block;width:145px;height:auto}
+.talkly-public-teachers-header nav{display:flex;flex-wrap:wrap;gap:5px}
+.talkly-public-teachers-header nav a{padding:10px 12px;border-radius:9px;color:#1d3358;text-decoration:none;font-size:13px;font-weight:800}
+.talkly-public-teachers-header nav a:hover{background:#eef4ff;color:#2659a5}
+.talkly-public-teachers-container{width:min(1200px,calc(100% - 36px));margin:0 auto;padding:23px 0 65px}
+.talkly-public-teachers-breadcrumb{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:5px 0 23px;color:#667085;font-size:12px;font-weight:800}
+.talkly-public-teachers-breadcrumb a{color:#386db9;text-decoration:none}
+.talkly-public-teachers-eyebrow,.talkly-public-teacher-card-kicker{font-size:11px;letter-spacing:.12em;font-weight:900;color:#a9c5f8}
+.talkly-public-teachers-hero,.talkly-public-teacher-profile-hero{border-radius:21px;background:linear-gradient(120deg,#0a1f44,#19477f);color:#fff;box-shadow:0 12px 26px rgba(15,45,90,.12)}
+.talkly-public-teachers-hero{padding:39px 43px;margin-bottom:25px}
+.talkly-public-teachers-hero h1{margin:8px 0;color:#fff;font-size:clamp(25px,3.2vw,37px);font-weight:900}
+.talkly-public-teachers-hero p{margin:8px 0 0;color:#dce8fa;line-height:1.8;font-size:13px}
+.talkly-public-teachers-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.talkly-public-teachers-card{display:block;min-width:0;overflow:hidden;border:1px solid #e2e9f3;border-radius:18px;background:#fff;color:#101828;text-decoration:none;box-shadow:0 8px 24px rgba(10,31,68,.04);transition:transform .2s,box-shadow .2s}
+.talkly-public-teachers-card:hover{transform:translateY(-4px);box-shadow:0 14px 29px rgba(10,31,68,.12)}
+.talkly-public-teacher-photo{display:flex;justify-content:center;align-items:center;width:100%;aspect-ratio:4/5;background:linear-gradient(135deg,#eaf2ff,#f5f9ff);overflow:hidden}
+.talkly-public-teacher-photo img{display:block;width:100%;height:100%;object-fit:cover;object-position:center top}
+.talkly-public-teacher-photo span{font-size:60px;font-weight:900;color:#93add5}
+.talkly-public-teachers-card-info{text-align:center;padding:19px 15px 23px}
+.talkly-public-teachers-card-info h2{margin:0;color:#0a1f44;font-size:18px;font-weight:900}
+.talkly-public-teachers-card-info p{margin:6px 0;color:#667085;font-size:12px}
+.talkly-public-teachers-card-info>span{display:inline-block;margin-top:12px;color:#2763b7;font-size:12px;font-weight:900}
+.talkly-public-teachers-empty{text-align:center;padding:48px 20px;background:white;border:1px dashed #d3deed;border-radius:14px}
+.talkly-public-teachers-empty h2{font-size:20px;color:#0a1f44}
+.talkly-public-teachers-empty p{font-size:13px;color:#667085}
+.talkly-public-teachers-cta,.talkly-public-teacher-cta{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:25px;padding:24px 28px;border:1px solid #d3e3fa;border-radius:15px;background:#eaf2ff}
+.talkly-public-teachers-cta h2,.talkly-public-teacher-cta h2{margin:0 0 6px;color:#0a1f44;font-size:20px;font-weight:900}
+.talkly-public-teachers-cta p,.talkly-public-teacher-cta p{margin:0;color:#667085;font-size:12px;line-height:1.7}
+.talkly-public-teachers-cta a,.talkly-public-teacher-cta a{display:inline-flex;flex-shrink:0;padding:13px 18px;border-radius:10px;background:#0a1f44;color:white;text-decoration:none;font-size:13px;font-weight:900}
+.talkly-public-teacher-profile-hero{display:grid;grid-template-columns:minmax(220px,330px) 1fr;overflow:hidden}
+.talkly-public-teacher-profile-portrait{background:#dce7f6}
+.talkly-public-teacher-photo.is-detail{height:100%;min-height:355px}
+.talkly-public-teacher-photo.is-detail span{font-size:94px}
+.talkly-public-teacher-profile-intro{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:38px 44px}
+.talkly-public-teacher-profile-intro h1{margin:10px 0 7px;font-size:clamp(28px,4vw,46px);font-weight:900;color:#fff}
+.talkly-public-teacher-profile-intro p{margin:0 0 11px;color:#d9e6f6;font-size:13px;line-height:1.8}
+.talkly-public-teacher-profile-intro .talkly-public-teacher-nationality{color:#b8d4ff;font-size:15px;font-weight:800}
+.talkly-public-teacher-specialties{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
+.talkly-public-teacher-specialties span{padding:8px 11px;border:1px solid rgba(255,255,255,.22);border-radius:999px;background:rgba(255,255,255,.13);color:#eff6ff;font-size:12px;font-weight:800}
+.talkly-public-teacher-all-link{display:inline-flex;margin-top:22px;color:#c9e0ff;text-decoration:none;font-size:12px;font-weight:900}
+.talkly-public-teacher-all-link:hover{text-decoration:underline}
+.talkly-public-teacher-profile-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:22px}
+.talkly-public-teacher-info-card{min-width:0;padding:26px 29px;border:1px solid #e1e7f0;border-radius:16px;background:#fff;box-shadow:0 6px 15px rgba(10,31,68,.04)}
+.talkly-public-teacher-info-card .talkly-public-teacher-card-kicker{color:#3f75dc}
+.talkly-public-teacher-info-card h2{margin:8px 0 14px;font-size:19px;font-weight:900;color:#0a1f44}
+.talkly-public-teacher-prose{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:#475467;font-size:14px;line-height:1.9}
+.talkly-public-teacher-experience{margin:0;color:#194780;font-size:30px;font-weight:900}
+@media(max-width:950px){.talkly-public-teachers-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.talkly-public-teachers-header nav a{font-size:12px;padding:9px}}
+@media(max-width:680px){.talkly-public-teachers-header-inner{flex-wrap:wrap;padding:11px 0}.talkly-public-teachers-logo img{width:120px}.talkly-public-teachers-header nav{width:100%;gap:2px}.talkly-public-teachers-header nav a{font-size:11px;padding:8px}.talkly-public-teachers-hero{padding:27px 22px}.talkly-public-teachers-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.talkly-public-teachers-card-info h2{font-size:16px}.talkly-public-teacher-profile-hero{grid-template-columns:1fr}.talkly-public-teacher-photo.is-detail{aspect-ratio:4/3;min-height:250px;max-height:400px}.talkly-public-teacher-profile-intro{padding:28px}.talkly-public-teacher-profile-sections{grid-template-columns:1fr}.talkly-public-teacher-info-card{padding:22px}.talkly-public-teachers-cta,.talkly-public-teacher-cta{flex-direction:column;align-items:flex-start}}
+@media(max-width:420px){.talkly-public-teachers-card-info{padding:15px 10px}.talkly-home-teacher-membership-notice{font-size:12px}}
+
