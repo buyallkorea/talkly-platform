@@ -37,37 +37,37 @@ export default function AssessmentEditor({ kind, sourceId, period, initialValues
       setMessage(error instanceof Error && !["TimeoutError", "AbortError"].includes(error.name) ? error.message : "Save result is uncertain. Keep this page and retry. / 저장 결과를 확인하지 못했습니다.");
     } finally { guard.current = false; setBusy(false); }
   }
-  return <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 text-slate-900">
-    <Link onClick={event => { if (dirty && !window.confirm("Unsaved changes will be lost. Leave this page? / 저장하지 않은 변경사항을 버리고 이동할까요?")) event.preventDefault(); }} href={administrator ? "/admin/assessments" : "/teacher/assessments"} className="font-semibold text-blue-700">← {administrator ? "평가서 목록" : "Assessment forms"}</Link>
-    <header><p className="text-sm font-bold tracking-widest text-blue-600">TALKLY · {administrator ? "관리자 조회·수정" : "TEACHER ASSESSMENT"}</p>
-      <h1 className="mt-2 text-3xl font-bold">{kind === "initial" ? "Initial / Diagnostic Assessment" : "Monthly Observation Review"}</h1>
-      <p className="mt-3 text-sm leading-7">{period !== "initial" ? `Review period: ${period} · ` : ""}Status: {status} · Version: {revision} {dirty ? "· Unsaved changes / 저장하지 않은 변경사항" : ""}</p>
-      <p className="text-sm leading-7 text-slate-600">E = Emerging · D = Developing · I = Independent · NYO = Not Yet Observed. Use concrete examples; do not infer an unobserved skill. This form does not change the learner’s assigned level, course or textbook.</p>
+  return <div className="talkly-assessment-form">
+    <Link onClick={event => { if (dirty && !window.confirm("Unsaved changes will be lost. Leave this page? / 저장하지 않은 변경사항을 버리고 이동할까요?")) event.preventDefault(); }} href={administrator ? "/admin/assessments" : "/teacher/assessments"} className="talkly-assessment-back">← {administrator ? "평가서 목록" : "Assessment forms"}</Link>
+    <header className="talkly-assessment-form-hero"><p className="talkly-assessment-eyebrow">TALKLY · {administrator ? "관리자 조회·수정" : "TEACHER ASSESSMENT"}</p>
+      <h1 className="talkly-assessment-form-title">{kind === "initial" ? "Initial / Diagnostic Assessment" : "Monthly Observation Review"}</h1>
+      <p className="talkly-assessment-form-info">{period !== "initial" ? `Review period: ${period} · ` : ""}Status: {status} · Version: {revision} {dirty ? "· Unsaved changes / 저장하지 않은 변경사항" : ""}</p>
+      <p className="talkly-assessment-form-description">E = Emerging · D = Developing · I = Independent · NYO = Not Yet Observed. Use concrete examples; do not infer an unobserved skill. This form does not change the learner’s assigned level, course or textbook.</p>
       <p className="text-sm leading-7 text-slate-600">Visible to the assigned teacher and administrators. Parent/student publication is not enabled. / 담당 강사·관리자 전용이며 학생·학부모에게 자동 공개되지 않습니다.</p>
-      {attendance && <p className="mt-3 rounded-xl bg-blue-50 p-3 text-sm">Recorded attendance in the assigned review period: {attendance.attended} attended / {attendance.scheduled} scheduled lessons · {attendance.completed} completed. Based on attendance records; cancelled and test lessons excluded.</p>}
+      {attendance && <p className="talkly-assessment-attendance">Recorded attendance in the assigned review period: {attendance.attended} attended / {attendance.scheduled} scheduled lessons · {attendance.completed} completed. Based on attendance records; cancelled and test lessons excluded.</p>}
     </header>
-    <form onSubmit={event => { event.preventDefault(); void save("submitted"); }}>
-      <fieldset disabled={busy} className="space-y-6">
-        {assessmentSections(kind).map(section => <section key={section.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-5 text-lg font-bold text-blue-900">{section.title}</h2>
-          <div className="grid gap-5 sm:grid-cols-2">{section.fields.map(field => {
+    <form className="talkly-assessment-form-body" onSubmit={event => { event.preventDefault(); void save("submitted"); }}>
+      <fieldset disabled={busy} className="talkly-assessment-fieldset">
+        {assessmentSections(kind).map(section => <section key={section.title} className="talkly-assessment-section">
+          <h2 className="talkly-assessment-section-heading">{section.title}</h2>
+          <div className="talkly-assessment-field-grid">{section.fields.map(field => {
             const id = `assessment-${field.key}`, value = values[field.key] ?? (field.type === "multi" ? [] : "");
-            return <div key={field.key} className={field.type === "textarea" || field.type === "multi" ? "sm:col-span-2" : ""}>
-              {field.type === "multi" ? <fieldset><legend className="mb-2 text-sm font-semibold">{field.label}</legend><div className="flex flex-wrap gap-3">{field.options?.map(option => <label key={option} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={Array.isArray(value) && value.includes(option)} onChange={event => change(field.key, event.target.checked ? [...(Array.isArray(value) ? value : []), option] : (Array.isArray(value) ? value : []).filter(v => v !== option))} />{option}</label>)}</div></fieldset>
-              : <><label htmlFor={id} className="mb-2 block text-sm font-semibold">{field.label}{field.required ? " *" : ""}</label>
-                {field.type === "select" ? <select id={id} value={String(value)} onChange={event => change(field.key, event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white p-3"><option value="">Select / 선택</option>{field.options?.map(option => <option key={option}>{option}</option>)}</select>
-                : field.type === "textarea" ? <textarea id={id} value={String(value)} maxLength={2000} rows={3} onChange={event => change(field.key, event.target.value)} className="w-full rounded-lg border border-slate-300 p-3" />
-                : <input id={id} type={field.type === "date" ? "date" : field.type === "number" ? "number" : "text"} min={field.type === "number" ? 0 : undefined} maxLength={200} value={String(value)} onChange={event => change(field.key, event.target.value)} className="w-full rounded-lg border border-slate-300 p-3" />}</>}
+            return <div key={field.key} className={field.type === "textarea" || field.type === "multi" ? "talkly-assessment-field talkly-assessment-field-wide" : "talkly-assessment-field"}>
+              {field.type === "multi" ? <fieldset className="talkly-assessment-check-field"><legend className="talkly-assessment-label">{field.label}</legend><div className="talkly-assessment-check-grid">{field.options?.map(option => <label key={option} className="talkly-assessment-check-option"><input type="checkbox" checked={Array.isArray(value) && value.includes(option)} onChange={event => change(field.key, event.target.checked ? [...(Array.isArray(value) ? value : []), option] : (Array.isArray(value) ? value : []).filter(v => v !== option))} />{option}</label>)}</div></fieldset>
+              : <><label htmlFor={id} className="talkly-assessment-label">{field.label}{field.required ? " *" : ""}</label>
+                {field.type === "select" ? <select id={id} value={String(value)} onChange={event => change(field.key, event.target.value)} className="talkly-assessment-control"><option value="">Select / 선택</option>{field.options?.map(option => <option key={option}>{option}</option>)}</select>
+                : field.type === "textarea" ? <textarea id={id} value={String(value)} maxLength={2000} rows={3} onChange={event => change(field.key, event.target.value)} className="talkly-assessment-control talkly-assessment-textarea" />
+                : <input id={id} type={field.type === "date" ? "date" : field.type === "number" ? "number" : "text"} min={field.type === "number" ? 0 : undefined} maxLength={200} value={String(value)} onChange={event => change(field.key, event.target.value)} className="talkly-assessment-control" />}</>}
             </div>;
           })}</div>
         </section>)}
-        <p className="text-sm text-slate-600">* Required for submission. Drafts may be incomplete. / 필수항목은 제출 시 검사합니다.</p>
-        <div className="flex flex-wrap gap-3"><button disabled={conflict} type="button" onClick={() => void save(status)} className="rounded-xl border border-blue-700 px-5 py-3 font-semibold text-blue-700">{status === "submitted" ? "Save changes / 수정 저장" : "Save draft / 임시저장"}</button>
-          {status === "draft" && <button disabled={conflict} type="submit" className="rounded-xl bg-blue-700 px-5 py-3 font-semibold text-white">Submit for review / 제출</button>}
-          <button type="button" onClick={() => window.print()} className="rounded-xl border px-5 py-3">Print / 인쇄</button></div>
+        <p className="talkly-assessment-form-help">* Required for submission. Drafts may be incomplete. / 필수항목은 제출 시 검사합니다.</p>
+        <div className="talkly-assessment-actions"><button disabled={conflict} type="button" onClick={() => void save(status)} className="talkly-assessment-button talkly-assessment-button-secondary">{status === "submitted" ? "Save changes / 수정 저장" : "Save draft / 임시저장"}</button>
+          {status === "draft" && <button disabled={conflict} type="submit" className="talkly-assessment-button talkly-assessment-button-primary">Submit for review / 제출</button>}
+          <button type="button" onClick={() => window.print()} className="talkly-assessment-button talkly-assessment-button-ghost">Print / 인쇄</button></div>
       </fieldset>
     </form>
-    <p role="status" aria-live="polite" className="whitespace-pre-wrap rounded-xl bg-slate-100 p-4 text-sm">{busy ? "Saving… / 저장 중…" : message || "Keep this page open until saving is confirmed. / 저장 완료를 확인해 주세요."}</p>
-    {conflict && <p role="alert" className="rounded-xl bg-amber-50 p-4 text-sm">A newer version may exist. Copy your text before reloading. / 입력 내용을 복사한 뒤 새로고침해 최신 내용을 확인해 주세요.</p>}
+    <p role="status" aria-live="polite" className="talkly-assessment-feedback">{busy ? "Saving… / 저장 중…" : message || "Keep this page open until saving is confirmed. / 저장 완료를 확인해 주세요."}</p>
+    {conflict && <p role="alert" className="talkly-assessment-conflict">A newer version may exist. Copy your text before reloading. / 입력 내용을 복사한 뒤 새로고침해 최신 내용을 확인해 주세요.</p>}
   </div>;
 }
