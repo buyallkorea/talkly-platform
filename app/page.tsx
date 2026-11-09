@@ -1231,7 +1231,11 @@ export default function Home() {
               }}
             >
               <span>© 2026 TALKLY. All rights reserved.</span>
-              <span>이용약관 · 개인정보처리방침 · 고객센터</span>
+              <nav aria-label="약관 및 고객지원" style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                <Link href="/terms">이용약관</Link>
+                <Link href="/privacy" style={{ fontWeight: 800 }}>개인정보처리방침</Link>
+                <Link href="/consultation">고객센터</Link>
+              </nav>
             </div>
           </div>
         </div>
