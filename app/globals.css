@@ -1461,3 +1461,14 @@ img {
 @media(max-width:680px){.talkly-public-teachers-header-inner{flex-wrap:wrap;padding:11px 0}.talkly-public-teachers-logo img{width:120px}.talkly-public-teachers-header nav{width:100%;gap:2px}.talkly-public-teachers-header nav a{font-size:11px;padding:8px}.talkly-public-teachers-hero{padding:27px 22px}.talkly-public-teachers-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.talkly-public-teachers-card-info h2{font-size:16px}.talkly-public-teacher-profile-hero{grid-template-columns:1fr}.talkly-public-teacher-photo.is-detail{aspect-ratio:4/3;min-height:250px;max-height:400px}.talkly-public-teacher-profile-intro{padding:28px}.talkly-public-teacher-profile-sections{grid-template-columns:1fr}.talkly-public-teacher-info-card{padding:22px}.talkly-public-teachers-cta,.talkly-public-teacher-cta{flex-direction:column;align-items:flex-start}}
 @media(max-width:420px){.talkly-public-teachers-card-info{padding:15px 10px}.talkly-home-teacher-membership-notice{font-size:12px}}
 
+
+
+/* Teacher profile: biography beside portrait, credentials in a single row. */
+.talkly-public-teacher-profile-intro{justify-content:center;min-width:0}
+.talkly-public-teacher-profile-intro h1{font-size:clamp(21px,2.5vw,30px);line-height:1.4;margin:10px 0 18px}
+.talkly-public-teacher-introduction{margin:0;color:#eef4ff;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;line-height:2;max-width:720px}
+.talkly-public-teacher-introduction.is-empty{color:#b7c9e3;font-style:italic}
+.talkly-public-teacher-profile-sections{grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch}
+.talkly-public-teacher-info-card{min-width:0;display:flex;flex-direction:column;gap:0}
+.talkly-public-teacher-info-card .talkly-public-teacher-prose.is-empty{color:#98a2b3;font-style:italic}
+@media(max-width:730px){.talkly-public-teacher-profile-sections{grid-template-columns:1fr}.talkly-public-teacher-profile-intro{padding:28px}.talkly-public-teacher-introduction{font-size:14px;line-height:1.9}}
