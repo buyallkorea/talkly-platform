@@ -73,7 +73,7 @@ export function validateManualTimesheet(month: unknown, input: unknown): {
   if (status === "submitted" && !entries.length) throw Error("Please mark at least one completed class before submitting.");
   const rosterNotes = data.rosterNotes ?? "", teacherNote = data.teacherNote ?? "", timeZone = data.timeZone ?? "Asia/Seoul";
   if (typeof rosterNotes !== "string" || rosterNotes.length > 3000 || typeof teacherNote !== "string" || teacherNote.length > 2000) throw Error("Notes are too long.");
-  if (!TIMESHEET_ZONES.includes(timeZone as typeof TIMESHEET_ZONES[number])) throw Error("Select a valid time zone.");
+  if (typeof timeZone !== "string" || !TIMESHEET_ZONES.includes(timeZone as typeof TIMESHEET_ZONES[number])) throw Error("Select a valid time zone.");
   entries.sort((a, b) => a.day - b.day || a.slot - b.slot);
   return { entries, rosterNotes: rosterNotes.trim(), teacherNote: teacherNote.trim(), timeZone, status };
 }
