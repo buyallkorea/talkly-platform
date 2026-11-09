@@ -32,6 +32,8 @@ jobs:
       - run: npx eslint lib/timesheets components/timesheets app/api/teacher-timesheets app/teacher/teaching-hours app/admin/payroll
       - run: node --test tests/timesheets/*.test.cjs
       - run: npx eslint lib/public-teachers.ts lib/teacher-directory-access.ts components/HomeTeachers.tsx components/teachers app/teachers
+      - run: npx eslint 'app/api/admin/textbook-volumes/[volumeId]/process-files/route.ts' 'app/admin/textbooks/[id]/volumes/[volumeId]/VolumePdfManager.tsx' 'app/teachers/[id]/page.tsx'
+      - run: node --test tests/textbook-multifile.test.cjs
       - run: npm run test:assessments
       - run: npm run test:regression
       - run: npm run check:routes
