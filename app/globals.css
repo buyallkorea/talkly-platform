@@ -1472,3 +1472,37 @@ img {
 .talkly-public-teacher-info-card{min-width:0;display:flex;flex-direction:column;gap:0}
 .talkly-public-teacher-info-card .talkly-public-teacher-prose.is-empty{color:#98a2b3;font-style:italic}
 @media(max-width:730px){.talkly-public-teacher-profile-sections{grid-template-columns:1fr}.talkly-public-teacher-profile-intro{padding:28px}.talkly-public-teacher-introduction{font-size:14px;line-height:1.9}}
+
+
+/* Standalone textbook volume PDF and image-page batch importer */
+.talkly-volume-upload{margin-top:22px;padding:25px;background:#fff;border:1px solid #e4e7ec;border-radius:15px;box-shadow:0 6px 16px rgba(15,35,65,.035);color:#101828}
+.talkly-volume-upload h2{margin:0;font-size:19px;font-weight:900;color:#101828}
+.talkly-volume-upload-description{margin:9px 0 0;font-size:13px;line-height:1.85;color:#536277}
+.talkly-volume-upload-selection{margin-top:21px;border:1px solid #d8e3f0;border-radius:12px;padding:18px 20px;background:#f8fbff}
+.talkly-volume-upload-selection label{display:block;font-size:13px;font-weight:900;color:#223a62;margin-bottom:10px}
+.talkly-volume-upload-selection input[type=file]{display:block;width:100%;max-width:100%;font-size:12px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;padding:13px;color:#253652}
+.talkly-volume-upload-selection p{margin:10px 0 0;font-size:11px;color:#667085;line-height:1.7}
+.talkly-volume-upload-completed{margin-top:19px;padding:18px;border:1px solid #abefc6;border-radius:12px;background:#ecfdf3;color:#027a48}
+.talkly-volume-upload-completed strong{font-size:14px}.talkly-volume-upload-completed p{font-size:12px;color:#475467;line-height:1.7}
+.talkly-volume-upload-completed small{display:block;color:#667085;font-size:10px;overflow-wrap:anywhere}
+.talkly-volume-upload-queue{margin-top:18px;border:1px solid #e1e7f0;border-radius:12px;overflow:hidden}
+.talkly-volume-upload-queue-header{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:13px 16px;background:#f4f7fc;flex-wrap:wrap}
+.talkly-volume-upload-queue-header strong{font-size:13px;color:#193762}
+.talkly-volume-upload-queue-header span{font-size:11px;color:#667085}
+.talkly-volume-upload-queue ol{max-height:330px;overflow:auto;list-style:none;margin:0;padding:0}
+.talkly-volume-upload-queue li{display:flex;align-items:center;gap:12px;border-bottom:1px solid #e8edf4;padding:10px 14px;min-width:0}
+.talkly-volume-upload-queue li:last-child{border-bottom:0}
+.talkly-volume-upload-item-number{flex:none;width:27px;height:27px;border-radius:8px;background:#eaf1ff;color:#1f4c92;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center}
+.talkly-volume-upload-item-name{min-width:0;flex:1;overflow-wrap:anywhere;font-weight:750;font-size:12px;color:#344054}
+.talkly-volume-upload-item-name small{display:block;color:#98a2b3;font-weight:550;margin-top:3px}
+.talkly-volume-upload-move{display:flex;gap:5px;flex:none}
+.talkly-volume-upload-move button{display:inline-flex;align-items:center;justify-content:center;width:29px;height:29px;border-radius:7px;border:1px solid #cad7e9;background:#fff;color:#2457a0;cursor:pointer}
+.talkly-volume-upload-move button:disabled{color:#c1c8d3;cursor:not-allowed;background:#f5f6f8}
+.talkly-volume-upload-submit{margin-top:17px;width:100%;min-height:49px;border:0;border-radius:10px;background:#0a1f44;color:white;font-weight:900;font-size:13px;cursor:pointer}
+.talkly-volume-upload-submit:disabled{background:#98a2b3;cursor:not-allowed}
+.talkly-volume-upload-progress,.talkly-volume-upload-error,.talkly-volume-upload-success,.talkly-volume-upload-warning{margin:14px 0 0;padding:12px 15px;border-radius:9px;font-size:12px;line-height:1.8}
+.talkly-volume-upload-progress{background:#eff4ff;border:1px solid #b2ccff;color:#244e95;font-weight:800}
+.talkly-volume-upload-error{background:#fffbfa;border:1px solid #fda29b;color:#b42318}
+.talkly-volume-upload-success{background:#ecfdf3;border:1px solid #abefc6;color:#027a48;font-weight:800}
+.talkly-volume-upload-warning{background:#fff6e5;color:#965e18;border:1px solid #f3dbac}
+@media(max-width:600px){.talkly-volume-upload{padding:18px}.talkly-volume-upload-queue-header{align-items:flex-start}}
