@@ -31,6 +31,7 @@ jobs:
       - run: npx eslint lib/assessments components/assessments app/api/assessments app/teacher/assessments app/admin/assessments
       - run: npx eslint lib/timesheets components/timesheets app/api/teacher-timesheets app/teacher/teaching-hours app/admin/payroll
       - run: node --test tests/timesheets/*.test.cjs
+      - run: npx eslint lib/public-teachers.ts lib/teacher-directory-access.ts components/HomeTeachers.tsx components/teachers app/teachers
       - run: npm run test:assessments
       - run: npm run test:regression
       - run: npm run check:routes
