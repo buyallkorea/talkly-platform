@@ -1197,3 +1197,122 @@ img {
     padding: 22px 16px 50px;
   }
 }
+
+/* =========================================================
+   TALKLY ASSESSMENTS — shared admin / teacher visual language
+   Isolated styles preserve the existing shells and form behavior.
+   ========================================================= */
+.talkly-assessment-page,.talkly-assessment-form{width:100%;max-width:1260px;margin:0 auto;color:var(--text-primary)}
+.talkly-assessment-back{display:inline-flex;align-items:center;gap:7px;margin-bottom:18px;color:#305fa9;font-size:13px;font-weight:800;text-decoration:none}
+.talkly-assessment-back:hover,.talkly-assessment-note a:hover{text-decoration:underline}
+.talkly-assessment-hero,.talkly-assessment-form-hero{position:relative;overflow:hidden;border-radius:20px;padding:32px 36px;color:#fff;background:linear-gradient(125deg,#0a1f44 0%,#123264 67%,#1c4a86 100%);box-shadow:0 14px 32px rgba(10,31,68,.12)}
+.talkly-assessment-hero{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.talkly-assessment-hero:after,.talkly-assessment-form-hero:after{content:"";position:absolute;right:-65px;bottom:-95px;width:250px;height:250px;border:1px solid rgba(255,255,255,.16);border-radius:50%;pointer-events:none}
+.talkly-assessment-eyebrow{margin:0 0 7px;font-size:11px;font-weight:900;letter-spacing:.12em;color:#a9c5f8}
+.talkly-assessment-hero h1,.talkly-assessment-form-title{margin:0;font-size:clamp(24px,2.7vw,31px);font-weight:900;letter-spacing:-.035em;line-height:1.35;color:#fff}
+.talkly-assessment-hero p:not(.talkly-assessment-eyebrow),.talkly-assessment-form-description{margin:11px 0 0;max-width:740px;color:#dce8fb;font-size:13px;line-height:1.8}
+.talkly-assessment-hero-tag{z-index:1;white-space:nowrap;padding:8px 11px;border:1px solid rgba(255,255,255,.25);border-radius:999px;background:rgba(255,255,255,.12);color:#fff;font-size:11px;font-weight:900;letter-spacing:.04em}
+.talkly-assessment-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:20px 0 25px}
+.talkly-assessment-stat{display:flex;flex-direction:column;gap:5px;min-width:0;padding:20px 22px;background:#fff;border:1px solid #e4e9f2;border-radius:14px;box-shadow:0 3px 12px rgba(10,31,68,.035)}
+.talkly-assessment-stat span{color:#667085;font-size:12px;font-weight:800}
+.talkly-assessment-stat strong{color:#0a1f44;font-size:29px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
+.talkly-assessment-stat small{color:#8994a7;font-size:11px}
+.talkly-assessment-panel,.talkly-assessment-history,.talkly-assessment-section{border:1px solid #e2e8f0;border-radius:17px;background:#fff;box-shadow:0 4px 16px rgba(10,31,68,.035)}
+.talkly-assessment-panel{overflow:hidden}
+.talkly-assessment-panel-header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:25px 28px 20px;border-bottom:1px solid #edf1f6}
+.talkly-assessment-kicker{margin:0 0 5px;color:#3f75dc;font-size:10px;font-weight:900;letter-spacing:.12em}
+.talkly-assessment-panel-header h2,.talkly-assessment-history h2{margin:0;color:#0a1f44;font-size:21px;font-weight:900;letter-spacing:-.025em}
+.talkly-assessment-panel-header p{margin:5px 0 0;color:#667085;font-size:13px;line-height:1.65}
+.talkly-assessment-count{flex-shrink:0;padding:6px 12px;border-radius:20px;background:#edf3fd;color:#265bb1;font-size:12px;font-weight:900}
+.talkly-assessment-table-wrap{width:100%;overflow-x:auto}
+.talkly-assessment-table{width:100%;min-width:670px;border-collapse:collapse;text-align:left;font-size:13px}
+.talkly-assessment-table thead{background:#f8fafe}
+.talkly-assessment-table th,.talkly-assessment-table td{padding:17px 20px;text-align:left;vertical-align:middle;border-bottom:1px solid #edf0f5}
+.talkly-assessment-table thead th{color:#64748b;font-size:11px;font-weight:900;white-space:nowrap}
+.talkly-assessment-table tbody th{min-width:140px;font-weight:700}
+.talkly-assessment-table tbody tr:last-child th,.talkly-assessment-table tbody tr:last-child td{border-bottom:0}
+.talkly-assessment-table tbody tr:hover{background:#f9fbff}
+.talkly-assessment-name{display:block;color:#0a1f44;font-size:14px;font-weight:850}
+.talkly-assessment-id,.talkly-assessment-revision{display:block;margin-top:4px;color:#98a2b3;font-size:11px;font-weight:600}
+.talkly-assessment-type{display:block;color:#344054;font-size:12px;font-weight:800}
+.talkly-assessment-period{margin:4px 0 0;color:#667085;line-height:1.65;font-size:12px}
+.talkly-assessment-state{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:900}
+.talkly-assessment-state:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.talkly-assessment-state.is-submitted{color:#067647;background:#e9f8f0}
+.talkly-assessment-state.is-draft{color:#b54708;background:#fff7e8}
+.talkly-assessment-state.is-empty{color:#667085;background:#f2f4f7}
+.talkly-assessment-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:10px 16px;border:1px solid transparent;border-radius:10px;font:inherit;font-size:12px;font-weight:850;text-decoration:none;line-height:1.25;white-space:nowrap;cursor:pointer;transition:background .15s,transform .15s,border-color .15s}
+.talkly-assessment-button:hover{transform:translateY(-1px)}
+.talkly-assessment-button:focus-visible,.talkly-assessment-back:focus-visible,.talkly-assessment-control:focus-visible{outline:3px solid #96b9ff;outline-offset:2px}
+.talkly-assessment-button-primary{background:#0a1f44;border-color:#0a1f44;color:#fff}
+.talkly-assessment-button-primary:hover{background:#17386f;color:#fff}
+.talkly-assessment-button-secondary,.talkly-assessment-button-ghost{background:#fff;border-color:#cbd5e1;color:#123264}
+.talkly-assessment-button-secondary:hover,.talkly-assessment-button-ghost:hover{background:#f1f6ff;color:#0a1f44}
+.talkly-assessment-button:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.talkly-assessment-empty{display:flex;flex-direction:column;align-items:center;gap:9px;padding:54px 20px;text-align:center;color:#667085}
+.talkly-assessment-empty strong{color:#0a1f44;font-size:17px}
+.talkly-assessment-empty p{margin:0;font-size:13px;line-height:1.8}
+.talkly-assessment-empty-icon{display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:16px;background:#edf3ff;color:#2f6fed;font-size:28px}
+.talkly-assessment-note{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:20px 0 0;padding:20px 24px;border:1px solid #dbe4f3;border-radius:14px;background:#f3f7fe}
+.talkly-assessment-note strong{font-size:13px;color:#123264}
+.talkly-assessment-note p{margin:5px 0 0;font-size:12px;color:#667085;line-height:1.7}
+.talkly-assessment-note a{flex-shrink:0;color:#225caa;font-size:12px;font-weight:900;text-decoration:none}
+.talkly-assessment-error{background:#fff;border:1px solid #f0d1cd;border-radius:16px;align-items:flex-start;text-align:left;padding:30px}
+.talkly-assessment-error h1{font-size:23px;color:#0a1f44}
+.talkly-assessment-error [role="alert"]{color:#b42318;margin:12px 0}
+.talkly-assessment-form{padding:0 0 30px}
+.talkly-assessment-form-hero{margin-bottom:24px;padding:31px 34px}
+.talkly-assessment-form-info{margin:13px 0 0;color:#e7efff;font-size:12px;font-weight:800}
+.talkly-assessment-attendance{position:relative;z-index:1;margin-top:16px;padding:12px 16px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:10px;color:#eef4ff;font-size:12px;line-height:1.7}
+.talkly-assessment-form-body{margin-top:20px}
+.talkly-assessment-fieldset{display:grid;gap:20px;margin:0;padding:0;border:0;min-width:0}
+.talkly-assessment-fieldset:disabled{opacity:.65}
+.talkly-assessment-section{overflow:hidden;padding:0}
+.talkly-assessment-section-heading{margin:0;padding:17px 25px;border-bottom:1px solid #e6edf7;background:#f4f7fc;color:#0a1f44;font-size:16px;font-weight:900}
+.talkly-assessment-field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 22px;padding:22px 25px 27px}
+.talkly-assessment-field{min-width:0}
+.talkly-assessment-field-wide{grid-column:1/-1}
+.talkly-assessment-label{display:block;margin:0 0 7px;color:#344054;font-size:12px;font-weight:800;line-height:1.5}
+.talkly-assessment-control{display:block;width:100%;min-width:0;min-height:44px;padding:10px 12px;border:1px solid #cfd8e6;border-radius:10px;background:#fff;color:#101828;font:inherit;font-size:13px;line-height:1.5;outline:none;transition:border-color .15s,box-shadow .15s}
+.talkly-assessment-control:focus{border-color:#3f75dc;box-shadow:0 0 0 3px rgba(63,117,220,.12)}
+.talkly-assessment-textarea{min-height:90px;resize:vertical}
+.talkly-assessment-check-field{margin:0;padding:0;border:0}
+.talkly-assessment-check-grid{display:flex;flex-wrap:wrap;gap:8px 12px}
+.talkly-assessment-check-option{display:inline-flex;align-items:center;gap:8px;min-height:35px;padding:7px 11px;background:#f8fafe;border:1px solid #e4e9f2;border-radius:9px;color:#475467;font-size:12px;line-height:1.4;cursor:pointer}
+.talkly-assessment-check-option:has(input:checked){background:#eef4ff;border-color:#adc8f7;color:#194b98;font-weight:800}
+.talkly-assessment-check-option input{accent-color:#245cba;min-width:15px;min-height:15px}
+.talkly-assessment-form-help{margin:0;color:#667085;font-size:12px;line-height:1.65}
+.talkly-assessment-actions{display:flex;flex-wrap:wrap;gap:10px;padding:19px 0 0;border-top:1px solid #e6edf7}
+.talkly-assessment-feedback,.talkly-assessment-conflict{margin:17px 0 0;padding:15px 18px;border-radius:11px;background:#edf3fb;border:1px solid #dae5f4;color:#2d466c;font-size:12px;white-space:pre-wrap;line-height:1.7}
+.talkly-assessment-conflict{background:#fff7e8;color:#9a5b0e;border-color:#f4dcab}
+.talkly-assessment-history{max-width:1260px;margin:0 auto 32px;padding:23px 26px}
+.talkly-assessment-history-list{display:grid;gap:9px;padding:0;margin:14px 0 0;list-style:none;font-size:12px;color:#475467}
+.talkly-assessment-history-list li{padding:9px 11px;border:1px solid #edf1f6;border-radius:8px;background:#f9fafc;overflow-wrap:anywhere}
+.talkly-assessment-history p{font-size:12px}
+.talkly-assessment-entry{margin:18px 0;padding:18px 20px;background:#f1f6ff;border:1px solid #d4e3fa;border-radius:13px;color:#101828}
+.talkly-assessment-entry-link{color:#194b98;font-size:13px;font-weight:900;text-decoration:none}
+.talkly-assessment-entry-link:hover{text-decoration:underline}
+.talkly-assessment-entry-description{margin:7px 0 0;color:#667085;font-size:12px}
+@media(max-width:990px){.talkly-assessment-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){
+ .talkly-assessment-hero,.talkly-assessment-form-hero{padding:24px 20px;border-radius:15px}
+ .talkly-assessment-hero{flex-direction:column}
+ .talkly-assessment-stats{gap:9px;margin:14px 0 19px}
+ .talkly-assessment-stat{padding:14px}
+ .talkly-assessment-stat strong{font-size:24px}
+ .talkly-assessment-panel-header{padding:20px}
+ .talkly-assessment-panel-header h2{font-size:19px}
+ .talkly-assessment-table th,.talkly-assessment-table td{padding:14px 13px}
+ .talkly-assessment-note{align-items:flex-start;flex-direction:column;padding:16px}
+ .talkly-assessment-field-grid{grid-template-columns:1fr;padding:18px}
+ .talkly-assessment-section-heading{padding:16px 18px}
+ .talkly-assessment-form-title{font-size:24px}
+ .talkly-assessment-actions .talkly-assessment-button{flex:1;white-space:normal}
+ .talkly-assessment-history{padding:18px}
+}
+@media print{
+ .talkly-assessment-back,.talkly-assessment-actions,.talkly-assessment-feedback,.talkly-assessment-conflict,.talkly-assessment-entry{display:none!important}
+ .talkly-assessment-form-hero{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ .talkly-assessment-section{break-inside:avoid;box-shadow:none}
+}
+
