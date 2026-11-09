@@ -18,6 +18,10 @@ async function loadDetail({params, searchParams, administrator=false}: Props) {
     const teacher = teacherId ? await ctx.db.from("profiles").select("name").eq("id", teacherId).maybeSingle() : null;
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
     let values: Values = { studentName: source.studentName, nickname: source.nickname, grade: source.grade, instructor: teacher?.data?.name ?? "", assessmentDate: today };
+    // Prefill the recorded interview duration, without changing the stored interview.
+    if (kind === "initial" && typeof source.duration_minutes === "number" && Number.isSafeInteger(source.duration_minutes) && source.duration_minutes >= 0 && source.duration_minutes <= 240) {
+      values = { ...values, duration: String(source.duration_minutes) };
+    }
     let attendance;
     if (kind === "monthly") {
       const window = await progressPeriod(ctx,sourceId,period);

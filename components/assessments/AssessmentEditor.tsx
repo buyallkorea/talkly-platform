@@ -40,9 +40,15 @@ export default function AssessmentEditor({ kind, sourceId, period, initialValues
   return <div className="talkly-assessment-form">
     <Link onClick={event => { if (dirty && !window.confirm("Unsaved changes will be lost. Leave this page? / 저장하지 않은 변경사항을 버리고 이동할까요?")) event.preventDefault(); }} href={administrator ? "/admin/assessments" : "/teacher/assessments"} className="talkly-assessment-back">← {administrator ? "평가서 목록" : "Assessment forms"}</Link>
     <header className="talkly-assessment-form-hero"><p className="talkly-assessment-eyebrow">TALKLY · {administrator ? "관리자 조회·수정" : "TEACHER ASSESSMENT"}</p>
-      <h1 className="talkly-assessment-form-title">{kind === "initial" ? "Initial / Diagnostic Assessment" : "Monthly Observation Review"}</h1>
+      <h1 className="talkly-assessment-form-title">{kind === "initial" ? "Level Test Evaluation" : "Monthly Observation Review"}</h1>
       <p className="talkly-assessment-form-info">{period !== "initial" ? `Review period: ${period} · ` : ""}Status: {status} · Version: {revision} {dirty ? "· Unsaved changes / 저장하지 않은 변경사항" : ""}</p>
       <p className="talkly-assessment-form-description">E = Emerging · D = Developing · I = Independent · NYO = Not Yet Observed. Use concrete examples; do not infer an unobserved skill. This form does not change the learner’s assigned level, course or textbook.</p>
+      {kind === "initial" && <div className="talkly-assessment-rating-guide" aria-label="Skill evaluation rating scale">
+        <p><strong>E · Emerging</strong><span>Limited or inconsistent response; needs frequent modeling.</span></p>
+        <p><strong>D · Developing</strong><span>Responds with some support; accuracy varies.</span></p>
+        <p><strong>I · Independent</strong><span>Responds accurately and confidently with little or no support.</span></p>
+        <p><strong>NYO · Not Yet Observed</strong><span>Not assessed or not age-appropriate.</span></p>
+      </div>}
       <p className="talkly-assessment-form-description">Visible to the assigned teacher and administrators. Parent/student publication is not enabled. / 담당 강사·관리자 전용이며 학생·학부모에게 자동 공개되지 않습니다.</p>
       {attendance && <p className="talkly-assessment-attendance">Recorded attendance in the assigned review period: {attendance.attended} attended / {attendance.scheduled} scheduled lessons · {attendance.completed} completed. Based on attendance records; cancelled and test lessons excluded.</p>}
     </header>
@@ -55,7 +61,8 @@ export default function AssessmentEditor({ kind, sourceId, period, initialValues
             return <div key={field.key} className={field.type === "textarea" || field.type === "multi" ? "talkly-assessment-field talkly-assessment-field-wide" : "talkly-assessment-field"}>
               {field.type === "multi" ? <fieldset className="talkly-assessment-check-field"><legend className="talkly-assessment-label">{field.label}</legend><div className="talkly-assessment-check-grid">{field.options?.map(option => <label key={option} className="talkly-assessment-check-option"><input type="checkbox" checked={Array.isArray(value) && value.includes(option)} onChange={event => change(field.key, event.target.checked ? [...(Array.isArray(value) ? value : []), option] : (Array.isArray(value) ? value : []).filter(v => v !== option))} />{option}</label>)}</div></fieldset>
               : <><label htmlFor={id} className="talkly-assessment-label">{field.label}{field.required ? " *" : ""}</label>
-                {field.type === "select" ? <select id={id} value={String(value)} onChange={event => change(field.key, event.target.value)} className="talkly-assessment-control"><option value="">Select / 선택</option>{field.options?.map(option => <option key={option}>{option}</option>)}</select>
+                {field.hint && <p id={`${id}-hint`} className="talkly-assessment-field-hint">{field.hint}</p>}
+                {field.type === "select" ? <select id={id} aria-describedby={field.hint ? `${id}-hint` : undefined} value={String(value)} onChange={event => change(field.key, event.target.value)} className="talkly-assessment-control"><option value="">Select / 선택</option>{field.options?.map(option => <option key={option}>{option}</option>)}</select>
                 : field.type === "textarea" ? <textarea id={id} value={String(value)} maxLength={2000} rows={3} onChange={event => change(field.key, event.target.value)} className="talkly-assessment-control talkly-assessment-textarea" />
                 : <input id={id} type={field.type === "date" ? "date" : field.type === "number" ? "number" : "text"} min={field.type === "number" ? 0 : undefined} maxLength={200} value={String(value)} onChange={event => change(field.key, event.target.value)} className="talkly-assessment-control" />}</>}
             </div>;

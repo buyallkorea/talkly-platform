@@ -7,7 +7,7 @@ test('both replacement forms render document sections and accessible labels with
   assert.match(html,/Example Learner/);assert.match(html,/Save draft/);assert.match(html,/Submit for review/);assert.match(html,/NYO/);
   assert.match(html,/for="assessment-studentName"/);
   assert.doesNotMatch(html,/participationScore|speakingLevel/);
-  if(kind==='initial')assert.match(html,/Primary textbook/);else{assert.match(html,/Notes for next instructor/);assert.match(html,/Parent feedback/);assert.match(html,/Success indicator|success indicator/)}
+  if(kind==='initial'){assert.match(html,/Primary textbook/);assert.match(html,/Level Test Evaluation/);assert.match(html,/Native language/);assert.match(html,/Focus for first 4 lessons/);assert.match(html,/Responds to greetings/);}else{assert.match(html,/Notes for next instructor/);assert.match(html,/Parent feedback/);assert.match(html,/Success indicator|success indicator/)}
  }
 });
 test('save handler prevents rapid duplicate saves, preserves edits on uncertain responses and advances only acknowledged revisions',async()=>{
