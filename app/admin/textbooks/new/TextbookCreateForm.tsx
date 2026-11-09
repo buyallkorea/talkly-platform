@@ -1861,7 +1861,7 @@ export default function TextbookCreateForm() {
           {createdTextbookId !== null && <div className="talkly-textbook-next-step">
             <strong>다음 단계: 수업용 교재 PDF·이미지 파일 등록</strong>
             <p>교재 수정 화면에서 권을 생성한 뒤 JPG·PNG·PDF 파일 여러 개를 선택하면 됩니다.</p>
-            <Link href={"/admin/textbooks/" + createdTextbookId + "/edit"}>교재 수정 · 권별 자료 등록으로 이동 →</Link>
+            <Link href={`/admin/textbooks/${createdTextbookId}/edit`}>교재 수정 · 권별 자료 등록으로 이동 →</Link>
           </div>}
         </div>
       )}
