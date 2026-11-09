@@ -61,8 +61,8 @@ export function validateManualTimesheet(month: unknown, input: unknown): {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw Error("Invalid time block.");
     const row = raw as Record<string, unknown>;
     if (Object.keys(row).some(key => !["day","slot","student"].includes(key))) throw Error("Unexpected block field.");
-    if (!Number.isInteger(row.day) || Number(row.day) < 1 || Number(row.day) > daysInMonth(month) ||
-        !Number.isInteger(row.slot) || Number(row.slot) < 0 || Number(row.slot) >= SLOTS_PER_DAY ||
+    if (typeof row.day !== "number" || !Number.isInteger(row.day) || row.day < 1 || row.day > daysInMonth(month) ||
+        typeof row.slot !== "number" || !Number.isInteger(row.slot) || row.slot < 0 || row.slot >= SLOTS_PER_DAY ||
         typeof row.student !== "string") throw Error("Invalid time block.");
     const student = row.student.trim();
     if (!student || student.length > 80 || /[\u0000-\u001f\u007f]/.test(student)) throw Error("Enter a student name or ✓ (up to 80 characters).");
