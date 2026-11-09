@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import { createClient } from "@/lib/supabase-browser";
+import Link from "next/link";
 
 const ALLOWED_EXTENSIONS = [
   "pdf",
@@ -193,6 +194,7 @@ export default function TextbookCreateForm() {
 
   const [loading, setLoading] =
     useState(false);
+  const [createdTextbookId, setCreatedTextbookId] = useState<number | null>(null);
 
   const [
     successMessage,
@@ -270,6 +272,7 @@ export default function TextbookCreateForm() {
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
+    setCreatedTextbookId(null);
 
     setSuccessMessage("");
     setErrorMessage("");
@@ -942,6 +945,7 @@ export default function TextbookCreateForm() {
         );
       }
 
+      setCreatedTextbookId(inserted.id);
       resetForm();
     } catch (error) {
       console.error(
@@ -1554,10 +1558,11 @@ export default function TextbookCreateForm() {
         <p
           style={sectionDescriptionStyle}
         >
-          출판사로부터 적법하게 제공받은
-          PDF·eBook·스캔본 등이 있는 경우에
-          등록합니다. 아직 파일이 없다면
-          비워두어도 교재 등록이 가능합니다.
+          이곳은 원본 파일 1개를 보관하는 선택 항목입니다.
+          수업에 사용할 PDF·JPG·PNG·WEBP 파일이 여러 장으로 나뉘어 있다면
+          여기에 올리지 말고, 먼저 교재 기본정보를 등록한 다음
+          교재 수정 → 권별 수업자료 → 새 권 만들기에서
+          여러 파일을 한꺼번에 선택해주세요.
         </p>
 
         <div
@@ -1853,6 +1858,11 @@ export default function TextbookCreateForm() {
           }}
         >
           {successMessage}
+          {createdTextbookId !== null && <div className="talkly-textbook-next-step">
+            <strong>다음 단계: 수업용 교재 PDF·이미지 파일 등록</strong>
+            <p>교재 수정 화면에서 권을 생성한 뒤 JPG·PNG·PDF 파일 여러 개를 선택하면 됩니다.</p>
+            <Link href={"/admin/textbooks/" + createdTextbookId + "/edit"}>교재 수정 · 권별 자료 등록으로 이동 →</Link>
+          </div>}
         </div>
       )}
 
