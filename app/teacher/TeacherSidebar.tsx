@@ -37,6 +37,10 @@ const menuGroups: MenuGroup[] = [
         label: "Level Tests",
         href: "/teacher/level-tests",
       },
+      {
+        label: "My Teaching Hours",
+        href: "/teacher/teaching-hours",
+      },
     ],
   },
   {
