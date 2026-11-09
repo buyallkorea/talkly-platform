@@ -70,8 +70,8 @@ export async function POST(request: NextRequest, { params }: Context) {
   if (typeof textbookId !== "number" || !Number.isSafeInteger(textbookId) || textbookId < 1
       || typeof batchId !== "string" || !UUID.test(batchId)) return message("교재 ID나 업로드 작업 ID가 올바르지 않습니다.", 400);
 
-  const originalPrefix = "textbooks/" + textbookId + "/volumes/" + volumeId + "/original/" + batchId + "/";
-  const pagesPrefix = "textbooks/" + textbookId + "/volumes/" + volumeId + "/pages/" + batchId + "/";
+  const originalPrefix = `textbooks/${textbookId}/volumes/${volumeId}/original/${batchId}/`;
+  const pagesPrefix = `textbooks/${textbookId}/volumes/${volumeId}/pages/${batchId}/`;
   const db = createAdminClient();
   const [{ data: volume, error: volumeError }, { count: currentPageCount, error: countError }] = await Promise.all([
     db.from("textbook_volumes").select("id,textbook_id,status,original_file_url,page_count")
