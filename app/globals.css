@@ -1506,3 +1506,18 @@ img {
 .talkly-volume-upload-success{background:#ecfdf3;border:1px solid #abefc6;color:#027a48;font-weight:800}
 .talkly-volume-upload-warning{background:#fff6e5;color:#965e18;border:1px solid #f3dbac}
 @media(max-width:600px){.talkly-volume-upload{padding:18px}.talkly-volume-upload-queue-header{align-items:flex-start}}
+
+
+/* Guided transition from catalog creation to page-based PDF/image upload */
+.talkly-volume-create-area{display:grid;grid-template-columns:minmax(200px,1fr) minmax(180px,250px) auto;gap:12px;align-items:end;padding:18px 20px;border:1px solid #d5e2f4;border-radius:12px;background:#f1f6ff;margin-bottom:20px}
+.talkly-volume-create-area strong{color:#183d78;font-size:14px;font-weight:900}
+.talkly-volume-create-area p{color:#5a6e87;font-size:12px;line-height:1.7;margin:5px 0 0}
+.talkly-volume-create-area label{font-size:12px;color:#385375;font-weight:900}
+.talkly-volume-create-area input{display:block;margin-top:7px;min-height:40px;width:100%;max-width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #cbd5e1;border-radius:8px;background:white;color:#1b2e4d;font-size:13px}
+.talkly-volume-create-area button{min-height:42px;padding:10px 15px;border:0;border-radius:9px;background:#0a1f44;color:white;font-size:12px;font-weight:900;cursor:pointer}
+.talkly-volume-create-area button:disabled{opacity:.5;cursor:not-allowed}
+.talkly-textbook-next-step{margin-top:14px;border-top:1px solid #c8e1d2;padding-top:13px}
+.talkly-textbook-next-step strong{font-size:13px;color:#125b38}.talkly-textbook-next-step p{margin:5px 0 11px;font-size:12px;color:#54715d}
+.talkly-textbook-next-step a{display:inline-flex;background:#0a1f44;color:white;text-decoration:none;padding:11px 15px;border-radius:8px;font-size:12px;font-weight:900}
+@media(max-width:900px){.talkly-volume-create-area{grid-template-columns:1fr 1fr}.talkly-volume-create-area>div{grid-column:1/-1}}
+@media(max-width:600px){.talkly-volume-create-area{grid-template-columns:1fr}.talkly-volume-create-area>div{grid-column:auto}}
