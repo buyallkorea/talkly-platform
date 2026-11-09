@@ -331,7 +331,7 @@ export default function EditTextbookForm({
         is_active: true,
       }).select("id").single();
       if (error || !data) throw Error(error?.message || "새 권을 생성하지 못했습니다.");
-      router.push("/admin/textbooks/" + textbook.id + "/volumes/" + data.id);
+      router.push(`/admin/textbooks/${textbook.id}/volumes/${data.id}`);
       router.refresh();
     } catch (caught) {
       setErrorMessage(caught instanceof Error ? caught.message : "새 권 생성 중 오류가 발생했습니다.");
