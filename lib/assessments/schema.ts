@@ -19,9 +19,9 @@ export function assessmentSections(kind: AssessmentKind): Section[] {
   const monthly = kind === "monthly";
   return [
     { title: "01 · Student & assessment information", fields: [
-      f("studentName", "Student name", undefined, undefined, true), f("nickname", "Nickname / English name"),
-      f("age", "Age", "number"), f("grade", "School grade (not English proficiency)"),
-      f("assessmentDate", "Assessment / report date", "date", undefined, true), f("instructor", "Instructor", undefined, undefined, true),
+      f("studentName", "Student name", undefined, undefined, true), f("nickname", monthly ? "Nickname / English name" : "Nick Name"),
+      f("age", "Age", "number"), f("grade", monthly ? "School grade (not English proficiency)" : "Grade"),
+      f("assessmentDate", monthly ? "Assessment / report date" : "Assessment date", "date", undefined, true), f("instructor", "Instructor", undefined, undefined, true),
       ...(monthly ? [f("reviewFrom", "Review period — from", "date", undefined, true), f("reviewTo", "Review period — to", "date", undefined, true),
         f("currentLevel", "Current English level"), f("textbook", "Textbook / series"), f("contentCovered", "Content covered", "textarea"),
         f("basis", "Basis of evaluation", "multi", ["Direct observation", "Lesson notes", "Homework / review checks", "In-class mini-check"])]
@@ -70,7 +70,7 @@ export function assessmentSections(kind: AssessmentKind): Section[] {
       f("placementConfidence", "Placement confidence", "select", ["High", "Medium", "Low – re-check recommended"]),
       f("reassessmentLessons", "(If it needs change) Re-assessment — review placement after how many lessons?", "number"),
     ] },
-    { title: monthly ? "05 · Next-month focus plan" : "05 · Textbook recommendation", fields: monthly ? [
+    { title: monthly ? "05 · Next-month focus plan" : "05 · Textbook recommendation — primary decision", fields: monthly ? [
       ...[1, 2, 3].flatMap(i => [f(`plan${i}Skill`, `Focus ${i} — skill`, undefined, undefined, i === 1), f(`plan${i}Strategy`, `Focus ${i} — strategy / activities`, "textarea", undefined, i === 1), f(`plan${i}Success`, `Focus ${i} — success indicator`, "textarea", undefined, i === 1)]),
       f("homework", "Materials / homework", "textarea"), f("internalNotes", "Notes for next instructor — INTERNAL ONLY", "textarea"),
     ] : [
