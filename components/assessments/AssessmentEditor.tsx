@@ -43,7 +43,7 @@ export default function AssessmentEditor({ kind, sourceId, period, initialValues
       <h1 className="talkly-assessment-form-title">{kind === "initial" ? "Initial / Diagnostic Assessment" : "Monthly Observation Review"}</h1>
       <p className="talkly-assessment-form-info">{period !== "initial" ? `Review period: ${period} · ` : ""}Status: {status} · Version: {revision} {dirty ? "· Unsaved changes / 저장하지 않은 변경사항" : ""}</p>
       <p className="talkly-assessment-form-description">E = Emerging · D = Developing · I = Independent · NYO = Not Yet Observed. Use concrete examples; do not infer an unobserved skill. This form does not change the learner’s assigned level, course or textbook.</p>
-      <p className="text-sm leading-7 text-slate-600">Visible to the assigned teacher and administrators. Parent/student publication is not enabled. / 담당 강사·관리자 전용이며 학생·학부모에게 자동 공개되지 않습니다.</p>
+      <p className="talkly-assessment-form-description">Visible to the assigned teacher and administrators. Parent/student publication is not enabled. / 담당 강사·관리자 전용이며 학생·학부모에게 자동 공개되지 않습니다.</p>
       {attendance && <p className="talkly-assessment-attendance">Recorded attendance in the assigned review period: {attendance.attended} attended / {attendance.scheduled} scheduled lessons · {attendance.completed} completed. Based on attendance records; cancelled and test lessons excluded.</p>}
     </header>
     <form className="talkly-assessment-form-body" onSubmit={event => { event.preventDefault(); void save("submitted"); }}>
