@@ -6,6 +6,9 @@ on:
     paths:
       - 'app/**'
       - 'components/assessments/**'
+      - 'components/timesheets/**'
+      - 'lib/timesheets/**'
+      - 'supabase/migrations/*manual_timesheets.sql'
       - 'lib/assessments/**'
       - 'supabase/migrations/*teacher_assessment_forms.sql'
       - 'tests/**'
@@ -26,6 +29,8 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npx tsc --noEmit
       - run: npx eslint lib/assessments components/assessments app/api/assessments app/teacher/assessments app/admin/assessments
+      - run: npx eslint lib/timesheets components/timesheets app/api/teacher-timesheets app/teacher/teaching-hours app/admin/payroll
+      - run: node --test tests/timesheets/*.test.cjs
       - run: npm run test:assessments
       - run: npm run test:regression
       - run: npm run check:routes
