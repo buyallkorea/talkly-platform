@@ -21,7 +21,7 @@ export default async function AdminTeacherTimesheetPage({ params, searchParams }
   const month = validMonth(desired) ? desired : currentKoreanMonth();
   const db = createAdminClient();
   const { data, error } = await db.from("teacher_manual_timesheets")
-    .select("month,teacher_id,status,entries,roster_notes,teacher_note,time_zone,revision,updated_at,submitted_at")
+    .select("id,month,teacher_id,status,entries,roster_notes,teacher_note,time_zone,revision,updated_at,submitted_at")
     .eq("teacher_id",teacherId).eq("month",month).maybeSingle();
   if (error) throw Error("Unable to load teacher's manual timesheet.");
   if (!data) notFound();
