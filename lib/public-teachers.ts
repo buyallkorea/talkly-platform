@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { createClient } from "@/lib/supabase-server";
 
 export type PublicTeacherCard = {
   user_id: string;
@@ -19,7 +20,10 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 
 /** Use the same visibility rule and public card fields as the homepage. */
 export const listPublicTeachers = cache(async (): Promise<PublicTeacherCard[]> => {
-  const db = createAdminClient();
+  // The existing public-card RPC grants EXECUTE to authenticated users,
+  // but intentionally not to service_role. Use the server user's session.
+  // /teachers checks live member identity/role before calling this function.
+  const db = await createClient();
   const { data, error } = await db.rpc("get_public_teachers");
   if (error) throw Error("Unable to load the public teacher list.");
   return ((data ?? []) as Array<{
