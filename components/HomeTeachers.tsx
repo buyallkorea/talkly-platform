@@ -88,13 +88,7 @@ export default function HomeTeachers() {
   }, []);
 
   useEffect(() => {
-    if (
-      teachers.length <=
-      DISPLAY_COUNT
-    ) {
-      setStartIndex(0);
-      return;
-    }
+    if (teachers.length <= DISPLAY_COUNT) return;
 
     const timer =
       window.setInterval(
@@ -212,10 +206,7 @@ export default function HomeTeachers() {
         }}
       >
         {slots.map(
-          (
-            slot,
-            index
-          ) => {
+          (slot) => {
             if (
               slot.type ===
               "empty"
