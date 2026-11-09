@@ -31,7 +31,7 @@ export async function PUT(request: Request) {
     if (Object.keys(body).some(key => !["month","revision","status","entries","rosterNotes","teacherNote","timeZone"].includes(key))) {
       return Response.json({ error: "Unexpected field." }, { status: 400 });
     }
-    if (!validMonth(body.month) || !Number.isSafeInteger(body.revision) || Number(body.revision) < 0) {
+    if (!validMonth(body.month) || typeof body.revision !== "number" || !Number.isSafeInteger(body.revision) || body.revision < 0) {
       return Response.json({ error: "Invalid month or revision." }, { status: 400 });
     }
     let values: ReturnType<typeof validateManualTimesheet>;
