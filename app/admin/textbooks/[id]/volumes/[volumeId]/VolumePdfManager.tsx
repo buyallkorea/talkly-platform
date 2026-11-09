@@ -81,7 +81,7 @@ export default function VolumePdfManager({textbookId,volumeId,displayTitle,origi
   }
 
   async function callProcessor(batchId: string, data: Record<string, unknown>): Promise<ApiResult> {
-    const response = await fetch("/api/admin/textbook-volumes/" + volumeId + "/process-files", {
+    const response = await fetch(`/api/admin/textbook-volumes/${volumeId}/process-files`, {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
@@ -110,7 +110,7 @@ export default function VolumePdfManager({textbookId,volumeId,displayTitle,origi
       for (let index = 0; index < files.length; index++) {
         const file = files[index];
         const name = String(index + 1).padStart(3,"0") + "-" + safeFilename(file.name);
-        const path = "textbooks/" + textbookId + "/volumes/" + volumeId + "/original/" + batchId + "/" + name;
+        const path = `textbooks/${textbookId}/volumes/${volumeId}/original/${batchId}/${name}`;
         setProgress("파일 " + (index + 1) + "/" + files.length + " 업로드 중: " + file.name);
         const { error: uploadError } = await supabase.storage.from("textbook-files").upload(path, file, {
           upsert: false, contentType: contentType(file), cacheControl: "3600",
