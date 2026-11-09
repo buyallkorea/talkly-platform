@@ -1324,3 +1324,78 @@ img {
 .talkly-assessment-field-hint{margin:0 0 8px;padding:9px 11px;border-left:3px solid #bed2f8;border-radius:5px;background:#f3f7fd;color:#51637f;font-size:12px;line-height:1.65}
 @media(max-width:900px){.talkly-assessment-rating-guide{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:500px){.talkly-assessment-rating-guide{grid-template-columns:1fr}}
+
+/* Independent, teacher-entered monthly hours form: no schedule/payroll integration. */
+.talkly-timesheet-page{width:100%;max-width:1360px;margin:0 auto;color:#101828}
+.talkly-timesheet-hero{border-radius:18px;background:linear-gradient(120deg,#0a1f44,#19457c);padding:28px 32px;color:#fff;box-shadow:0 12px 26px rgba(10,31,68,.13)}
+.talkly-timesheet-eyebrow{font-size:11px;letter-spacing:.12em;font-weight:900;color:#adc8f4}
+.talkly-timesheet-hero h1{margin:8px 0;font-size:clamp(23px,2.8vw,31px);font-weight:900;color:white;line-height:1.35}
+.talkly-timesheet-hero p{margin:0;color:#dce9fc;font-size:13px;line-height:1.8}
+.talkly-timesheet-hero-meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:17px;color:#e1ebfb;font-size:12px;font-weight:800}
+.talkly-timesheet-hero-meta>span:not(.talkly-timesheet-badge){border:1px solid rgba(255,255,255,.20);padding:6px 10px;border-radius:7px;background:rgba(255,255,255,.07)}
+.talkly-timesheet-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:20px 0}
+.talkly-timesheet-stat{display:flex;flex-direction:column;gap:7px;min-width:0;padding:21px 22px;border-radius:14px;background:white;border:1px solid #e0e6f0;box-shadow:0 4px 12px rgba(10,31,68,.035)}
+.talkly-timesheet-stat span{font-size:12px;color:#667085;font-weight:750}
+.talkly-timesheet-stat strong{font-variant-numeric:tabular-nums;font-size:27px;color:#0a1f44;font-weight:900}
+.talkly-timesheet-stat .talkly-timesheet-stat-text{font-size:20px}
+.talkly-timesheet-stat small{font-size:11px;color:#98a2b3}
+.talkly-timesheet-panel{margin:18px 0;border-radius:16px;border:1px solid #e3e9f3;background:white;overflow:hidden;box-shadow:0 4px 14px rgba(10,31,68,.035)}
+.talkly-timesheet-panel-heading{padding:23px 24px 11px}
+.talkly-timesheet-panel-heading h2,.talkly-timesheet-controls h2,.talkly-timesheet-history h2{margin:0;color:#0a1f44;font-size:19px;font-weight:900}
+.talkly-timesheet-panel-heading p,.talkly-timesheet-controls p{margin:7px 0 0;color:#667085;font-size:12px;line-height:1.75}
+.talkly-timesheet-controls{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;padding:22px 24px;border-bottom:1px solid #edf1f6}
+.talkly-timesheet-controls form,.talkly-timesheet-controls label{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:#475467}
+.talkly-timesheet-controls input[type=month],.talkly-timesheet-entry-toolbar input,.talkly-timesheet-entry-toolbar select{max-width:100%;min-height:41px;padding:8px 11px;border:1px solid #cfd8e6;background:white;color:#101828;border-radius:9px;font:inherit;font-size:13px}
+.talkly-timesheet-controls form button{min-height:41px;padding:8px 13px;border:0;border-radius:9px;background:#0a1f44;color:white;font-weight:800;cursor:pointer}
+.talkly-timesheet-entry-toolbar{display:flex;align-items:end;gap:14px;flex-wrap:wrap;padding:18px 24px 7px}
+.talkly-timesheet-entry-toolbar label{display:flex;flex-direction:column;gap:7px;color:#344054;font-size:12px;font-weight:800}
+.talkly-timesheet-entry-toolbar input{min-width:200px}
+.talkly-timesheet-entry-toolbar p{flex:1 1 250px;margin:0 0 4px;color:#667085;line-height:1.7;font-size:12px}
+.talkly-timesheet-zone-summary{margin:14px 24px 0;color:#667085;font-size:12px}
+.talkly-timesheet-week-nav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:12px 24px 16px;padding:8px;border-radius:10px;background:#f3f7fd;color:#123264;font-size:13px;text-align:center}
+.talkly-timesheet-week-nav button{width:39px;height:34px;display:flex;align-items:center;justify-content:center;border:1px solid #ccd9ef;border-radius:8px;color:#123264;background:#fff;font-size:20px;font-weight:900;cursor:pointer}
+.talkly-timesheet-week-nav button:disabled{opacity:.35;cursor:not-allowed}
+.talkly-timesheet-table-scroller{overflow:auto;max-width:100%;scrollbar-gutter:stable}
+.talkly-timesheet-grid{width:100%;min-width:790px;border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:12px;text-align:center}
+.talkly-timesheet-grid th:first-child{width:82px;position:sticky;left:0;z-index:2}
+.talkly-timesheet-grid thead th{position:sticky;top:0;z-index:1;padding:11px 6px;background:#0e2d53;color:#fff;border-right:1px solid #335078;font-weight:800}
+.talkly-timesheet-grid thead th:first-child{z-index:3}
+.talkly-timesheet-grid thead th span{display:block;margin-top:5px;font-size:13px}
+.talkly-timesheet-grid tbody th{background:#edf3fc;color:#2a486b;font-size:12px;font-weight:800;border-bottom:1px solid #dae4f3}
+.talkly-timesheet-grid tbody td{height:37px;padding:3px;border-right:1px solid #e5eaf3;border-bottom:1px solid #e5eaf3;background:#fafcff;vertical-align:middle}
+.talkly-timesheet-grid tbody td.is-filled{background:#e6f7ed}
+.talkly-timesheet-grid tbody td.is-outside{background:#f2f4f7;color:#c2c9d3}
+.talkly-timesheet-slot{width:100%;height:31px;min-width:0;border:1px dashed #d9e2ed;border-radius:6px;background:transparent;color:#a4b1c4;font-size:15px;line-height:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.talkly-timesheet-slot:hover{background:#edf4ff;color:#18478b;border-color:#abc5ee}
+.talkly-timesheet-slot.is-filled{border:1px solid #87cda4;background:#c4eed5;color:#125334;font-size:11px;font-weight:850}
+.talkly-timesheet-slot:disabled{opacity:.55;cursor:not-allowed}
+.talkly-timesheet-readonly-slot{display:block;min-height:29px;line-height:29px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#125334;font-size:11px;font-weight:850}
+.talkly-timesheet-grid tfoot th,.talkly-timesheet-grid tfoot td{padding:12px 5px;background:#eaf1ff;color:#173a70;font-size:12px;font-weight:900;border-right:1px solid #d2e0f3}
+.talkly-timesheet-summary-table{width:100%;border-collapse:collapse;min-width:560px;text-align:left;color:#344054;font-size:12px}
+.talkly-timesheet-summary-table th,.talkly-timesheet-summary-table td{padding:14px 18px;border-bottom:1px solid #edf0f5;text-align:left}
+.talkly-timesheet-summary-table thead th{background:#f5f8fe;color:#526582;font-size:11px;font-weight:900}
+.talkly-timesheet-summary-table tbody tr:last-child td{border-bottom:0}
+.talkly-timesheet-summary-table tfoot th,.talkly-timesheet-summary-table tfoot td{background:#edf4ff;color:#0a1f44;font-size:13px;font-weight:900}
+.talkly-timesheet-panel textarea{display:block;width:calc(100% - 48px);margin:9px 24px 22px;box-sizing:border-box;min-height:90px;padding:12px;border:1px solid #cbd7e5;border-radius:10px;background:#fff;color:#101828;font:inherit;font-size:13px;line-height:1.7;resize:vertical}
+.talkly-timesheet-notes{margin:9px 24px 22px;padding:15px;border-radius:10px;border:1px solid #e4eaf3;background:#f8fafd;color:#344054;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.7}
+.talkly-timesheet-actions{display:flex;flex-wrap:wrap;gap:9px;padding:18px 24px 23px;border-top:1px solid #edf1f6}
+.talkly-timesheet-actions button{min-height:43px;padding:9px 16px;border-radius:9px;font:inherit;font-size:12px;font-weight:850;cursor:pointer}
+.talkly-timesheet-actions button:disabled{opacity:.5;cursor:not-allowed}
+.talkly-timesheet-button-primary{background:#0a1f44;color:#fff;border:1px solid #0a1f44}
+.talkly-timesheet-button-secondary{background:#fff;color:#0a1f44;border:1px solid #bfcde3}
+.talkly-timesheet-feedback{margin:0 24px 23px;padding:11px 13px;background:#eff5ff;border:1px solid #d6e4f9;border-radius:8px;color:#2d4b75;font-size:12px}
+.talkly-timesheet-alert{margin:14px 24px;padding:12px;border-radius:9px;border:1px solid #efc69a;background:#fff8eb;color:#925e19;font-size:12px}
+.talkly-timesheet-disclaimer{margin:18px 2px 26px;padding:14px 16px;border-radius:10px;background:#f3f6fb;color:#667085;font-size:12px;line-height:1.75}
+.talkly-timesheet-badge{display:inline-flex;align-items:center;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:850;white-space:nowrap}
+.talkly-timesheet-badge.is-submitted{color:#047044;background:#def6e9}
+.talkly-timesheet-badge.is-draft{color:#945b14;background:#fff1cf}
+.talkly-timesheet-link,.talkly-timesheet-back{color:#205aab;font-weight:850;text-decoration:none;font-size:12px}
+.talkly-timesheet-link:hover,.talkly-timesheet-back:hover{text-decoration:underline}
+.talkly-timesheet-back{display:inline-flex;margin-bottom:14px}
+.talkly-timesheet-no-data{text-align:center!important;padding:45px 16px!important;color:#667085}
+.talkly-timesheet-history{padding:20px 24px}
+.talkly-timesheet-history ul{list-style:none;margin:14px 0 0;padding:0}
+.talkly-timesheet-history li{padding:9px 0;border-bottom:1px solid #edf1f6;color:#667085;font-size:12px}
+@media(max-width:900px){.talkly-timesheet-stat-grid{grid-template-columns:1fr 1fr}.talkly-timesheet-controls{align-items:flex-start}}
+@media(max-width:600px){.talkly-timesheet-hero{padding:23px 20px}.talkly-timesheet-stat-grid{grid-template-columns:1fr;gap:10px}.talkly-timesheet-stat{padding:16px}.talkly-timesheet-controls,.talkly-timesheet-entry-toolbar,.talkly-timesheet-panel-heading{padding-left:16px;padding-right:16px}.talkly-timesheet-week-nav{margin:12px 16px}.talkly-timesheet-panel textarea{width:calc(100% - 32px);margin:8px 16px 18px}.talkly-timesheet-actions{padding:16px}.talkly-timesheet-controls form{width:100%;flex-wrap:wrap}}
+@media print{.talkly-timesheet-week-nav button,.talkly-timesheet-actions,.talkly-timesheet-controls input,.talkly-timesheet-entry-toolbar{display:none!important}.talkly-timesheet-panel{break-inside:avoid}.talkly-timesheet-table-scroller{overflow:visible}.talkly-timesheet-grid{min-width:0}.talkly-timesheet-slot{border:0}}
