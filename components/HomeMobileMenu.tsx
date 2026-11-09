@@ -74,6 +74,9 @@ export default function HomeMobileMenu() {
             <MobileLink href="#teachers" onClick={closeMenu}>
               교사소개
             </MobileLink>
+            <MobileLink href="/teachers" onClick={closeMenu}>
+              전체 강사진 (회원 전용)
+            </MobileLink>
           </MobileSection>
 
           <MobileSection title="TALKLY AI">

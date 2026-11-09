@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import { createClient } from "@/lib/supabase-browser";
+import Link from "next/link";
 
 type Teacher = {
   user_id: string;
@@ -87,13 +88,7 @@ export default function HomeTeachers() {
   }, []);
 
   useEffect(() => {
-    if (
-      teachers.length <=
-      DISPLAY_COUNT
-    ) {
-      setStartIndex(0);
-      return;
-    }
+    if (teachers.length <= DISPLAY_COUNT) return;
 
     const timer =
       window.setInterval(
@@ -211,10 +206,7 @@ export default function HomeTeachers() {
         }}
       >
         {slots.map(
-          (
-            slot,
-            index
-          ) => {
+          (slot) => {
             if (
               slot.type ===
               "empty"
@@ -301,6 +293,12 @@ export default function HomeTeachers() {
         </div>
       )}
 
+      <p className="talkly-home-teacher-membership-notice">
+        <span aria-hidden="true">🔒</span>
+        회원가입 시 해당 강사들에 대한 상세한 정보를 확인하실 수 있어요.
+        <Link href="/signup" className="talkly-home-teacher-signup">회원가입하기 →</Link>
+      </p>
+
       <style>{`
         @media (max-width: 1050px) {
           .talkly-home-teacher-grid {
@@ -344,6 +342,11 @@ function TeacherCard({
     useState(false);
 
   return (
+    <Link
+      href={"/teachers/" + teacher.user_id}
+      className="talkly-home-teacher-link"
+      aria-label={name + " 강사 상세 소개 보기"}
+    >
     <article
       style={{
         minWidth: 0,
@@ -457,8 +460,17 @@ function TeacherCard({
         >
           {nationality}
         </div>
+        <div style={{
+          marginTop: "12px",
+          color: "#265bb1",
+          fontSize: "12px",
+          fontWeight: 900,
+        }}>
+          강사 프로필 보기 →
+        </div>
       </div>
     </article>
+    </Link>
   );
 }
 

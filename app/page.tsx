@@ -233,6 +233,7 @@ export default function Home() {
                 <a href="#programs">프로그램소개</a>
                 <Link href="/curriculum">커리큘럼/교재</Link>
                 <a href="#teachers">교사소개</a>
+                <Link href="/teachers">전체 강사진 (회원 전용)</Link>
               </div>
             </div>
 
@@ -860,6 +861,11 @@ export default function Home() {
           />
 
           <HomeTeachers />
+          <div style={{ textAlign: "center", marginTop: "18px" }}>
+            <Link href="/teachers" style={{ display: "inline-flex", padding: "11px 22px", border: "1px solid #d4deed", borderRadius: "999px", color: "#194a93", background: "#ffffff", textDecoration: "none", fontSize: "13px", fontWeight: 850 }}>
+              전체 강사진 보기 (회원 전용) →
+            </Link>
+          </div>
         </div>
       </section>
 

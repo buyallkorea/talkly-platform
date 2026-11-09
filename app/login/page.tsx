@@ -256,6 +256,14 @@ function LoginPageContent() {
 
 
 
+      // Member-only teacher profiles are shared across all valid TALKLY roles.
+      // Honor the signup -> login -> profile return path even for administrators.
+      if (safeNextPath && /^\/teachers(?:\/[a-f0-9-]{36})?$/i.test(safeNextPath)
+        && ["parent", "student", "teacher", "admin"].includes(profile.role)) {
+        window.location.assign(safeNextPath);
+        return;
+      }
+
       if (
 
         normalizedUserEmail ===
