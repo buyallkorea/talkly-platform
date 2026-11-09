@@ -55,6 +55,8 @@ test("existing public teacher-list RPC must use authenticated server user, not s
   assert.match(listing,/const db = await createClient\(\)/);
   assert.match(listing,/db\.rpc\("get_public_teachers"\)/);
   assert.doesNotMatch(listing,/createAdminClient\(\)/);
+  assert.match(read("app/teachers/page.tsx"),/await requireTeacherDirectoryMember\("\/teachers"\)/);
+  assert.match(read("lib/teacher-directory-access.ts"),/supabase\.auth\.getUser\(\)/);
   // The detail query remains separately authorized by the member-only page.
   const detail=src.slice(next);
   assert.match(detail,/const db = createAdminClient\(\)/);
