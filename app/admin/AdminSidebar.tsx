@@ -70,6 +70,10 @@ const menuGroups: MenuGroup[] = [
         label: "수강신청 설정",
         href: "/admin/enrollment-settings",
       },
+      {
+        label: "토스 테스트 결제",
+        href: "/admin/payment-test",
+      },
     ],
   },
   {
