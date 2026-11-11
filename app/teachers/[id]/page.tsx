@@ -54,23 +54,25 @@ export default async function TeacherProfilePage({params}: Props) {
             <h2>학력</h2>
             <p className={"talkly-public-teacher-prose" + (!teacher.education ? " is-empty" : "")}>{teacher.education || "정보 준비 중"}</p>
           </section>
-          <section className="talkly-public-teacher-info-card">
+          <section className="talkly-public-teacher-info-card talkly-public-teacher-credentials-card">
             <span className="talkly-public-teacher-card-kicker">CERTIFICATIONS & SPECIALTIES</span>
             <h2>자격 및 인증 · 전문분야</h2>
-            <div className="talkly-public-teacher-credentials-group">
-              <h3>자격 및 인증</h3>
-              <p className={"talkly-public-teacher-prose" + (!teacher.certifications ? " is-empty" : "")}>{teacher.certifications || "정보 준비 중"}</p>
-            </div>
-            <div className="talkly-public-teacher-credentials-group">
-              <h3>전문분야</h3>
-              {teacher.specialties.length > 0
-                ? <ul className="talkly-public-teacher-specialty-list">
-                    {teacher.specialties.map((specialty, index) => (
-                      <li key={index}>{specialty}</li>
-                    ))}
-                  </ul>
-                : <p className="talkly-public-teacher-prose is-empty">정보 준비 중</p>}
-            </div>
+            {teacher.certifications && (
+              <p className="talkly-public-teacher-prose" aria-label="자격 및 인증">
+                {teacher.certifications}
+              </p>
+            )}
+            {teacher.specialties.length > 0 && (
+              <p
+                className={"talkly-public-teacher-prose talkly-public-teacher-specialties-text" + (teacher.certifications ? " has-certifications" : "")}
+                aria-label="전문분야"
+              >
+                {teacher.specialties.join(" · ")}
+              </p>
+            )}
+            {!teacher.certifications && teacher.specialties.length === 0 && (
+              <p className="talkly-public-teacher-prose is-empty">정보 준비 중</p>
+            )}
           </section>
         </div>
         <div className="talkly-public-teacher-cta">

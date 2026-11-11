@@ -54,24 +54,29 @@ test("separate PDF pages and images are combined into a single safe volume witho
   assert.match(form, /등록이 완료될 때까지 이 페이지를 닫거나 새로고침하지 마세요/);
 });
 
-test("teacher profile shows biography beside photograph and credentials in three sections", () => {
+test("teacher profile shows biography beside photo and three sections across two rows", () => {
   const page = read("app/teachers/[id]/page.tsx");
   const css = read("app/globals.css");
   assert.match(page, /talkly-public-teacher-profile-hero/);
   assert.match(page, /talkly-public-teacher-introduction/);
   assert.match(page, /\{teacher\.bio\}/);
   assert.doesNotMatch(page, /학생 한 명 한 명의 성장을 함께하는 TALKLY 강사입니다/);
-  assert.equal((page.match(/className="talkly-public-teacher-info-card"/g)||[]).length, 3);
+  assert.equal((page.match(/className="talkly-public-teacher-info-card(?: [^"]+)?"/g)||[]).length, 3);
   assert.match(page, /강의 경력/);
   assert.match(page, /학력/);
   assert.match(page, /자격 및 인증/);
   assert.match(page, /자격 및 인증 · 전문분야/);
+  assert.equal((page.match(/<h2>자격 및 인증 · 전문분야<\/h2>/g)||[]).length, 1);
+  assert.match(page, /aria-label="자격 및 인증"/);
+  assert.match(page, /aria-label="전문분야"/);
+  assert.doesNotMatch(page, /<h3>자격 및 인증<\/h3>/);
   assert.match(page, /teacher\.specialties\.length > 0/);
-  assert.match(page, /teacher\.specialties\.map\(/);
-  assert.match(page, /talkly-public-teacher-specialty-list/);
-  assert.match(page, /<h3>전문분야<\/h3>/);
-  assert.match(css, /\.talkly-public-teacher-specialty-list/);
+  assert.match(page, /teacher\.specialties\.join\(" · "\)/);
+  assert.match(page, /talkly-public-teacher-specialties-text/);
+  assert.doesNotMatch(page, /<h3>전문분야<\/h3>/);
+  assert.doesNotMatch(page, /talkly-public-teacher-specialty-list/);
+  assert.match(css, /\.talkly-public-teacher-credentials-card\{grid-column:1\/-1\}/);
   assert.match(read("lib/public-teachers.ts"), /specialties: \(teacher\.specialties \?\? \[\]\)/);
-  assert.match(css, /\.talkly-public-teacher-profile-sections\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(css, /\.talkly-public-teacher-profile-sections\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(page, /await requireTeacherDirectoryMember/);
 });
