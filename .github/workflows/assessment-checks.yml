@@ -3,18 +3,7 @@ on:
   push:
     branches: [feat/teacher-assessment-forms]
   pull_request:
-    paths:
-      - 'app/**'
-      - 'components/assessments/**'
-      - 'components/timesheets/**'
-      - 'lib/timesheets/**'
-      - 'supabase/migrations/*manual_timesheets.sql'
-      - 'lib/assessments/**'
-      - 'lib/payments/**'
-      - 'supabase/migrations/*teacher_assessment_forms.sql'
-      - 'tests/**'
-      - 'package*.json'
-      - '.github/workflows/assessment-checks.yml'
+    branches: [main]
 permissions:
   contents: read
 jobs:
