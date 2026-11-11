@@ -65,6 +65,13 @@ test("teacher profile shows biography beside photograph and credentials in three
   assert.match(page, /강의 경력/);
   assert.match(page, /학력/);
   assert.match(page, /자격 및 인증/);
+  assert.match(page, /자격 및 인증 · 전문분야/);
+  assert.match(page, /teacher\.specialties\.length > 0/);
+  assert.match(page, /teacher\.specialties\.map\(/);
+  assert.match(page, /talkly-public-teacher-specialty-list/);
+  assert.match(page, /<h3>전문분야<\/h3>/);
+  assert.match(css, /\.talkly-public-teacher-specialty-list/);
+  assert.match(read("lib/public-teachers.ts"), /specialties: \(teacher\.specialties \?\? \[\]\)/);
   assert.match(css, /\.talkly-public-teacher-profile-sections\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
   assert.match(page, /await requireTeacherDirectoryMember/);
 });
