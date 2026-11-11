@@ -1,0 +1,5 @@
+# TALKLY production repository code ownership
+# GitHub user @buyallkorea remains the required reviewer for the entire codebase.
+# Enforce this file through Settings > Branches > main:
+# Require a pull request / Require approvals / Require review from Code Owners.
+* @buyallkorea
