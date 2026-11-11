@@ -1557,3 +1557,10 @@ img {
 .talkly-toss-test-receipt dt{color:#6a7892;font-weight:800}.talkly-toss-test-receipt dd{margin:0;color:#193d75;font-weight:850}
 @media(max-width:800px){.talkly-toss-test-grid{grid-template-columns:1fr}.talkly-toss-test-hero{padding:25px 23px}.talkly-toss-test-panel{padding:21px 19px}.talkly-toss-test-receipt{grid-template-columns:1fr;gap:5px}}
 
+
+/* Member-only teacher profile: qualifications and teaching specialties in one card */
+.talkly-public-teacher-credentials-group + .talkly-public-teacher-credentials-group{margin-top:19px;padding-top:17px;border-top:1px solid #e8edf5}
+.talkly-public-teacher-credentials-group h3{margin:0 0 10px;color:#2a4d81;font-size:13px;font-weight:900}
+.talkly-public-teacher-specialty-list{display:flex;align-items:flex-start;flex-wrap:wrap;gap:7px;list-style:none;padding:0;margin:0}
+.talkly-public-teacher-specialty-list li{max-width:100%;overflow-wrap:anywhere;border:1px solid #cadcf5;background:#edf4ff;border-radius:999px;padding:7px 10px;color:#22539b;font-size:12px;line-height:1.5;font-weight:800}
+
