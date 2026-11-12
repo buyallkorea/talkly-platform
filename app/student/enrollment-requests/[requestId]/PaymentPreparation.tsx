@@ -1,6 +1,6 @@
-import { MAX_SINGLE_PAYMENT_KRW } from "@/lib/payments/payment-limits";
-import Link from "next/link";
 "use client";
+
+import { MAX_SINGLE_PAYMENT_KRW } from "@/lib/payments/payment-limits";
 
 import {
   useMemo,
