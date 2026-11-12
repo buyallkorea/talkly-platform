@@ -1,3 +1,4 @@
+import { MAX_SINGLE_PAYMENT_KRW } from "@/lib/payments/payment-limits";
 import { NextResponse } from "next/server";
 
 import { createClient } from "@/lib/supabase-server";
@@ -456,6 +457,17 @@ export async function POST(request: Request) {
         {
           status: 409,
         }
+      );
+    }
+
+    if (payment.amount > MAX_SINGLE_PAYMENT_KRW) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "MAX_SINGLE_PAYMENT_EXCEEDED",
+          error: "결제금액이 1회 결제 상한을 초과하여 승인을 중단했습니다.",
+        },
+        { status: 409 }
       );
     }
 
