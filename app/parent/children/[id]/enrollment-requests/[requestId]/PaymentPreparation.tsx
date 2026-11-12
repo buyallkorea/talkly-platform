@@ -1,3 +1,5 @@
+import { MAX_SINGLE_PAYMENT_KRW } from "@/lib/payments/payment-limits";
+import Link from "next/link";
 "use client";
 
 import {
@@ -279,6 +281,8 @@ export default function PaymentPreparation({
           discountAmount
       )
     );
+
+  const exceedsPaymentLimit = finalPrice > MAX_SINGLE_PAYMENT_KRW;
 
   async function saveAndContinue() {
     setIsSaving(true);
@@ -934,14 +938,24 @@ export default function PaymentPreparation({
             )}
           </div>
 
+          <div style={{ marginTop: 18, color: "#dbeafe", fontSize: 12, lineHeight: 1.7 }}>
+            1회 최대 결제금액: {MAX_SINGLE_PAYMENT_KRW.toLocaleString("ko-KR")}원
+            {exceedsPaymentLimit && (
+              <p style={{ margin: "6px 0 0", color: "#fecaca", fontWeight: 700 }}>
+                선택하신 상품이 상한을 초과합니다. 수강기간을 줄이거나 고객센터에 문의해 주세요.
+              </p>
+            )}
+            <p style={{ margin: "6px 0 0" }}>
+              결제 전 <Link href="/refund-policy" target="_blank" rel="noopener noreferrer" style={{ color: "#ffffff", textDecoration: "underline" }}>수강 취소 및 환불정책</Link>을 확인해 주세요.
+            </p>
+          </div>
+
           <button
             type="button"
             onClick={
               saveAndContinue
             }
-            disabled={
-              isSaving
-            }
+            disabled={isSaving || exceedsPaymentLimit}
             style={{
               width:
                 "100%",
