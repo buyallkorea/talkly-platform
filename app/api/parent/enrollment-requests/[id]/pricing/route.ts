@@ -1,3 +1,4 @@
+import { MAX_SINGLE_PAYMENT_KRW } from "@/lib/payments/payment-limits";
 import { NextResponse } from "next/server";
 
 import { createClient } from "@/lib/supabase-server";
@@ -405,6 +406,17 @@ export async function POST(
     0,
     regularPrice - discountAmount
   );
+
+  if (finalPrice > MAX_SINGLE_PAYMENT_KRW) {
+    return NextResponse.json(
+      {
+        success: false,
+        code: "MAX_SINGLE_PAYMENT_EXCEEDED",
+        error: `1회 최대 결제금액은 ${MAX_SINGLE_PAYMENT_KRW.toLocaleString("ko-KR")}원입니다. 더 짧은 수강기간을 선택하거나 고객센터에 문의해 주세요.`,
+      },
+      { status: 409 }
+    );
+  }
 
   const {
     data: updated,

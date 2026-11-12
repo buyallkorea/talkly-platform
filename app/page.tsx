@@ -1188,7 +1188,7 @@ export default function Home() {
             />
             <FooterColumn
               title="인포메이션"
-              items={["공지사항", "수업후기", "1:1상담"]}
+              items={["공지사항", "수업후기", "1:1상담", "환불정책"]}
             />
           </div>
 
@@ -1237,7 +1237,7 @@ export default function Home() {
               }}
             >
               <span>© 2026 TALKLY. All rights reserved.</span>
-              <span>이용약관 · 개인정보처리방침 · 고객센터</span>
+              <span><Link href="/refund-policy" style={{ color: "inherit", textDecoration: "underline" }}>수강 취소 및 환불정책</Link></span>
             </div>
           </div>
         </div>
@@ -1555,6 +1555,14 @@ function FooterColumn({
                   href="/notice"
                   style={footerLinkStyle}
                 >
+                  {item}
+                </Link>
+              );
+            }
+
+            if (item === "환불정책") {
+              return (
+                <Link key={item} href="/refund-policy" style={footerLinkStyle}>
                   {item}
                 </Link>
               );

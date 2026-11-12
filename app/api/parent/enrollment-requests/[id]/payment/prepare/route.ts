@@ -1,3 +1,4 @@
+import { MAX_SINGLE_PAYMENT_KRW } from "@/lib/payments/payment-limits";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 
@@ -255,6 +256,17 @@ export async function POST(
         {
           status: 409,
         }
+      );
+    }
+
+    if (finalPrice > MAX_SINGLE_PAYMENT_KRW) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "MAX_SINGLE_PAYMENT_EXCEEDED",
+          error: `1회 결제 최대금액 ${MAX_SINGLE_PAYMENT_KRW.toLocaleString("ko-KR")}원을 초과하여 결제를 진행할 수 없습니다.`,
+        },
+        { status: 409 }
       );
     }
 
