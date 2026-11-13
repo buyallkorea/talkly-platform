@@ -108,6 +108,23 @@ const CURRICULUM_REFERENCE_ROWS = [
   { label: "US Grade", values: ["K", "1", "1", "2", "2", "2", "3", "3", "4", "4", ""] },
 ] as const;
 
+// Keep reference values aligned to the fixed Grade columns, while grouping
+// consecutive identical levels into a single, visually merged grid cell.
+function mergeAdjacentReferenceValues(values: readonly string[]) {
+  const groups: { value: string; start: number; span: number }[] = [];
+
+  values.forEach((value, index) => {
+    const previous = groups[groups.length - 1];
+    if (value !== "" && previous?.value === value) {
+      previous.span += 1;
+    } else {
+      groups.push({ value, start: index, span: 1 });
+    }
+  });
+
+  return groups;
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function CurriculumPage() {
@@ -647,8 +664,14 @@ export default async function CurriculumPage() {
                 <div key={row.label} className="talkly-map-row-contents">
                   <div className="talkly-map-cell talkly-map-reference-label talkly-map-sticky">{row.label}</div>
                   <div className="talkly-map-cell talkly-map-reference-book talkly-map-book-sticky">LEVEL REFERENCE</div>
-                  {row.values.map((value, index) => (
-                    <div key={`${row.label}-${index}`} className="talkly-map-cell talkly-map-reference-value">{value || "—"}</div>
+                  {mergeAdjacentReferenceValues(row.values).map(({ value, start, span }) => (
+                    <div
+                      key={`${row.label}-${start}`}
+                      className="talkly-map-cell talkly-map-reference-value"
+                      style={{ gridColumn: `span ${span}` }}
+                    >
+                      {value || "—"}
+                    </div>
                   ))}
                 </div>
               ))}
@@ -656,7 +679,7 @@ export default async function CurriculumPage() {
               {CURRICULUM_MAP_ROWS.map((row, rowIndex) => {
                 const showCategory = rowIndex === 0 || CURRICULUM_MAP_ROWS[rowIndex - 1].category !== row.category;
                 return (
-                  <div key={`${row.category}-${row.title}`} className={`talkly-map-row-contents ${showCategory ? "talkly-map-category-start" : ""}`}>
+                  <div key={`${row.category}-${row.title}`} className={`talkly-map-row-contents talkly-map-row-${row.category.toLowerCase().replace(" ", "-")} ${showCategory ? "talkly-map-category-start" : ""}`}>
                     <div className="talkly-map-cell talkly-map-category talkly-map-sticky">{showCategory ? row.category : ""}</div>
                     <div className="talkly-map-cell talkly-map-title talkly-map-book-sticky">{row.title}</div>
                     {CURRICULUM_MAP_GRADES.map((grade) => {
@@ -1688,6 +1711,26 @@ export default async function CurriculumPage() {
         .talkly-map-grade-cell { background: #fff; }
         .talkly-map-grade-cell.is-active { background: #edf5ff; }
         .talkly-map-dot { color: #2f67b2; font-size: 15px; line-height: 1; }
+
+        /* Keep the existing table layout; distinguish only the requested categories. */
+        .talkly-map-row-course-book > .talkly-map-category { background: #e2ecfb; color: #315f94; }
+        .talkly-map-row-course-book > .talkly-map-title { background: #f3f7fe; }
+        .talkly-map-row-course-book > .talkly-map-grade-cell { background: #fafcff; }
+        .talkly-map-row-course-book > .talkly-map-grade-cell.is-active { background: #e4edfa; }
+        .talkly-map-row-course-book .talkly-map-dot { color: #416fab; }
+
+        .talkly-map-row-speaking > .talkly-map-category { background: #fae4d8; color: #98614b; }
+        .talkly-map-row-speaking > .talkly-map-title { background: #fff7f1; }
+        .talkly-map-row-speaking > .talkly-map-grade-cell { background: #fffbf8; }
+        .talkly-map-row-speaking > .talkly-map-grade-cell.is-active { background: #fbe9de; }
+        .talkly-map-row-speaking .talkly-map-dot { color: #b97557; }
+
+        .talkly-map-row-reading > .talkly-map-category { background: #def0e4; color: #3f7860; }
+        .talkly-map-row-reading > .talkly-map-title { background: #f3faf5; }
+        .talkly-map-row-reading > .talkly-map-grade-cell { background: #fbfefc; }
+        .talkly-map-row-reading > .talkly-map-grade-cell.is-active { background: #e3f2e8; }
+        .talkly-map-row-reading .talkly-map-dot { color: #4e9874; }
+
         .talkly-map-category-start > .talkly-map-cell { border-top: 2px solid #cddbec; }
         .talkly-map-note { margin: 12px 2px 0; color: #8491a3; font-size: 10.5px; line-height: 1.6; word-break: keep-all; }
 
