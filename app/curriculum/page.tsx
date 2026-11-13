@@ -660,10 +660,12 @@ export default async function CurriculumPage() {
                 </div>
               ))}
 
-              {CURRICULUM_REFERENCE_ROWS.map((row) => (
+              {CURRICULUM_REFERENCE_ROWS.map((row, referenceIndex) => (
                 <div key={row.label} className="talkly-map-row-contents">
                   <div className="talkly-map-cell talkly-map-reference-label talkly-map-sticky">{row.label}</div>
-                  <div className="talkly-map-cell talkly-map-reference-book talkly-map-book-sticky">LEVEL REFERENCE</div>
+                  {referenceIndex === 0 && (
+                    <div className="talkly-map-cell talkly-map-reference-book talkly-map-book-sticky">LEVEL REFERENCE</div>
+                  )}
                   {mergeAdjacentReferenceValues(row.values).map(({ value, start, span }) => (
                     <div
                       key={`${row.label}-${start}`}
@@ -1703,35 +1705,34 @@ export default async function CurriculumPage() {
         .talkly-map-grade-head { min-height: 62px; flex-direction: column; gap: 2px; background: #0A1F44; color: #fff; }
         .talkly-map-grade-head span { opacity: .68; font-size: 10px; font-weight: 800; }
         .talkly-map-grade-head strong { font-size: 15px; font-weight: 900; }
-        .talkly-map-reference-label { background: #eaf2fc; color: #315f9c; font-weight: 900; }
-        .talkly-map-reference-book { background: #f5f8fc; color: #91a0b2; font-size: 10px; font-weight: 900; letter-spacing: .04em; }
-        .talkly-map-reference-value { min-height: 38px; padding: 6px 4px; background: #f8fbff; color: #61738a; font-size: 11px; font-weight: 800; }
+        .talkly-map-reference-label { min-height: 30px; padding: 3px 7px; line-height: 1.15; background: #eaf2fc; color: #315f9c; font-weight: 900; }
+        .talkly-map-reference-book { grid-column: 2; grid-row: span 4; background: #f5f8fc; border-bottom: 2px solid #cddbec; color: #91a0b2; font-size: 10px; font-weight: 900; letter-spacing: .04em; }
+        .talkly-map-reference-value { min-height: 30px; padding: 3px 4px; line-height: 1.15; background: #f8fbff; color: #61738a; font-size: 11px; font-weight: 800; }
         .talkly-map-category { justify-content: flex-start; padding-left: 12px; background: #f3f7fc; color: #315f9c; font-size: 11px; font-weight: 900; letter-spacing: .03em; text-align: left; }
         .talkly-map-title { justify-content: flex-start; padding-left: 12px; background: #fff; color: #2d3c51; font-size: 13px; font-weight: 800; text-align: left; }
-        .talkly-map-grade-cell { background: #fff; }
+        .talkly-map-grade-cell { background: #fff; border-right: 1px solid #dce5f0; border-bottom: 1px solid #dce5f0; }
         .talkly-map-grade-cell.is-active { background: #edf5ff; }
         .talkly-map-dot { color: #2f67b2; font-size: 15px; line-height: 1; }
 
         /* Keep the existing table layout; distinguish only the requested categories. */
         .talkly-map-row-course-book > .talkly-map-category { background: #e2ecfb; color: #315f94; }
         .talkly-map-row-course-book > .talkly-map-title { background: #f3f7fe; }
-        .talkly-map-row-course-book > .talkly-map-grade-cell { background: #fafcff; }
+        .talkly-map-row-course-book > .talkly-map-grade-cell { background: #fff; }
         .talkly-map-row-course-book > .talkly-map-grade-cell.is-active { background: #e4edfa; }
-        .talkly-map-row-course-book .talkly-map-dot { color: #416fab; }
 
         .talkly-map-row-speaking > .talkly-map-category { background: #fae4d8; color: #98614b; }
         .talkly-map-row-speaking > .talkly-map-title { background: #fff7f1; }
-        .talkly-map-row-speaking > .talkly-map-grade-cell { background: #fffbf8; }
+        .talkly-map-row-speaking > .talkly-map-grade-cell { background: #fff; }
         .talkly-map-row-speaking > .talkly-map-grade-cell.is-active { background: #fbe9de; }
-        .talkly-map-row-speaking .talkly-map-dot { color: #b97557; }
 
         .talkly-map-row-reading > .talkly-map-category { background: #def0e4; color: #3f7860; }
         .talkly-map-row-reading > .talkly-map-title { background: #f3faf5; }
-        .talkly-map-row-reading > .talkly-map-grade-cell { background: #fbfefc; }
+        .talkly-map-row-reading > .talkly-map-grade-cell { background: #fff; }
         .talkly-map-row-reading > .talkly-map-grade-cell.is-active { background: #e3f2e8; }
-        .talkly-map-row-reading .talkly-map-dot { color: #4e9874; }
 
         .talkly-map-category-start > .talkly-map-cell { border-top: 2px solid #cddbec; }
+         .talkly-map-reference-value, .talkly-map-reference-label { border-bottom-color: #d6e1ef; }
+         .talkly-map-row-phonics.talkly-map-category-start > .talkly-map-cell { border-top: 3px solid #b6cbe3; }
         .talkly-map-note { margin: 12px 2px 0; color: #8491a3; font-size: 10.5px; line-height: 1.6; word-break: keep-all; }
 
         @media (max-width: 1040px) {
@@ -1810,7 +1811,7 @@ export default async function CurriculumPage() {
           .talkly-map-corner, .talkly-map-book-head, .talkly-map-grade-head { min-height: 46px; }
           .talkly-map-category { padding-left: 7px; font-size: 9px; }
           .talkly-map-title { padding-left: 8px; font-size: 10px; }
-          .talkly-map-reference-value { min-height: 30px; font-size: 9px; }
+          .talkly-map-reference-value, .talkly-map-reference-label { min-height: 28px; padding-top: 3px; padding-bottom: 3px; font-size: 9px; }
           .talkly-map-note { font-size: 9px; }
         }
       `}</style>
