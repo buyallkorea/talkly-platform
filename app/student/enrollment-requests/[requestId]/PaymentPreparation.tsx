@@ -143,9 +143,9 @@ function getCategoryLabel(
     case "philippines":
       return "필리핀 강사";
     case "western":
-      return "원어민 강사";
+      return "서구권 강사";
     case "special":
-      return "스페셜";
+      return "북미권 강사";
     case "intensive":
       return "인텐시브";
     default:
