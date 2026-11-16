@@ -6,4 +6,4 @@ import { signStoragePaths } from "@/lib/storage-signing";
 // lesson, PDF, page/audio, or authorization data enters this cache.
 export const getPublicCoverUrls = unstable_cache(async (paths: string[]) => {
   return Object.fromEntries(await signStoragePaths(createAdminClient(), "textbook-files", paths));
-}, ["public-catalogue-cover-urls-v1"], { revalidate: 60 });
+}, ["public-catalogue-cover-urls-v1"], { revalidate: 300 });
