@@ -74,6 +74,7 @@ const menuGroups: MenuGroup[] = [
         label: "토스 테스트 결제",
         href: "/admin/payment-test",
       },
+      { label: "결제 동의 증빙", href: "/admin/payment-consents" },
     ],
   },
   {
