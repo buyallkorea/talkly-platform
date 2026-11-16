@@ -102,6 +102,10 @@ function getPricingCategory(
    * special / intensive는 향후 관리자에서
    * pricing_category를 명시적으로 지정할 때 그대로 사용됩니다.
    */
+  if (["미국", "캐나다", "usa", "us", "american", "canada", "canadian", "united states"].some((value) => normalized.includes(value))) {
+    return "special";
+  }
+
   return "western";
 }
 
