@@ -475,7 +475,7 @@ export async function POST(
      */
     if (body.action === "create_regular" || body.action === "create_regular_weekdays") {
       const isWeekdayBulk = body.action === "create_regular_weekdays";
-      const dayOfWeek = isWeekdayBulk ? 1 : Number(body.dayOfWeek);
+      const dayOfWeek = body.action === "create_regular" ? Number(body.dayOfWeek) : 1;
       const daysToCreate = isWeekdayBulk ? [1, 2, 3, 4, 5] : [dayOfWeek];
 
       const startTime =
