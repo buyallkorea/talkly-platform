@@ -20,6 +20,7 @@ type Props = {
   onMonthsChange?: (value: TuitionMonths) => void;
   lessonMinutes?: number;
   showEnrollLink?: boolean;
+  weeklyOptions?: number[];
 };
 
 const won = (value: number) => value.toLocaleString("ko-KR") + "원";
@@ -37,7 +38,7 @@ const inputStyle = {
 export default function TuitionCalculator({
   region, onRegionChange, weekly, onWeeklyChange,
   months, onMonthsChange, lessonMinutes = 25,
-  showEnrollLink = false,
+  showEnrollLink = false, weeklyOptions = [1, 2, 3, 4, 5],
 }: Props) {
   const [ownRegion, setOwnRegion] = useState<TuitionRegion>("philippines");
   const [ownWeekly, setOwnWeekly] = useState(2);
@@ -74,7 +75,7 @@ export default function TuitionCalculator({
           주당 수업 횟수
           <select aria-label="주당 수업 횟수" value={actualWeekly} style={{ ...inputStyle, marginTop: 7 }}
             onChange={(e) => { const next = Number(e.target.value); setOwnWeekly(next); onWeeklyChange?.(next); }}>
-            {[1, 2, 3, 4, 5].map((v) => <option value={v} key={v}>주 {v}회</option>)}
+            {weeklyOptions.map((v) => <option value={v} key={v}>주 {v}회</option>)}
           </select>
         </label>
         <label style={{ color: "#344054", fontSize: 13, fontWeight: 800 }}>
