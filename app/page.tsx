@@ -259,6 +259,7 @@ export default function Home() {
               </a>
               <div className="talkly-dropdown">
                 <Link href="/enroll">수강신청</Link>
+                <Link href="/tuition">수강료</Link>
                 <HomeClassMenu />
               </div>
             </div>
