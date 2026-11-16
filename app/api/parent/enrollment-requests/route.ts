@@ -323,9 +323,9 @@ export async function POST(
     const teacherPreferenceType =
       body.teacherPreferenceType;
 
-    const pricingCategory = body.pricingCategory ?? "philippines";
+    const pricingCategory = body.pricingCategory ?? null;
     const durationMonths = Number(body.durationMonths ?? 1);
-    if (!["philippines", "western", "special"].includes(pricingCategory) || ![1, 3, 6, 12].includes(durationMonths)) {
+    if ((pricingCategory !== null && !["philippines", "western", "special"].includes(pricingCategory)) || ![1, 3, 6, 12].includes(durationMonths)) {
       return NextResponse.json({ error: "강사 지역 또는 수강기간을 다시 선택해 주세요." }, { status: 400 });
     }
 
@@ -646,7 +646,7 @@ export async function POST(
           }
         );
       }
-      if (tuitionRegionForNationality(teacher.nationality) !== pricingCategory) {
+      if (pricingCategory !== null && tuitionRegionForNationality(teacher.nationality) !== pricingCategory) {
         return NextResponse.json({ error: "선택하신 강사와 강사 지역이 다릅니다." }, { status: 400 });
       }
     }
