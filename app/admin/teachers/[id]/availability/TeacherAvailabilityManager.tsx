@@ -98,6 +98,48 @@ function formatPeriod(
   return `${from} ~ ${to}`;
 }
 
+/** Hour and minute selectors deliberately offer only 00/30 minutes. */
+function HalfHourTimeField({
+  label, value, onChange, disabled = false, allowEndOfDay = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  allowEndOfDay?: boolean;
+}) {
+  const [hour = "00", minute = "00"] = value.split(":");
+  const hours = Array.from({ length: allowEndOfDay ? 25 : 24 }, (_, i) =>
+    String(i).padStart(2, "0")
+  );
+  const selectStyle = {
+    minWidth: 0, width: "100%", height: 42, padding: "0 8px",
+    border: "1px solid #d0d5dd", borderRadius: 8,
+    background: disabled ? "#f2f4f7" : "#ffffff",
+    color: "#101828", boxSizing: "border-box",
+  } as const;
+  return (
+    <div>
+      <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 700, color: "#475467" }}>{label}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+        <select aria-label={`${label} 시`} value={hour} disabled={disabled}
+          onChange={(event) => onChange(`${event.target.value}:${event.target.value === "24" ? "00" : minute}`)}
+          style={selectStyle}>
+          {hours.map((h) => <option key={h} value={h}>{h}시</option>)}
+        </select>
+        <span aria-hidden="true">:</span>
+        <select aria-label={`${label} 분`} value={hour === "24" ? "00" : minute}
+          disabled={disabled || hour === "24"}
+          onChange={(event) => onChange(`${hour}:${event.target.value}`)}
+          style={selectStyle}>
+          <option value="00">00분</option>
+          <option value="30">30분</option>
+        </select>
+      </div>
+    </div>
+  );
+}
+
 export default function TeacherAvailabilityManager({
   teacherUserId,
   teacherName,
@@ -130,6 +172,8 @@ export default function TeacherAvailabilityManager({
     setRegularDay,
   ] =
     useState<number>(1);
+
+  const [regularWeekdays, setRegularWeekdays] = useState(false);
 
   const [
     regularStart,
@@ -301,6 +345,7 @@ export default function TeacherAvailabilityManager({
       null
     );
     setRegularDay(1);
+    setRegularWeekdays(false);
     setRegularStart(
       "10:00"
     );
@@ -395,40 +440,23 @@ export default function TeacherAvailabilityManager({
           "정규 근무시간을 수정했습니다."
         );
       } else {
-        const data =
-          await callApi({
-            action:
-              "create_regular",
-            dayOfWeek:
-              regularDay,
-            startTime:
-              regularStart,
-            endTime:
-              regularEnd,
-            effectiveFrom:
-              regularFrom ||
-              null,
-            effectiveTo:
-              regularTo ||
-              null,
-          });
-
-        if (
-          data.availability
-        ) {
-          setRegularAvailability(
-            (
-              current
-            ) => [
-              ...current,
-              data.availability,
-            ]
-          );
+        const data = await callApi({
+          action: regularWeekdays ? "create_regular_weekdays" : "create_regular",
+          dayOfWeek: regularDay,
+          startTime: regularStart,
+          endTime: regularEnd,
+          effectiveFrom: regularFrom || null,
+          effectiveTo: regularTo || null,
+        });
+        const created: RegularAvailability[] = data.availabilities ??
+          (data.availability ? [data.availability] : []);
+        if (created.length !== (regularWeekdays ? 5 : 1)) {
+          throw new Error("등록 결과를 확인할 수 없습니다. 목록을 새로고침해 주세요.");
         }
-
-        setMessage(
-          "정규 근무시간을 등록했습니다."
-        );
+        setRegularAvailability((current) => [...current, ...created]);
+        setMessage(regularWeekdays
+          ? "월요일부터 금요일까지 동일한 근무시간 5건을 등록했습니다."
+          : "정규 근무시간을 등록했습니다.");
       }
 
       resetRegularForm();
@@ -448,6 +476,7 @@ export default function TeacherAvailabilityManager({
     item: RegularAvailability
   ) {
     clearMessages();
+    setRegularWeekdays(false);
 
     setEditingRegularId(
       item.id
@@ -909,6 +938,20 @@ export default function TeacherAvailabilityManager({
               "#f8fafc",
           }}
         >
+          {!editingRegularId && (
+            <div style={{ marginBottom: 16, padding: "11px 14px", border: "1px solid #c7d7f2", borderRadius: 10, background: "#edf4ff" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 9, color: "#0a1f44", fontSize: 14, fontWeight: 800, cursor: isSaving ? "default" : "pointer" }}>
+                <input type="checkbox" checked={regularWeekdays} disabled={isSaving}
+                  onChange={(event) => setRegularWeekdays(event.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: "#2f6fed" }} />
+                월~금 동일 시간 일괄 등록
+              </label>
+              <p style={{ margin: "6px 0 0 28px", color: "#475467", fontSize: 12, lineHeight: 1.65 }}>
+                체크하면 동일한 시작·종료시간과 적용 기간을 월요일부터 금요일까지 한 번에 등록합니다.
+                기존 근무시간과 겹치는 요일이 있으면 5개 요일 모두 등록되지 않습니다.
+              </p>
+            </div>
+          )}
           <div
             style={{
               display:
@@ -937,9 +980,8 @@ export default function TeacherAvailabilityManager({
               </div>
 
               <select
-                value={
-                  regularDay
-                }
+                disabled={isSaving || regularWeekdays}
+                value={regularDay}
                 onChange={(
                   event
                 ) =>
@@ -985,101 +1027,9 @@ export default function TeacherAvailabilityManager({
               </select>
             </label>
 
-            <label>
-              <div
-                style={{
-                  marginBottom:
-                    "6px",
-                  fontSize:
-                    "12px",
-                  fontWeight:
-                    700,
-                  color:
-                    "#475467",
-                }}
-              >
-                시작시간
-              </div>
+            <HalfHourTimeField label="시작시간" value={regularStart} onChange={setRegularStart} disabled={isSaving} />
 
-              <input
-                type="time"
-                value={
-                  regularStart
-                }
-                onChange={(
-                  event
-                ) =>
-                  setRegularStart(
-                    event.target
-                      .value
-                  )
-                }
-                style={{
-                  width:
-                    "100%",
-                  height:
-                    "42px",
-                  padding:
-                    "0 10px",
-                  border:
-                    "1px solid #d0d5dd",
-                  borderRadius:
-                    "8px",
-                  background:
-                    "#ffffff",
-                  boxSizing:
-                    "border-box",
-                }}
-              />
-            </label>
-
-            <label>
-              <div
-                style={{
-                  marginBottom:
-                    "6px",
-                  fontSize:
-                    "12px",
-                  fontWeight:
-                    700,
-                  color:
-                    "#475467",
-                }}
-              >
-                종료시간
-              </div>
-
-              <input
-                type="time"
-                value={
-                  regularEnd
-                }
-                onChange={(
-                  event
-                ) =>
-                  setRegularEnd(
-                    event.target
-                      .value
-                  )
-                }
-                style={{
-                  width:
-                    "100%",
-                  height:
-                    "42px",
-                  padding:
-                    "0 10px",
-                  border:
-                    "1px solid #d0d5dd",
-                  borderRadius:
-                    "8px",
-                  background:
-                    "#ffffff",
-                  boxSizing:
-                    "border-box",
-                }}
-              />
-            </label>
+            <HalfHourTimeField label="종료시간" value={regularEnd} onChange={setRegularEnd} disabled={isSaving} allowEndOfDay />
 
             <label>
               <div
@@ -1213,7 +1163,7 @@ export default function TeacherAvailabilityManager({
             >
               {editingRegularId
                 ? "근무시간 수정"
-                : "+ 근무시간 추가"}
+                : regularWeekdays ? "+ 월~금 일괄 등록" : "+ 근무시간 추가"}
             </button>
           </div>
 
@@ -1665,111 +1615,9 @@ export default function TeacherAvailabilityManager({
               </select>
             </label>
 
-            <label>
-              <div
-                style={{
-                  marginBottom:
-                    "6px",
-                  fontSize:
-                    "12px",
-                  fontWeight:
-                    700,
-                  color:
-                    "#475467",
-                }}
-              >
-                시작시간
-              </div>
+            <HalfHourTimeField label="시작시간" value={exceptionStart} onChange={setExceptionStart} disabled={isSaving || exceptionAllDay} />
 
-              <input
-                type="time"
-                value={
-                  exceptionStart
-                }
-                disabled={
-                  exceptionAllDay
-                }
-                onChange={(
-                  event
-                ) =>
-                  setExceptionStart(
-                    event.target
-                      .value
-                  )
-                }
-                style={{
-                  width:
-                    "100%",
-                  height:
-                    "42px",
-                  padding:
-                    "0 10px",
-                  border:
-                    "1px solid #d0d5dd",
-                  borderRadius:
-                    "8px",
-                  background:
-                    exceptionAllDay
-                      ? "#f2f4f7"
-                      : "#ffffff",
-                  boxSizing:
-                    "border-box",
-                }}
-              />
-            </label>
-
-            <label>
-              <div
-                style={{
-                  marginBottom:
-                    "6px",
-                  fontSize:
-                    "12px",
-                  fontWeight:
-                    700,
-                  color:
-                    "#475467",
-                }}
-              >
-                종료시간
-              </div>
-
-              <input
-                type="time"
-                value={
-                  exceptionEnd
-                }
-                disabled={
-                  exceptionAllDay
-                }
-                onChange={(
-                  event
-                ) =>
-                  setExceptionEnd(
-                    event.target
-                      .value
-                  )
-                }
-                style={{
-                  width:
-                    "100%",
-                  height:
-                    "42px",
-                  padding:
-                    "0 10px",
-                  border:
-                    "1px solid #d0d5dd",
-                  borderRadius:
-                    "8px",
-                  background:
-                    exceptionAllDay
-                      ? "#f2f4f7"
-                      : "#ffffff",
-                  boxSizing:
-                    "border-box",
-                }}
-              />
-            </label>
+            <HalfHourTimeField label="종료시간" value={exceptionEnd} onChange={setExceptionEnd} disabled={isSaving || exceptionAllDay} allowEndOfDay />
 
             <label>
               <div

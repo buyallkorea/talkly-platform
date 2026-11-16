@@ -17,6 +17,13 @@ type RequestBody =
       effectiveTo?: string | null;
     }
   | {
+      action: "create_regular_weekdays";
+      startTime: string;
+      endTime: string;
+      effectiveFrom?: string | null;
+      effectiveTo?: string | null;
+    }
+  | {
       action: "update_regular";
       availabilityId: number;
       dayOfWeek: number;
@@ -53,23 +60,15 @@ type RequestBody =
       exceptionId: number;
     };
 
-function normalizeTime(
-  value: string | null | undefined
-) {
-  if (!value) {
-    return null;
-  }
-
-  const trimmed = value.trim();
-
-  if (
-    !/^\d{2}:\d{2}$/.test(trimmed) &&
-    !/^\d{2}:\d{2}:\d{2}$/.test(trimmed)
-  ) {
-    return null;
-  }
-
-  return trimmed.slice(0, 5);
+function normalizeTime(value: string | null | undefined) {
+  if (!value) return null;
+  const match = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value.trim());
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 24 || (hour === 24 && minute !== 0) ||
+      (minute !== 0 && minute !== 30) || (match[3] && match[3] !== "00")) return null;
+  return `${match[1]}:${match[2]}`;
 }
 
 function isValidDate(
@@ -474,14 +473,10 @@ export async function POST(
      * 정규 근무시간 등록
      * =====================================================
      */
-    if (
-      body.action ===
-      "create_regular"
-    ) {
-      const dayOfWeek =
-        Number(
-          body.dayOfWeek
-        );
+    if (body.action === "create_regular" || body.action === "create_regular_weekdays") {
+      const isWeekdayBulk = body.action === "create_regular_weekdays";
+      const dayOfWeek = body.action === "create_regular" ? Number(body.dayOfWeek) : 1;
+      const daysToCreate = isWeekdayBulk ? [1, 2, 3, 4, 5] : [dayOfWeek];
 
       const startTime =
         normalizeTime(
@@ -615,6 +610,7 @@ export async function POST(
           )
           .select(`
             id,
+            day_of_week,
             start_time,
             end_time,
             effective_from,
@@ -624,10 +620,7 @@ export async function POST(
             "teacher_user_id",
             teacherUserId
           )
-          .eq(
-            "day_of_week",
-            dayOfWeek
-          )
+          .in("day_of_week", daysToCreate)
           .eq(
             "is_available",
             true
@@ -710,7 +703,9 @@ export async function POST(
         return NextResponse.json(
           {
             error:
-              "같은 요일의 기존 근무시간과 겹칩니다.",
+              isWeekdayBulk
+                ? "월~금 중 기존 근무시간과 겹치는 요일이 있어 전체 등록을 중단했습니다. 기존 일정을 확인해 주세요."
+                : "같은 요일의 기존 근무시간과 겹칩니다.",
           },
           {
             status: 409,
@@ -718,67 +713,35 @@ export async function POST(
         );
       }
 
-      const {
-        data: inserted,
-        error: insertError,
-      } =
-        await supabase
-          .from(
-            "teacher_availability"
-          )
-          .insert({
-            teacher_user_id:
-              teacherUserId,
-            day_of_week:
-              dayOfWeek,
-            start_time:
-              startTime,
-            end_time:
-              endTime,
-            timezone:
-              "Asia/Seoul",
-            is_available:
-              true,
-            effective_from:
-              effectiveFrom,
-            effective_to:
-              effectiveTo,
-            updated_at:
-              now,
-          })
-          .select(`
-            id,
-            teacher_user_id,
-            day_of_week,
-            start_time,
-            end_time,
-            timezone,
-            is_available,
-            effective_from,
-            effective_to,
-            created_at,
-            updated_at
-          `)
-          .maybeSingle();
+      // A single PostgREST INSERT statement writes every selected day atomically.
+      // The overlap check above covers all five weekdays before any row is written.
+      const { data: inserted, error: insertError } = await supabase
+        .from("teacher_availability")
+        .insert(daysToCreate.map((day) => ({
+          teacher_user_id: teacherUserId,
+          day_of_week: day,
+          start_time: startTime,
+          end_time: endTime,
+          timezone: "Asia/Seoul",
+          is_available: true,
+          effective_from: effectiveFrom,
+          effective_to: effectiveTo,
+          updated_at: now,
+        })))
+        .select(`id,teacher_user_id,day_of_week,start_time,end_time,timezone,is_available,effective_from,effective_to,created_at,updated_at`);
 
-      if (insertError) {
-        return NextResponse.json(
-          {
-            error:
-              "정규 근무시간을 등록하지 못했습니다.",
-            detail:
-              insertError.message,
-          },
-          {
-            status: 500,
-          }
-        );
+      if (insertError || !inserted || inserted.length !== daysToCreate.length) {
+        return NextResponse.json({
+          error: "정규 근무시간을 등록하지 못했습니다.",
+          detail: insertError?.message,
+        }, { status: 500 });
       }
 
       return NextResponse.json({
         ok: true,
-        availability:
-          inserted,
+        availability: inserted[0],
+        availabilities: inserted,
+        bulk: isWeekdayBulk,
       });
     }
 
