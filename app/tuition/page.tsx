@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import TossReviewInfo from "@/components/payments/TossReviewInfo";
 import TuitionCalculator from "@/components/TuitionCalculator";
 import { TUITION_REGIONS, TUITION_MONTHS, tuitionAmount } from "@/lib/tuition";
 
@@ -74,6 +75,7 @@ export default function TuitionPage() {
           </p>
           <Link href="/consultation" style={{ display: "inline-block", marginTop: 14, fontSize: 13, fontWeight: 800, color: "#326bd1" }}>수업 상담 문의 →</Link>
         </section>
+        <TossReviewInfo />
       </div>
     </main>
   );
