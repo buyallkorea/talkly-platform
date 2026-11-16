@@ -10,6 +10,8 @@ import type {
   ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import TuitionCalculator from "@/components/TuitionCalculator";
+import { tuitionRegionForNationality, type TuitionRegion, type TuitionMonths } from "@/lib/tuition";
 
 type CourseSummary = {
   id: number;
@@ -277,6 +279,9 @@ export default function CustomEnrollmentScheduler({
   ] = useState<string[]>(
     []
   );
+
+  const [preferredRegion, setPreferredRegion] = useState<TuitionRegion>("philippines");
+  const [tuitionMonths, setTuitionMonths] = useState<TuitionMonths>(1);
 
   const [
     preferredTime,
@@ -643,6 +648,7 @@ export default function CustomEnrollmentScheduler({
       const common =
         first.filter(
           (teacher) =>
+            tuitionRegionForNationality(teacher.nationality) === preferredRegion &&
             matchedByDay.every(
               (dayTeachers) =>
                 dayTeachers.some(
@@ -750,6 +756,8 @@ export default function CustomEnrollmentScheduler({
               JSON.stringify({
                 requestType:
                   "custom",
+                pricingCategory: preferredRegion,
+                durationMonths: tuitionMonths,
                 childId,
                 levelTestId:
                   levelTestId ??
@@ -860,6 +868,28 @@ export default function CustomEnrollmentScheduler({
         먼저 선택한 다음 실제로
         가능한 강사를 조회합니다.
       </p>
+
+      <TuitionCalculator
+        region={preferredRegion}
+        onRegionChange={(next) => {
+          setPreferredRegion(next);
+          setSelectedTeacherId("");
+          setTeacherMode("any");
+          resetSearchResult();
+        }}
+        weekly={lessonsPerWeek}
+        onWeeklyChange={(next) => {
+          if (usableLessons.includes(next)) {
+            setLessonsPerWeek(next);
+            setSelectedDays([]);
+            setPreferredTime("");
+            resetSearchResult();
+          }
+        }}
+        months={tuitionMonths}
+        onMonthsChange={setTuitionMonths}
+        lessonMinutes={durationMinutes}
+      />
 
       {recommendedCourse && (
         <div
@@ -1304,7 +1334,7 @@ export default function CustomEnrollmentScheduler({
                   강사 선택
                 </option>
 
-                {teachers.map(
+                {teachers.filter((teacher) => tuitionRegionForNationality(teacher.nationality) === preferredRegion).map(
                   (teacher) => (
                     <option
                       key={
