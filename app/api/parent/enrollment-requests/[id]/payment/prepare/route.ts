@@ -1,6 +1,7 @@
-import { MAX_SINGLE_PAYMENT_KRW } from "@/lib/payments/payment-limits";
+
 import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
+import { randomUUID, createHash } from "crypto";
+import { TUITION_CONSENT_VERSION, TUITION_CONSENT_ITEMS } from "@/lib/payments/tuition-consent";
 
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
@@ -31,6 +32,14 @@ export async function POST(
   context: RouteContext
 ) {
   try {
+    const payload = await request.json().catch(() => null);
+    const consent = payload?.consent;
+    if (consent?.version !== TUITION_CONSENT_VERSION ||
+        consent?.answers?.discount !== true ||
+        consent?.answers?.earlyTermination !== true ||
+        consent?.answers?.refund !== true) {
+      return NextResponse.json({ success: false, error: "결제 전 필수 확인 및 동의가 필요합니다." }, { status: 400 });
+    }
     /*
      * =========================================================
      * 1. URL의 enrollment request ID 확인
@@ -259,15 +268,10 @@ export async function POST(
       );
     }
 
-    if (finalPrice > MAX_SINGLE_PAYMENT_KRW) {
-      return NextResponse.json(
-        {
-          success: false,
-          code: "MAX_SINGLE_PAYMENT_EXCEEDED",
-          error: `1회 결제 최대금액 ${MAX_SINGLE_PAYMENT_KRW.toLocaleString("ko-KR")}원을 초과하여 결제를 진행할 수 없습니다.`,
-        },
-        { status: 409 }
-      );
+
+    if (Number(consent.durationMonths) !== durationMonths ||
+        Number(consent.displayedFinalPrice) !== finalPrice) {
+      return NextResponse.json({ success: false, error: "동의하신 수강기간 또는 금액이 변경되었습니다. 다시 확인해 주세요." }, { status: 409 });
     }
 
     /*
@@ -519,6 +523,37 @@ export async function POST(
           status: 500,
         }
       );
+    }
+
+
+    const termsSha256 = createHash("sha256").update(JSON.stringify(TUITION_CONSENT_ITEMS)).digest("hex");
+    const { error: consentSaveError } = await admin
+      .from("tuition_payment_consents")
+      .insert({
+        payment_id: payment.id,
+        enrollment_request_id: requestId,
+        actor_user_id: user.id,
+        order_id: payment.order_id,
+        terms_version: TUITION_CONSENT_VERSION,
+        terms_snapshot: TUITION_CONSENT_ITEMS,
+        decisions: { discount: true, earlyTermination: true, refund: true },
+        pricing_snapshot: {
+          durationMonths,
+          regularPrice: Number(enrollmentRequest.regular_price),
+          discountRate: Number(enrollmentRequest.discount_rate),
+          discountAmount: Number(enrollmentRequest.discount_amount),
+          finalPrice,
+          courseId: enrollmentRequest.course_id,
+          childId: enrollmentRequest.child_id,
+          teacherUserId: enrollmentRequest.assigned_teacher_user_id,
+          orderName,
+        },
+        terms_sha256: termsSha256,
+      });
+    if (consentSaveError) {
+      console.error("[TOSS PREPARE] 동의 증빙 저장 실패:", consentSaveError);
+      await admin.from("enrollment_payments").delete().eq("id", payment.id).eq("status", "ready");
+      return NextResponse.json({ success: false, error: "동의 기록을 저장하지 못해 결제를 중단했습니다." }, { status: 500 });
     }
 
     /*

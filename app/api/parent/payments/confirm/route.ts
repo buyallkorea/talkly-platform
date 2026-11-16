@@ -1,4 +1,4 @@
-import { MAX_SINGLE_PAYMENT_KRW } from "@/lib/payments/payment-limits";
+
 import { NextResponse } from "next/server";
 
 import { createClient } from "@/lib/supabase-server";
@@ -306,6 +306,25 @@ export async function POST(request: Request) {
       });
     }
 
+
+    // Never confirm a new payment without the original server-side evidence.
+    const { data: consentRecord, error: consentError } = await admin
+      .from("tuition_payment_consents")
+      .select("id, actor_user_id, order_id, decisions, pricing_snapshot, terms_version")
+      .eq("payment_id", payment.id)
+      .eq("actor_user_id", user.id)
+      .maybeSingle();
+    if (consentError || !consentRecord ||
+      consentRecord.order_id !== payment.order_id ||
+      consentRecord.decisions?.discount !== true ||
+      consentRecord.decisions?.earlyTermination !== true ||
+      consentRecord.decisions?.refund !== true ||
+      Number(consentRecord.pricing_snapshot?.finalPrice) !== Number(payment.amount)) {
+      return NextResponse.json({
+        success: false, error: "필수 동의 증빙이 없는 결제는 승인할 수 없습니다."
+      }, { status: 409 });
+    }
+
     /*
      * =========================================================
      * 6. 브라우저가 전달한 금액과 DB 금액 비교
@@ -460,16 +479,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (payment.amount > MAX_SINGLE_PAYMENT_KRW) {
-      return NextResponse.json(
-        {
-          success: false,
-          code: "MAX_SINGLE_PAYMENT_EXCEEDED",
-          error: "결제금액이 1회 결제 상한을 초과하여 승인을 중단했습니다.",
-        },
-        { status: 409 }
-      );
-    }
 
     /*
      * =========================================================

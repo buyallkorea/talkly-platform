@@ -9,7 +9,7 @@ import {
   type TuitionRegion,
   tuitionAmount,
 } from "@/lib/tuition";
-import { MAX_SINGLE_PAYMENT_KRW } from "@/lib/payments/payment-limits";
+
 
 type Props = {
   region?: TuitionRegion;
@@ -48,7 +48,7 @@ export default function TuitionCalculator({
   const actualMonths = months ?? ownMonths;
   const price = tuitionAmount(actualRegion, actualWeekly, actualMonths);
   const consultationOnly = lessonMinutes !== 25;
-  const overLimit = price.final > MAX_SINGLE_PAYMENT_KRW;
+
 
   return (
     <section aria-label="수강료 자동 계산" style={{
@@ -117,7 +117,7 @@ export default function TuitionCalculator({
                 {won(price.final)}
               </strong>
             </div>
-            {overLimit && <p role="alert" style={{ color: "#b42318", fontSize: 13 }}>1회 최대 결제 가능 금액 {won(MAX_SINGLE_PAYMENT_KRW)}을 초과하여 별도 상담이 필요합니다.</p>}
+
           </>
         )}
       </div>
