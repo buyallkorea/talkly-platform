@@ -803,18 +803,10 @@ export default function CustomEnrollmentScheduler({
         return;
       }
 
-      setSuccessMessage(
-        "맞춤 수강신청이 정상적으로 접수되었습니다."
-      );
-
-      window.setTimeout(() => {
-        completionRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }, 80);
-
-      router.refresh();
+      // Do not leave the applicant on the completed form.
+      // The status page explains the assignment gate and payment review path.
+      setSuccessMessage("맞춤 수강신청이 정상적으로 접수되었습니다.");
+      router.push(resolvedEnrollmentRequestsHref);
     } catch (error) {
       setErrorMessage(
         error instanceof

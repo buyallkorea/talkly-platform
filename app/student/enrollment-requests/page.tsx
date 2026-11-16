@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
+import TossReviewInfo from "@/components/payments/TossReviewInfo";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase-server";
@@ -956,6 +957,7 @@ export default async function StudentEnrollmentRequestsPage() {
             </div>
           </>
         )}
+        {currentRequest && !assigned && <TossReviewInfo requestId={currentRequest.id} />}
       </div>
     </main>
   );
