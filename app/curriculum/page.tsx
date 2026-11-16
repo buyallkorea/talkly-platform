@@ -1936,6 +1936,10 @@ function TextbookItem({
           <img
             src={textbook.cover_signed_url}
             alt={`${textbook.title} 교재 표지`}
+            width={42}
+            height={54}
+            loading="lazy"
+            decoding="async"
             style={{
               width: "100%",
               height: "100%",
