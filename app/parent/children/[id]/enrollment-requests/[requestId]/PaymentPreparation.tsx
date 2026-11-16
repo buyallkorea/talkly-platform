@@ -1,6 +1,7 @@
 "use client";
 
-import { MAX_SINGLE_PAYMENT_KRW } from "@/lib/payments/payment-limits";
+import TuitionConsentPanel from "@/components/payments/TuitionConsentPanel";
+import { EMPTY_TUITION_CONSENT, TUITION_CONSENT_VERSION, isTuitionConsentComplete, type TuitionConsentAnswers, type TuitionConsentKey } from "@/lib/payments/tuition-consent";
 
 import {
   useMemo,
@@ -282,9 +283,17 @@ export default function PaymentPreparation({
       )
     );
 
-  const exceedsPaymentLimit = finalPrice > MAX_SINGLE_PAYMENT_KRW;
+  const [consentAnswers, setConsentAnswers] = useState<TuitionConsentAnswers>({ ...EMPTY_TUITION_CONSENT });
+  const consentComplete = isTuitionConsentComplete(consentAnswers);
+  function chooseConsent(key: TuitionConsentKey, value: "yes" | "no") {
+    setConsentAnswers((previous) => ({ ...previous, [key]: value }));
+  }
 
   async function saveAndContinue() {
+    if (!consentComplete) {
+      setErrorMessage("필수 확인사항 3개 모두 확인 및 동의해 주세요.");
+      return;
+    }
     setIsSaving(true);
     setErrorMessage("");
     setSuccessMessage("");
@@ -327,6 +336,18 @@ export default function PaymentPreparation({
           headers: {
             "Content-Type": "application/json",
           },
+          body: JSON.stringify({
+            consent: {
+              version: TUITION_CONSENT_VERSION,
+              answers: {
+                discount: consentAnswers.discount === "yes",
+                earlyTermination: consentAnswers.earlyTermination === "yes",
+                refund: consentAnswers.refund === "yes",
+              },
+              durationMonths: selectedMonths,
+              displayedFinalPrice: finalPrice,
+            },
+          }),
         }
       );
 
@@ -672,6 +693,7 @@ export default function PaymentPreparation({
                         setSelectedMonths(
                           policy.durationMonths
                         );
+                        setConsentAnswers({ ...EMPTY_TUITION_CONSENT });
                         setErrorMessage(
                           ""
                         );
@@ -938,24 +960,14 @@ export default function PaymentPreparation({
             )}
           </div>
 
-          <div style={{ marginTop: 18, color: "#dbeafe", fontSize: 12, lineHeight: 1.7 }}>
-            1회 최대 결제금액: {MAX_SINGLE_PAYMENT_KRW.toLocaleString("ko-KR")}원
-            {exceedsPaymentLimit && (
-              <p style={{ margin: "6px 0 0", color: "#fecaca", fontWeight: 700 }}>
-                선택하신 상품이 상한을 초과합니다. 수강기간을 줄이거나 고객센터에 문의해 주세요.
-              </p>
-            )}
-            <p style={{ margin: "6px 0 0" }}>
-              결제 전 <Link href="/refund-policy" target="_blank" rel="noopener noreferrer" style={{ color: "#ffffff", textDecoration: "underline" }}>수강 취소 및 환불정책</Link>을 확인해 주세요.
-            </p>
-          </div>
+          <TuitionConsentPanel answers={consentAnswers} onChange={chooseConsent} disabled={isSaving} />
 
           <button
             type="button"
             onClick={
               saveAndContinue
             }
-            disabled={isSaving || exceedsPaymentLimit}
+            disabled={isSaving || !consentComplete}
             style={{
               width:
                 "100%",
@@ -986,7 +998,7 @@ export default function PaymentPreparation({
           >
             {isSaving
               ? "처리 중..."
-              : "결제 진행 →"}
+              : consentComplete ? "결제 진행 →" : "필수 확인 및 동의 후 결제 가능"}
           </button>
 
           <div
