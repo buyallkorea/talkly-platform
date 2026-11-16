@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
+import TossReviewInfo from "@/components/payments/TossReviewInfo";
 import {
   notFound,
   redirect,
@@ -996,6 +997,7 @@ export default async function ParentEnrollmentRequestsPage({
             </div>
           </>
         )}
+        {currentRequest && !assigned && <TossReviewInfo requestId={currentRequest.id} />}
       </div>
     </main>
   );
