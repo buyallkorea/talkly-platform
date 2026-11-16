@@ -3,4 +3,4 @@
  * 장기 수강료가 상한을 초과하는 경우 가격을 임의로 변경하지 않고
  * 고객이 다른 기간을 선택하도록 안내합니다.
  */
-export const MAX_SINGLE_PAYMENT_KRW = 3_000_000;
+export const MAX_SINGLE_PAYMENT_KRW = 4_800_000;
