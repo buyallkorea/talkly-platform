@@ -41,6 +41,10 @@ function getPricingCategory(
     return "philippines";
   }
 
+  if (["미국", "캐나다", "usa", "us", "american", "canada", "canadian", "united states"].some((value) => normalized.includes(value))) {
+    return "special";
+  }
+
   return "western";
 }
 
