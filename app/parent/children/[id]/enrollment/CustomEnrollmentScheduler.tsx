@@ -878,6 +878,7 @@ export default function CustomEnrollmentScheduler({
           resetSearchResult();
         }}
         weekly={lessonsPerWeek}
+        weeklyOptions={usableLessons}
         onWeeklyChange={(next) => {
           if (usableLessons.includes(next)) {
             setLessonsPerWeek(next);
