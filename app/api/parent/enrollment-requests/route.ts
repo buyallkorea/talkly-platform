@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { tuitionRegionForNationality, type TuitionRegion } from "@/lib/tuition";
 
 type StandardRequestBody = {
   requestType?: "standard";
@@ -18,6 +19,8 @@ type CustomRequestBody = {
   preferredDays: string[];
   preferredTimes: Record<string, string>;
   teacherPreferenceType: "any" | "specific";
+  pricingCategory?: TuitionRegion;
+  durationMonths?: number;
   preferredTeacherUserId?: string | null;
   startDate?: string | null;
 };
@@ -320,6 +323,12 @@ export async function POST(
     const teacherPreferenceType =
       body.teacherPreferenceType;
 
+    const pricingCategory = body.pricingCategory ?? "philippines";
+    const durationMonths = Number(body.durationMonths ?? 1);
+    if (!["philippines", "western", "special"].includes(pricingCategory) || ![1, 3, 6, 12].includes(durationMonths)) {
+      return NextResponse.json({ error: "강사 지역 또는 수강기간을 다시 선택해 주세요." }, { status: 400 });
+    }
+
     const preferredTeacherUserId =
       body.preferredTeacherUserId
         ? String(
@@ -611,7 +620,7 @@ export async function POST(
           "teacher_profiles"
         )
         .select(
-          "user_id, is_active"
+          "user_id, is_active, nationality"
         )
         .eq(
           "user_id",
@@ -636,6 +645,9 @@ export async function POST(
             status: 400,
           }
         );
+      }
+      if (tuitionRegionForNationality(teacher.nationality) !== pricingCategory) {
+        return NextResponse.json({ error: "선택하신 강사와 강사 지역이 다릅니다." }, { status: 400 });
       }
     }
 
@@ -841,6 +853,9 @@ export async function POST(
 
         teacher_preference_type:
           teacherPreferenceType,
+
+        pricing_category: pricingCategory,
+        duration_months: durationMonths,
 
         preferred_teacher_user_id:
           teacherPreferenceType ===

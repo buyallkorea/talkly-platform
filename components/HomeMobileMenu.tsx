@@ -107,6 +107,11 @@ export default function HomeMobileMenu() {
               수강신청
               <span>›</span>
             </Link>
+
+            <Link href="/tuition" onClick={closeMenu}>
+              수강료
+              <span>›</span>
+            </Link>
           </div>
 
           <MobileSection title="내 수업">

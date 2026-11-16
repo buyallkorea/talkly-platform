@@ -65,6 +65,10 @@ export default function SiteHeader() {
             수강신청
           </NavLink>
 
+          <NavLink href="/tuition">
+            수강료
+          </NavLink>
+
           <NavLink href="/#ai">
             TALKLY AI
           </NavLink>
@@ -170,6 +174,13 @@ export default function SiteHeader() {
               onClick={closeMobileMenu}
             >
               수강신청
+            </MobileNavLink>
+
+            <MobileNavLink
+              href="/tuition"
+              onClick={closeMobileMenu}
+            >
+              수강료
             </MobileNavLink>
 
             <MobileNavLink
