@@ -18,6 +18,7 @@ type EnrollmentRequestRow = {
   child_id: number | null;
   course_id: number;
   status: string;
+  checkout_mode: "consultation" | "direct";
   assigned_teacher_user_id: string | null;
   assignment_confirmed_at: string | null;
   duration_months: number | null;
@@ -136,6 +137,7 @@ export async function POST(
         child_id,
         course_id,
         status,
+        checkout_mode,
         assigned_teacher_user_id,
         assignment_confirmed_at,
         duration_months,
@@ -215,6 +217,19 @@ export async function POST(
           status: 409,
         }
       );
+    }
+
+    if (enrollmentRequest.checkout_mode === "direct") {
+      const hold = await admin.rpc("check_direct_checkout_hold", {
+        p_request_id: requestId, p_actor: user.id, p_extend_minutes: 45,
+      });
+      if (hold.error || hold.data !== true) {
+        console.error("[TOSS PREPARE] direct checkout reservation invalid", hold.error);
+        return NextResponse.json({
+          success: false,
+          error: "수업시간 임시 확보가 만료되었습니다. 관리자에게 재배정을 요청해 주세요.",
+        }, { status: 409 });
+      }
     }
 
     /*
