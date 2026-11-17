@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import TossReviewInfo from "@/components/payments/TossReviewInfo";
 import TuitionCalculator from "@/components/TuitionCalculator";
 import { TUITION_REGIONS, TUITION_MONTHS, tuitionAmount } from "@/lib/tuition";
 
@@ -19,13 +18,10 @@ export default function TuitionPage() {
         <Link href="/" style={{ color: "#4169a1", fontSize: 14, textDecoration: "none", fontWeight: 800 }}>← TALKLY 홈</Link>
         <p style={{ margin: "30px 0 7px", color: "#3978ef", fontSize: 12, fontWeight: 900, letterSpacing: "0.1em" }}>TALKLY TUITION</p>
         <h1 style={{ margin: 0, color: "#0A1F44", fontSize: "clamp(30px,5vw,43px)", letterSpacing: "-0.04em" }}>수강료 안내</h1>
-        <p style={{ color: "#667085", lineHeight: 1.8, fontSize: 15 }}>
-          로그인하지 않아도 정규수업 수강료와 장기 수강 할인 혜택을 확인하실 수 있습니다.
-        </p>
 
         <section style={{ marginTop: 28, padding: "clamp(18px,4vw,30px)", background: "#fff", border: "1px solid #e1e9f3", borderRadius: 18, boxShadow: "0 12px 35px rgba(10,31,68,.05)" }}>
           <h2 style={{ fontSize: 23, color: "#0A1F44", margin: "0 0 9px" }}>정규수업 월 수강료</h2>
-          <p style={{ fontSize: 13, color: "#667085", lineHeight: 1.7, marginBottom: 20 }}>수업당 25분 · 월 4주(주 2·3·5회 기준) · 평일 수업 기준</p>
+          <p style={{ fontSize: 13, color: "#667085", lineHeight: 1.7, marginBottom: 20 }}>평일 수업 기준 / 수업당 25분 / 월 4주(주 2·3·5회 기준) / 주말·50분 수업은 별도 상담</p>
           <div style={{ width: "100%", overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560, textAlign: "center" }}>
               <thead>
@@ -49,33 +45,43 @@ export default function TuitionPage() {
               </tbody>
             </table>
           </div>
+          <p style={{ fontSize: 13, color: "#526277", lineHeight: 1.7, marginBottom: 0 }}>
+            주 2·3회 수강생은 월 최대 1회, 주 5회 수강생은 월 최대 2회 수업 연기를 신청할 수 있습니다.
+          </p>
         </section>
 
-        <section style={{ marginTop: 24, padding: "clamp(18px,4vw,30px)", background: "#fff", border: "1px solid #e1e9f3", borderRadius: 18 }}>
-          <h2 style={{ fontSize: 23, color: "#0A1F44", margin: "0 0 17px" }}>장기 수강 할인</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12 }}>
+        <section style={{ marginTop: 16, padding: "20px clamp(16px,3vw,24px)", background: "#fff", border: "1px solid #e1e9f3", borderRadius: 18 }}>
+          <h2 style={{ fontSize: 21, color: "#0A1F44", margin: "0 0 10px" }}>장기 수강 할인</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 8 }}>
             {TUITION_MONTHS.filter((p) => p.discount > 0).map((policy) => (
-              <div key={policy.months} style={{ border: "1px solid #d7e5fa", background: "#edf4ff", padding: "18px 14px", textAlign: "center", borderRadius: 13 }}>
+              <div key={policy.months} style={{ border: "1px solid #d7e5fa", background: "#edf4ff", padding: "10px 12px", textAlign: "center", borderRadius: 13 }}>
                 <strong style={{ color: "#0A1F44" }}>{policy.months}개월 수강</strong>
-                <div style={{ marginTop: 6, fontSize: 29, fontWeight: 900, color: "#326bd1" }}>{policy.discount}% 할인</div>
+                <div style={{ marginTop: 4, fontSize: 25, fontWeight: 900, color: "#326bd1" }}>{policy.discount}% 할인</div>
               </div>
             ))}
           </div>
           <p style={{ marginBottom: 0, fontSize: 13, color: "#667085", lineHeight: 1.7 }}>할인금액 = 정상 수강료 × 기간별 할인율. 1개월은 할인 없이 정상가가 적용됩니다.</p>
         </section>
 
+        <section aria-label="단기집중코스 수강료" style={{ marginTop: 16, padding: "20px clamp(16px,3vw,24px)", background: "#fff", border: "1px solid #e1e9f3", borderRadius: 18 }}>
+          <h2 style={{ fontSize: 21, color: "#0A1F44", margin: "0 0 10px" }}>단기집중코스 (25분)</h2>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "center" }}>
+              <thead><tr style={{ background: "#0A1F44", color: "#fff" }}>
+                <th scope="col" style={{ padding: 12 }}>수업 시간</th>
+                <th scope="col" style={{ padding: 12 }}>회당 수강료</th>
+                <th scope="col" style={{ padding: 12 }}>선택 가능한 횟수</th>
+              </tr></thead>
+              <tbody><tr style={{ background: "#f2f6fd", color: "#1d2939" }}>
+                <td style={{ border: "1px solid #d7e1ef", padding: 12 }}>25분</td>
+                <td style={{ border: "1px solid #d7e1ef", padding: 12 }}>{won(40000)}</td>
+                <td style={{ border: "1px solid #d7e1ef", padding: 12 }}>1~20회</td>
+              </tr></tbody>
+            </table>
+          </div>
+        </section>
         <TuitionCalculator showEnrollLink />
 
-        <section style={{ marginTop: 24, padding: "24px 26px", background: "#fff", border: "1px solid #e1e9f3", borderRadius: 16 }}>
-          <h2 style={{ color: "#0A1F44", fontSize: 20, marginTop: 0 }}>기타 수업 안내</h2>
-          <p style={{ fontSize: 14, lineHeight: 1.85, color: "#475467", margin: 0 }}>
-            단기 집중 코스(25분)는 회당 <strong>40,000원</strong>입니다.
-            50분 수업은 관리자 별도 상담으로 안내드립니다.
-            주말 수업은 할증이 적용될 수 있으며, 정확한 금액은 수강신청과 일정 확정 후 안내됩니다.
-          </p>
-          <Link href="/consultation" style={{ display: "inline-block", marginTop: 14, fontSize: 13, fontWeight: 800, color: "#326bd1" }}>수업 상담 문의 →</Link>
-        </section>
-        <TossReviewInfo />
       </div>
     </main>
   );
