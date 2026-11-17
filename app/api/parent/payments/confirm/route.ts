@@ -261,6 +261,10 @@ export async function POST(request: Request) {
      * =========================================================
      */
     if (payment.status === "paid") {
+      const restoreHold = await admin.rpc("mark_direct_checkout_paid", {
+        p_request_id: payment.enrollment_request_id,
+      });
+      if (restoreHold.error) console.error("[TOSS CONFIRM] paid reservation repair", restoreHold.error);
       let activationResult:
         | EnrollmentActivationResult
         | null = null;
@@ -306,6 +310,13 @@ export async function POST(request: Request) {
       });
     }
 
+
+    if (payment.status !== "ready") {
+      return NextResponse.json({
+        success: false,
+        error: "기존 결제 승인 처리가 진행 중이거나 종료됐습니다. 중복 결제하지 말고 결제내역을 확인해 주세요.",
+      }, { status: 409 });
+    }
 
     // Never confirm a new payment without the original server-side evidence.
     const { data: consentRecord, error: consentError } = await admin
@@ -381,6 +392,7 @@ export async function POST(request: Request) {
         child_id,
         duration_months,
         final_price,
+        checkout_mode,
         assignment_confirmed_at
       `)
       .eq(
@@ -444,6 +456,20 @@ export async function POST(request: Request) {
           status: 409,
         }
       );
+    }
+
+    if (enrollmentRequest.checkout_mode === "direct") {
+      const hold = await admin.rpc("check_direct_checkout_hold", {
+        p_request_id: payment.enrollment_request_id,
+        p_actor: user.id, p_extend_minutes: 20,
+      });
+      if (hold.error || hold.data !== true) {
+        console.error("[TOSS CONFIRM] direct checkout reservation invalid", hold.error);
+        return NextResponse.json({
+          success: false,
+          error: "강사 수업시간 예약이 만료되었습니다. 결제 승인 전에 관리자에게 문의해 주세요.",
+        }, { status: 409 });
+      }
     }
 
     const currentFinalPrice =
@@ -511,6 +537,7 @@ export async function POST(request: Request) {
      * =========================================================
      */
     const {
+      data: claimedPayment,
       error: confirmingUpdateError,
     } = await admin
       .from("enrollment_payments")
@@ -518,9 +545,12 @@ export async function POST(request: Request) {
         status: "confirming",
         payment_key: paymentKey,
       })
-      .eq("id", payment.id);
+      .eq("id", payment.id)
+      .eq("status", "ready")
+      .select("id")
+      .maybeSingle();
 
-    if (confirmingUpdateError) {
+    if (confirmingUpdateError || !claimedPayment) {
       console.error(
         "[TOSS CONFIRM] confirming 저장 실패:",
         confirmingUpdateError
@@ -843,6 +873,15 @@ export async function POST(request: Request) {
           status: 500,
         }
       );
+    }
+
+    if (enrollmentRequest.checkout_mode === "direct") {
+      const markHold = await admin.rpc("mark_direct_checkout_paid", {
+        p_request_id: payment.enrollment_request_id,
+      });
+      if (markHold.error || markHold.data !== true) {
+        console.error("[TOSS CONFIRM] payment approved, direct booking mark requires attention", markHold.error);
+      }
     }
 
     /*
