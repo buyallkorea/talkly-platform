@@ -62,6 +62,13 @@ export default async function EditTeacherPage({
     notFound();
   }
 
+  const { data: compensationRecord, error: compensationError } = await createAdminClient()
+    .from("teacher_compensation_notes")
+    .select("notes")
+    .eq("teacher_user_id", id)
+    .maybeSingle();
+  if (compensationError) throw new Error(compensationError.message);
+
   const { data: profile, error: profileError } =
     await supabase
       .from("profiles")
@@ -114,6 +121,7 @@ export default async function EditTeacherPage({
       <EditTeacherForm
         profile={{ ...profile, email: account.user.email ?? null }}
         teacher={teacher}
+        compensationNotes={compensationRecord?.notes || ""}
       />
     </main>
   );
