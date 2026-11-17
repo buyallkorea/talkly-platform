@@ -42,9 +42,11 @@ type Teacher = {
 export default function EditTeacherForm({
   profile,
   teacher,
+  compensationNotes: initialCompensationNotes,
 }: {
   profile: Profile;
   teacher: Teacher;
+  compensationNotes: string;
 }) {
   const router = useRouter();
 
@@ -114,11 +116,7 @@ export default function EditTeacherForm({
     teacher.certifications || ""
   );
 
-  const [hourlyRate, setHourlyRate] = useState(
-    teacher.hourly_rate != null
-      ? String(teacher.hourly_rate)
-      : ""
-  );
+  const [compensationNotes, setCompensationNotes] = useState(initialCompensationNotes);
 
   const [isActive, setIsActive] = useState(
     teacher.is_active
@@ -243,14 +241,8 @@ export default function EditTeacherForm({
       return;
     }
 
-    if (
-      hourlyRate !== "" &&
-      (!Number.isFinite(Number(hourlyRate)) ||
-        Number(hourlyRate) < 0)
-    ) {
-      setErrorMessage(
-        "시간당 수업료를 확인해주세요."
-      );
+    if (compensationNotes.length > 4000) {
+      setErrorMessage("수업료 및 협상 메모는 4,000자 이내로 입력해주세요.");
       return;
     }
 
@@ -368,10 +360,6 @@ export default function EditTeacherForm({
               education.trim() || null,
             certifications:
               certifications.trim() || null,
-            hourly_rate:
-              hourlyRate !== ""
-                ? Number(hourlyRate)
-                : null,
             is_active: isActive,
             updated_at: new Date().toISOString(),
           })
@@ -388,6 +376,17 @@ export default function EditTeacherForm({
         throw new Error(
           "수정된 강사정보를 확인할 수 없습니다."
         );
+      }
+
+      // 관리자 전용 협상 메모는 별도의 권한 검증 API에 저장합니다.
+      const notesResponse = await fetch(`/api/admin/teacher-compensation/${teacher.user_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: compensationNotes.trim() }),
+      });
+      if (!notesResponse.ok) {
+        const notesResult = await notesResponse.json().catch(() => ({}));
+        throw new Error(`기본 강사 정보는 저장되었지만 협상 메모 저장에 실패했습니다: ${notesResult.error || "다시 시도해 주세요."}`);
       }
 
       // 3. 다른 정보가 저장된 후 이메일 변경
@@ -868,24 +867,12 @@ export default function EditTeacherForm({
         </div>
 
         <div>
-          <label
-            htmlFor="hourlyRate"
-            style={labelStyle}
-          >
-            시간당 수업료
-          </label>
-          <input
-            id="hourlyRate"
-            type="number"
-            min="0"
-            step="1000"
-            value={hourlyRate}
-            onChange={(event) =>
-              setHourlyRate(event.target.value)
-            }
-            disabled={loading}
-            style={fieldStyle}
-          />
+          <label htmlFor="compensationNotes" style={labelStyle}>수업료 및 협상 내용 (관리자 전용)</label>
+          <textarea id="compensationNotes" rows={5} maxLength={4000}
+            value={compensationNotes} onChange={(event) => setCompensationNotes(event.target.value)}
+            placeholder="예: 필리핀 강사 초임 시간당 000페소 (원화 약 000원), 추후 협상 필요"
+            disabled={loading} style={{ ...fieldStyle, resize: "vertical" }} />
+          <small>기존 숫자 수업료 정보는 보존됩니다. 통화·협상 조건을 자유롭게 기록할 수 있습니다.</small>
         </div>
 
         <div>

@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
+import { createAdminClient } from "@/lib/supabase-admin";
 import DeleteTeacherButton from "./DeleteTeacherButton";
 import {
   getTeacherEvaluationRequirements,
@@ -135,6 +136,13 @@ export default async function TeacherDetailPage({
   if (!teacher) {
     notFound();
   }
+
+  const { data: compensationRecord, error: compensationError } = await createAdminClient()
+    .from("teacher_compensation_notes")
+    .select("notes")
+    .eq("teacher_user_id", id)
+    .maybeSingle();
+  if (compensationError) throw new Error(compensationError.message);
 
   const { data: teacherProfile, error: teacherProfileError } =
     await supabase
@@ -893,11 +901,17 @@ export default async function TeacherDetailPage({
           </p>
 
           <p style={{ marginBottom: 0 }}>
-            <strong>시간당 수업료:</strong>{" "}
+            <strong>기존 시간당 수업료:</strong>{" "}
             {teacher.hourly_rate != null
               ? `${teacher.hourly_rate.toLocaleString()}원`
               : "-"}
           </p>
+          <div style={{ marginTop: 14 }}>
+            <strong>수업료 및 협상 메모 (관리자 전용):</strong>
+            <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", marginTop: 6 }}>
+              {compensationRecord?.notes || "등록된 메모가 없습니다."}
+            </p>
+          </div>
         </div>
       </section>
 
