@@ -31,7 +31,7 @@ const inputStyle = {
 export default function TuitionCalculator({
   region, onRegionChange, weekly, onWeeklyChange,
   months, onMonthsChange, lessonMinutes = 25,
-  showEnrollLink = false, weeklyOptions = [1, 2, 3, 4, 5],
+  showEnrollLink = false, weeklyOptions = [2, 3, 5],
 }: Props) {
   const [ownRegion, setOwnRegion] = useState<TuitionRegion>("philippines");
   const [ownWeekly, setOwnWeekly] = useState(2);
