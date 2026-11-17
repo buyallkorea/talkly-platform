@@ -826,9 +826,10 @@ export default function CustomEnrollmentScheduler({
         const directResult = await directResponse.json();
         if (!directResponse.ok) {
           setErrorMessage(
-            `${directResult.error || "즉시 결제할 수업 시간을 확보하지 못했습니다."} 신청은 관리자 상담 대기로 접수됐습니다.`
+            directResult.error || "즉시 결제할 수업 시간을 확보하지 못했습니다."
           );
-          // Leave the request pending for administrator follow-up.
+          setSuccessMessage("즉시 결제가 불가능하여 관리자 상담 신청으로 접수되었습니다. 신청 현황에서 확인해 주세요.");
+          // Keep the application pending for administrator follow-up.
           return;
         }
         setSuccessMessage("수업 일정이 자동 확정되었습니다. 결제 안내로 이동합니다.");
