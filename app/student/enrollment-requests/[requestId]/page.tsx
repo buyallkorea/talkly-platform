@@ -22,6 +22,7 @@ type EnrollmentRequestRow = {
   child_id: number | null;
   course_id: number;
   status: string;
+  checkout_mode: "consultation" | "direct";
   assigned_teacher_user_id: string | null;
   assigned_days: string[] | null;
   assigned_times: Record<string, string> | null;
@@ -186,6 +187,7 @@ export default async function StudentEnrollmentRequestPaymentPage({
       child_id,
       course_id,
       status,
+      checkout_mode,
       assigned_teacher_user_id,
       assigned_days,
       assigned_times,
@@ -377,11 +379,10 @@ export default async function StudentEnrollmentRequestPaymentPage({
   const pricing =
     pricingData as PricingRow;
 
-  const discounts =
-    (
-      discountResult.data ??
-      []
-    ) as DiscountPolicyRow[];
+  const allDiscounts = (discountResult.data ?? []) as DiscountPolicyRow[];
+  const discounts = request.checkout_mode === "direct"
+    ? allDiscounts.filter((p) => p.duration_months === request.duration_months)
+    : allDiscounts;
 
   if (
     discounts.length === 0

@@ -119,6 +119,12 @@ function getTodayDateText() {
   );
 }
 
+function getTomorrowDateText() {
+  const next = new Date(getTodayDateText() + "T12:00:00");
+  next.setDate(next.getDate() + 1);
+  return formatDateOnly(next);
+}
+
 function getNextDateForWeekday({
   baseDateText,
   weekday,
@@ -249,7 +255,7 @@ export default function CustomEnrollmentScheduler({
     startDate,
     setStartDate,
   ] = useState(
-    getTodayDateText()
+    getTomorrowDateText()
   );
 
   const [
@@ -281,6 +287,8 @@ export default function CustomEnrollmentScheduler({
     preferredTime,
     setPreferredTime,
   ] = useState("");
+
+  const [checkoutMode, setCheckoutMode] = useState<"direct" | "consultation">("direct");
 
   const [
     teacherMode,
@@ -709,6 +717,11 @@ export default function CustomEnrollmentScheduler({
       return;
     }
 
+    if (checkoutMode === "direct" && startDate < getTomorrowDateText()) {
+      setErrorMessage("바로 결제는 내일 이후를 수업 시작 기준일로 선택해 주세요.");
+      return;
+    }
+
     const teacherText =
       teacherMode ===
         "specific"
@@ -797,9 +810,33 @@ export default function CustomEnrollmentScheduler({
         return;
       }
 
-      // Do not leave the applicant on the completed form.
-      // The status page explains the assignment gate and payment review path.
-      setSuccessMessage("맞춤 수강신청이 정상적으로 접수되었습니다.");
+      if (checkoutMode === "direct") {
+        const assignedTeacherId = teacherMode === "specific"
+          ? selectedTeacherId
+          : matchingTeachers[0]?.teacherUserId;
+        if (!assignedTeacherId || !Number.isSafeInteger(Number(result.requestId))) {
+          setErrorMessage("신청은 접수되었지만 강사 또는 신청번호를 확인하지 못했습니다. 관리자와 상담해 주세요.");
+          return;
+        }
+        const directResponse = await fetch(
+          `/api/parent/enrollment-requests/${result.requestId}/direct-checkout`,
+          { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ teacherUserId: assignedTeacherId }) }
+        );
+        const directResult = await directResponse.json();
+        if (!directResponse.ok) {
+          setErrorMessage(
+            directResult.error || "즉시 결제할 수업 시간을 확보하지 못했습니다."
+          );
+          setSuccessMessage("즉시 결제가 불가능하여 관리자 상담 신청으로 접수되었습니다. 신청 현황에서 확인해 주세요.");
+          // Keep the application pending for administrator follow-up.
+          return;
+        }
+        setSuccessMessage("수업 일정이 자동 확정되었습니다. 결제 안내로 이동합니다.");
+        router.push(directResult.href);
+        return;
+      }
+      setSuccessMessage("관리자 상담 신청이 접수되었습니다.");
       router.push(resolvedEnrollmentRequestsHref);
     } catch (error) {
       setErrorMessage(
@@ -996,7 +1033,7 @@ export default function CustomEnrollmentScheduler({
           <input
             type="date"
             min={
-              getTodayDateText()
+              checkoutMode === "direct" ? getTomorrowDateText() : getTodayDateText()
             }
             value={
               startDate
@@ -1576,6 +1613,29 @@ export default function CustomEnrollmentScheduler({
           </div>
 
           {!successMessage && (
+            <div role="group" aria-label="결제 방법 선택" style={{ marginTop: 18, display: "grid", gap: 10 }}>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: 14, borderRadius: 10,
+                border: checkoutMode === "direct" ? "2px solid #326bd1" : "1px solid #dce4ee",
+                background: checkoutMode === "direct" ? "#eff5ff" : "#fff", cursor: "pointer" }}>
+                <input type="radio" name="checkoutMode" checked={checkoutMode === "direct"}
+                  onChange={() => { setCheckoutMode("direct");
+                    if (startDate < getTomorrowDateText()) setStartDate(getTomorrowDateText());
+                    resetSearchResult();
+                  }} />
+                <span><strong>바로 수강료 결제</strong>
+                  <small style={{ display: "block", color: "#667085" }}>강사·시간이 확인되면 자동 배정 후 결제 안내로 이동합니다.</small></span>
+              </label>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: 14, borderRadius: 10,
+                border: checkoutMode === "consultation" ? "2px solid #326bd1" : "1px solid #dce4ee",
+                background: checkoutMode === "consultation" ? "#eff5ff" : "#fff", cursor: "pointer" }}>
+                <input type="radio" name="checkoutMode" checked={checkoutMode === "consultation"}
+                  onChange={() => { setCheckoutMode("consultation"); resetSearchResult(); }} />
+                <span><strong>관리자에게 수강신청</strong>
+                  <small style={{ display: "block", color: "#667085" }}>관리자와 상담한 뒤 강사·일정 확정 후 결제합니다.</small></span>
+              </label>
+            </div>
+          )}
+          {!successMessage && (
             <button
               type="button"
               onClick={
@@ -1615,7 +1675,7 @@ export default function CustomEnrollmentScheduler({
             >
               {submitting
                 ? "수강신청 접수 중..."
-                : "관리자에게 수강신청 · 상담 후 결제"}
+                : checkoutMode === "direct" ? "일정 확인 후 바로 결제" : "관리자에게 수강신청 · 상담 후 결제"}
             </button>
           )}
         </div>

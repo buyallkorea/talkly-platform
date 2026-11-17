@@ -153,6 +153,8 @@ export async function POST(
       child_id,
       course_id,
       status,
+      checkout_mode,
+      duration_months,
       assigned_teacher_user_id,
       assigned_days,
       assigned_lesson_duration_minutes,
@@ -221,6 +223,13 @@ export async function POST(
         status: 409,
       }
     );
+  }
+
+  if (enrollmentRequest.checkout_mode === "direct" &&
+      Number(enrollmentRequest.duration_months) !== durationMonths) {
+    return NextResponse.json({
+      error: "바로 결제용으로 확보한 일정의 수강기간은 변경할 수 없습니다. 새 일정을 선택해 주세요."
+    }, { status: 409 });
   }
 
   const [teacherResult, policyResult] =
