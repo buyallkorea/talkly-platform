@@ -291,7 +291,7 @@ export default function PaymentPreparation({
 
   async function saveAndContinue() {
     if (!consentComplete) {
-      setErrorMessage("필수 확인사항 3개 모두 확인 및 동의해 주세요.");
+      setErrorMessage("필수 확인사항 2개 모두 확인 및 동의해 주세요.");
       return;
     }
     setIsSaving(true);
@@ -341,7 +341,6 @@ export default function PaymentPreparation({
               version: TUITION_CONSENT_VERSION,
               answers: {
                 discount: consentAnswers.discount === "yes",
-                earlyTermination: consentAnswers.earlyTermination === "yes",
                 refund: consentAnswers.refund === "yes",
               },
               durationMonths: selectedMonths,
