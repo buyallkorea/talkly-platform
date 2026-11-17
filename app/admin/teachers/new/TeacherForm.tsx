@@ -66,10 +66,7 @@ export default function TeacherForm() {
     certifications,
     setCertifications,
   ] = useState("");
-  const [
-    hourlyRate,
-    setHourlyRate,
-  ] = useState("");
+  const [compensationNotes, setCompensationNotes] = useState("");
   const [
     imageFile,
     setImageFile,
@@ -188,15 +185,8 @@ export default function TeacherForm() {
       );
       return;
     }
-    if (
-      hourlyRate &&
-      Number(
-        hourlyRate
-      ) < 0
-    ) {
-      setErrorMessage(
-        "시간당 수업료를 확인해주세요."
-      );
+    if (compensationNotes.length > 4000) {
+      setErrorMessage("수업료 및 협상 메모는 4,000자 이내로 입력해주세요.");
       return;
     }
     if (registrationMode === "direct" && initialPassword.length < 8) {
@@ -280,6 +270,17 @@ export default function TeacherForm() {
       /*
        * 기존 프로필 사진 등록 기능 유지
        */
+      if (compensationNotes.trim()) {
+        const notesResponse = await fetch(`/api/admin/teacher-compensation/${teacherUserId}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notes: compensationNotes.trim() }),
+        });
+        if (!notesResponse.ok) {
+          const notesResult = await notesResponse.json().catch(() => ({}));
+          setErrorMessage(`강사 계정은 등록되었지만 협상 메모 저장에 실패했습니다: ${notesResult.error || "관리자 화면에서 다시 저장해 주세요."}`);
+          return;
+        }
+      }
       if (imageFile) {
         const supabase =
           createClient();
@@ -1067,38 +1068,12 @@ export default function TeacherForm() {
           />
         </div>
         <div>
-          <label
-            htmlFor="hourlyRate"
-            style={
-              labelStyle
-            }
-          >
-            시간당 수업료
-          </label>
-          <input
-            id="hourlyRate"
-            type="number"
-            min="0"
-            step="1000"
-            value={
-              hourlyRate
-            }
-            onChange={(
-              event
-            ) =>
-              setHourlyRate(
-                event.target
-                  .value
-              )
-            }
-            placeholder="예: 30000"
-            disabled={
-              loading
-            }
-            style={
-              fieldStyle
-            }
-          />
+          <label htmlFor="compensationNotes" style={labelStyle}>수업료 및 협상 내용 (관리자 전용)</label>
+          <textarea id="compensationNotes" rows={5} maxLength={4000}
+            value={compensationNotes} onChange={(event) => setCompensationNotes(event.target.value)}
+            placeholder="예: 필리핀 강사 초임 시간당 000페소 (원화 약 000원), 추후 협상 필요"
+            disabled={loading} style={{ ...fieldStyle, resize: "vertical" }} />
+          <small>통화, 급여 조건, 추후 협상 내용 등을 자유롭게 기록합니다. 학생 수강료에 반영되지 않습니다.</small>
         </div>
       </section>
       {errorMessage && (
