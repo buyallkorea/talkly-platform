@@ -642,18 +642,29 @@ export async function POST(
    * 취소 수업은 가용시간을
    * 차단하지 않음
    */
-  const activeBookedSessions =
-    bookedSessions.filter(
-      (session) =>
-        ![
-          "cancelled",
-          "canceled",
-        ].includes(
-          String(
-            session.status
-          ).toLowerCase()
-        )
-    );
+  const { data: checkoutHolds, error: checkoutHoldsError } = await adminClient
+    .from("direct_checkout_slots")
+    .select("teacher_user_id,scheduled_start,scheduled_end,reservation_state,expires_at")
+    .in("teacher_user_id", teacherIds)
+    .gte("scheduled_start", dayBounds.start)
+    .lt("scheduled_start", dayBounds.end);
+  if (checkoutHoldsError) {
+    console.error("[ADMIN AVAILABILITY] checkout reservations lookup failed", checkoutHoldsError);
+    return NextResponse.json({ error: "수업 예약을 확인하지 못했습니다." }, { status: 500 });
+  }
+  const activeBookedSessions: BookedSessionRow[] = [
+    ...bookedSessions.filter((session) =>
+      !["cancelled","canceled"].includes(String(session.status).toLowerCase())
+    ),
+    ...(checkoutHolds ?? [])
+      .filter((hold) => hold.reservation_state === "paid" ||
+        new Date(hold.expires_at).getTime() > Date.now())
+      .map((hold, index) => ({
+        id: -(index + 1), teacher_user_id: hold.teacher_user_id,
+        scheduled_start: hold.scheduled_start, scheduled_end: hold.scheduled_end,
+        status: "held",
+      })),
+  ];
 
   /*
    * 운영 설정의 시작시간 후보
