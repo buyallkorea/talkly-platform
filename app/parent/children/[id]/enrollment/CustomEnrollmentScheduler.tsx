@@ -214,19 +214,14 @@ export default function CustomEnrollmentScheduler({
       null
     );
 
-  const usableDurations =
-    allowedDurationMinutes.filter(
-      (value) =>
-        value === 25 ||
-        value === 50
-    );
+  // 정규 수강신청은 25분 수업만 제공합니다. 50분은 별도 상담 대상입니다.
+  const usableDurations = [25];
 
   const usableLessons =
     allowedLessonsPerWeek
       .filter(
         (value) =>
-          Number.isInteger(value) &&
-          value > 0
+          [2, 3, 5].includes(value)
       )
       .sort(
         (a, b) =>
@@ -236,9 +231,8 @@ export default function CustomEnrollmentScheduler({
   const visibleWeekdays =
     DAY_ORDER.filter(
       (day) =>
-        allowedWeekdays.includes(
-          day
-        )
+        !["Saturday", "Sunday"].includes(day) &&
+        allowedWeekdays.includes(day)
     );
 
   const [
@@ -1023,51 +1017,6 @@ export default function CustomEnrollmentScheduler({
 
         <div>
           <FieldLabel>
-            수업 시간
-          </FieldLabel>
-
-          <select
-            value={
-              durationMinutes
-            }
-            onChange={(
-              event
-            ) => {
-              setDurationMinutes(
-                Number(
-                  event.target.value
-                )
-              );
-
-              setPreferredTime(
-                ""
-              );
-
-              resetSearchResult();
-            }}
-            style={
-              fieldStyle
-            }
-          >
-            {usableDurations.map(
-              (value) => (
-                <option
-                  key={
-                    value
-                  }
-                  value={
-                    value
-                  }
-                >
-                  {value}분
-                </option>
-              )
-            )}
-          </select>
-        </div>
-
-        <div>
-          <FieldLabel>
             주당 수업 횟수
           </FieldLabel>
 
@@ -1163,12 +1112,7 @@ export default function CustomEnrollmentScheduler({
             lineHeight: 1.6,
           }}
         >
-          토요일과 일요일은
-          동시에 선택할 수
-          없습니다. 주말 수업은
-          기본 평일 수업료의
-          1.5배 정책이
-          적용됩니다.
+          정규수업은 평일 25분 수업만 신청할 수 있습니다. 주말·50분 수업은 별도 상담해 주세요.
         </div>
       </div>
 
@@ -1444,7 +1388,9 @@ export default function CustomEnrollmentScheduler({
       >
         {searching
           ? "가능 강사 조회 중..."
-          : "선택한 시간에 가능한 강사 찾기"}
+          : teacherMode === "specific"
+            ? "선택한 강사 가능 여부 확인"
+            : "가능한 강사 모두 찾기"}
       </button>
       )}
 
