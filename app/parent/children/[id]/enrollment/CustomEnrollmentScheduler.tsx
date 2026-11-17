@@ -1615,7 +1615,7 @@ export default function CustomEnrollmentScheduler({
             >
               {submitting
                 ? "수강신청 접수 중..."
-                : "이 조건으로 수강신청 접수"}
+                : "관리자에게 수강신청 · 상담 후 결제"}
             </button>
           )}
         </div>
