@@ -328,7 +328,6 @@ export async function POST(request: Request) {
     if (consentError || !consentRecord ||
       consentRecord.order_id !== payment.order_id ||
       consentRecord.decisions?.discount !== true ||
-      consentRecord.decisions?.earlyTermination !== true ||
       consentRecord.decisions?.refund !== true ||
       Number(consentRecord.pricing_snapshot?.finalPrice) !== Number(payment.amount)) {
       return NextResponse.json({
