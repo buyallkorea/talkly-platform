@@ -61,13 +61,9 @@ export default function SiteHeader() {
             레벨테스트
           </NavLink>
 
-          <NavLink href="/enroll">
-            수강신청
-          </NavLink>
+          <NavLink href="/tuition">수강료 안내</NavLink>
 
-          <NavLink href="/tuition">
-            수강료
-          </NavLink>
+          <NavLink href="/enroll">수강신청</NavLink>
 
           <NavLink href="/#ai">
             TALKLY AI
@@ -169,19 +165,9 @@ export default function SiteHeader() {
               레벨테스트
             </MobileNavLink>
 
-            <MobileNavLink
-              href="/enroll"
-              onClick={closeMobileMenu}
-            >
-              수강신청
-            </MobileNavLink>
+            <MobileNavLink href="/tuition" onClick={closeMobileMenu}>수강료 안내</MobileNavLink>
 
-            <MobileNavLink
-              href="/tuition"
-              onClick={closeMobileMenu}
-            >
-              수강료
-            </MobileNavLink>
+            <MobileNavLink href="/enroll" onClick={closeMobileMenu}>수강신청</MobileNavLink>
 
             <MobileNavLink
               href="/#ai"
