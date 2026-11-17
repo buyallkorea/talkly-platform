@@ -103,13 +103,13 @@ export default function HomeMobileMenu() {
               <span>›</span>
             </Link>
 
-            <Link href="/enroll" onClick={closeMenu}>
-              수강신청
+            <Link href="/tuition" onClick={closeMenu}>
+              수강료 안내
               <span>›</span>
             </Link>
 
-            <Link href="/tuition" onClick={closeMenu}>
-              수강료
+            <Link href="/enroll" onClick={closeMenu}>
+              수강신청
               <span>›</span>
             </Link>
           </div>
