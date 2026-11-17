@@ -243,7 +243,7 @@ export default function TeacherForm() {
                   education.trim(),
                 certifications:
                   certifications.trim(),
-                hourlyRate,
+                hourlyRate: null,
               }),
           }
         );
