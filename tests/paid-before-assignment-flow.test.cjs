@@ -56,7 +56,7 @@ test("admin paid allocation checks teacher pricing and triggers class activation
   assert.match(route, /activatePaidEnrollment\(currentPayment\.id\)/);
   assert.match(route, /status:\s*"approved"/);
   assert.match(detail, /결제 완료/);
-  assert.match(detail, /hasPayment=\{Boolean\(latestPayment\)\}/);
+  assert.match(detail, /hasPayment=\{latestPayment\?\.status === "paid"/);
 });
 
 test("new immutable receipt numbers are tied to Korean reception day, not internal id", () => {
