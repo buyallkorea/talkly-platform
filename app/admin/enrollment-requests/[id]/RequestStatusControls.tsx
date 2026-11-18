@@ -9,10 +9,12 @@ export default function RequestStatusControls({
   requestId,
   status,
   hasAssignment,
+  hasPayment,
 }: {
   requestId: number;
   status: string;
   hasAssignment: boolean;
+  hasPayment: boolean;
 }) {
   const router = useRouter();
   const [reason, setReason] = useState("");
@@ -20,7 +22,7 @@ export default function RequestStatusControls({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  if (status !== "pending" || hasAssignment) return null;
+  if (status !== "pending" || hasAssignment || hasPayment) return null;
 
   async function submit(action: RequestAction) {
     const note = reason.trim();
