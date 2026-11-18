@@ -490,9 +490,9 @@ export default async function ParentEnrollmentRequestPaymentPage({
             overflow:
               "hidden",
             marginTop:
-              "18px",
+              "10px",
             padding:
-              "34px 36px",
+              "17px 26px",
             borderRadius:
               "24px",
             background:
@@ -506,10 +506,10 @@ export default async function ParentEnrollmentRequestPaymentPage({
               position:
                 "absolute",
               width:
-                "230px",
+                "150px",
               height:
-                "230px",
-              top: "-95px",
+                "150px",
+              top: "-60px",
               right:
                 "-50px",
               borderRadius:
@@ -544,40 +544,21 @@ export default async function ParentEnrollmentRequestPaymentPage({
             <h1
               style={{
                 margin:
-                  "10px 0 0",
+                  "5px 0 0",
                 color:
                   "#ffffff",
                 fontSize:
-                  "clamp(29px, 5vw, 44px)",
+                  "clamp(21px, 2.6vw, 28px)",
                 lineHeight:
                   1.15,
                 letterSpacing:
                   "-0.04em",
               }}
             >
-              수강기간과
-              <br />
-              결제금액을 확인해 주세요
+              수강기간과 결제금액을 확인해 주세요
             </h1>
 
-            <p
-              style={{
-                margin:
-                  "15px 0 0",
-                color:
-                  "rgba(255,255,255,0.82)",
-                fontSize:
-                  "14px",
-                lineHeight:
-                  1.75,
-              }}
-            >
-              배정된 수업 조건은
-              그대로 유지되며,
-              수강기간만 선택하면
-              할인과 최종 금액이
-              자동으로 계산됩니다.
-            </p>
+
           </div>
         </section>
 
