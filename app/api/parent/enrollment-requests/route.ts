@@ -817,7 +817,8 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "이미 처리 중인 맞춤 수강신청이 있습니다.",
+            `이미 처리 중인 맞춤 수강신청 #${existingCustom.id}이 있습니다. 신청 내역에서 기존 신청을 확인하거나 미결제·미배정 신청을 취소한 뒤 다시 신청해 주세요.`,
+          existingRequestId: existingCustom.id,
         },
         {
           status: 409,
