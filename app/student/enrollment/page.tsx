@@ -501,7 +501,6 @@ export default async function StudentEnrollmentPage({
               "-0.03em",
           }}
         >
-          {learnerName}님
           수강신청
         </h1>
 
@@ -525,9 +524,6 @@ export default async function StudentEnrollmentPage({
             flexWrap: "wrap",
           }}
         >
-          <InfoBadge>
-            직접 수강생 신청
-          </InfoBadge>
 
           {recommendedLevel && (
             <InfoBadge>
