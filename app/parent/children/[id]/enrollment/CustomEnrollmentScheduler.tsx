@@ -896,8 +896,8 @@ export default function CustomEnrollmentScheduler({
           setErrorMessage(
             directResult.error || "즉시 결제할 수업 시간을 확보하지 못했습니다."
           );
-          setSuccessMessage("즉시 결제가 불가능하여 관리자 상담 신청으로 접수되었습니다. 신청 현황에서 확인해 주세요.");
-          // Keep the application pending for administrator follow-up.
+          setSuccessMessage("희망 수업시간을 임시 확보하지 못했습니다. 신청내역에서 배정 현황을 확인할 수 있습니다.");
+          router.push(resolvedEnrollmentRequestsHref);
           return;
         }
         setSuccessMessage("수업 일정이 자동 확정되었습니다. 결제 안내로 이동합니다.");
@@ -1347,7 +1347,7 @@ export default function CustomEnrollmentScheduler({
                 : "관리자와 협의할 희망시간을 2~3개 선택해 주세요."}
             </div>
 
-            {teacherMode === "specific" && (
+            {teacherMode === "specific" && (!specificTimesReady || specificTeacherTimes?.error || shownTimeOptions.length === 0) && (
               <p role="status" style={{ fontSize: 12, color: "#526277", margin: "0 0 8px" }}>
                 {!selectedTeacherId ? "먼저 강사를 선택해 주세요."
                   : selectedDays.length !== lessonsPerWeek ? "주당 수업 횟수에 맞는 요일을 선택해 주세요."
