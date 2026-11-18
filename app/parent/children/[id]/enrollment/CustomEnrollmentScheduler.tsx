@@ -925,18 +925,6 @@ export default function CustomEnrollmentScheduler({
         선택해주세요.
       </h2>
 
-      <p
-        style={{
-          margin:
-            "9px 0 0",
-          color:
-            "var(--text-muted)",
-          lineHeight: 1.75,
-        }}
-      >
-        교육과정, 주당 수업 횟수, 수강기간, 요일과 희망시간을 선택해 주세요.
-      </p>
-
       <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 14 }}>
         <div>
           <FieldLabel>강사 구분</FieldLabel>
