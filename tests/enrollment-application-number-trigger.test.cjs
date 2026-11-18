@@ -13,7 +13,9 @@ test("date counter trigger has no column/variable ambiguity", () => {
   assert.match(source, /v_reception_day date;/);
   assert.doesNotMatch(source, /\bdeclare\s+reception_day\s+date\b/i);
   assert.match(source, /on conflict on constraint enrollment_request_daily_sequences_pkey/i);
-  assert.doesNotMatch(source, /on conflict\s*\(reception_day\)/i);
+  // Comments document the historical broken form; validate executable SQL only.
+  const executableSql = source.split("as $")[1] ?? "";
+  assert.doesNotMatch(executableSql, /on conflict\s*\(reception_day\)/i);
 });
 
 test("application numbers are KST-dated, unique and preserve source IDs", () => {
