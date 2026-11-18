@@ -299,6 +299,15 @@ export default async function AdminEnrollmentRequestsPage({
     (requestsData ??
       []) as RequestRow[];
 
+  const paidLookup = requests.length
+    ? await adminClient.from("enrollment_payments")
+        .select("enrollment_request_id")
+        .in("enrollment_request_id", requests.map((row) => row.id))
+        .eq("status", "paid")
+    : { data: [], error: null };
+  if (paidLookup.error) throw new Error("수강신청 결제 상태를 확인하지 못했습니다.");
+  const paidRequestIds = new Set((paidLookup.data ?? []).map((row) => Number(row.enrollment_request_id)));
+
   const childIds =
     Array.from(
       new Set(
@@ -1207,6 +1216,11 @@ export default async function AdminEnrollmentRequestsPage({
                             row.created_at
                           )}
                         </div>
+                        {paidRequestIds.has(row.id) && (
+                          <div style={{ marginTop: 5, fontSize: 10, color: "#067647", fontWeight: 900 }}>
+                            결제 완료 · {row.assigned_teacher_user_id ? "강사 배정 완료" : "강사 배정 대기"}
+                          </div>
+                        )}
                       </div>
 
                       {/* Student */}
