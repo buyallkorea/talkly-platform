@@ -261,10 +261,31 @@ export async function POST(request: Request) {
      * =========================================================
      */
     if (payment.status === "paid") {
-      const restoreHold = await admin.rpc("mark_direct_checkout_paid", {
-        p_request_id: payment.enrollment_request_id,
-      });
-      if (restoreHold.error) console.error("[TOSS CONFIRM] paid reservation repair", restoreHold.error);
+      const existingRequest = await admin.from("enrollment_requests")
+        .select("checkout_mode,teacher_preference_type,assigned_teacher_user_id,assignment_confirmed_at")
+        .eq("id", payment.enrollment_request_id).maybeSingle();
+      if (existingRequest.error || !existingRequest.data) {
+        return NextResponse.json({ success: false, error: "결제의 수강신청 상태를 확인하지 못했습니다." }, { status: 500 });
+      }
+      const assignedNow = Boolean(
+        existingRequest.data.assigned_teacher_user_id && existingRequest.data.assignment_confirmed_at
+      );
+      if (!assignedNow && existingRequest.data.checkout_mode === "direct" &&
+          existingRequest.data.teacher_preference_type === "any") {
+        return NextResponse.json({
+          success: true, alreadyPaid: true, assignmentPending: true,
+          paymentId: payment.id, orderId: payment.order_id,
+          amount: payment.amount, approvedAt: payment.approved_at,
+          enrollment: null, enrollmentActivationPending: false,
+        });
+      }
+      if (existingRequest.data.checkout_mode === "direct" &&
+          existingRequest.data.teacher_preference_type !== "any") {
+        const restoreHold = await admin.rpc("mark_direct_checkout_paid", {
+          p_request_id: payment.enrollment_request_id,
+        });
+        if (restoreHold.error) console.error("[TOSS CONFIRM] paid reservation repair", restoreHold.error);
+      }
       let activationResult:
         | EnrollmentActivationResult
         | null = null;
@@ -393,6 +414,9 @@ export async function POST(request: Request) {
         duration_months,
         final_price,
         checkout_mode,
+        teacher_preference_type,
+        assigned_teacher_user_id,
+        status,
         assignment_confirmed_at
       `)
       .eq(
@@ -445,20 +469,20 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!enrollmentRequest.assignment_confirmed_at) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "강사 및 수업 일정이 확정되지 않은 신청입니다.",
-        },
-        {
-          status: 409,
-        }
-      );
+    const awaitingAdminAssignment =
+      enrollmentRequest.checkout_mode === "direct" &&
+      enrollmentRequest.teacher_preference_type === "any" &&
+      enrollmentRequest.status === "pending" &&
+      !enrollmentRequest.assigned_teacher_user_id &&
+      !enrollmentRequest.assignment_confirmed_at;
+
+    if (!awaitingAdminAssignment && !enrollmentRequest.assignment_confirmed_at) {
+      return NextResponse.json({
+        success: false, error: "강사 및 수업 일정이 확정되지 않은 신청입니다."
+      }, { status: 409 });
     }
 
-    if (enrollmentRequest.checkout_mode === "direct") {
+    if (enrollmentRequest.checkout_mode === "direct" && !awaitingAdminAssignment) {
       const hold = await admin.rpc("check_direct_checkout_hold", {
         p_request_id: payment.enrollment_request_id,
         p_actor: user.id, p_extend_minutes: 20,
@@ -875,13 +899,22 @@ export async function POST(request: Request) {
       );
     }
 
-    if (enrollmentRequest.checkout_mode === "direct") {
+    if (enrollmentRequest.checkout_mode === "direct" && !awaitingAdminAssignment) {
       const markHold = await admin.rpc("mark_direct_checkout_paid", {
         p_request_id: payment.enrollment_request_id,
       });
       if (markHold.error || markHold.data !== true) {
         console.error("[TOSS CONFIRM] payment approved, direct booking mark requires attention", markHold.error);
       }
+    }
+
+    if (awaitingAdminAssignment) {
+      // The Toss payment is complete but no teacher has been chosen.
+      // Never create a class session or fabricated reservation at this stage.
+      return NextResponse.json({
+        success: true, payment: savedPayment, enrollment: null,
+        assignmentPending: true, enrollmentActivationPending: false,
+      });
     }
 
     /*
