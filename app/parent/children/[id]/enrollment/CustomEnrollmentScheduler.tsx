@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -10,8 +11,7 @@ import type {
   ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import TuitionCalculator from "@/components/TuitionCalculator";
-import { tuitionRegionForNationality, type TuitionRegion, type TuitionMonths } from "@/lib/tuition";
+import { TUITION_MONTHS, TUITION_REGIONS, tuitionRegionForNationality, type TuitionRegion, type TuitionMonths } from "@/lib/tuition";
 
 type CourseSummary = {
   id: number;
@@ -289,6 +289,7 @@ export default function CustomEnrollmentScheduler({
   ] = useState("");
 
   const [checkoutMode, setCheckoutMode] = useState<"direct" | "consultation">("direct");
+  const [consultationReview, setConsultationReview] = useState(false);
 
   const [
     teacherMode,
@@ -302,6 +303,7 @@ export default function CustomEnrollmentScheduler({
     selectedTeacherId,
     setSelectedTeacherId,
   ] = useState("");
+  const [specificTeacherTimes, setSpecificTeacherTimes] = useState<{ key: string; times: string[]; error: string } | null>(null);
 
   const [
     searching,
@@ -351,13 +353,6 @@ export default function CustomEnrollmentScheduler({
         selectedTeacherId
     ) ?? null;
 
-  const hasWeekend =
-    selectedDays.some(
-      (day) =>
-        day === "Saturday" ||
-        day === "Sunday"
-    );
-
   const timeOptions =
     useMemo(() => {
       const source =
@@ -390,7 +385,8 @@ export default function CustomEnrollmentScheduler({
   const allPreferredTimesSelected =
     selectedDays.length ===
       lessonsPerWeek &&
-    Boolean(preferredTime);
+    Boolean(preferredTime) &&
+    shownTimeOptions.includes(preferredTime);
 
   const canSubmit =
     hasSearched &&
@@ -401,6 +397,7 @@ export default function CustomEnrollmentScheduler({
     !successMessage;
 
   function resetSearchResult() {
+    setConsultationReview(false);
     setMatchingTeachers(
       []
     );
@@ -418,6 +415,8 @@ export default function CustomEnrollmentScheduler({
   function toggleDay(
     day: string
   ) {
+    setConsultationReview(false);
+    setPreferredTime("");
     setErrorMessage(
       ""
     );
@@ -722,6 +721,11 @@ export default function CustomEnrollmentScheduler({
       return;
     }
 
+    if (checkoutMode === "consultation" && !consultationReview) {
+      setConsultationReview(true);
+      return;
+    }
+
     const teacherText =
       teacherMode ===
         "specific"
@@ -731,8 +735,7 @@ export default function CustomEnrollmentScheduler({
           )
         : `가능한 강사 ${matchingTeachers.length}명 중 배정`;
 
-    const confirmed =
-      window.confirm(
+    const confirmed = checkoutMode === "consultation" ? true : window.confirm(
         `${childName}${isDirectStudent ? "님의" : " 학생의"} 맞춤 수강신청을 접수하시겠습니까?\n\n과정: ${selectedCourse.name}\n수업: ${durationMinutes}분 · 주 ${lessonsPerWeek}회\n강사: ${teacherText}\n희망일정: ${selectedDays
           .map(
             (day) =>
@@ -886,34 +889,36 @@ export default function CustomEnrollmentScheduler({
           lineHeight: 1.75,
         }}
       >
-        과정, 수업시간, 주당
-        횟수, 요일과 희망시간까지
-        먼저 선택한 다음 실제로
-        가능한 강사를 조회합니다.
+        교육과정, 주당 수업 횟수, 수강기간, 요일과 희망시간을 선택해 주세요.
       </p>
 
-      <TuitionCalculator
-        region={preferredRegion}
-        onRegionChange={(next) => {
-          setPreferredRegion(next);
-          setSelectedTeacherId("");
-          setTeacherMode("any");
-          resetSearchResult();
-        }}
-        weekly={lessonsPerWeek}
-        weeklyOptions={usableLessons}
-        onWeeklyChange={(next) => {
-          if (usableLessons.includes(next)) {
-            setLessonsPerWeek(next);
-            setSelectedDays([]);
-            setPreferredTime("");
-            resetSearchResult();
-          }
-        }}
-        months={tuitionMonths}
-        onMonthsChange={setTuitionMonths}
-        lessonMinutes={durationMinutes}
-      />
+      <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 14 }}>
+        <div>
+          <FieldLabel>강사 구분</FieldLabel>
+          <select aria-label="강사 구분" value={preferredRegion} style={fieldStyle}
+            onChange={(event) => {
+              setPreferredRegion(event.target.value as TuitionRegion);
+              setSelectedTeacherId("");
+              setTeacherMode("any");
+              setPreferredTime("");
+              resetSearchResult();
+            }}>
+            {TUITION_REGIONS.map((region) => <option key={region.key} value={region.key}>{region.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <FieldLabel>총 수강기간</FieldLabel>
+          <select aria-label="총 수강기간" value={tuitionMonths} style={fieldStyle}
+            onChange={(event) => {
+              setTuitionMonths(Number(event.target.value) as TuitionMonths);
+              resetSearchResult();
+            }}>
+            {TUITION_MONTHS.map((period) => <option key={period.months} value={period.months}>
+              {period.months}개월{period.discount ? ` · ${period.discount}% 할인` : ""}
+            </option>)}
+          </select>
+        </div>
+      </div>
 
       {recommendedCourse && (
         <div
@@ -1153,6 +1158,111 @@ export default function CustomEnrollmentScheduler({
         </div>
       </div>
 
+      <div
+        style={{
+          marginTop: "24px",
+        }}
+      >
+        <FieldLabel>
+          강사 선택
+        </FieldLabel>
+
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "8px",
+          }}
+        >
+          <ChoiceButton
+            active={
+              teacherMode ===
+              "any"
+            }
+            onClick={() => {
+              setTeacherMode(
+                "any"
+              );
+              setSelectedTeacherId(
+                ""
+              );
+              setPreferredTime("");
+              resetSearchResult();
+            }}
+          >
+            모든 강사
+          </ChoiceButton>
+
+          {allowTeacherChoice && (
+            <ChoiceButton
+              active={
+                teacherMode ===
+                "specific"
+              }
+              onClick={() => {
+                setTeacherMode(
+                  "specific"
+                );
+                setPreferredTime("");
+                resetSearchResult();
+              }}
+            >
+              특정 강사 선택
+            </ChoiceButton>
+          )}
+        </div>
+
+        {teacherMode ===
+          "specific" &&
+          allowTeacherChoice && (
+            <div
+              style={{
+                marginTop:
+                  "12px",
+              }}
+            >
+              <select
+                value={
+                  selectedTeacherId
+                }
+                onChange={(
+                  event
+                ) => {
+                  setSelectedTeacherId(event.target.value);
+                  setPreferredTime("");
+                  resetSearchResult();
+                }}
+                style={
+                  fieldStyle
+                }
+              >
+                <option value="">
+                  강사 선택
+                </option>
+
+                {teachers.filter((teacher) => tuitionRegionForNationality(teacher.nationality) === preferredRegion).map(
+                  (teacher) => (
+                    <option
+                      key={
+                        teacher.user_id
+                      }
+                      value={
+                        teacher.user_id
+                      }
+                    >
+                      {teacher.display_name ||
+                        "이름 미등록"}
+                      {teacher.nationality
+                        ? ` · ${teacher.nationality}`
+                        : ""}
+                    </option>
+                  )
+                )}
+              </select>
+            </div>
+          )}
+      </div>
+
       {selectedDays.length >
         0 && (
         <div
@@ -1195,6 +1305,16 @@ export default function CustomEnrollmentScheduler({
               화요일 모두 15:00 수업
             </div>
 
+            {teacherMode === "specific" && (
+              <p role="status" style={{ fontSize: 12, color: "#526277", margin: "0 0 10px" }}>
+                {!selectedTeacherId ? "먼저 강사를 선택해 주세요."
+                  : selectedDays.length !== lessonsPerWeek ? "주당 수업 횟수에 맞는 요일을 선택해 주세요."
+                  : !specificTimesReady ? "선택한 강사의 실제 가능시간을 조회 중입니다."
+                  : specificTeacherTimes?.error ? specificTeacherTimes.error
+                  : shownTimeOptions.length === 0 ? "선택한 요일에 공통으로 가능한 시간이 없습니다. 요일이나 강사를 바꿔 주세요."
+                  : "선택한 강사가 모든 희망 요일에 수업할 수 있는 시간만 표시됩니다."}
+              </p>
+            )}
             <div
               style={{
                 display: "flex",
@@ -1202,7 +1322,7 @@ export default function CustomEnrollmentScheduler({
                 gap: "7px",
               }}
             >
-              {timeOptions.map(
+              {shownTimeOptions.map(
                 (time) => (
                   <ChoiceButton
                     key={time}
@@ -1223,139 +1343,6 @@ export default function CustomEnrollmentScheduler({
               )}
             </div>
           </div>
-        </div>
-      )}
-
-      <div
-        style={{
-          marginTop: "24px",
-        }}
-      >
-        <FieldLabel>
-          강사 선택
-        </FieldLabel>
-
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "8px",
-          }}
-        >
-          <ChoiceButton
-            active={
-              teacherMode ===
-              "any"
-            }
-            onClick={() => {
-              setTeacherMode(
-                "any"
-              );
-              setSelectedTeacherId(
-                ""
-              );
-              resetSearchResult();
-            }}
-          >
-            가능한 강사 모두
-            찾기
-          </ChoiceButton>
-
-          {allowTeacherChoice && (
-            <ChoiceButton
-              active={
-                teacherMode ===
-                "specific"
-              }
-              onClick={() => {
-                setTeacherMode(
-                  "specific"
-                );
-                resetSearchResult();
-              }}
-            >
-              특정 강사 선택
-            </ChoiceButton>
-          )}
-        </div>
-
-        {teacherMode ===
-          "specific" &&
-          allowTeacherChoice && (
-            <div
-              style={{
-                marginTop:
-                  "12px",
-              }}
-            >
-              <select
-                value={
-                  selectedTeacherId
-                }
-                onChange={(
-                  event
-                ) => {
-                  setSelectedTeacherId(
-                    event.target.value
-                  );
-                  resetSearchResult();
-                }}
-                style={
-                  fieldStyle
-                }
-              >
-                <option value="">
-                  강사 선택
-                </option>
-
-                {teachers.filter((teacher) => tuitionRegionForNationality(teacher.nationality) === preferredRegion).map(
-                  (teacher) => (
-                    <option
-                      key={
-                        teacher.user_id
-                      }
-                      value={
-                        teacher.user_id
-                      }
-                    >
-                      {teacher.display_name ||
-                        "이름 미등록"}
-                      {teacher.nationality
-                        ? ` · ${teacher.nationality}`
-                        : ""}
-                    </option>
-                  )
-                )}
-              </select>
-            </div>
-          )}
-      </div>
-
-      {hasWeekend && (
-        <div
-          style={{
-            marginTop: "18px",
-            padding:
-              "13px 15px",
-            border:
-              "1px solid #fedf89",
-            borderRadius:
-              "10px",
-            background:
-              "#fffaeb",
-            color:
-              "#93370d",
-            fontSize:
-              "12px",
-            lineHeight: 1.7,
-            fontWeight: 700,
-          }}
-        >
-          선택한 일정에 주말
-          수업이 포함되어
-          있습니다. 주말 수업은
-          평일 수업료의 1.5배로
-          계산됩니다.
         </div>
       )}
 
@@ -1635,6 +1622,22 @@ export default function CustomEnrollmentScheduler({
               </label>
             </div>
           )}
+          {checkoutMode === "consultation" && consultationReview && !successMessage && (
+            <section aria-label="관리자 상담 신청 내역 최종 확인"
+              style={{ marginTop: 16, padding: 16, background: "#eff5ff",
+                border: "1px solid #b2ccff", borderRadius: 12 }}>
+              <strong style={{ color: "#0a1f44" }}>신청 내역을 최종 확인해 주세요.</strong>
+              <p style={{ color: "#526277", fontSize: 12, lineHeight: 1.75 }}>
+                위의 교육과정, 강사, 주당 수업 횟수, 수강기간, 요일과 희망시간을 확인하셨다면
+                ‘관리자에게 전송하기’를 눌러주세요. 관리자가 일정 조정 후 최종 결제를 안내합니다.
+              </p>
+              <button type="button" onClick={() => setConsultationReview(false)}
+                style={{ padding: "8px 13px", border: "1px solid #aabdd8",
+                  borderRadius: 8, background: "#fff", color: "#0a1f44", cursor: "pointer" }}>
+                신청 내용 수정하기
+              </button>
+            </section>
+          )}
           {!successMessage && (
             <button
               type="button"
@@ -1675,7 +1678,7 @@ export default function CustomEnrollmentScheduler({
             >
               {submitting
                 ? "수강신청 접수 중..."
-                : checkoutMode === "direct" ? "일정 확인 후 바로 결제" : "관리자에게 수강신청 · 상담 후 결제"}
+                : checkoutMode === "direct" ? "일정 확인 후 바로 결제" : consultationReview ? "관리자에게 전송하기" : "수강신청 내용 확인하기"}
             </button>
           )}
         </div>
