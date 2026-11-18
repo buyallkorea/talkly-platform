@@ -388,7 +388,10 @@ export default function CustomEnrollmentScheduler({
   const specificTimesReady = specificTeacherTimes?.key === specificTimesKey;
   const shownTimeOptions = teacherMode === "specific"
     ? (specificTimesReady ? specificTeacherTimes?.times ?? [] : [])
-    : timeOptions;
+    : timeOptions.filter((time) => {
+        const hour = Number(time.slice(0, 2));
+        return (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 23);
+      });
 
   useEffect(() => {
     if (teacherMode !== "specific" || !selectedTeacherId ||
@@ -908,22 +911,6 @@ export default function CustomEnrollmentScheduler({
         padding: "30px",
       }}
     >
-      <div className="talkly-section-label">
-        CUSTOM CLASS
-      </div>
-
-      <h2
-        style={{
-          margin:
-            "7px 0 0",
-          color:
-            "var(--talkly-navy)",
-          fontSize: "27px",
-        }}
-      >
-        원하는 수업 조건을
-        선택해주세요.
-      </h2>
 
       <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 14 }}>
         <div>
@@ -1223,7 +1210,7 @@ export default function CustomEnrollmentScheduler({
               resetSearchResult();
             }}
           >
-            모든 강사
+            관리자 추천강사
           </ChoiceButton>
 
           {allowTeacherChoice && (
@@ -1244,6 +1231,13 @@ export default function CustomEnrollmentScheduler({
             </ChoiceButton>
           )}
         </div>
+
+        {teacherMode === "any" && (
+          <p style={{ margin: "12px 0 0", fontSize: 12, lineHeight: 1.7, color: "#526277" }}>
+            레벨테스트 결과를 바탕으로 적합한 강사를 추천합니다. 현재 바로 결제를 선택하면 가능한 강사가 시스템에서 자동 배정됩니다.
+            희망시간은 오전 7시~11시 또는 오후 3시~밤 11시 범위에서 선택해 주세요.
+          </p>
+        )}
 
         {teacherMode ===
           "specific" &&
@@ -1344,7 +1338,7 @@ export default function CustomEnrollmentScheduler({
                   : selectedDays.length !== lessonsPerWeek ? "주당 수업 횟수에 맞는 요일을 선택해 주세요."
                   : !specificTimesReady ? "선택한 강사의 실제 가능시간을 조회 중입니다."
                   : specificTeacherTimes?.error ? specificTeacherTimes.error
-                  : shownTimeOptions.length === 0 ? "선택한 요일에 공통으로 가능한 시간이 없습니다. 요일이나 강사를 바꿔 주세요."
+                  : shownTimeOptions.length === 0 ? "선택한 요일에 공통으로 가능한 시간이 없습니다. 관리자 추천강사로 신청하거나 요일을 변경해 주세요."
                   : "선택한 강사가 모든 희망 요일에 수업할 수 있는 시간만 표시됩니다."}
               </p>
             )}
@@ -1447,7 +1441,7 @@ export default function CustomEnrollmentScheduler({
           ? "가능 강사 조회 중..."
           : teacherMode === "specific"
             ? "선택한 강사 가능 여부 확인"
-            : "가능한 강사 모두 찾기"}
+            : "추천 가능 강사 확인"}
       </button>
       )}
 
@@ -1572,12 +1566,7 @@ export default function CustomEnrollmentScheduler({
                   1.7,
               }}
             >
-              ‘가능한 강사 모두
-              찾기’로 신청하면
-              위 강사들 중 실제
-              배정 시점에 가능한
-              강사를 TALKLY에서
-              최종 배정합니다.
+              바로 결제 시 아래 강사 중 시스템이 가능한 강사를 자동 배정합니다. 관리자 상담을 선택하면 관리자가 배정을 검토합니다.
             </div>
           )}
 
@@ -1619,7 +1608,7 @@ export default function CustomEnrollmentScheduler({
             "specific"
               ? selectedTeacher?.display_name ??
                 "특정 강사"
-              : "가능한 강사 중 배정"}
+              : "관리자 추천강사"}
             <br />
             희망일정:{" "}
             {selectedDays
