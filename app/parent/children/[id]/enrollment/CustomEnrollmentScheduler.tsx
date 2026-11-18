@@ -924,12 +924,12 @@ export default function CustomEnrollmentScheduler({
     <section
       className="talkly-card"
       style={{
-        marginTop: "12px",
-        padding: "20px",
+        marginTop: "8px",
+        padding: "16px 20px",
       }}
     >
 
-      <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 14 }}>
+      <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 10 }}>
         <div>
           <FieldLabel>강사 구분</FieldLabel>
           <select aria-label="강사 구분" value={preferredRegion} style={fieldStyle}
@@ -1333,7 +1333,7 @@ export default function CustomEnrollmentScheduler({
             <div
               style={{
                 marginBottom:
-                  "10px",
+                  "6px",
                 color:
                   "#667085",
                 fontSize:
@@ -1344,38 +1344,44 @@ export default function CustomEnrollmentScheduler({
             >
               {teacherMode === "specific"
                 ? "선택한 강사가 현재 수업 가능한 시간만 표시됩니다."
-                : "선택한 요일에 공통으로 적용할 희망시간을 선택해 주세요."}
+                : "관리자와 협의할 희망시간을 2~3개 선택해 주세요."}
             </div>
 
             {teacherMode === "specific" && (
-              <p role="status" style={{ fontSize: 12, color: "#526277", margin: "0 0 10px" }}>
+              <p role="status" style={{ fontSize: 12, color: "#526277", margin: "0 0 8px" }}>
                 {!selectedTeacherId ? "먼저 강사를 선택해 주세요."
                   : selectedDays.length !== lessonsPerWeek ? "주당 수업 횟수에 맞는 요일을 선택해 주세요."
                   : !specificTimesReady ? "선택한 강사의 실제 가능시간을 조회 중입니다."
                   : specificTeacherTimes?.error ? specificTeacherTimes.error
-                  : shownTimeOptions.length === 0 ? "선택한 요일에 공통으로 가능한 시간이 없습니다. 관리자 추천강사로 신청하거나 요일을 변경해 주세요."
-                  : "맞는 스케줄이 없다면 관리자 추천강사로 수강신청해 주세요."}
+                  : shownTimeOptions.length === 0 ? "선택한 요일에 가능한 시간이 없습니다."
+                  : "표시된 시간 중 하나를 선택해 주세요."}
+              </p>
+            )}
+            {teacherMode === "specific" && (
+              <p style={{ fontSize: 12, margin: "4px 0 10px", color: "#475467" }}>
+                맞는 스케줄이 없다면{" "}
+                <button type="button" onClick={() => { setTeacherMode("any"); setSelectedTeacherId(""); setPreferredTime(""); resetSearchResult(); }}
+                  style={{ border: "1px solid #175cd3", background: "#eff5ff", color: "#175cd3", fontWeight: 800, borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>
+                  관리자 추천강사로 수강신청
+                </button>
               </p>
             )}
             <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "7px",
-              }}
+              style={{ display: "flex", flexWrap: "wrap", gap: "7px" }}
             >
               {shownTimeOptions.map(
                 (time) => (
                   <ChoiceButton
                     key={time}
-                    active={
-                      preferredTime ===
-                      time
-                    }
+                    active={teacherMode === "any" ? preferredTimeChoices.includes(time) : preferredTime === time}
                     onClick={() => {
-                      setPreferredTime(
-                        time
-                      );
+                      if (teacherMode === "any") {
+                        setPreferredTimeChoices((current) =>
+                          current.includes(time) ? current.filter((candidate) => candidate !== time) :
+                          current.length < 3 ? [...current, time] : current);
+                      } else {
+                        setPreferredTime(time);
+                      }
                       resetSearchResult();
                     }}
                   >
@@ -1411,246 +1417,26 @@ export default function CustomEnrollmentScheduler({
           {errorMessage}
         </div>
       )}
-      {searching && <p role="status" style={{ fontSize: 12, color: "#667085", marginTop: 16 }}>선택한 조건으로 수업 가능 여부를 확인 중입니다.</p>}
-
-      {allPreferredTimesSelected && (
-        <div
-          style={{
-            marginTop: "28px",
-            padding:
-              "22px",
-            border:
-              "1px solid #b2ccff",
-            borderRadius:
-              "14px",
-            background:
-              "#f8fbff",
-          }}
-        >
-          <div className="talkly-section-label">
-            AVAILABLE
-            TEACHERS
+      {selectedDays.length > 0 && (
+        <section aria-label="신청 내용 확인" style={{ marginTop: 16, padding: "18px", border: "1px solid #b2ccff", background: "#f8fbff", borderRadius: 12 }}>
+          <h3 style={{ fontSize: 18, color: "#0a1f44", margin: "0 0 12px" }}>신청 내용 확인</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 8, fontSize: 13, color: "#475467", lineHeight: 1.6 }}>
+            <div><strong>수강생</strong> · {childName}</div>
+            <div><strong>교육과정</strong> · {selectedCourse?.name ?? "선택 전"}</div>
+            <div><strong>수강기간</strong> · {tuitionMonths}개월</div>
+            <div><strong>수업</strong> · {durationMinutes}분 / 주 {lessonsPerWeek}회</div>
+            <div><strong>강사</strong> · {teacherMode === "specific" ? selectedTeacher?.display_name ?? "강사 선택 전" : "관리자 추천강사"}</div>
+            <div><strong>요일</strong> · {selectedDays.map((day) => DAY_LABELS[day] ?? day).join(" · ")}</div>
+            <div><strong>{teacherMode === "any" ? "희망시간 (2~3개)" : "수업시간"}</strong> · {teacherMode === "any" ? preferredTimeChoices.join(" / ") || "선택 전" : preferredTime || "선택 전"}</div>
           </div>
-
-          <h3
-            style={{
-              margin:
-                "7px 0 0",
-              color:
-                "#101828",
-              fontSize:
-                "21px",
-            }}
-          >
-            {hasSearched
-              ? `선택한 시간에 가능한 강사 ${matchingTeachers.length}명`
-              : "신청 조건 확인"}
-          </h3>
-
-          <div
-            style={{
-              marginTop:
-                "12px",
-              color:
-                "#667085",
-              fontSize:
-                "12px",
-              lineHeight:
-                1.7,
-            }}
-          >
-            {selectedDays
-              .map(
-                (day) =>
-                  DAY_LABELS[day] ?? day
-              )
-              .join(" · ")}
-            {" · "}
-            매 수업 {preferredTime}
-          </div>
-
-          <div
-            style={{
-              marginTop:
-                "16px",
-              display:
-                "grid",
-              gap: "10px",
-            }}
-          >
-            {hasSearched && matchingTeachers.map(
-              (teacher) => (
-                <div
-                  key={
-                    teacher.teacherUserId
-                  }
-                  style={{
-                    padding:
-                      "15px 16px",
-                    border:
-                      "1px solid #dbe7ff",
-                    borderRadius:
-                      "11px",
-                    background:
-                      "#ffffff",
-                  }}
-                >
-                  <div
-                    style={{
-                      color:
-                        "#101828",
-                      fontWeight:
-                        900,
-                    }}
-                  >
-                    {
-                      teacher.displayName
-                    }
-                    {teacher.nationality
-                      ? ` · ${teacher.nationality}`
-                      : ""}
-                  </div>
-                </div>
-              )
-            )}
-          </div>
-
-
-
-          <div
-            style={{
-              marginTop:
-                "18px",
-              padding:
-                "15px",
-              borderRadius:
-                "10px",
-              background:
-                "#ffffff",
-              color:
-                "#475467",
-              fontSize:
-                "12px",
-              lineHeight: 1.85,
-            }}
-          >
-            <strong>
-              신청 조건
-            </strong>
-            <br />
-            {isDirectStudent
-              ? "수강생"
-              : "학생"}: {childName}
-            <br />
-            과정:{" "}
-            {selectedCourse?.name ??
-              "미선택"}
-            <br />
-            수업:{" "}
-            {durationMinutes}분 ·
-            주 {lessonsPerWeek}회
-            <br />
-            강사:{" "}
-            {teacherMode ===
-            "specific"
-              ? selectedTeacher?.display_name ??
-                "특정 강사"
-              : "관리자 추천강사"}
-            <br />
-            희망일정:{" "}
-            {selectedDays
-              .map(
-                (day) =>
-                  DAY_LABELS[day] ?? day
-              )
-              .join(" · ")}
-            {" · "}
-            매 수업 {preferredTime}
-          </div>
-
           {!successMessage && (
-            <div role="group" aria-label="결제 방법 선택" style={{ marginTop: 18, display: "grid", gap: 10 }}>
-              <label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: 14, borderRadius: 10,
-                border: checkoutMode === "direct" ? "2px solid #326bd1" : "1px solid #dce4ee",
-                background: checkoutMode === "direct" ? "#eff5ff" : "#fff", cursor: "pointer" }}>
-                <input type="radio" name="checkoutMode" checked={checkoutMode === "direct"}
-                  onChange={() => { setCheckoutMode("direct");
-                    if (startDate < getTomorrowDateText()) setStartDate(getTomorrowDateText());
-                    resetSearchResult();
-                  }} />
-                <span><strong>바로 수강료 결제</strong>
-                  <small style={{ display: "block", color: "#667085" }}>강사·시간이 확인되면 자동 배정 후 결제 안내로 이동합니다.</small></span>
-              </label>
-              <label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: 14, borderRadius: 10,
-                border: checkoutMode === "consultation" ? "2px solid #326bd1" : "1px solid #dce4ee",
-                background: checkoutMode === "consultation" ? "#eff5ff" : "#fff", cursor: "pointer" }}>
-                <input type="radio" name="checkoutMode" checked={checkoutMode === "consultation"}
-                  onChange={() => { setCheckoutMode("consultation"); resetSearchResult(); }} />
-                <span><strong>관리자에게 수강신청</strong>
-                  <small style={{ display: "block", color: "#667085" }}>관리자와 상담한 뒤 강사·일정 확정 후 결제합니다.</small></span>
-              </label>
-            </div>
-          )}
-          {checkoutMode === "consultation" && consultationReview && !successMessage && (
-            <section aria-label="관리자 상담 신청 내역 최종 확인"
-              style={{ marginTop: 16, padding: 16, background: "#eff5ff",
-                border: "1px solid #b2ccff", borderRadius: 12 }}>
-              <strong style={{ color: "#0a1f44" }}>신청 내역을 최종 확인해 주세요.</strong>
-              <p style={{ color: "#526277", fontSize: 12, lineHeight: 1.75 }}>
-                위의 교육과정, 강사, 주당 수업 횟수, 수강기간, 요일과 희망시간을 확인하셨다면
-                ‘관리자에게 전송하기’를 눌러주세요. 관리자가 일정 조정 후 최종 결제를 안내합니다.
-              </p>
-              <button type="button" onClick={() => setConsultationReview(false)}
-                style={{ padding: "8px 13px", border: "1px solid #aabdd8",
-                  borderRadius: 8, background: "#fff", color: "#0a1f44", cursor: "pointer" }}>
-                신청 내용 수정하기
-              </button>
-            </section>
-          )}
-          {!successMessage && (
-            <button
-              type="button"
-              onClick={
-                submitCustomRequest
-              }
-              disabled={
-                !canSubmit
-              }
-              style={{
-                marginTop:
-                  "16px",
-                width: "100%",
-                minHeight:
-                  "52px",
-                border: 0,
-                borderRadius:
-                  "11px",
-                background:
-                  canSubmit
-                    ? "#0a1f44"
-                    : "#d0d5dd",
-                color:
-                  canSubmit
-                    ? "#ffffff"
-                    : "#667085",
-                fontFamily:
-                  "inherit",
-                fontSize:
-                  "14px",
-                fontWeight:
-                  900,
-                cursor:
-                  canSubmit
-                    ? "pointer"
-                    : "not-allowed",
-              }}
-            >
-              {submitting
-                ? "수강신청 접수 중..."
-                : checkoutMode === "direct" ? "수강료 결제하기" : consultationReview ? "관리자에게 전송하기" : "수강신청 내용 확인하기"}
+            <button type="button" onClick={submitCustomRequest} disabled={!canSubmit}
+              style={{ display: "block", marginTop: 14, minHeight: 50, width: "100%", border: 0, borderRadius: 10,
+                background: canSubmit ? "#0a1f44" : "#d0d5dd", color: canSubmit ? "#fff" : "#667085", fontWeight: 900, fontSize: 15, cursor: canSubmit ? "pointer" : "not-allowed" }}>
+              {submitting ? "수강신청 확인 중..." : "수강료 결제하기"}
             </button>
           )}
-        </div>
+        </section>
       )}
 
       {successMessage && (
