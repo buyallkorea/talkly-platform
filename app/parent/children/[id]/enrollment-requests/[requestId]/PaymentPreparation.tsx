@@ -765,6 +765,8 @@ export default function PaymentPreparation({
               )}
             </div>
           </section>
+
+          <TuitionConsentPanel answers={consentAnswers} onChange={chooseConsent} disabled={isSaving} />
         </div>
 
         <aside
@@ -958,9 +960,14 @@ export default function PaymentPreparation({
               </div>
             )}
           </div>
-
-          <TuitionConsentPanel answers={consentAnswers} onChange={chooseConsent} disabled={isSaving} />
-
+ 
+          <div style={{ marginTop: 20, padding: "14px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,.25)", background: "rgba(255,255,255,.06)", fontSize: 13, lineHeight: 1.7 }}>
+            <strong>결제수단</strong>
+            <div style={{ color: "#dbeafe", marginTop: 4 }}>
+              신용카드 · 토스페이먼츠 결제창에서 선택
+            </div>
+          </div>
+ 
           <button
             type="button"
             onClick={
