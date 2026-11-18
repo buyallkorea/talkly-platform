@@ -50,12 +50,18 @@ test("both learner and parent enrollment pages use revised guidance", () => {
   }
 });
 
-test("two required payment consents remain in place", () => {
+test("three required payment consents are stored and verified", () => {
   const source = read("lib/payments/tuition-consent.ts");
   assert.match(source, /key: "discount"/);
   assert.match(source, /key: "refund"/);
   assert.match(source, /answers\.discount === "yes" && answers\.refund === "yes"/);
-  assert.doesNotMatch(source, /③/);
+  assert.match(source, /key: "finalConfirmation"/);
+  assert.match(source, /answers\.finalConfirmation === "yes"/);
+  assert.match(source, /③/);
+  const prepare = read("app/api/parent/enrollment-requests/[id]/payment/prepare/route.ts");
+  const confirm = read("app/api/parent/payments/confirm/route.ts");
+  assert.match(prepare, /consent\?\.answers\?\.finalConfirmation !== true/);
+  assert.match(confirm, /consentRecord\.decisions\?\.finalConfirmation !== true/);
 });
 
 test("November 18 schedule and enrollment status controls", () => {
@@ -65,7 +71,25 @@ test("November 18 schedule and enrollment status controls", () => {
   assert.match(student, /href="\/student\/enrollment-requests"/);
   assert.match(parent, /\/enrollment-requests/);
   assert.match(ui, /matchingRequestId\.current/);
-  assert.match(ui, /checkoutMode === "consultation" \|\|/);
+  assert.match(ui, /preferredTimeChoices\.length >= 2/);
+  assert.match(ui, /preferredTimeCandidates: teacherMode === "any"/);
   assert.match(ui, /맞는 스케줄이 없다면 관리자 추천강사로 수강신청/);
   assert.match(ui, /관리자는 레벨테스트 결과를 바탕으로 학생에게 적합한 강사를 배치합니다/);
+});
+
+test("recommended time choices are validated and visible to administrators", () => {
+  const api = read("app/api/parent/enrollment-requests/route.ts");
+  const admin = read("app/admin/enrollment-requests/[id]/page.tsx");
+  const student = read("app/student/enrollment-requests/page.tsx");
+  const parent = read("app/parent/children/[id]/enrollment-requests/page.tsx");
+  const ui = read("app/parent/children/[id]/enrollment/CustomEnrollmentScheduler.tsx");
+  assert.match(api, /preferred_time_candidates: preferredTimeCandidates/);
+  assert.match(api, /preferredTimeCandidates\.length <= 3/);
+  assert.match(admin, /관리자 추천 희망시간 \(우선순위\)/);
+  assert.match(student, /preferred_time_candidates/);
+  assert.match(parent, /preferred_time_candidates/);
+  assert.doesNotMatch(ui, /선택한 시간에 가능한 강사 \$\{matchingTeachers\.length\}명/);
+  assert.doesNotMatch(ui, /관리자에게 수강신청/);
+  assert.doesNotMatch(ui, /window\.confirm/);
+  assert.match(ui, /관리자 추천강사로 수강신청/);
 });
