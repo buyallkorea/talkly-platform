@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import TossReviewInfo from "@/components/payments/TossReviewInfo";
+import PendingRequestCancelButton from "@/components/enrollment/PendingRequestCancelButton";
 import {
   notFound,
   redirect,
@@ -996,6 +997,9 @@ export default async function ParentEnrollmentRequestsPage({
               )}
             </div>
           </>
+        )}
+        {currentRequest?.status === "pending" && !assigned && (
+          <PendingRequestCancelButton requestId={currentRequest.id} reapplyHref={`/parent/children/${child.id}/enrollment`} />
         )}
         {currentRequest && !assigned && <TossReviewInfo requestId={currentRequest.id} />}
       </div>
