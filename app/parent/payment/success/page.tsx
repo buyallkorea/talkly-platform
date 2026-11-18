@@ -15,6 +15,7 @@ type ConfirmState =
 type ConfirmResult = {
   success?: boolean;
   alreadyPaid?: boolean;
+  assignmentPending?: boolean;
   paymentMayBeApproved?: boolean;
   error?: string;
   payment?: {
@@ -250,9 +251,11 @@ export default function PaymentSuccessPage() {
         );
 
         setMessage(
-          result.alreadyPaid
-            ? "이미 정상적으로 완료된 결제입니다."
-            : "TALKLY 수강료 결제가 정상적으로 완료되었습니다."
+          result.assignmentPending
+            ? "수강료 결제가 완료됐습니다. 관리자가 학생 수준과 강사 근무시간을 검토하여 배정합니다. 강사·수업 일정 확정 전에는 수업이 시작되지 않습니다."
+            : result.alreadyPaid
+              ? "이미 정상적으로 완료된 결제입니다."
+              : "TALKLY 수강료 결제가 정상적으로 완료되었습니다."
         );
       } catch (error) {
         console.error(
