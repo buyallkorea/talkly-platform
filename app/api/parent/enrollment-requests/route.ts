@@ -20,6 +20,7 @@ type CustomRequestBody = {
   preferredTimes: Record<string, string>;
   preferredTimeCandidates?: string[];
   teacherPreferenceType: "any" | "specific";
+  checkoutMode?: "direct" | "consultation";
   pricingCategory?: TuitionRegion;
   durationMonths?: number;
   preferredTeacherUserId?: string | null;
