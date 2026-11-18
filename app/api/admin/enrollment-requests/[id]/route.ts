@@ -211,6 +211,30 @@ export async function PATCH(
     );
   }
 
+  if (body.action === "cancel") {
+    const reason = typeof body.adminNote === "string" ? body.adminNote.trim() : "";
+    if (reason.length < 3 || reason.length > 1000) {
+      return NextResponse.json({ error: "취소 사유를 3자 이상 입력해 주세요." }, { status: 400 });
+    }
+    // Admin authorization has already been checked by requireAdmin.
+    // The service-role RPC atomically rejects paid orders, cancels prepared
+    // orders, releases held teacher slots, and retains the application audit.
+    const { data: outcome, error: cancellationError } = await createAdminClient()
+      .rpc("cancel_unpaid_enrollment_request", {
+        p_request_id: requestId,
+        p_actor: enrollmentRequest.applicant_user_id,
+        p_reason: `관리자 취소: ${reason}`,
+      });
+    if (cancellationError) {
+      return NextResponse.json({
+        error: cancellationError.code === "P0001"
+          ? cancellationError.message
+          : "신청 취소 처리에 실패했습니다. 신청 상태는 변경되지 않았습니다.",
+      }, { status: cancellationError.code === "P0001" ? 409 : 500 });
+    }
+    return NextResponse.json({ success: true, action: "cancelled", ...outcome });
+  }
+
   if (
     enrollmentRequest.status !== "pending"
   ) {
@@ -229,7 +253,7 @@ export async function PATCH(
    * 대기 상태의 미결제·미배정 신청만 반려/취소.
    * 관리자는 신청 자체를 삭제하지 않고 사유와 작업 시각을 기록합니다.
    */
-  if (body.action === "reject" || body.action === "cancel") {
+  if (body.action === "reject") {
     const reason = typeof body.adminNote === "string" ? body.adminNote.trim() : "";
     if (reason.length < 3 || reason.length > 1000) {
       return NextResponse.json(
