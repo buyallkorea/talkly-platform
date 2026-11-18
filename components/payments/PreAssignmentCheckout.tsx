@@ -94,15 +94,19 @@ export default async function PreAssignmentCheckout({
     <main style={{ minHeight: "100vh", background: "linear-gradient(180deg,#f5f8ff 0%,#fff 56%)" }}>
       <div style={{ maxWidth: 1120, margin: "0 auto", padding: "30px 18px 85px" }}>
         <Link href={home} style={{ color: "#475467", fontWeight: 800 }}>← 수강신청 현황</Link>
-        <header style={{ padding: "25px 30px", marginTop: 18, background: "linear-gradient(120deg,#0a1f44,#3978ef)", color: "white", borderRadius: 18 }}>
-          <span style={{ fontSize: 12, letterSpacing: 1.4 }}>TALKLY PAYMENT</span>
-          <h1 style={{ marginBottom: 6 }}>수강료 결제 · 관리자 강사 배정</h1>
-          <p style={{ lineHeight: 1.75, marginTop: 8 }}>
-            신청번호 {request.application_number ?? request.id} · 먼저 수강료를 결제합니다.
-            결제 완료 후 관리자가 학생의 수준과 강사 일정을 확인해 최종 배정합니다.
-            수업은 강사 배정과 일정 확정 전까지 시작되지 않습니다.
-          </p>
+        <header style={{
+          padding: "17px 26px", marginTop: 10,
+          background: "linear-gradient(120deg,#0a1f44,#3978ef)",
+          color: "white", borderRadius: 18,
+        }}>
+          <span style={{ fontSize: 11, letterSpacing: 1.4, color: "#c7d9ff" }}>TALKLY PAYMENT</span>
+          <h1 style={{ margin: "5px 0 0", fontSize: "clamp(21px, 2.6vw, 28px)", lineHeight: 1.25 }}>
+            수강료 결제 · 관리자 강사 배정
+          </h1>
         </header>
+        <p style={{ fontSize: 12, color: "#52617a", margin: "12px 2px 0", lineHeight: 1.6 }}>
+          신청번호 {request.application_number ?? request.id} · 결제 완료 후 관리자가 학생 수준과 강사 일정을 확인해 배정합니다.
+        </p>
         <PaymentPreparation
           requestId={request.id}
           childId={childId}
