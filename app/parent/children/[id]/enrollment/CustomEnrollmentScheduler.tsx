@@ -359,7 +359,7 @@ export default function CustomEnrollmentScheduler({
         allowedTimeSlots
           .filter(
             (time) =>
-              /^([01]\d|2[0-3]):[0-5]\d$/.test(
+              /^([01]\d|2[0-3]):(00|30)$/.test(
                 time
               )
           )
@@ -381,6 +381,51 @@ export default function CustomEnrollmentScheduler({
       allowedTimeSlots,
       durationMinutes,
     ]);
+
+
+  // 강사·요일을 변경하면 이전 조회 결과 대신 새로운 조건의 결과만 보여줍니다.
+  const specificTimesKey = [selectedTeacherId, startDate, durationMinutes, ...selectedDays].join("|");
+  const specificTimesReady = specificTeacherTimes?.key === specificTimesKey;
+  const shownTimeOptions = teacherMode === "specific"
+    ? (specificTimesReady ? specificTeacherTimes?.times ?? [] : [])
+    : timeOptions;
+
+  useEffect(() => {
+    if (teacherMode !== "specific" || !selectedTeacherId ||
+        !startDate || selectedDays.length !== lessonsPerWeek) return;
+    let cancelled = false;
+    const lookupKey = [selectedTeacherId, startDate, durationMinutes, ...selectedDays].join("|");
+
+    async function loadSpecificTeacherTimes() {
+      try {
+        const timesByDay = await Promise.all(selectedDays.map(async (day) => {
+          const date = getNextDateForWeekday({ baseDateText: startDate, weekday: day });
+          if (!date) throw new Error("수업 날짜를 계산하지 못했습니다.");
+          const response = await fetch("/api/parent/teacher-availability", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ date, durationMinutes, teacherUserId: selectedTeacherId }),
+          });
+          const result = (await response.json()) as AvailabilityResponse;
+          if (!response.ok) throw new Error(result.error || "강사 가능시간을 불러오지 못했습니다.");
+          return result.availableTeachers?.find((teacher) =>
+            teacher.teacherUserId === selectedTeacherId)?.availableTimes ?? [];
+        }));
+        if (!cancelled) setSpecificTeacherTimes({
+          key: lookupKey,
+          times: timeOptions.filter((time) => timesByDay.every((slots) => slots.includes(time))),
+          error: "",
+        });
+      } catch (error) {
+        if (!cancelled) setSpecificTeacherTimes({
+          key: lookupKey, times: [],
+          error: error instanceof Error ? error.message : "강사 가능시간을 확인하지 못했습니다.",
+        });
+      }
+    }
+
+    void loadSpecificTeacherTimes();
+    return () => { cancelled = true; };
+  }, [teacherMode, selectedTeacherId, startDate, durationMinutes, selectedDays, lessonsPerWeek, timeOptions]);
 
   const allPreferredTimesSelected =
     selectedDays.length ===
