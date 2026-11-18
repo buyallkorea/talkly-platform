@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
+import { createAdminClient } from "@/lib/supabase-admin";
 
 type ActionBody = {
   action: "approve" | "reject" | "cancel";
@@ -241,9 +242,12 @@ export async function PATCH(
         { status: 409 }
       );
     }
+    // enrollment_payments is protected by RLS and has no admin SELECT policy;
+    // use service-role only after the route has verified the admin's role.
+    const adminDb = createAdminClient();
     const [paymentLookup, enrollmentLookup] = await Promise.all([
-      supabase.from("enrollment_payments").select("id").eq("enrollment_request_id", requestId).limit(1),
-      supabase.from("enrollments").select("id").eq("source_enrollment_request_id", requestId).limit(1),
+      adminDb.from("enrollment_payments").select("id").eq("enrollment_request_id", requestId).limit(1),
+      adminDb.from("enrollments").select("id").eq("source_enrollment_request_id", requestId).limit(1),
     ]);
     if (paymentLookup.error || enrollmentLookup.error) {
       return NextResponse.json(
