@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
+import { createAdminClient } from "@/lib/supabase-admin";
 import TalklyUserHeader from "@/components/TalklyUserHeader";
 import {
   getStudentEnrollments,
@@ -78,6 +79,16 @@ export default async function StudentPage() {
   if (!profile || profile.role !== "student") {
     redirect("/");
   }
+
+  const { data: latestEnrollmentRequest } = await createAdminClient()
+    .from("enrollment_requests")
+    .select("id, status, lessons_per_week, preferred_days, preferred_time_candidates, created_at")
+    .eq("applicant_user_id", user.id)
+    .is("child_id", null)
+    .eq("request_type", "custom")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   const enrollments =
     (await getStudentEnrollments({
@@ -466,7 +477,9 @@ export default async function StudentPage() {
             <div>
               <strong style={{ color: "var(--talkly-navy)" }}>수강신청 내역</strong>
               <p style={{ margin: "5px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
-                신청한 과정과 희망시간, 강사 배정 및 결제 진행 상태를 확인할 수 있습니다.
+                {latestEnrollmentRequest
+                  ? `최근 신청 #${latestEnrollmentRequest.id} · ${latestEnrollmentRequest.status === "pending" ? "강사 배정 대기" : "신청 진행 중"} · 주 ${latestEnrollmentRequest.lessons_per_week}회${Array.isArray(latestEnrollmentRequest.preferred_time_candidates) && latestEnrollmentRequest.preferred_time_candidates.length > 0 ? ` · 희망시간 ${latestEnrollmentRequest.preferred_time_candidates.join(" / ")}` : ""}`
+                  : "수강신청 후 여기에서 신청내역과 결제 진행 상태를 확인할 수 있습니다."}
               </p>
             </div>
             <Link className="talkly-button talkly-button-secondary" href="/student/enrollment-requests">수강신청 현황 보기 →</Link>

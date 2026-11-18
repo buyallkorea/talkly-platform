@@ -32,6 +32,7 @@ type EnrollmentRequestRow = {
   preferred_times:
     | Record<string, string>
     | null;
+  preferred_time_candidates: string[] | null;
   teacher_preference_type: string | null;
   preferred_teacher_user_id: string | null;
   start_date: string | null;
@@ -231,6 +232,7 @@ export default async function AdminEnrollmentRequestDetailPage({
       lessons_per_week,
       preferred_days,
       preferred_times,
+      preferred_time_candidates,
       teacher_preference_type,
       preferred_teacher_user_id,
       start_date,
@@ -784,6 +786,10 @@ export default async function AdminEnrollmentRequestDetailPage({
               enrollmentRequest.preferred_times
             )}
           />
+
+          {enrollmentRequest.preferred_time_candidates && enrollmentRequest.preferred_time_candidates.length > 0 && (
+            <InfoBox label="관리자 추천 희망시간 (우선순위)" value={enrollmentRequest.preferred_time_candidates.join(" → ")} />
+          )}
 
           <InfoBox
             label="시작 기준일"

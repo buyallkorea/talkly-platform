@@ -342,6 +342,7 @@ export default function PaymentPreparation({
               answers: {
                 discount: consentAnswers.discount === "yes",
                 refund: consentAnswers.refund === "yes",
+                finalConfirmation: consentAnswers.finalConfirmation === "yes",
               },
               durationMonths: selectedMonths,
               displayedFinalPrice: finalPrice,
@@ -963,8 +964,12 @@ export default function PaymentPreparation({
  
           <div style={{ marginTop: 20, padding: "14px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,.25)", background: "rgba(255,255,255,.06)", fontSize: 13, lineHeight: 1.7 }}>
             <strong>결제수단</strong>
-            <div style={{ color: "#dbeafe", marginTop: 4 }}>
-              신용카드 · 토스페이먼츠 결제창에서 선택
+            <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, padding: "11px 12px", background: "#fff", borderRadius: 10, color: "#0A1F44", fontWeight: 800 }}>
+              <input type="radio" name="tuition-payment-method" value="card" checked readOnly aria-label="신용카드 결제" style={{ accentColor: "#175cd3" }} />
+              신용카드
+            </label>
+            <div style={{ color: "#dbeafe", fontSize: 11, marginTop: 8 }}>
+              카드사는 토스페이먼츠 결제창에서 선택합니다.
             </div>
           </div>
  

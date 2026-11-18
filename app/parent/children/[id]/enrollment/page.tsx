@@ -519,8 +519,8 @@ export default async function ParentChildEnrollmentPage({
       <section
         className="talkly-card"
         style={{
-          marginTop: "20px",
-          padding: "30px",
+          marginTop: "10px",
+          padding: "16px 20px",
         }}
       >
         <div className="talkly-section-label">
@@ -529,10 +529,10 @@ export default async function ParentChildEnrollmentPage({
 
         <h1
           style={{
-            margin: "8px 0 0",
+            margin: "4px 0 0",
             color:
               "var(--talkly-navy)",
-            fontSize: "32px",
+            fontSize: "27px",
             letterSpacing:
               "-0.03em",
           }}
@@ -544,10 +544,10 @@ export default async function ParentChildEnrollmentPage({
         <p
           style={{
             margin:
-              "10px 0 0",
+              "6px 0 0",
             color:
               "var(--text-muted)",
-            lineHeight: 1.75,
+            lineHeight: 1.4,
           }}
         >
           원하는 수업 조건과 주당 수업 횟수, 수강기간, 요일과 희망시간을 선택해 주세요.
@@ -555,7 +555,7 @@ export default async function ParentChildEnrollmentPage({
 
         <div
           style={{
-            marginTop: "18px",
+            marginTop: "8px",
             display: "flex",
             gap: "8px",
             flexWrap: "wrap",

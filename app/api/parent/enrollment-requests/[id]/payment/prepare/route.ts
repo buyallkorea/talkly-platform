@@ -37,7 +37,8 @@ export async function POST(
     const consent = payload?.consent;
     if (consent?.version !== TUITION_CONSENT_VERSION ||
         consent?.answers?.discount !== true ||
-        consent?.answers?.refund !== true) {
+        consent?.answers?.refund !== true ||
+        consent?.answers?.finalConfirmation !== true) {
       return NextResponse.json({ success: false, error: "결제 전 필수 확인 및 동의가 필요합니다." }, { status: 400 });
     }
     /*
@@ -550,7 +551,7 @@ export async function POST(
         order_id: payment.order_id,
         terms_version: TUITION_CONSENT_VERSION,
         terms_snapshot: TUITION_CONSENT_ITEMS,
-        decisions: { discount: true, refund: true },
+        decisions: { discount: true, refund: true, finalConfirmation: true },
         pricing_snapshot: {
           durationMonths,
           regularPrice: Number(enrollmentRequest.regular_price),
