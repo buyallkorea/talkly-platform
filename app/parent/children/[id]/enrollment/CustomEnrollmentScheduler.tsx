@@ -443,6 +443,7 @@ export default function CustomEnrollmentScheduler({
 
   function resetSearchResult() {
     matchingRequestId.current += 1;
+    setSearching(false);
     setConsultationReview(false);
     setMatchingTeachers(
       []
@@ -1300,7 +1301,7 @@ export default function CustomEnrollmentScheduler({
           }}
         >
           <FieldLabel>
-            희망 수업시간
+            {teacherMode === "specific" ? "현재 수업 가능한 시간" : "희망 수업시간"}
           </FieldLabel>
 
           <div
@@ -1499,23 +1500,7 @@ export default function CustomEnrollmentScheduler({
             )}
           </div>
 
-          {teacherMode ===
-            "any" && (
-            <div
-              style={{
-                marginTop:
-                  "12px",
-                color:
-                  "#667085",
-                fontSize:
-                  "11px",
-                lineHeight:
-                  1.7,
-              }}
-            >
-              바로 결제 시 선택한 시간에 가능한 강사가 시스템에서 자동 배정됩니다. 관리자 상담은 강사 배정을 따로 검토합니다.
-            </div>
-          )}
+
 
           <div
             style={{
