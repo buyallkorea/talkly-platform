@@ -188,6 +188,7 @@ export async function PATCH(
       estimated_price,
       status,
       assigned_teacher_user_id,
+      assignment_confirmed_at,
       assigned_curriculum,
       admin_note
     `)
@@ -236,7 +237,7 @@ export async function PATCH(
         { status: 400 }
       );
     }
-    if (enrollmentRequest.assigned_teacher_user_id) {
+    if (enrollmentRequest.assigned_teacher_user_id || enrollmentRequest.assignment_confirmed_at) {
       return NextResponse.json(
         { error: "이미 배정된 신청은 이 화면에서 반려·취소할 수 없습니다. 배정 및 결제 상태를 확인해 주세요." },
         { status: 409 }
@@ -272,6 +273,7 @@ export async function PATCH(
       .eq("id", requestId)
       .eq("status", "pending")
       .is("assigned_teacher_user_id", null)
+      .is("assignment_confirmed_at", null)
       .select("id, status")
       .maybeSingle();
     if (updateError) {
