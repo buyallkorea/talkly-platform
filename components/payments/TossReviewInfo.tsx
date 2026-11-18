@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export default function TossReviewInfo({ requestId }: { requestId?: number }) {
+export default function TossReviewInfo({ requestId, applicationNumber }: { requestId?: number; applicationNumber?: string | null }) {
   return (
     <aside aria-label="수강신청 및 결제 진행 안내" style={{
       marginTop: 18, padding: "19px 22px", background: "#f5f8ff",
@@ -8,12 +8,12 @@ export default function TossReviewInfo({ requestId }: { requestId?: number }) {
       fontSize: 13, lineHeight: 1.8,
     }}>
       <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>
-        {requestId ? `수강신청 #${requestId} 접수 완료 · 강사 배정 대기` : "수강신청 후 결제는 어떻게 진행되나요?"}
+        {requestId ? `수강신청 ${applicationNumber ?? requestId} 접수 완료 · 강사 배정 대기` : "수강신청 후 결제는 어떻게 진행되나요?"}
       </h2>
       <p style={{ margin: "8px 0 10px", color: "#475467" }}>
-        실제 수강료 결제는 관리자가 강사와 수업 일정을 확정한 후 가능합니다.
-        배정이 완료되면 이 화면에서 수강기간과 최종 금액을 확인하고,
-        필수 환불·할인 조건에 동의한 뒤 토스페이먼츠로 결제합니다.
+        관리자 추천강사를 선택한 경우에는 수강료를 먼저 결제하고, 결제 완료 후 관리자가 학생 수준과 강사 근무시간을 확인해 배정합니다.
+        특정 강사를 선택한 경우에는 해당 강사와 시간을 확인한 후 결제를 진행합니다.
+        결제 전 할인·환불 조건 및 최종 금액을 반드시 확인해 주세요.
       </p>
       <div style={{ borderTop: "1px solid #d7e3f5", paddingTop: 10 }}>
         <strong>토스페이먼츠 심사 담당자이신가요?</strong>
