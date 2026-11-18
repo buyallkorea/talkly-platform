@@ -286,9 +286,9 @@ export async function PATCH(
         { status: 409 }
       );
     }
-    const nextStatus = body.action === "cancel" ? "cancelled" : "rejected";
+    const nextStatus = "rejected";
     const stamp = new Date().toISOString();
-    const note = [enrollmentRequest.admin_note, `[${stamp}] 관리자 ${nextStatus === "cancelled" ? "취소" : "반려"}: ${reason}`]
+    const note = [enrollmentRequest.admin_note, `[${stamp}] 관리자 반려: ${reason}`]
       .filter(Boolean)
       .join("\n");
     const { data: changed, error: updateError } = await supabase
