@@ -287,7 +287,9 @@ export default function CustomEnrollmentScheduler({
     setPreferredTime,
   ] = useState("");
 
-  const [checkoutMode, setCheckoutMode] = useState<"direct" | "consultation">("direct");
+  const [preferredTimeChoices, setPreferredTimeChoices] = useState<string[]>([]);
+  // The enrollment screen now presents one checkout action.
+  const [checkoutMode] = useState<"direct" | "consultation">("direct");
   const [consultationReview, setConsultationReview] = useState(false);
 
   const [
@@ -430,15 +432,14 @@ export default function CustomEnrollmentScheduler({
   }, [teacherMode, selectedTeacherId, startDate, durationMinutes, selectedDays, lessonsPerWeek, timeOptions]);
 
   const allPreferredTimesSelected =
-    selectedDays.length ===
-      lessonsPerWeek &&
-    Boolean(preferredTime) &&
-    shownTimeOptions.includes(preferredTime);
+    selectedDays.length === lessonsPerWeek &&
+    (teacherMode === "any"
+      ? preferredTimeChoices.length >= 2 && preferredTimeChoices.length <= 3
+      : Boolean(selectedTeacherId) && specificTimesReady &&
+        Boolean(preferredTime) && shownTimeOptions.includes(preferredTime));
 
-  const canSubmit =
-    allPreferredTimesSelected &&
-    (checkoutMode === "consultation" ||
-      (hasSearched && matchingTeachers.length > 0)) &&
+  const canSubmit = allPreferredTimesSelected &&
+    (teacherMode === "any" || (specificTimesReady && shownTimeOptions.includes(preferredTime))) &&
     !searching && !submitting && !successMessage;
 
   function resetSearchResult() {
@@ -742,8 +743,8 @@ export default function CustomEnrollmentScheduler({
 
   // Schedule and teacher changes refresh the available teachers automatically.
   useEffect(() => {
-    if (!allPreferredTimesSelected || !selectedCourseId ||
-        (teacherMode === "specific" && !selectedTeacherId)) return;
+    if (teacherMode !== "specific" || !allPreferredTimesSelected || !selectedCourseId ||
+        !selectedTeacherId) return;
     const timer = window.setTimeout(() => { void searchAvailability(); }, 150);
     return () => window.clearTimeout(timer);
   }, [searchAvailability, allPreferredTimesSelected, selectedCourseId, teacherMode, selectedTeacherId]);
@@ -776,33 +777,42 @@ export default function CustomEnrollmentScheduler({
       return;
     }
 
-    const teacherText =
-      teacherMode ===
-        "specific"
-        ? (
-            selectedTeacher?.display_name ??
-            "선택 강사"
-          )
-        : `가능한 강사 ${matchingTeachers.length}명 중 배정`;
-
-    const confirmed = checkoutMode === "consultation" ? true : window.confirm(
-        `${childName}${isDirectStudent ? "님의" : " 학생의"} 맞춤 수강신청을 접수하시겠습니까?\n\n과정: ${selectedCourse.name}\n수업: ${durationMinutes}분 · 주 ${lessonsPerWeek}회\n강사: ${teacherText}\n희망일정: ${selectedDays
-          .map(
-            (day) =>
-              `${DAY_LABELS[day] ?? day} ${preferredTime}`
-          )
-          .join(" / ")}`
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
     setSubmitting(
       true
     );
 
     try {
+      let matchedTeacherId: string | null = teacherMode === "specific" ? selectedTeacherId : null;
+      let selectedStartTime = preferredTime;
+      if (teacherMode === "any") {
+        // Lookup is intentionally delayed until checkout: no intermediate 0-teacher screen.
+        const slotsByDay = await Promise.all(selectedDays.map(async (day) => {
+          const date = getNextDateForWeekday({ baseDateText: startDate, weekday: day });
+          if (!date) throw new Error("수업 날짜를 확인할 수 없습니다.");
+          const response = await fetch("/api/parent/teacher-availability", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ date, durationMinutes }),
+          });
+          const data = (await response.json()) as AvailabilityResponse;
+          if (!response.ok) throw new Error(data.error || "강사 가능시간을 확인할 수 없습니다.");
+          return data.availableTeachers ?? [];
+        }));
+        const firstDay = slotsByDay[0] ?? [];
+        for (const candidate of preferredTimeChoices) {
+          const candidateTeacher = firstDay.find((teacher) =>
+            tuitionRegionForNationality(teacher.nationality) === preferredRegion &&
+            slotsByDay.every((dayTeachers) => dayTeachers.some((item) =>
+              item.teacherUserId === teacher.teacherUserId && item.availableTimes.includes(candidate)))
+          );
+          if (candidateTeacher) {
+            matchedTeacherId = candidateTeacher.teacherUserId;
+            selectedStartTime = candidate;
+            break;
+          }
+        }
+        if (!matchedTeacherId) selectedStartTime = preferredTimeChoices[0];
+      }
+
       const response =
         await fetch(
           "/api/parent/enrollment-requests",
@@ -834,10 +844,11 @@ export default function CustomEnrollmentScheduler({
                     selectedDays.map(
                       (day) => [
                         day,
-                        preferredTime,
+                        selectedStartTime,
                       ]
                     )
                   ),
+                preferredTimeCandidates: teacherMode === "any" ? preferredTimeChoices : [],
                 teacherPreferenceType:
                   teacherMode,
                 preferredTeacherUserId:
@@ -864,11 +875,15 @@ export default function CustomEnrollmentScheduler({
       }
 
       if (checkoutMode === "direct") {
-        const assignedTeacherId = teacherMode === "specific"
-          ? selectedTeacherId
-          : matchingTeachers[0]?.teacherUserId;
-        if (!assignedTeacherId || !Number.isSafeInteger(Number(result.requestId))) {
-          setErrorMessage("신청은 접수되었지만 강사 또는 신청번호를 확인하지 못했습니다. 관리자와 상담해 주세요.");
+        const assignedTeacherId = matchedTeacherId;
+        if (!Number.isSafeInteger(Number(result.requestId))) {
+          setErrorMessage("수강신청 번호를 확인할 수 없습니다. 신청 현황에서 확인해 주세요.");
+          return;
+        }
+        if (!assignedTeacherId) {
+          // Payment cannot safely be collected until a teaching slot is allocated.
+          setSuccessMessage("신청 내용을 저장했습니다. 관리자가 수업시간을 확정하면 결제할 수 있습니다.");
+          router.push(resolvedEnrollmentRequestsHref);
           return;
         }
         const directResponse = await fetch(
