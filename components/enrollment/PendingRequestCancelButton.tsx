@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 
 export default function PendingRequestCancelButton({
   requestId,
+  applicationNumber,
   reapplyHref,
 }: {
   requestId: number;
+  applicationNumber?: string | null;
   reapplyHref: string;
 }) {
   const router = useRouter();
@@ -16,7 +18,7 @@ export default function PendingRequestCancelButton({
 
   async function cancel() {
     if (!window.confirm(
-      `수강신청 #${requestId}를 취소하고 다시 신청하시겠습니까?\n기존 신청 내용은 보관되며, 희망조건은 다시 입력해야 합니다.\n배정·결제 전 대기 신청만 취소할 수 있습니다.`
+      `수강신청 ${applicationNumber ?? requestId}를 취소하고 다시 신청하시겠습니까?\n기존 신청 내용은 보관되며, 희망조건은 다시 입력해야 합니다.\n배정·결제 전 대기 신청만 취소할 수 있습니다.`
     )) return;
     setBusy(true);
     setError("");
