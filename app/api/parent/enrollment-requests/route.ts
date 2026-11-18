@@ -910,6 +910,8 @@ export async function POST(
         status:
           "pending",
 
+        checkout_mode: body.checkoutMode === "direct" ? "direct" : "consultation",
+
         assigned_teacher_user_id:
           null,
 
