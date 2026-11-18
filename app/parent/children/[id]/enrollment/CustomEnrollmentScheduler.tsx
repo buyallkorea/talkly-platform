@@ -825,6 +825,7 @@ export default function CustomEnrollmentScheduler({
                     )
                   ),
                 preferredTimeCandidates: teacherMode === "any" ? preferredTimeChoices : [],
+                checkoutMode,
                 teacherPreferenceType:
                   teacherMode,
                 preferredTeacherUserId:
