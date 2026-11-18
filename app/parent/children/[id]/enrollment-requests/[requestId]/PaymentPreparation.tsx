@@ -461,7 +461,7 @@ export default function PaymentPreparation({
       <section
         style={{
           marginTop:
-            "24px",
+            "12px",
           display:
             "grid",
           gridTemplateColumns:
@@ -476,7 +476,7 @@ export default function PaymentPreparation({
           <section
             style={{
               padding:
-                "25px",
+                "19px",
               borderRadius:
                 "20px",
               border:
@@ -562,13 +562,14 @@ export default function PaymentPreparation({
             <div
               style={{
                 marginTop:
-                  "22px",
+                  "14px",
                 display:
                   "grid",
                 gridTemplateColumns:
-                  "repeat(auto-fit, minmax(150px, 1fr))",
+                  "repeat(5, minmax(0, 1fr))",
                 gap: "10px",
               }}
+              className="payment-details-grid"
             >
               <Info
                 label="담당 강사"
@@ -596,174 +597,54 @@ export default function PaymentPreparation({
                 label="수업 횟수"
                 value={`주 ${lessonsPerWeek}회`}
               />
-            </div>
-          </section>
 
-          <section
-            style={{
-              marginTop:
-                "18px",
-              padding:
-                "25px",
-              borderRadius:
-                "20px",
-              border:
-                "1px solid #e4e7ec",
-              background:
-                "#ffffff",
-              boxShadow:
-                "0 12px 34px rgba(16,24,40,0.05)",
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  color:
-                    "#3978ef",
-                  fontSize:
-                    "11px",
-                  fontWeight:
-                    900,
-                  letterSpacing:
-                    "0.08em",
-                }}
-              >
-                STEP 1
+              <div style={{
+                padding: "15px 16px",
+                minWidth: 0,
+                border: "1px solid #b2c5fb",
+                borderRadius: "13px",
+                background: "#f5f8ff",
+              }}>
+                <label htmlFor={`payment-duration-${requestId}`} style={{
+                  display: "block", color: "#667085", fontSize: 10, fontWeight: 800,
+                }}>
+                  수강기간
+                </label>
+                <select
+                  id={`payment-duration-${requestId}`}
+                  name="durationMonths"
+                  value={selectedMonths}
+                  disabled={isSaving}
+                  onChange={(event) => {
+                    setSelectedMonths(Number(event.target.value));
+                    setConsentAnswers({ ...EMPTY_TUITION_CONSENT });
+                    setErrorMessage("");
+                    setSuccessMessage("");
+                  }}
+                  style={{
+                    display: "block", width: "100%", marginTop: 5,
+                    padding: "0 16px 0 0", border: 0, background: "transparent",
+                    color: "#101828", fontFamily: "inherit",
+                    fontSize: 13, fontWeight: 900, lineHeight: 1.55,
+                    cursor: isSaving ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {discountPolicies.map((policy) => (
+                    <option key={policy.id} value={policy.durationMonths}>
+                      {policy.durationMonths}개월
+                    </option>
+                  ))}
+                </select>
+                <span style={{
+                  display: "block", marginTop: 2,
+                  color: (selectedPolicy?.discountRate ?? 0) > 0 ? "#175cd3" : "#667085",
+                  fontSize: 10, fontWeight: 800,
+                }}>
+                  {(selectedPolicy?.discountRate ?? 0) > 0
+                    ? `${selectedPolicy.discountRate}% 할인`
+                    : "기본 수강"}
+                </span>
               </div>
-
-              <h2
-                style={{
-                  margin:
-                    "7px 0 0",
-                  color:
-                    "#101828",
-                  fontSize:
-                    "24px",
-                  letterSpacing:
-                    "-0.03em",
-                }}
-              >
-                수강기간 선택
-              </h2>
-
-              <p
-                style={{
-                  margin:
-                    "8px 0 0",
-                  color:
-                    "#667085",
-                  fontSize:
-                    "13px",
-                  lineHeight:
-                    1.7,
-                }}
-              >
-                기간이 길수록
-                TALKLY 장기수강
-                할인율이 자동으로
-                적용됩니다.
-              </p>
-            </div>
-
-            <div
-              style={{
-                marginTop:
-                  "20px",
-                display:
-                  "grid",
-                gridTemplateColumns:
-                  "repeat(4, minmax(0, 1fr))",
-                gap: "10px",
-              }}
-              className="duration-grid"
-            >
-              {discountPolicies.map(
-                (policy) => {
-                  const selected =
-                    selectedMonths ===
-                    policy.durationMonths;
-
-                  return (
-                    <button
-                      key={
-                        policy.id
-                      }
-                      type="button"
-                      onClick={() => {
-                        setSelectedMonths(
-                          policy.durationMonths
-                        );
-                        setConsentAnswers({ ...EMPTY_TUITION_CONSENT });
-                        setErrorMessage(
-                          ""
-                        );
-                        setSuccessMessage(
-                          ""
-                        );
-                      }}
-                      style={{
-                        minHeight:
-                          "102px",
-                        padding:
-                          "14px 10px",
-                        border:
-                          selected
-                            ? "2px solid #3978ef"
-                            : "1px solid #d0d5dd",
-                        borderRadius:
-                          "14px",
-                        background:
-                          selected
-                            ? "#f5f8ff"
-                            : "#ffffff",
-                        color:
-                          "#101828",
-                        cursor:
-                          "pointer",
-                        fontFamily:
-                          "inherit",
-                      }}
-                    >
-                      <strong
-                        style={{
-                          display:
-                            "block",
-                          fontSize:
-                            "20px",
-                        }}
-                      >
-                        {
-                          policy.durationMonths
-                        }
-                        개월
-                      </strong>
-
-                      <span
-                        style={{
-                          display:
-                            "block",
-                          marginTop:
-                            "7px",
-                          color:
-                            policy.discountRate >
-                            0
-                              ? "#175cd3"
-                              : "#667085",
-                          fontSize:
-                            "12px",
-                          fontWeight:
-                            900,
-                        }}
-                      >
-                        {policy.discountRate >
-                        0
-                          ? `${policy.discountRate}% 할인`
-                          : "기본 수강"}
-                      </span>
-                    </button>
-                  );
-                }
-              )}
             </div>
           </section>
 
@@ -1128,7 +1009,12 @@ export default function PaymentPreparation({
       </div>
 
       <style>{`
+        @media (max-width: 1250px) {
+          .payment-details-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+        }
+
         @media (max-width: 820px) {
+          .payment-details-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
           .payment-layout {
             grid-template-columns: 1fr !important;
           }
@@ -1138,10 +1024,8 @@ export default function PaymentPreparation({
           }
         }
 
-        @media (max-width: 620px) {
-          .duration-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-          }
+        @media (max-width: 420px) {
+          .payment-details-grid > div { padding: 12px !important; }
         }
       `}</style>
     </>
