@@ -913,6 +913,7 @@ export default async function AdminEnrollmentRequestDetailPage({
         requestId={
           enrollmentRequest.id
         }
+        applicationNumber={enrollmentRequest.application_number}
         preferredDays={
           enrollmentRequest.preferred_days ??
           []
