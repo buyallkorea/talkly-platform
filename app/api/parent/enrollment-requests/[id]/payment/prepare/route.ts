@@ -19,6 +19,7 @@ type EnrollmentRequestRow = {
   course_id: number;
   status: string;
   checkout_mode: "consultation" | "direct";
+  teacher_preference_type: "any" | "specific";
   assigned_teacher_user_id: string | null;
   assignment_confirmed_at: string | null;
   duration_months: number | null;
@@ -138,6 +139,7 @@ export async function POST(
         course_id,
         status,
         checkout_mode,
+        teacher_preference_type,
         assigned_teacher_user_id,
         assignment_confirmed_at,
         duration_months,
@@ -203,23 +205,23 @@ export async function POST(
      * 5. 강사·일정 배정 확인
      * =========================================================
      */
-    if (
-      !enrollmentRequest.assigned_teacher_user_id ||
-      !enrollmentRequest.assignment_confirmed_at
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "강사와 수업 일정이 아직 확정되지 않았습니다.",
-        },
-        {
-          status: 409,
-        }
-      );
+    const awaitingAdminAssignment =
+      enrollmentRequest.status === "pending" &&
+      enrollmentRequest.checkout_mode === "direct" &&
+      enrollmentRequest.teacher_preference_type === "any" &&
+      !enrollmentRequest.assigned_teacher_user_id &&
+      !enrollmentRequest.assignment_confirmed_at;
+
+    if (!awaitingAdminAssignment &&
+        (!enrollmentRequest.assigned_teacher_user_id ||
+         !enrollmentRequest.assignment_confirmed_at)) {
+      return NextResponse.json({
+        success: false, error: "강사와 수업 일정이 아직 확정되지 않았습니다."
+      }, { status: 409 });
     }
 
-    if (enrollmentRequest.checkout_mode === "direct") {
+    // Prepaid recommendations are intentionally not tied to teacher booking holds.
+    if (enrollmentRequest.checkout_mode === "direct" && !awaitingAdminAssignment) {
       const hold = await admin.rpc("check_direct_checkout_hold", {
         p_request_id: requestId, p_actor: user.id, p_extend_minutes: 45,
       });
@@ -561,6 +563,7 @@ export async function POST(
           courseId: enrollmentRequest.course_id,
           childId: enrollmentRequest.child_id,
           teacherUserId: enrollmentRequest.assigned_teacher_user_id,
+          assignmentPending: awaitingAdminAssignment,
           orderName,
         },
         terms_sha256: termsSha256,
