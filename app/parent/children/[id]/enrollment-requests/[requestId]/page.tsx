@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
 
 import PaymentPreparation from "./PaymentPreparation";
+import PreAssignmentCheckout from "@/components/payments/PreAssignmentCheckout";
 
 type PageProps = {
   params: Promise<{
@@ -19,6 +20,12 @@ type PageProps = {
 
 type EnrollmentRequestRow = {
   id: number;
+  application_number: string | null;
+  teacher_preference_type: string;
+  lesson_duration_minutes: number;
+  lessons_per_week: number;
+  preferred_days: string[];
+  preferred_time_candidates: string[];
   applicant_user_id: string;
   child_id: number;
   course_id: number;
@@ -208,6 +215,12 @@ export default async function ParentEnrollmentRequestPaymentPage({
     .from("enrollment_requests")
     .select(`
       id,
+      application_number,
+      teacher_preference_type,
+      lesson_duration_minutes,
+      lessons_per_week,
+      preferred_days,
+      preferred_time_candidates,
       applicant_user_id,
       child_id,
       course_id,
@@ -264,9 +277,17 @@ export default async function ParentEnrollmentRequestPaymentPage({
     );
 
   if (!assigned) {
-    redirect(
-      `/parent/children/${childId}/enrollment-requests`
-    );
+    if (request.teacher_preference_type === "any" &&
+        request.checkout_mode === "direct" && request.status === "pending") {
+      return (
+        <PreAssignmentCheckout
+          request={request}
+          childId={child.id}
+          studentName={child.name}
+        />
+      );
+    }
+    redirect(`/parent/children/${childId}/enrollment-requests`);
   }
 
   const [
