@@ -461,6 +461,18 @@ export default async function StudentPage() {
           />
         </section>
 
+        <section className="talkly-card" style={{ marginTop: 16, padding: "16px 22px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div>
+              <strong style={{ color: "var(--talkly-navy)" }}>수강신청 내역</strong>
+              <p style={{ margin: "5px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
+                신청한 과정과 희망시간, 강사 배정 및 결제 진행 상태를 확인할 수 있습니다.
+              </p>
+            </div>
+            <Link className="talkly-button talkly-button-secondary" href="/student/enrollment-requests">수강신청 현황 보기 →</Link>
+          </div>
+        </section>
+
         {pendingReviewEnrollments.length > 0 && (
           <section
             style={{

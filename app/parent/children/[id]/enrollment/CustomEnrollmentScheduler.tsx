@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -215,10 +216,8 @@ export default function CustomEnrollmentScheduler({
       ? "자녀 관리로 돌아가기"
       : "내 수업 관리로 돌아가기");
 
-  const completionRef =
-    useRef<HTMLDivElement | null>(
-      null
-    );
+  const completionRef = useRef<HTMLDivElement | null>(null);
+  const matchingRequestId = useRef(0);
 
   // 정규 수강신청은 25분 수업만 제공합니다. 50분은 별도 상담 대상입니다.
   const usableDurations = [25];
@@ -437,14 +436,14 @@ export default function CustomEnrollmentScheduler({
     shownTimeOptions.includes(preferredTime);
 
   const canSubmit =
-    hasSearched &&
-    matchingTeachers.length >
-      0 &&
     allPreferredTimesSelected &&
-    !submitting &&
-    !successMessage;
+    (checkoutMode === "consultation" ||
+      (hasSearched && matchingTeachers.length > 0)) &&
+    !searching && !submitting && !successMessage;
 
   function resetSearchResult() {
+    matchingRequestId.current += 1;
+    setSearching(false);
     setConsultationReview(false);
     setMatchingTeachers(
       []
@@ -534,7 +533,8 @@ export default function CustomEnrollmentScheduler({
     resetSearchResult();
   }
 
-  async function searchAvailability() {
+  const searchAvailability = useCallback(async () => {
+    const requestId = ++matchingRequestId.current;
     setErrorMessage(
       ""
     );
@@ -708,15 +708,12 @@ export default function CustomEnrollmentScheduler({
             )
         );
 
-      setMatchingTeachers(
-        common
-      );
-      setHasSearched(
-        true
-      );
+      if (requestId !== matchingRequestId.current) return;
+      setMatchingTeachers(common);
+      setHasSearched(true);
 
       if (
-        common.length === 0
+        common.length === 0 && checkoutMode === "direct"
       ) {
         const scheduleText =
           selectedDays
@@ -733,18 +730,23 @@ export default function CustomEnrollmentScheduler({
         );
       }
     } catch (error) {
-      setErrorMessage(
-        error instanceof
-          Error
-          ? error.message
-          : "가용시간 조회 중 오류가 발생했습니다."
-      );
+      if (requestId === matchingRequestId.current) {
+        setErrorMessage(error instanceof Error ? error.message : "가용시간 조회 중 오류가 발생했습니다.");
+        setHasSearched(true);
+      }
     } finally {
-      setSearching(
-        false
-      );
+      if (requestId === matchingRequestId.current) setSearching(false);
     }
-  }
+  }, [selectedCourseId, startDate, lessonsPerWeek, selectedDays, allPreferredTimesSelected,
+      teacherMode, selectedTeacherId, durationMinutes, preferredTime, preferredRegion, checkoutMode]);
+
+  // Schedule and teacher changes refresh the available teachers automatically.
+  useEffect(() => {
+    if (!allPreferredTimesSelected || !selectedCourseId ||
+        (teacherMode === "specific" && !selectedTeacherId)) return;
+    const timer = window.setTimeout(() => { void searchAvailability(); }, 150);
+    return () => window.clearTimeout(timer);
+  }, [searchAvailability, allPreferredTimesSelected, selectedCourseId, teacherMode, selectedTeacherId]);
 
   async function submitCustomRequest() {
     setErrorMessage(
@@ -907,8 +909,8 @@ export default function CustomEnrollmentScheduler({
     <section
       className="talkly-card"
       style={{
-        marginTop: "24px",
-        padding: "30px",
+        marginTop: "12px",
+        padding: "20px",
       }}
     >
 
@@ -1234,8 +1236,7 @@ export default function CustomEnrollmentScheduler({
 
         {teacherMode === "any" && (
           <p style={{ margin: "12px 0 0", fontSize: 12, lineHeight: 1.7, color: "#526277" }}>
-            레벨테스트 결과를 바탕으로 적합한 강사를 추천합니다. 현재 바로 결제를 선택하면 가능한 강사가 시스템에서 자동 배정됩니다.
-            희망시간은 오전 7시~11시 또는 오후 3시~밤 11시 범위에서 선택해 주세요.
+            ‘관리자 추천강사’를 클릭하시면 레벨테스트 결과를 바탕으로 학생에게 적합한 강사를 배치합니다.
           </p>
         )}
 
@@ -1255,7 +1256,9 @@ export default function CustomEnrollmentScheduler({
                 onChange={(
                   event
                 ) => {
+                  const nextTeacher = teachers.find((teacher) => teacher.user_id === event.target.value);
                   setSelectedTeacherId(event.target.value);
+                  if (nextTeacher) setPreferredRegion(tuitionRegionForNationality(nextTeacher.nationality));
                   setPreferredTime("");
                   resetSearchResult();
                 }}
@@ -1267,7 +1270,7 @@ export default function CustomEnrollmentScheduler({
                   강사 선택
                 </option>
 
-                {teachers.filter((teacher) => tuitionRegionForNationality(teacher.nationality) === preferredRegion).map(
+                {teachers.map(
                   (teacher) => (
                     <option
                       key={
@@ -1298,7 +1301,7 @@ export default function CustomEnrollmentScheduler({
           }}
         >
           <FieldLabel>
-            희망 수업시간
+            {teacherMode === "specific" ? "현재 수업 가능한 시간" : "희망 수업시간"}
           </FieldLabel>
 
           <div
@@ -1324,12 +1327,9 @@ export default function CustomEnrollmentScheduler({
                   1.7,
               }}
             >
-              선택한 모든 요일에
-              동일한 시간으로
-              수업합니다.
-              예: 월·화 선택 +
-              15:00 선택 → 월요일과
-              화요일 모두 15:00 수업
+              {teacherMode === "specific"
+                ? "선택한 강사가 현재 수업 가능한 시간만 표시됩니다."
+                : "선택한 요일에 공통으로 적용할 희망시간을 선택해 주세요."}
             </div>
 
             {teacherMode === "specific" && (
@@ -1339,7 +1339,7 @@ export default function CustomEnrollmentScheduler({
                   : !specificTimesReady ? "선택한 강사의 실제 가능시간을 조회 중입니다."
                   : specificTeacherTimes?.error ? specificTeacherTimes.error
                   : shownTimeOptions.length === 0 ? "선택한 요일에 공통으로 가능한 시간이 없습니다. 관리자 추천강사로 신청하거나 요일을 변경해 주세요."
-                  : "선택한 강사가 모든 희망 요일에 수업할 수 있는 시간만 표시됩니다."}
+                  : "맞는 스케줄이 없다면 관리자 추천강사로 수강신청해 주세요."}
               </p>
             )}
             <div
@@ -1396,58 +1396,9 @@ export default function CustomEnrollmentScheduler({
           {errorMessage}
         </div>
       )}
+      {searching && <p role="status" style={{ fontSize: 12, color: "#667085", marginTop: 16 }}>선택한 조건으로 수업 가능 여부를 확인 중입니다.</p>}
 
-      {!successMessage && (
-        <button
-        type="button"
-        onClick={
-          searchAvailability
-        }
-        disabled={
-          searching ||
-          !allPreferredTimesSelected
-        }
-        style={{
-          marginTop: "22px",
-          minHeight: "52px",
-          padding:
-            "0 22px",
-          border: 0,
-          borderRadius:
-            "11px",
-          background:
-            searching ||
-            !allPreferredTimesSelected
-              ? "#d0d5dd"
-              : "#0a1f44",
-          color:
-            searching ||
-            !allPreferredTimesSelected
-              ? "#667085"
-              : "#ffffff",
-          fontFamily:
-            "inherit",
-          fontSize:
-            "14px",
-          fontWeight: 900,
-          cursor:
-            searching ||
-            !allPreferredTimesSelected
-              ? "not-allowed"
-              : "pointer",
-        }}
-      >
-        {searching
-          ? "가능 강사 조회 중..."
-          : teacherMode === "specific"
-            ? "선택한 강사 가능 여부 확인"
-            : "추천 가능 강사 확인"}
-      </button>
-      )}
-
-      {hasSearched &&
-        matchingTeachers.length >
-          0 && (
+      {allPreferredTimesSelected && (
         <div
           style={{
             marginTop: "28px",
@@ -1476,12 +1427,9 @@ export default function CustomEnrollmentScheduler({
                 "21px",
             }}
           >
-            선택한 희망시간에
-            가능한 강사{" "}
-            {
-              matchingTeachers.length
-            }
-            명
+            {hasSearched
+              ? `선택한 시간에 가능한 강사 ${matchingTeachers.length}명`
+              : "신청 조건 확인"}
           </h3>
 
           <div
@@ -1515,7 +1463,7 @@ export default function CustomEnrollmentScheduler({
               gap: "10px",
             }}
           >
-            {matchingTeachers.map(
+            {hasSearched && matchingTeachers.map(
               (teacher) => (
                 <div
                   key={
@@ -1552,23 +1500,7 @@ export default function CustomEnrollmentScheduler({
             )}
           </div>
 
-          {teacherMode ===
-            "any" && (
-            <div
-              style={{
-                marginTop:
-                  "12px",
-                color:
-                  "#667085",
-                fontSize:
-                  "11px",
-                lineHeight:
-                  1.7,
-              }}
-            >
-              바로 결제 시 아래 강사 중 시스템이 가능한 강사를 자동 배정합니다. 관리자 상담을 선택하면 관리자가 배정을 검토합니다.
-            </div>
-          )}
+
 
           <div
             style={{
@@ -1700,7 +1632,7 @@ export default function CustomEnrollmentScheduler({
             >
               {submitting
                 ? "수강신청 접수 중..."
-                : checkoutMode === "direct" ? "일정 확인 후 바로 결제" : consultationReview ? "관리자에게 전송하기" : "수강신청 내용 확인하기"}
+                : checkoutMode === "direct" ? "수강료 결제하기" : consultationReview ? "관리자에게 전송하기" : "수강신청 내용 확인하기"}
             </button>
           )}
         </div>

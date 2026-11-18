@@ -30,7 +30,13 @@ test("enrollment is concise but keeps purchase selections", () => {
   assert.match(ui, /checkoutMode === "direct"/);
   assert.match(ui, /direct-checkout/);
   assert.match(ui, /\(00\|30\)/);
-  assert.equal((ui.match(/가능한 강사 모두 찾기/g) ?? []).length, 1);
+  assert.doesNotMatch(ui, /추천 가능 강사 확인|선택한 강사 가능 여부 확인|가능한 강사 모두 찾기/);
+  assert.match(ui, /수강료 결제하기/);
+  assert.match(ui, /const searchAvailability = useCallback/);
+  assert.match(ui, /void searchAvailability\(\)/);
+  assert.match(ui, /\{teachers\.map\(/);
+  assert.match(ui, /현재 수업 가능한 시간/);
+  assert.match(ui, /관리자 추천강사/);
 });
 
 test("both learner and parent enrollment pages use revised guidance", () => {
@@ -50,4 +56,16 @@ test("two required payment consents remain in place", () => {
   assert.match(source, /key: "refund"/);
   assert.match(source, /answers\.discount === "yes" && answers\.refund === "yes"/);
   assert.doesNotMatch(source, /③/);
+});
+
+test("November 18 schedule and enrollment status controls", () => {
+  const student = read("app/student/page.tsx");
+  const parent = read("app/parent/children/[id]/page.tsx");
+  const ui = read("app/parent/children/[id]/enrollment/CustomEnrollmentScheduler.tsx");
+  assert.match(student, /href="\/student\/enrollment-requests"/);
+  assert.match(parent, /\/enrollment-requests/);
+  assert.match(ui, /matchingRequestId\.current/);
+  assert.match(ui, /checkoutMode === "consultation" \|\|/);
+  assert.match(ui, /맞는 스케줄이 없다면 관리자 추천강사로 수강신청/);
+  assert.match(ui, /관리자는 레벨테스트 결과를 바탕으로 학생에게 적합한 강사를 배치합니다/);
 });
