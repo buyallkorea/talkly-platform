@@ -1415,6 +1415,13 @@ export default function CustomEnrollmentScheduler({
           }}
         >
           {errorMessage}
+          {errorMessage.includes("신청 내역에서") && (
+            <div style={{ marginTop: 8 }}>
+              <a href={resolvedEnrollmentRequestsHref} style={{ color: "#175cd3", fontWeight: 900, textDecoration: "underline" }}>
+                진행 중인 신청 확인·취소하기
+              </a>
+            </div>
+          )}
         </div>
       )}
       {selectedDays.length > 0 && (

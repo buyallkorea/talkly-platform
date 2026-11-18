@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
 import TossReviewInfo from "@/components/payments/TossReviewInfo";
+import PendingRequestCancelButton from "@/components/enrollment/PendingRequestCancelButton";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase-server";
@@ -956,6 +957,9 @@ export default async function StudentEnrollmentRequestsPage() {
               )}
             </div>
           </>
+        )}
+        {currentRequest?.status === "pending" && !assigned && (
+          <PendingRequestCancelButton requestId={currentRequest.id} reapplyHref="/student/enrollment" />
         )}
         {currentRequest && !assigned && <TossReviewInfo requestId={currentRequest.id} />}
       </div>

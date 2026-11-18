@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
+import { createAdminClient } from "@/lib/supabase-admin";
 
 type ActionBody = {
-  action: "approve" | "reject";
+  action: "approve" | "reject" | "cancel";
   teacherUserId?: string | null;
   curriculum?: string | null;
   adminNote?: string | null;
@@ -149,7 +150,8 @@ export async function PATCH(
 
   if (
     body.action !== "approve" &&
-    body.action !== "reject"
+    body.action !== "reject" &&
+    body.action !== "cancel"
   ) {
     return NextResponse.json(
       {
@@ -186,6 +188,7 @@ export async function PATCH(
       estimated_price,
       status,
       assigned_teacher_user_id,
+      assignment_confirmed_at,
       assigned_curriculum,
       admin_note
     `)
@@ -223,39 +226,69 @@ export async function PATCH(
   }
 
   /*
-   * 반려
+   * 대기 상태의 미결제·미배정 신청만 반려/취소.
+   * 관리자는 신청 자체를 삭제하지 않고 사유와 작업 시각을 기록합니다.
    */
-  if (body.action === "reject") {
-    const {
-      error: rejectError,
-    } = await supabase
-      .from("enrollment_requests")
-      .update({
-        status: "rejected",
-        admin_note:
-          body.adminNote?.trim() || null,
-        updated_at:
-          new Date().toISOString(),
-      })
-      .eq("id", requestId)
-      .eq("status", "pending");
-
-    if (rejectError) {
+  if (body.action === "reject" || body.action === "cancel") {
+    const reason = typeof body.adminNote === "string" ? body.adminNote.trim() : "";
+    if (reason.length < 3 || reason.length > 1000) {
       return NextResponse.json(
-        {
-          error:
-            `반려 처리 실패: ${rejectError.message}`,
-        },
-        {
-          status: 400,
-        }
+        { error: "처리 사유를 3자 이상 1,000자 이하로 입력해 주세요." },
+        { status: 400 }
       );
     }
-
-    return NextResponse.json({
-      success: true,
-      action: "rejected",
-    });
+    if (enrollmentRequest.assigned_teacher_user_id || enrollmentRequest.assignment_confirmed_at) {
+      return NextResponse.json(
+        { error: "이미 배정된 신청은 이 화면에서 반려·취소할 수 없습니다. 배정 및 결제 상태를 확인해 주세요." },
+        { status: 409 }
+      );
+    }
+    // enrollment_payments is protected by RLS and has no admin SELECT policy;
+    // use service-role only after the route has verified the admin's role.
+    const adminDb = createAdminClient();
+    const [paymentLookup, enrollmentLookup] = await Promise.all([
+      adminDb.from("enrollment_payments").select("id").eq("enrollment_request_id", requestId).limit(1),
+      adminDb.from("enrollments").select("id").eq("source_enrollment_request_id", requestId).limit(1),
+    ]);
+    if (paymentLookup.error || enrollmentLookup.error) {
+      return NextResponse.json(
+        { error: "결제·수강 배정 여부를 확인하지 못했습니다. 상태를 변경하지 않았습니다." },
+        { status: 500 }
+      );
+    }
+    if ((paymentLookup.data?.length ?? 0) > 0 || (enrollmentLookup.data?.length ?? 0) > 0) {
+      return NextResponse.json(
+        { error: "결제 또는 수강 기록이 연결된 신청입니다. 관리자에게 정산 및 배정 상태 확인이 필요합니다." },
+        { status: 409 }
+      );
+    }
+    const nextStatus = body.action === "cancel" ? "cancelled" : "rejected";
+    const stamp = new Date().toISOString();
+    const note = [enrollmentRequest.admin_note, `[${stamp}] 관리자 ${nextStatus === "cancelled" ? "취소" : "반려"}: ${reason}`]
+      .filter(Boolean)
+      .join("\n");
+    const { data: changed, error: updateError } = await supabase
+      .from("enrollment_requests")
+      .update({ status: nextStatus, admin_note: note, updated_at: stamp })
+      .eq("id", requestId)
+      .eq("status", "pending")
+      .is("assigned_teacher_user_id", null)
+      .is("assignment_confirmed_at", null)
+      .select("id, status")
+      .maybeSingle();
+    if (updateError) {
+      return NextResponse.json(
+        { error: `처리에 실패했습니다: ${updateError.message}` },
+        { status: 400 }
+      );
+    }
+    if (!changed) {
+      return NextResponse.json(
+        { error: "다른 관리자가 이미 상태를 변경했습니다. 화면을 새로고침해 주세요." },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json({ success: true, action: nextStatus });
   }
 
   /*

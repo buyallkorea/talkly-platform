@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
 
 import AssignmentManager from "./AssignmentManager";
+import RequestStatusControls from "./RequestStatusControls";
 
 type PageProps = {
   params: Promise<{
@@ -682,6 +683,12 @@ export default async function AdminEnrollmentRequestDetailPage({
           </div>
         </div>
       </section>
+
+      <RequestStatusControls
+        requestId={enrollmentRequest.id}
+        status={enrollmentRequest.status}
+        hasAssignment={hasAssignment}
+      />
 
       {/* ===============================================
           REQUESTED CONDITIONS
