@@ -477,7 +477,7 @@ export default function PaymentPreparation({
           <section
             style={{
               padding:
-                "19px",
+                "14px 16px",
               borderRadius:
                 "20px",
               border:
@@ -514,24 +514,10 @@ export default function PaymentPreparation({
                       "0.08em",
                   }}
                 >
-                  {isUnassignedRecommendation ? "ENROLLMENT DETAILS" : "ASSIGNED CLASS"}
+                  수업정보
                 </div>
 
-                <h2
-                  style={{
-                    margin:
-                      "8px 0 0",
-                    color:
-                      "#101828",
-                    fontSize:
-                      "25px",
-                    letterSpacing:
-                      "-0.03em",
-                  }}
-                >
-                  {childName} ·{" "}
-                  {courseName}
-                </h2>
+
               </div>
 
               <span
@@ -541,9 +527,9 @@ export default function PaymentPreparation({
                   alignItems:
                     "center",
                   minHeight:
-                    "29px",
+                    "25px",
                   padding:
-                    "0 11px",
+                    "0 10px",
                   borderRadius:
                     "999px",
                   background:
@@ -563,7 +549,7 @@ export default function PaymentPreparation({
             <div
               style={{
                 marginTop:
-                  "14px",
+                  "10px",
                 display:
                   "grid",
                 gridTemplateColumns:
@@ -600,7 +586,7 @@ export default function PaymentPreparation({
               />
 
               <div style={{
-                padding: "15px 16px",
+                padding: "11px 12px",
                 minWidth: 0,
                 border: "1px solid #b2c5fb",
                 borderRadius: "13px",
@@ -1044,7 +1030,8 @@ function Info({
     <div
       style={{
         padding:
-          "15px 16px",
+          "11px 12px",
+        minWidth: 0,
         border:
           "1px solid #eaecf0",
         borderRadius:
