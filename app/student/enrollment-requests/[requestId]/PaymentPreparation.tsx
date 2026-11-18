@@ -169,6 +169,7 @@ export default function PaymentPreparation({
   discountPolicies,
   savedSelection,
 }: Props) {
+  const isUnassignedRecommendation = teacherName === "관리자 배정 예정";
   const initialMonths =
     discountPolicies.some(
       (policy) =>
@@ -513,7 +514,7 @@ export default function PaymentPreparation({
                       "0.08em",
                   }}
                 >
-                  ASSIGNED CLASS
+                  {isUnassignedRecommendation ? "ENROLLMENT DETAILS" : "ASSIGNED CLASS"}
                 </div>
 
                 <h2
@@ -546,16 +547,16 @@ export default function PaymentPreparation({
                   borderRadius:
                     "999px",
                   background:
-                    "#ecfdf3",
+                    isUnassignedRecommendation ? "#fff4e5" : "#ecfdf3",
                   color:
-                    "#067647",
+                    isUnassignedRecommendation ? "#9a5700" : "#067647",
                   fontSize:
                     "11px",
                   fontWeight:
                     900,
                 }}
               >
-                배정 완료
+                {isUnassignedRecommendation ? "배정 예정" : "배정 완료"}
               </span>
             </div>
 
