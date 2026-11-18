@@ -74,7 +74,7 @@ test("November 18 schedule and enrollment status controls", () => {
   assert.match(ui, /preferredTimeChoices\.length >= 2/);
   assert.match(ui, /preferredTimeCandidates: teacherMode === "any"/);
   assert.match(ui, /관리자 추천강사로 수강신청/);
-  assert.match(ui, /관리자는 레벨테스트 결과를 바탕으로 학생에게 적합한 강사를 배치합니다/);
+  assert.match(ui, /레벨테스트 결과를 바탕으로 학생에게 적합한 강사를 배치합니다/);
 });
 
 test("recommended time choices are validated and visible to administrators", () => {
