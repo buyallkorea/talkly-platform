@@ -18,6 +18,7 @@ type CustomRequestBody = {
   lessonsPerWeek: number;
   preferredDays: string[];
   preferredTimes: Record<string, string>;
+  preferredTimeCandidates?: string[];
   teacherPreferenceType: "any" | "specific";
   pricingCategory?: TuitionRegion;
   durationMonths?: number;
@@ -153,6 +154,7 @@ export async function POST(
       parent_self_enrollment_enabled,
       allowed_weekdays,
       allowed_lessons_per_week,
+      allowed_time_slots,
       allowed_duration_minutes,
       allow_student_choose_teacher
     `)
@@ -320,8 +322,9 @@ export async function POST(
         ? body.preferredTimes
         : {};
 
-    const teacherPreferenceType =
-      body.teacherPreferenceType;
+    const teacherPreferenceType = body.teacherPreferenceType;
+    const rawCandidates = Array.isArray(body.preferredTimeCandidates) ? body.preferredTimeCandidates : [];
+    const preferredTimeCandidates = rawCandidates.filter((time): time is string => typeof time === "string");
 
     const pricingCategory = body.pricingCategory ?? null;
     const durationMonths = Number(body.durationMonths ?? 1);
@@ -514,6 +517,21 @@ export async function POST(
           }
         );
       }
+    }
+
+    const configuredTimes = (settings.allowed_time_slots ?? []).map(String);
+    const candidateTimesValid =
+      rawCandidates.length === preferredTimeCandidates.length &&
+      (preferredTimeCandidates.length === 0 ||
+        (teacherPreferenceType === "any" && preferredTimeCandidates.length >= 2 && preferredTimeCandidates.length <= 3)) &&
+      new Set(preferredTimeCandidates).size === preferredTimeCandidates.length &&
+      preferredTimeCandidates.every((time) =>
+        isTimeText(time) && configuredTimes.includes(time)) &&
+      (preferredTimeCandidates.length === 0 ||
+        preferredDays.every((day) => preferredTimes[day] === preferredTimeCandidates[0]));
+
+    if (!candidateTimesValid) {
+      return NextResponse.json({ error: "관리자 추천강사는 희망시간을 2~3개 선택해 주세요." }, { status: 400 });
     }
 
     if (
@@ -850,6 +868,7 @@ export async function POST(
 
         preferred_times:
           preferredTimes,
+        preferred_time_candidates: preferredTimeCandidates,
 
         teacher_preference_type:
           teacherPreferenceType,
