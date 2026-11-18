@@ -709,7 +709,7 @@ export default async function AdminEnrollmentRequestDetailPage({
         requestId={enrollmentRequest.id}
         status={enrollmentRequest.status}
         hasAssignment={hasAssignment}
-        hasPayment={Boolean(latestPayment)}
+        hasPayment={latestPayment?.status === "paid" || latestPayment?.status === "confirming"}
       />
 
       {/* ===============================================

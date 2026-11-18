@@ -22,7 +22,9 @@ export default function RequestStatusControls({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  if (status !== "pending" || hasAssignment || hasPayment) return null;
+  const canCancel = (status === "pending" || status === "approved") && !hasPayment;
+  const canReject = status === "pending" && !hasAssignment && !hasPayment;
+  if (!canCancel && !canReject) return null;
 
   async function submit(action: RequestAction) {
     const note = reason.trim();
@@ -61,11 +63,11 @@ export default function RequestStatusControls({
       marginTop: 20, padding: 22, borderRadius: 14,
       border: "1px solid #f0d0cb", background: "#fffafa"
     }}>
-      <h2 style={{ margin: 0, fontSize: 20, color: "#7a271a" }}>신청 반려·취소</h2>
+      <h2 style={{ margin: 0, fontSize: 20, color: "#7a271a" }}>신청 {canReject ? "반려·취소" : "취소"}</h2>
       <p style={{ color: "#475467", fontSize: 13, lineHeight: 1.7 }}>
-        결제가 없고 강사가 배정되지 않은 대기 신청만 처리할 수 있습니다.
-        테스트 신청이나 중복 신청은 취소하고, 접수 자체를 거절하는 경우에는 반려를 선택하세요.
-        신청 기록은 삭제되지 않습니다.
+        결제 승인이 없는 대기·배정 신청만 취소할 수 있습니다.
+        미승인 결제 주문과 강사 임시 예약은 함께 종료되며, 원본 신청 기록은 보존됩니다.
+        반려는 아직 강사가 배정되지 않은 대기 신청에만 가능합니다.
       </p>
       <label htmlFor="request-disposition-reason" style={{ display: "block", margin: "14px 0 6px", fontWeight: 800, color: "#344054", fontSize: 13 }}>
         처리 사유 (필수)
@@ -81,10 +83,12 @@ export default function RequestStatusControls({
           style={{ padding: "11px 18px", borderRadius: 9, border: "1px solid #d0d5dd", background: "#fff", fontWeight: 800, cursor: "pointer" }}>
           {busy ? "처리 중..." : "신청 취소"}
         </button>
-        <button type="button" disabled={busy || reason.trim().length < 3} onClick={() => submit("reject")}
-          style={{ padding: "11px 18px", borderRadius: 9, border: 0, background: "#b42318", color: "#fff", fontWeight: 800, cursor: "pointer" }}>
-          신청 반려
-        </button>
+        {canReject && (
+          <button type="button" disabled={busy || reason.trim().length < 3} onClick={() => submit("reject")}
+            style={{ padding: "11px 18px", borderRadius: 9, border: 0, background: "#b42318", color: "#fff", fontWeight: 800, cursor: "pointer" }}>
+            신청 반려
+          </button>
+        )}
       </div>
     </section>
   );

@@ -911,6 +911,15 @@ export default async function StudentEnrollmentRequestsPage() {
                 돌아가기
               </Link>
 
+              {currentRequest && ["pending", "approved"].includes(currentRequest.status) &&
+                !alreadyPaid && !awaitingPaymentConfirmation && (
+                  <PendingRequestCancelButton
+                    requestId={currentRequest.id}
+                    applicationNumber={currentRequest.application_number}
+                    hasAssignedTeacher={assigned}
+                    reapplyHref="/student/enrollment"
+                  />
+                )}
               {(assigned || (payFirstPending && !alreadyPaid && !awaitingPaymentConfirmation)) ? (
                 <Link
                   href={`/student/enrollment-requests/${currentRequest.id}`}
@@ -975,9 +984,6 @@ export default async function StudentEnrollmentRequestsPage() {
               )}
             </div>
           </>
-        )}
-        {currentRequest?.status === "pending" && !assigned && !alreadyPaid && !awaitingPaymentConfirmation && (
-          <PendingRequestCancelButton requestId={currentRequest.id} applicationNumber={currentRequest.application_number} reapplyHref="/student/enrollment" />
         )}
         {currentRequest && !assigned && <TossReviewInfo requestId={currentRequest.id} applicationNumber={currentRequest.application_number} />}
       </div>

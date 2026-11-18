@@ -48,7 +48,8 @@ test("unassigned payments do not misleadingly display assigned class", () => {
   for (const file of paymentComponents) {
     const ui = read(file);
     assert.match(ui, /isUnassignedRecommendation \? "배정 예정" : "배정 완료"/);
-    assert.match(ui, /isUnassignedRecommendation \? "ENROLLMENT DETAILS" : "ASSIGNED CLASS"/);
+    assert.match(ui, /수업정보/);
+    assert.doesNotMatch(ui, /\{childName\} ·/);
   }
   const checkout = read("components/payments/PreAssignmentCheckout.tsx");
   assert.match(checkout, /"17px 26px"/);

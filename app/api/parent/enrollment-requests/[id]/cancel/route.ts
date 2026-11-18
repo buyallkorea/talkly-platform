@@ -5,8 +5,9 @@ import { createAdminClient } from "@/lib/supabase-admin";
 type RouteContext = { params: Promise<{ id: string }> };
 
 /**
- * The applicant may withdraw an unassigned/unpaid pending request.
- * A paid or allocated enrollment must use the existing refund/change workflow.
+ * Applicants can withdraw pending or provisionally assigned unpaid requests.
+ * A single database transaction invalidates ready orders, releases held
+ * teacher slots, and preserves the historical application/consent records.
  */
 export async function POST(_request: Request, context: RouteContext) {
   const { id } = await context.params;
@@ -26,48 +27,42 @@ export async function POST(_request: Request, context: RouteContext) {
   }
 
   const admin = createAdminClient();
-  const { data: existing, error: lookupError } = await admin.from("enrollment_requests")
-    .select("id,status,request_type,applicant_user_id,assigned_teacher_user_id,assignment_confirmed_at,admin_note")
+  const { data: enrollment, error: lookupError } = await admin
+    .from("enrollment_requests")
+    .select("id, applicant_user_id, child_id, request_type, status")
     .eq("id", requestId)
     .eq("applicant_user_id", user.id)
     .maybeSingle();
 
-  if (lookupError) return NextResponse.json({ error: "신청 내용을 확인할 수 없습니다." }, { status: 500 });
-  if (!existing || existing.request_type !== "custom") {
-    return NextResponse.json({ error: "본인 신청을 찾을 수 없습니다." }, { status: 404 });
+  if (lookupError) {
+    return NextResponse.json({ error: "신청 정보를 확인하지 못했습니다." }, { status: 500 });
   }
-  if (existing.status !== "pending" || existing.assigned_teacher_user_id || existing.assignment_confirmed_at) {
-    return NextResponse.json({ error: "이미 배정되거나 처리된 신청은 이 화면에서 취소할 수 없습니다." }, { status: 409 });
+  if (!enrollment || enrollment.request_type !== "custom" ||
+      (profile.role === "parent" && enrollment.child_id === null) ||
+      (profile.role === "student" && enrollment.child_id !== null)) {
+    return NextResponse.json({ error: "본인의 맞춤 수강신청이 아닙니다." }, { status: 404 });
   }
-
-  const [payments, enrollments] = await Promise.all([
-    admin.from("enrollment_payments").select("id").eq("enrollment_request_id", requestId).limit(1),
-    admin.from("enrollments").select("id").eq("source_enrollment_request_id", requestId).limit(1),
-  ]);
-  if (payments.error || enrollments.error) {
-    return NextResponse.json({ error: "결제 및 수강 상태 확인에 실패했습니다. 취소하지 않았습니다." }, { status: 500 });
-  }
-  if ((payments.data?.length ?? 0) > 0 || (enrollments.data?.length ?? 0) > 0) {
-    return NextResponse.json({ error: "결제 또는 수강 배정 정보가 있어 고객센터를 통해 처리해야 합니다." }, { status: 409 });
+  if (!["pending", "approved"].includes(enrollment.status)) {
+    return NextResponse.json({ error: "이미 종료된 신청입니다. 신청 내역을 새로고침해 주세요." }, { status: 409 });
   }
 
-  const now = new Date().toISOString();
-  const note = [existing.admin_note, `[${now}] 신청자 직접 취소 (미배정·미결제)`]
-    .filter(Boolean).join("\n");
-  const { data: updated, error: updateError } = await admin.from("enrollment_requests")
-    .update({ status: "cancelled", admin_note: note, updated_at: now })
-    .eq("id", requestId)
-    .eq("applicant_user_id", user.id)
-    .eq("status", "pending")
-    .is("assigned_teacher_user_id", null)
-    .is("assignment_confirmed_at", null)
-    .select("id").maybeSingle();
-
-  if (updateError) {
-    return NextResponse.json({ error: "취소 처리 중 오류가 발생했습니다." }, { status: 500 });
+  // One transaction also invalidates ready Toss orders and removes held slots.
+  // It refuses cancellation when payment is requested/confirming/paid or
+  // when an actual enrollment or paid reservation exists.
+  const { data, error } = await admin.rpc("cancel_unpaid_enrollment_request", {
+    p_request_id: requestId,
+    p_actor: user.id,
+    p_reason: "신청자 요청: 결제 전 맞춤 수강신청 취소 및 재신청",
+  });
+  if (error) {
+    console.error("[ENROLLMENT CANCEL] transaction refused", {
+      requestId, code: error.code, message: error.message,
+    });
+    return NextResponse.json({
+      error: error.code === "P0001"
+        ? error.message
+        : "결제·수업 상태를 확인하거나 취소하는 중 오류가 발생했습니다. 신청 상태는 변경하지 않았습니다.",
+    }, { status: error.code === "P0001" ? 409 : 500 });
   }
-  if (!updated) {
-    return NextResponse.json({ error: "신청 상태가 변경되었습니다. 새로고침 후 확인해 주세요." }, { status: 409 });
-  }
-  return NextResponse.json({ success: true, status: "cancelled" });
+  return NextResponse.json(data);
 }
