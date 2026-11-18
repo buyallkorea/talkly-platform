@@ -17,7 +17,7 @@ export default function TuitionConsentPanel({
     <section aria-labelledby="tuition-consent-heading" style={{ marginTop: 18, padding: 17, borderRadius: 14, border: "1px solid #6485b6", background: "#18335c" }}>
       <h3 id="tuition-consent-heading" style={{ fontSize: 17, margin: "0 0 8px", color: "white" }}>수강료 결제 전 필수 확인사항</h3>
       <p style={{ color: "#d5e4f9", fontSize: 12, lineHeight: 1.7, margin: "0 0 12px" }}>
-        두 항목을 확인·동의해 주세요. 하나라도 미확인·미동의 상태면 결제를 진행할 수 없습니다.
+        세 항목을 확인·동의해 주세요. 하나라도 미확인·미동의 상태면 결제를 진행할 수 없습니다.
       </p>
       {TUITION_CONSENT_ITEMS.map((item) => (
         <fieldset key={item.key} disabled={disabled} style={{ margin: "0 0 13px", padding: "12px 0 15px", border: 0, borderBottom: "1px solid #506b92", minWidth: 0 }}>
