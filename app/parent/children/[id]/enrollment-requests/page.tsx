@@ -951,6 +951,15 @@ export default async function ParentEnrollmentRequestsPage({
                 돌아가기
               </Link>
 
+              {currentRequest && ["pending", "approved"].includes(currentRequest.status) &&
+                !alreadyPaid && !awaitingPaymentConfirmation && (
+                  <PendingRequestCancelButton
+                    requestId={currentRequest.id}
+                    applicationNumber={currentRequest.application_number}
+                    hasAssignedTeacher={assigned}
+                    reapplyHref={`/parent/children/${child.id}/enrollment`}
+                  />
+                )}
               {(assigned || (payFirstPending && !alreadyPaid && !awaitingPaymentConfirmation)) ? (
                 <Link
                   href={`/parent/children/${child.id}/enrollment-requests/${currentRequest.id}`}
@@ -1015,9 +1024,6 @@ export default async function ParentEnrollmentRequestsPage({
               )}
             </div>
           </>
-        )}
-        {currentRequest?.status === "pending" && !assigned && !alreadyPaid && !awaitingPaymentConfirmation && (
-          <PendingRequestCancelButton requestId={currentRequest.id} applicationNumber={currentRequest.application_number} reapplyHref={`/parent/children/${child.id}/enrollment`} />
         )}
         {currentRequest && !assigned && <TossReviewInfo requestId={currentRequest.id} applicationNumber={currentRequest.application_number} />}
       </div>
