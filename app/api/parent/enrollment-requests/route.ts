@@ -20,6 +20,7 @@ type CustomRequestBody = {
   preferredTimes: Record<string, string>;
   preferredTimeCandidates?: string[];
   teacherPreferenceType: "any" | "specific";
+  checkoutMode?: "direct" | "consultation";
   pricingCategory?: TuitionRegion;
   durationMonths?: number;
   preferredTeacherUserId?: string | null;
@@ -774,7 +775,7 @@ export async function POST(
           "enrollment_requests"
         )
         .select(
-          "id, status"
+          "id, status, application_number"
         )
         .eq(
           "applicant_user_id",
@@ -817,7 +818,7 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            `이미 처리 중인 맞춤 수강신청 #${existingCustom.id}이 있습니다. 신청 내역에서 기존 신청을 확인하거나 미결제·미배정 신청을 취소한 뒤 다시 신청해 주세요.`,
+            `이미 처리 중인 맞춤 수강신청 ${existingCustom.application_number ?? existingCustom.id}이 있습니다. 신청 내역에서 기존 신청을 확인하거나 미결제·미배정 신청을 취소한 뒤 다시 신청해 주세요.`,
           existingRequestId: existingCustom.id,
         },
         {
@@ -909,6 +910,8 @@ export async function POST(
 
         status:
           "pending",
+
+        checkout_mode: body.checkoutMode === "direct" ? "direct" : "consultation",
 
         assigned_teacher_user_id:
           null,

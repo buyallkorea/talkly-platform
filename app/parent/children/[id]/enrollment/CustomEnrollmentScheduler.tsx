@@ -782,36 +782,12 @@ export default function CustomEnrollmentScheduler({
     );
 
     try {
-      let matchedTeacherId: string | null = teacherMode === "specific" ? selectedTeacherId : null;
-      let selectedStartTime = preferredTime;
-      if (teacherMode === "any") {
-        // Lookup is intentionally delayed until checkout: no intermediate 0-teacher screen.
-        const slotsByDay = await Promise.all(selectedDays.map(async (day) => {
-          const date = getNextDateForWeekday({ baseDateText: startDate, weekday: day });
-          if (!date) throw new Error("수업 날짜를 확인할 수 없습니다.");
-          const response = await fetch("/api/parent/teacher-availability", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ date, durationMinutes }),
-          });
-          const data = (await response.json()) as AvailabilityResponse;
-          if (!response.ok) throw new Error(data.error || "강사 가능시간을 확인할 수 없습니다.");
-          return data.availableTeachers ?? [];
-        }));
-        const firstDay = slotsByDay[0] ?? [];
-        for (const candidate of preferredTimeChoices) {
-          const candidateTeacher = firstDay.find((teacher) =>
-            tuitionRegionForNationality(teacher.nationality) === preferredRegion &&
-            slotsByDay.every((dayTeachers) => dayTeachers.some((item) =>
-              item.teacherUserId === teacher.teacherUserId && item.availableTimes.includes(candidate)))
-          );
-          if (candidateTeacher) {
-            matchedTeacherId = candidateTeacher.teacherUserId;
-            selectedStartTime = candidate;
-            break;
-          }
-        }
-        if (!matchedTeacherId) selectedStartTime = preferredTimeChoices[0];
-      }
+      // 관리자 추천강사는 결제 후 관리자가 배정합니다.
+      // 추천 신청 시에는 강사를 자동 검색·선점하지 않습니다.
+      const matchedTeacherId: string | null =
+        teacherMode === "specific" ? selectedTeacherId : null;
+      const selectedStartTime =
+        teacherMode === "any" ? preferredTimeChoices[0] : preferredTime;
 
       const response =
         await fetch(
@@ -849,6 +825,7 @@ export default function CustomEnrollmentScheduler({
                     )
                   ),
                 preferredTimeCandidates: teacherMode === "any" ? preferredTimeChoices : [],
+                checkoutMode,
                 teacherPreferenceType:
                   teacherMode,
                 preferredTeacherUserId:
@@ -881,9 +858,12 @@ export default function CustomEnrollmentScheduler({
           return;
         }
         if (!assignedTeacherId) {
-          // Payment cannot safely be collected until a teaching slot is allocated.
-          setSuccessMessage("신청 내용을 저장했습니다. 관리자가 수업시간을 확정하면 결제할 수 있습니다.");
-          router.push(resolvedEnrollmentRequestsHref);
+          // The paid-first recommendation flow uses its own no-assignment checkout.
+          setSuccessMessage("수강신청이 접수되었습니다. 결제 후 관리자가 강사와 시간을 배정합니다.");
+          const href = isDirectStudent
+            ? `/student/enrollment-requests/${result.requestId}`
+            : `/parent/children/${childId}/enrollment-requests/${result.requestId}`;
+          router.push(href);
           return;
         }
         const directResponse = await fetch(

@@ -19,6 +19,7 @@ type PageProps = {
 
 type EnrollmentRequestRow = {
   id: number;
+  application_number: string;
   applicant_user_id: string;
   child_id: number | null;
   course_id: number;
@@ -221,6 +222,7 @@ export default async function AdminEnrollmentRequestDetailPage({
     )
     .select(`
       id,
+      application_number,
       applicant_user_id,
       child_id,
       course_id,
@@ -436,6 +438,15 @@ export default async function AdminEnrollmentRequestDetailPage({
       enrollmentRequest
     );
 
+  const { data: latestPayment, error: paymentLookupError } = await adminClient
+    .from("enrollment_payments")
+    .select("id,status,amount,approved_at")
+    .eq("enrollment_request_id", enrollmentRequest.id)
+    .in("status", ["paid", "confirming", "ready"])
+    .order("created_at", { ascending: false })
+    .limit(1).maybeSingle();
+  if (paymentLookupError) throw new Error("신청의 결제 상태를 확인하지 못했습니다.");
+
   const hasAssignment =
     Boolean(
       enrollmentRequest.assigned_teacher_user_id
@@ -501,8 +512,8 @@ export default async function AdminEnrollmentRequestDetailPage({
                 "0.12em",
             }}
           >
-            ENROLLMENT REQUEST #
-            {enrollmentRequest.id}
+            ENROLLMENT REQUEST
+            {enrollmentRequest.application_number ?? enrollmentRequest.id}
           </div>
 
           <h1
@@ -678,16 +689,27 @@ export default async function AdminEnrollmentRequestDetailPage({
 
             <HeaderBadge
               label="신청번호"
-              value={`#${enrollmentRequest.id}`}
+              value={enrollmentRequest.application_number ?? String(enrollmentRequest.id)}
             />
           </div>
         </div>
       </section>
 
+      {latestPayment?.status === "paid" && (
+        <section style={{ marginTop: 18, padding: 22, background: "#f0fdf4", borderRadius: 14, border: "1px solid #bbf7d0" }}>
+          <h2 style={{ color: "#166534", margin: "0 0 8px" }}>수강료 결제 완료 · {hasAssignment ? "강사 배정 완료" : "강사 배정 대기"}</h2>
+          <p style={{ margin: 0, color: "#166534", lineHeight: 1.7 }}>
+            결제 금액: {Number(latestPayment.amount).toLocaleString("ko-KR")}원.
+            {hasAssignment ? " 수업 활성화 여부를 수강내역에서 확인해 주세요." :
+              " 학생 수준과 희망 시간을 확인하고 강사 배정 기능에서 강사를 선택해 주세요. 배정 확정 시 수강 등록을 생성합니다."}
+          </p>
+        </section>
+      )}
       <RequestStatusControls
         requestId={enrollmentRequest.id}
         status={enrollmentRequest.status}
         hasAssignment={hasAssignment}
+        hasPayment={Boolean(latestPayment)}
       />
 
       {/* ===============================================
@@ -891,6 +913,7 @@ export default async function AdminEnrollmentRequestDetailPage({
         requestId={
           enrollmentRequest.id
         }
+        applicationNumber={enrollmentRequest.application_number}
         preferredDays={
           enrollmentRequest.preferred_days ??
           []

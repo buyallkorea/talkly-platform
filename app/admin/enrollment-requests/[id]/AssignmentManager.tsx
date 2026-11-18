@@ -26,6 +26,7 @@ type AvailabilityResponse = {
 
 type Props = {
   requestId: number;
+  applicationNumber?: string | null;
   preferredDays: string[];
   preferredTimes: Record<string, string>;
   startDate: string | null;
@@ -159,6 +160,7 @@ function firstPreferredTime(
 
 export default function AssignmentManager({
   requestId,
+  applicationNumber,
   preferredDays,
   preferredTimes,
   startDate,
@@ -590,7 +592,7 @@ export default function AssignmentManager({
 
     const confirmed =
       window.confirm(
-        `수강신청 #${requestId}의 강사와 일정을 확정하시겠습니까?\n\n강사: ${selectedTeacher?.display_name ?? "선택 강사"}\n일정: ${assignedDays
+        `수강신청 ${applicationNumber ?? requestId}의 강사와 일정을 확정하시겠습니까?\n\n강사: ${selectedTeacher?.display_name ?? "선택 강사"}\n일정: ${assignedDays
           .map(
             (day) =>
               `${DAY_LABELS[day] ?? day}`
@@ -643,10 +645,15 @@ export default function AssignmentManager({
       }
 
       setSuccessMessage(
-        hasCurrentAssignment
-          ? "강사와 수업 일정이 변경되었습니다."
-          : "강사와 수업 일정이 배정되었습니다. 아직 enrollment와 class_sessions는 생성하지 않았습니다."
+        result.enrollmentActivationPending
+          ? "강사 배정은 저장됐지만 수업 생성은 추가 확인이 필요합니다. 관리자에서 수강내역을 확인해 주세요."
+          : result.enrollment
+            ? "강사 배정과 결제된 수강의 활성화가 완료되었습니다."
+            : hasCurrentAssignment
+              ? "강사와 수업 일정이 변경되었습니다."
+              : "강사와 수업 일정이 배정되었습니다."
       );
+      if (result.warning) setErrorMessage(result.warning);
 
       setIsEditingAssignment(
         false

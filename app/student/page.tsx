@@ -82,7 +82,7 @@ export default async function StudentPage() {
 
   const { data: latestEnrollmentRequest } = await createAdminClient()
     .from("enrollment_requests")
-    .select("id, status, lessons_per_week, preferred_days, preferred_time_candidates, created_at")
+    .select("id, application_number, status, lessons_per_week, preferred_days, preferred_time_candidates, created_at")
     .eq("applicant_user_id", user.id)
     .is("child_id", null)
     .eq("request_type", "custom")
@@ -478,7 +478,7 @@ export default async function StudentPage() {
               <strong style={{ color: "var(--talkly-navy)" }}>수강신청 내역</strong>
               <p style={{ margin: "5px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
                 {latestEnrollmentRequest
-                  ? `최근 신청 #${latestEnrollmentRequest.id} · ${latestEnrollmentRequest.status === "pending" ? "강사 배정 대기" : "신청 진행 중"} · 주 ${latestEnrollmentRequest.lessons_per_week}회${Array.isArray(latestEnrollmentRequest.preferred_time_candidates) && latestEnrollmentRequest.preferred_time_candidates.length > 0 ? ` · 희망시간 ${latestEnrollmentRequest.preferred_time_candidates.join(" / ")}` : ""}`
+                  ? `최근 신청번호 ${latestEnrollmentRequest.application_number ?? latestEnrollmentRequest.id} · ${latestEnrollmentRequest.status === "pending" ? "강사 배정 대기" : "신청 진행 중"} · 주 ${latestEnrollmentRequest.lessons_per_week}회${Array.isArray(latestEnrollmentRequest.preferred_time_candidates) && latestEnrollmentRequest.preferred_time_candidates.length > 0 ? ` · 희망시간 ${latestEnrollmentRequest.preferred_time_candidates.join(" / ")}` : ""}`
                   : "수강신청 후 여기에서 신청내역과 결제 진행 상태를 확인할 수 있습니다."}
               </p>
             </div>

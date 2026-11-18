@@ -1,10 +1,10 @@
 /** Exact wording shown at checkout; changes require a new immutable version. */
-export const TUITION_CONSENT_VERSION = "2026-11-18-v3";
+export const TUITION_CONSENT_VERSION = "2026-11-18-v4";
 export const TUITION_CONSENT_ITEMS = [
   {
     key: "discount",
     label: "① 수강 조건 및 장기 수강 할인금액 확인",
-    text: "강사와 주당 수업 횟수, 수업 시간 및 총 수강기간을 확인하였고, 최종 결제예정금액은 선택한 수강기간의 할인율이 적용된 금액임을 확인하였습니다.",
+    text: "선택한 강사 유형과 주당 수업 횟수, 희망시간, 총 수강기간 및 최종 결제금액을 확인하였습니다. 관리자 추천강사는 결제 완료 후 학생의 수준과 강사 근무시간을 검토해 배정하며, 배정과 수업 일정 확정 전에는 수업이 시작되지 않습니다.",
     positive: "확인",
     negative: "미확인",
   },

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { activatePaidEnrollment } from "@/lib/enrollment/activate-paid-enrollment";
 
 type RouteContext = {
   params: Promise<{
@@ -350,7 +351,12 @@ export async function POST(
     .select(`
       id,
       request_type,
-      status
+      status,
+      checkout_mode,
+      teacher_preference_type,
+      pricing_category,
+      assigned_teacher_user_id,
+      assignment_confirmed_at
     `)
     .eq(
       "id",
@@ -419,7 +425,8 @@ export async function POST(
     .select(`
       user_id,
       display_name,
-      is_active
+      is_active,
+      nationality
     `)
     .eq(
       "user_id",
@@ -444,6 +451,41 @@ export async function POST(
         status: 400,
       }
     );
+  }
+
+  // Prepaid recommendation: keep the exact purchased pricing category unchanged.
+  // A changing region after payment would silently substitute a different product.
+  const { data: paymentRows, error: paymentError } = await adminClient
+    .from("enrollment_payments")
+    .select("id,status,created_at")
+    .eq("enrollment_request_id", requestId)
+    .in("status", ["ready", "confirming", "paid"])
+    .order("created_at", { ascending: false })
+    .limit(5);
+  if (paymentError) {
+    return NextResponse.json({ error: "결제 상태를 조회하지 못했습니다." }, { status: 500 });
+  }
+  const currentPayment = paymentRows?.find((row) => row.status === "paid");
+  if (paymentRows?.some((row) => row.status === "confirming" || row.status === "ready") && !currentPayment) {
+    return NextResponse.json({ error: "결제 처리 중인 주문이 있습니다. 결제 상태를 먼저 확인해 주세요." }, { status: 409 });
+  }
+  if (currentPayment) {
+    if (enrollmentRequest.assigned_teacher_user_id || enrollmentRequest.assignment_confirmed_at) {
+      return NextResponse.json({ error: "결제 후 이미 배정된 수업은 별도 일정 변경 절차를 이용해 주세요." }, { status: 409 });
+    }
+    if (enrollmentRequest.teacher_preference_type !== "any" ||
+        enrollmentRequest.checkout_mode !== "direct") {
+      return NextResponse.json({ error: "기존 결제 주문과 배정 방식이 일치하지 않습니다." }, { status: 409 });
+    }
+    const nationality = String(teacher.nationality ?? "").toLowerCase();
+    const region = nationality.includes("philipp") || nationality.includes("필리핀") ? "philippines"
+      : ["미국", "캐나다", "usa", "us", "american", "canada", "canadian", "united states"].some((x) => nationality.includes(x))
+        ? "special" : "western";
+    if (region !== enrollmentRequest.pricing_category) {
+      return NextResponse.json({
+        error: "결제한 강사 지역과 배정 강사의 지역이 다릅니다. 동일한 가격구분의 강사를 선택해 주세요."
+      }, { status: 409 });
+    }
   }
 
   const assignedTimes =
@@ -527,9 +569,18 @@ export async function POST(
     );
   }
 
-  return NextResponse.json({
-    success: true,
-    assignment:
-      updated,
-  });
+  if (currentPayment) {
+    // Paid recommendations become actual enrollments only after confirmed admin assignment.
+    try {
+      const activated = await activatePaidEnrollment(currentPayment.id);
+      return NextResponse.json({ success: true, assignment: updated, enrollment: activated });
+    } catch (cause) {
+      console.error("[ADMIN ASSIGN] paid enrollment activation pending", cause);
+      return NextResponse.json({
+        success: true, assignment: updated, enrollmentActivationPending: true,
+        warning: "강사 배정은 저장되었지만 결제된 수업의 활성화가 완료되지 않았습니다. 수강내역과 오류 로그를 확인해 주세요."
+      });
+    }
+  }
+  return NextResponse.json({ success: true, assignment: updated });
 }
