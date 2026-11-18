@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase-admin";
 
 type RequestRow = {
   id: number;
+  application_number: string;
   applicant_user_id: string;
   child_id: number | null;
   course_id: number;
@@ -262,6 +263,7 @@ export default async function AdminEnrollmentRequestsPage({
     )
     .select(`
       id,
+      application_number,
       applicant_user_id,
       child_id,
       course_id,
@@ -1186,7 +1188,7 @@ export default async function AdminEnrollmentRequestsPage({
                               900,
                           }}
                         >
-                          #{row.id}
+                          {row.application_number ?? row.id}
                         </div>
 
                         <div
