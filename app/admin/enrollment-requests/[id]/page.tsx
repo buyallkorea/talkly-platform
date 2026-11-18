@@ -684,6 +684,12 @@ export default async function AdminEnrollmentRequestDetailPage({
         </div>
       </section>
 
+      <RequestStatusControls
+        requestId={enrollmentRequest.id}
+        status={enrollmentRequest.status}
+        hasAssignment={hasAssignment}
+      />
+
       {/* ===============================================
           REQUESTED CONDITIONS
       =============================================== */}
@@ -921,12 +927,6 @@ export default async function AdminEnrollmentRequestDetailPage({
         currentAssignedTimes={
           enrollmentRequest.assigned_times
         }
-      />
-
-      <RequestStatusControls
-        requestId={enrollmentRequest.id}
-        status={enrollmentRequest.status}
-        hasAssignment={hasAssignment}
       />
 
       {/* ===============================================
