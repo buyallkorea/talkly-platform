@@ -713,7 +713,7 @@ export default function CustomEnrollmentScheduler({
       setHasSearched(true);
 
       if (
-        common.length === 0
+        common.length === 0 && checkoutMode === "direct"
       ) {
         const scheduleText =
           selectedDays
@@ -738,7 +738,7 @@ export default function CustomEnrollmentScheduler({
       if (requestId === matchingRequestId.current) setSearching(false);
     }
   }, [selectedCourseId, startDate, lessonsPerWeek, selectedDays, allPreferredTimesSelected,
-      teacherMode, selectedTeacherId, durationMinutes, preferredTime, preferredRegion]);
+      teacherMode, selectedTeacherId, durationMinutes, preferredTime, preferredRegion, checkoutMode]);
 
   // Schedule and teacher changes refresh the available teachers automatically.
   useEffect(() => {
