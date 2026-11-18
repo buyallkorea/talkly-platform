@@ -7,10 +7,12 @@ export default function PendingRequestCancelButton({
   requestId,
   applicationNumber,
   reapplyHref,
+  hasAssignedTeacher = false,
 }: {
   requestId: number;
   applicationNumber?: string | null;
   reapplyHref: string;
+  hasAssignedTeacher?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -18,7 +20,7 @@ export default function PendingRequestCancelButton({
 
   async function cancel() {
     if (!window.confirm(
-      `수강신청 ${applicationNumber ?? requestId}를 취소하고 다시 신청하시겠습니까?\n기존 신청 내용은 보관되며, 희망조건은 다시 입력해야 합니다.\n배정·결제 전 대기 신청만 취소할 수 있습니다.`
+      `수강신청 ${applicationNumber ?? requestId}를 취소하고 다시 신청하시겠습니까?\n기존 신청 기록은 보존되지만 미결제 결제 주문과 임시 강사예약은 취소됩니다.\n새로운 신청서에서 희망 조건을 다시 입력해야 합니다.`
     )) return;
     setBusy(true);
     setError("");
@@ -40,16 +42,14 @@ export default function PendingRequestCancelButton({
   }
 
   return (
-    <div style={{ marginTop: 16, textAlign: "right" }}>
-      <p style={{ fontSize: 12, color: "#667085", lineHeight: 1.6 }}>
-        신청 조건을 바꾸려면 결제 전 신청을 취소한 뒤 다시 작성할 수 있습니다.
-      </p>
-      {error && <p role="alert" style={{ color: "#b42318", fontSize: 12 }}>{error}</p>}
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      {error && <p role="alert" style={{ margin: "0 0 8px", width: "100%", color: "#b42318", fontSize: 12 }}>{error}</p>}
       <button type="button" onClick={cancel} disabled={busy}
-        style={{ padding: "11px 16px", borderRadius: 9, color: "#b42318",
-          background: "#fff", border: "1px solid #fecdca", fontSize: 13,
-          fontWeight: 800, cursor: busy ? "wait" : "pointer" }}>
-        {busy ? "취소 처리 중..." : "기존 신청 취소 후 다시 신청"}
+        title={hasAssignedTeacher ? "결제 전 임시 강사배정과 결제 준비 주문을 해제하고 다시 신청합니다." : "기존 미결제 수강신청을 취소한 뒤 다시 신청합니다."}
+        style={{ minHeight: 50, padding: "0 18px", borderRadius: 12, color: "#b42318",
+          background: "#fff", border: "1px solid #fda29b", fontSize: 13,
+          fontWeight: 900, cursor: busy ? "wait" : "pointer" }}>
+        {busy ? "신청 취소 중..." : "신청 취소 후 다시 신청"}
       </button>
     </div>
   );
