@@ -10,6 +10,7 @@ test("recommended teacher is not auto-selected or reserved by applicant", () => 
   assert.match(ui, /teacherMode === "any" \? preferredTimeChoices\[0\]/);
   assert.match(ui, /결제 후 관리자가 강사/);
   assert.match(ui, /router\.push\(href\)/);
+  assert.match(ui, /checkoutMode,/);
   assert.doesNotMatch(ui, /const candidateTeacher = firstDay\.find/);
   assert.match(ui, /direct-checkout/); // Specific teacher path still has checkout.
 });
@@ -38,6 +39,8 @@ test("payment preparation and confirmation permit only unassigned pending direct
     assert.match(source, /!awaitingAdminAssignment/);
   }
   assert.match(pricing, /preAssignment/);
+  const enrollmentApi = read("app/api/parent/enrollment-requests/route.ts");
+  assert.match(enrollmentApi, /checkout_mode: body.checkoutMode === "direct"/);
   assert.match(pricing, /\.in\("status", \["paid", "confirming"\]\)/);
   assert.match(prepare, /assignmentPending: awaitingAdminAssignment/);
   assert.match(confirm, /assignmentPending: true/);
@@ -51,7 +54,7 @@ test("admin paid allocation checks teacher pricing and triggers class activation
   assert.match(route, /\.from\("enrollment_payments"\)/);
   assert.match(route, /region !== enrollmentRequest\.pricing_category/);
   assert.match(route, /activatePaidEnrollment\(currentPayment\.id\)/);
-  assert.match(route, /status: "approved"/);
+  assert.match(route, /status:\\s*"approved"/);
   assert.match(detail, /결제 완료/);
   assert.match(detail, /hasPayment=\{Boolean\(latestPayment\)\}/);
 });
