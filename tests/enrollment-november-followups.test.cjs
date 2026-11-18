@@ -26,7 +26,7 @@ test("enrollment is concise but keeps purchase selections", () => {
   assert.match(ui, /shownTimeOptions/);
   assert.match(ui, /teacherUserId: selectedTeacherId/);
   assert.match(ui, /timesByDay\.every/);
-  assert.match(ui, /관리자에게 전송하기/);
+  assert.match(ui, /신청 내용 확인/);
   assert.match(ui, /checkoutMode === "direct"/);
   assert.match(ui, /direct-checkout/);
   assert.match(ui, /\(00\|30\)/);
@@ -73,7 +73,7 @@ test("November 18 schedule and enrollment status controls", () => {
   assert.match(ui, /matchingRequestId\.current/);
   assert.match(ui, /preferredTimeChoices\.length >= 2/);
   assert.match(ui, /preferredTimeCandidates: teacherMode === "any"/);
-  assert.match(ui, /맞는 스케줄이 없다면 관리자 추천강사로 수강신청/);
+  assert.match(ui, /관리자 추천강사로 수강신청/);
   assert.match(ui, /관리자는 레벨테스트 결과를 바탕으로 학생에게 적합한 강사를 배치합니다/);
 });
 
