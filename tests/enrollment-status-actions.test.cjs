@@ -12,7 +12,7 @@ test("admin detail prominently renders reject/cancel actions before scheduling",
   const controlOffset = page.indexOf("<RequestStatusControls");
   const assignmentOffset = page.indexOf("<AssignmentManager");
   assert(controlOffset > 0 && controlOffset < assignmentOffset);
-  assert.match(controls, /if \(status !== "pending" \|\| hasAssignment\) return null/);
+  assert.match(controls, /if \(status !== "pending" \|\| hasAssignment \|\| hasPayment\) return null/);
   assert.match(controls, /신청 취소/);
   assert.match(controls, /신청 반려/);
   assert.match(controls, /처리 사유 \(필수\)/);
