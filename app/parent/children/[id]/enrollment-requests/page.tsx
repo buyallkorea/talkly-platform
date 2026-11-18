@@ -25,6 +25,7 @@ type EnrollmentRequestRow = {
   lessons_per_week: number | null;
   preferred_days: string[] | null;
   preferred_times: Record<string, string> | null;
+  preferred_time_candidates: string[] | null;
   assigned_teacher_user_id: string | null;
   assigned_days: string[] | null;
   assigned_times: Record<string, string> | null;
@@ -164,6 +165,7 @@ export default async function ParentEnrollmentRequestsPage({
       lessons_per_week,
       preferred_days,
       preferred_times,
+      preferred_time_candidates,
       assigned_teacher_user_id,
       assigned_days,
       assigned_times,
@@ -291,13 +293,11 @@ export default async function ParentEnrollmentRequestsPage({
         )
       : "";
 
-  const preferredSchedule =
-    currentRequest
-      ? scheduleText(
-          currentRequest.preferred_days,
-          currentRequest.preferred_times
-        )
-      : "";
+  const preferredSchedule = currentRequest
+    ? (currentRequest.preferred_time_candidates?.length
+      ? `${(currentRequest.preferred_days ?? []).map((day) => DAY_LABELS[day] ?? day).join(" · ")} · 희망시간 ${currentRequest.preferred_time_candidates.join(" / ")}`
+      : scheduleText(currentRequest.preferred_days, currentRequest.preferred_times))
+    : "";
 
   const durationMinutes =
     assigned
