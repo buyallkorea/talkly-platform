@@ -64,16 +64,19 @@ export default function TuitionPage() {
         </section>
 
         <section aria-label="단기집중코스 수강료" style={{ marginTop: 16, padding: "20px clamp(16px,3vw,24px)", background: "#fff", border: "1px solid #e1e9f3", borderRadius: 18 }}>
-          <h2 style={{ fontSize: 21, color: "#0A1F44", margin: "0 0 10px" }}>단기집중코스 (25분)</h2>
+          <h2 style={{ fontSize: 21, color: "#0A1F44", margin: "0 0 10px" }}>단기집중코스 (30분)</h2>
+          <p style={{ margin: "0 0 14px", fontSize: 13, color: "#526277", lineHeight: 1.75 }}>영어토론대회·공인영어시험·영어면접 등 필요한 주제에 맞춰 30분 단위로 수업합니다.</p>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "center" }}>
               <thead><tr style={{ background: "#0A1F44", color: "#fff" }}>
+                <th scope="col" style={{ padding: 12 }}>교육 내용</th>
                 <th scope="col" style={{ padding: 12 }}>수업 시간</th>
                 <th scope="col" style={{ padding: 12 }}>회당 수강료</th>
                 <th scope="col" style={{ padding: 12 }}>선택 가능한 횟수</th>
               </tr></thead>
               <tbody><tr style={{ background: "#f2f6fd", color: "#1d2939" }}>
-                <td style={{ border: "1px solid #d7e1ef", padding: 12 }}>25분</td>
+                <td style={{ border: "1px solid #d7e1ef", padding: 12 }}>영어토론대회 · 공인영어시험 · 영어면접 등</td>
+                <td style={{ border: "1px solid #d7e1ef", padding: 12 }}>30분</td>
                 <td style={{ border: "1px solid #d7e1ef", padding: 12 }}>{won(40000)}</td>
                 <td style={{ border: "1px solid #d7e1ef", padding: 12 }}>1~20회</td>
               </tr></tbody>
