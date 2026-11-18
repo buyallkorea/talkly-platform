@@ -106,7 +106,7 @@ export default function TuitionCalculator({
         ) : intensive ? (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 14, color: "#475467" }}>
-              <span>단기집중코스 25분 · {intensiveCount}회</span><strong>회당 40,000원</strong>
+              <span>단기집중코스 30분 · {intensiveCount}회</span><strong>회당 40,000원</strong>
             </div>
             <div style={{ color: "#667085", fontSize: 12, marginTop: 14 }}>총 예상 수강료 (할인 없음)</div>
             <strong style={{ display: "block", color: "#0A1F44", fontSize: 30 }}>{won(intensiveCount * 40000)}</strong>

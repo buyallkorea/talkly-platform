@@ -550,12 +550,7 @@ export default async function ParentChildEnrollmentPage({
             lineHeight: 1.75,
           }}
         >
-          원하는 수업 조건과
-          희망시간을 먼저 선택하면,
-          실제 강사 근무시간과
-          예외일정 및 이미 배정된
-          수업을 반영하여 가능한
-          강사를 찾아드립니다.
+          원하는 수업 조건과 주당 수업 횟수, 수강기간, 요일과 희망시간을 선택해 주세요.
         </p>
 
         <div
