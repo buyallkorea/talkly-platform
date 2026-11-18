@@ -19,6 +19,7 @@ type PageProps = {
 
 type EnrollmentRequestRow = {
   id: number;
+  application_number: string;
   applicant_user_id: string;
   child_id: number | null;
   course_id: number;
@@ -221,6 +222,7 @@ export default async function AdminEnrollmentRequestDetailPage({
     )
     .select(`
       id,
+      application_number,
       applicant_user_id,
       child_id,
       course_id,
@@ -501,8 +503,8 @@ export default async function AdminEnrollmentRequestDetailPage({
                 "0.12em",
             }}
           >
-            ENROLLMENT REQUEST #
-            {enrollmentRequest.id}
+            ENROLLMENT REQUEST
+            {enrollmentRequest.application_number ?? enrollmentRequest.id}
           </div>
 
           <h1
@@ -678,7 +680,7 @@ export default async function AdminEnrollmentRequestDetailPage({
 
             <HeaderBadge
               label="신청번호"
-              value={`#${enrollmentRequest.id}`}
+              value={enrollmentRequest.application_number ?? String(enrollmentRequest.id)}
             />
           </div>
         </div>
