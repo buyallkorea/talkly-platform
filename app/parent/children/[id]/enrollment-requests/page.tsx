@@ -18,6 +18,9 @@ type PageProps = {
 
 type EnrollmentRequestRow = {
   id: number;
+  application_number: string;
+  teacher_preference_type: string;
+  checkout_mode: string;
   child_id: number;
   course_id: number;
   request_type: string;
@@ -158,6 +161,9 @@ export default async function ParentEnrollmentRequestsPage({
     .from("enrollment_requests")
     .select(`
       id,
+      application_number,
+      teacher_preference_type,
+      checkout_mode,
       child_id,
       course_id,
       request_type,
@@ -285,6 +291,21 @@ export default async function ParentEnrollmentRequestsPage({
         currentRequest
           ?.assignment_confirmed_at
     );
+
+  const payFirstPending = Boolean(currentRequest &&
+    currentRequest.status === "pending" &&
+    currentRequest.checkout_mode === "direct" &&
+    currentRequest.teacher_preference_type === "any" && !assigned);
+  const { data: paymentRecord } = currentRequest
+    ? await adminClient.from("enrollment_payments")
+        .select("status,amount,approved_at")
+        .eq("enrollment_request_id", currentRequest.id)
+        .in("status", ["paid", "confirming"])
+        .order("created_at", { ascending: false })
+        .limit(1).maybeSingle()
+    : { data: null };
+  const alreadyPaid = paymentRecord?.status === "paid";
+  const awaitingPaymentConfirmation = paymentRecord?.status === "confirming";
 
   const assignedSchedule =
     currentRequest
@@ -651,10 +672,7 @@ export default async function ParentEnrollmentRequestsPage({
                         "13px",
                     }}
                   >
-                    신청 #
-                    {
-                      currentRequest.id
-                    }
+                    신청번호 {currentRequest.application_number ?? currentRequest.id}
                     {" · "}
                     접수{" "}
                     {formatDate(
@@ -797,10 +815,10 @@ export default async function ParentEnrollmentRequestsPage({
                       700,
                   }}
                 >
-                  TALKLY에서 실제 강사
-                  근무시간과 기존 수업
-                  일정을 확인하고
-                  있습니다.
+                  {alreadyPaid ? "수강료 결제 완료 · 관리자가 학생 수준과 강사 가능시간을 검토한 뒤 배정합니다." :
+                   awaitingPaymentConfirmation ? "결제 승인 처리 중입니다. 중복 결제하지 마세요." :
+                   payFirstPending ? "관리자 추천강사는 먼저 수강료를 결제한 뒤, 관리자가 강사를 배정합니다." :
+                   "TALKLY에서 실제 강사 근무시간과 기존 수업 일정을 확인하고 있습니다."}
                 </div>
               )}
             </section>
@@ -933,7 +951,7 @@ export default async function ParentEnrollmentRequestsPage({
                 돌아가기
               </Link>
 
-              {assigned ? (
+              {(assigned || (payFirstPending && !alreadyPaid && !awaitingPaymentConfirmation)) ? (
                 <Link
                   href={`/parent/children/${child.id}/enrollment-requests/${currentRequest.id}`}
                   style={{
@@ -998,7 +1016,7 @@ export default async function ParentEnrollmentRequestsPage({
             </div>
           </>
         )}
-        {currentRequest?.status === "pending" && !assigned && (
+        {currentRequest?.status === "pending" && !assigned && !alreadyPaid && !awaitingPaymentConfirmation && (
           <PendingRequestCancelButton requestId={currentRequest.id} reapplyHref={`/parent/children/${child.id}/enrollment`} />
         )}
         {currentRequest && !assigned && <TossReviewInfo requestId={currentRequest.id} />}
