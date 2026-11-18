@@ -342,6 +342,7 @@ export default function PaymentPreparation({
               answers: {
                 discount: consentAnswers.discount === "yes",
                 refund: consentAnswers.refund === "yes",
+                finalConfirmation: consentAnswers.finalConfirmation === "yes",
               },
               durationMonths: selectedMonths,
               displayedFinalPrice: finalPrice,
