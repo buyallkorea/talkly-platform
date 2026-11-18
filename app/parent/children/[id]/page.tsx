@@ -116,6 +116,12 @@ export default async function ChildDetailPage({
 
   const menuCards = [
     {
+      title: "수강신청 내역",
+      description: "희망 수업조건, 강사 배정 현황, 결제 진행 상태를 확인합니다.",
+      href: `/parent/children/${child.id}/enrollment-requests`,
+      label: "ENROLLMENT STATUS",
+    },
+    {
       title: "수업",
       description:
         "전체 수업 일정과 회차별 수업 정보를 확인합니다.",
