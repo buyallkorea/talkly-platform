@@ -389,11 +389,11 @@ export default function CustomEnrollmentScheduler({
   const shownTimeOptions = teacherMode === "specific"
     ? (specificTimesReady ? specificTeacherTimes?.times ?? [] : [])
     : timeOptions.filter((time) => {
-         const hour = Number(time.slice(0, 2));
-         return (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 23);
-       });
- 
-   useEffect(() => {
+        const hour = Number(time.slice(0, 2));
+        return (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 23);
+      });
+
+  useEffect(() => {
     if (teacherMode !== "specific" || !selectedTeacherId ||
         !startDate || selectedDays.length !== lessonsPerWeek) return;
     let cancelled = false;
@@ -912,7 +912,7 @@ export default function CustomEnrollmentScheduler({
       }}
     >
 
-<div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 14 }}>
+      <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 14 }}>
         <div>
           <FieldLabel>강사 구분</FieldLabel>
           <select aria-label="강사 구분" value={preferredRegion} style={fieldStyle}
@@ -1232,10 +1232,9 @@ export default function CustomEnrollmentScheduler({
           )}
         </div>
 
-        
         {teacherMode === "any" && (
           <p style={{ margin: "12px 0 0", fontSize: 12, lineHeight: 1.7, color: "#526277" }}>
-            관리자는 레벨테스트 결과를 바탕으로 학생에게 적합한 강사를 배치합니다.
+            레벨테스트 결과를 바탕으로 적합한 강사를 추천합니다. 현재 바로 결제를 선택하면 가능한 강사가 시스템에서 자동 배정됩니다.
             희망시간은 오전 7시~11시 또는 오후 3시~밤 11시 범위에서 선택해 주세요.
           </p>
         )}
@@ -1567,7 +1566,7 @@ export default function CustomEnrollmentScheduler({
                   1.7,
               }}
             >
-              관리자 추천강사 신청 시 희망시간에 가능한 강사 중 수업 일정에 맞는 강사가 배정됩니다.
+              바로 결제 시 아래 강사 중 시스템이 가능한 강사를 자동 배정합니다. 관리자 상담을 선택하면 관리자가 배정을 검토합니다.
             </div>
           )}
 
