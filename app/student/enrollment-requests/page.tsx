@@ -977,9 +977,9 @@ export default async function StudentEnrollmentRequestsPage() {
           </>
         )}
         {currentRequest?.status === "pending" && !assigned && !alreadyPaid && !awaitingPaymentConfirmation && (
-          <PendingRequestCancelButton requestId={currentRequest.id} reapplyHref="/student/enrollment" />
+          <PendingRequestCancelButton requestId={currentRequest.id} applicationNumber={currentRequest.application_number} reapplyHref="/student/enrollment" />
         )}
-        {currentRequest && !assigned && <TossReviewInfo requestId={currentRequest.id} />}
+        {currentRequest && !assigned && <TossReviewInfo requestId={currentRequest.id} applicationNumber={currentRequest.application_number} />}
       </div>
     </main>
   );
