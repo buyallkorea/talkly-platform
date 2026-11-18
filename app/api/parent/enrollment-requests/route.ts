@@ -528,7 +528,7 @@ export async function POST(
       preferredTimeCandidates.every((time) =>
         isTimeText(time) && configuredTimes.includes(time)) &&
       (preferredTimeCandidates.length === 0 ||
-        preferredDays.every((day) => preferredTimes[day] === preferredTimeCandidates[0]));
+        preferredDays.every((day) => preferredTimeCandidates.includes(preferredTimes[day])));
 
     if (!candidateTimesValid) {
       return NextResponse.json({ error: "관리자 추천강사는 희망시간을 2~3개 선택해 주세요." }, { status: 400 });
