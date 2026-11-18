@@ -154,7 +154,11 @@ export async function POST(
       course_id,
       status,
       checkout_mode,
+      teacher_preference_type,
       duration_months,
+      lesson_duration_minutes,
+      lessons_per_week,
+      preferred_days,
       assigned_teacher_user_id,
       assigned_days,
       assigned_lesson_duration_minutes,
@@ -208,33 +212,43 @@ export async function POST(
     );
   }
 
-  if (
-    !enrollmentRequest.assigned_teacher_user_id ||
-    !enrollmentRequest.assignment_confirmed_at ||
-    !enrollmentRequest.assigned_lesson_duration_minutes ||
-    !enrollmentRequest.assigned_lessons_per_week
-  ) {
-    return NextResponse.json(
-      {
-        error:
-          "강사와 수업 일정 배정이 완료된 후 결제할 수 있습니다.",
-      },
-      {
-        status: 409,
-      }
-    );
+  const preAssignment = enrollmentRequest.teacher_preference_type === "any" &&
+    enrollmentRequest.checkout_mode === "direct" &&
+    enrollmentRequest.status === "pending" &&
+    !enrollmentRequest.assigned_teacher_user_id &&
+    !enrollmentRequest.assignment_confirmed_at;
+  if (!preAssignment &&
+      (!enrollmentRequest.assigned_teacher_user_id ||
+       !enrollmentRequest.assignment_confirmed_at ||
+       !enrollmentRequest.assigned_lesson_duration_minutes ||
+       !enrollmentRequest.assigned_lessons_per_week)) {
+    return NextResponse.json({ error: "강사와 수업 일정 배정이 완료된 후 결제할 수 있습니다." }, { status: 409 });
   }
 
+  // A paid/confirming order must never be repriced while the administrator is assigning.
+  const paymentCheck = await adminClient.from("enrollment_payments")
+    .select("id")
+    .eq("enrollment_request_id", enrollmentRequestId)
+    .in("status", ["paid", "confirming"])
+    .limit(1);
+  if (paymentCheck.error) {
+    return NextResponse.json({ error: "기존 결제 상태를 확인할 수 없습니다." }, { status: 500 });
+  }
+  if (paymentCheck.data?.length) {
+    return NextResponse.json({ error: "이미 결제 처리된 수강신청의 금액은 변경할 수 없습니다." }, { status: 409 });
+  }
   if (enrollmentRequest.checkout_mode === "direct" &&
       Number(enrollmentRequest.duration_months) !== durationMonths) {
     return NextResponse.json({
-      error: "바로 결제용으로 확보한 일정의 수강기간은 변경할 수 없습니다. 새 일정을 선택해 주세요."
+      error: "선택하신 수강기간은 결제 전 변경할 수 없습니다. 수강신청 내역을 확인해 주세요."
     }, { status: 409 });
   }
 
   const [teacherResult, policyResult] =
     await Promise.all([
-      adminClient
+      preAssignment
+        ? Promise.resolve({ data: { nationality: null }, error: null })
+        : adminClient
         .from("teacher_profiles")
         .select(`
           user_id,
@@ -311,11 +325,11 @@ export async function POST(
     )
     .eq(
       "lesson_duration_minutes",
-      enrollmentRequest.assigned_lesson_duration_minutes
+      (preAssignment ? enrollmentRequest.lesson_duration_minutes : enrollmentRequest.assigned_lesson_duration_minutes)
     )
     .eq(
       "lessons_per_week",
-      enrollmentRequest.assigned_lessons_per_week
+      (preAssignment ? enrollmentRequest.lessons_per_week : enrollmentRequest.assigned_lessons_per_week)
     )
     .eq(
       "pricing_category",
@@ -338,11 +352,10 @@ export async function POST(
   }
 
   const assignedDays =
-    (enrollmentRequest.assigned_days ??
-      []) as string[];
+    (preAssignment ? enrollmentRequest.preferred_days : enrollmentRequest.assigned_days ?? []) as string[];
 
   const lessonsPerWeek = Number(
-    enrollmentRequest.assigned_lessons_per_week
+    preAssignment ? enrollmentRequest.lessons_per_week : enrollmentRequest.assigned_lessons_per_week
   );
 
   const monthlyLessonCount = Number(
