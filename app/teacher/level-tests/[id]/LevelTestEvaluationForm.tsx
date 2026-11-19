@@ -751,7 +751,6 @@ export default function LevelTestEvaluationForm({
 
               You can enter 10 minutes
               before the scheduled start.
-              enter.
 
               {minutesUntilEntry >
                 0 && (
@@ -808,9 +807,7 @@ export default function LevelTestEvaluationForm({
 
               <br />
 
-              You can enter
-              the video level test
-              수 enter.
+              You can enter the video level test now.
             </NoticeBox>
 
             <button
@@ -1066,9 +1063,7 @@ export default function LevelTestEvaluationForm({
                 the meeting if
                 necessary.
                 <br />
-                If needed, you can
-                rejoin the level-test
-                입장할 수 enter.
+                If needed, you can rejoin the level-test meeting.
               </div>
             </div>
 
