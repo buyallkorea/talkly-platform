@@ -78,8 +78,8 @@ export default function EvaluationForm({
     : `Month ${periodNumber ?? 1} Teacher Evaluation`;
 
   const evaluationTitleKo = isFinal
-    ? "최종 강사 종합평가"
-    : `${periodNumber ?? 1}개월 학습평가`;
+    ? "Final teacher evaluation"
+    : `${periodNumber ?? 1}-month learning evaluation`;
 
   const [participation, setParticipation] = useState<number | null>(
     initialEvaluation?.participation_score ?? null
@@ -123,7 +123,7 @@ export default function EvaluationForm({
     ) {
       setMessageType("error");
       setMessage(
-        "Please select all four scores. / 4개 종합평가 점수를 모두 선택해주세요."
+        "Please select all four scores."
       );
       return;
     }
@@ -168,8 +168,8 @@ export default function EvaluationForm({
       setMessageType("success");
       setMessage(
         initialEvaluation
-          ? `${evaluationTitle} updated. / ${evaluationTitleKo}가 수정되었습니다.`
-          : `${evaluationTitle} saved. / ${evaluationTitleKo}가 저장되었습니다.`
+          ? `${evaluationTitle} updated. / ${evaluationTitleKo} updated.`
+          : `${evaluationTitle} saved. / ${evaluationTitleKo} saved.`
       );
 
       router.refresh();
@@ -178,7 +178,7 @@ export default function EvaluationForm({
       setMessage(
         error instanceof Error
           ? error.message
-          : "학생 종합평가 저장 중 오류가 발생했습니다."
+          : "Failed to save the student evaluation."
       );
     } finally {
       setSaving(false);
@@ -235,8 +235,7 @@ export default function EvaluationForm({
                 fontSize: 12,
               }}
             >
-              전체 수강기간의 참여도, 이해도, 말하기, 발음 및
-              학습 성장을 종합하여 평가해 주세요.
+              Evaluate participation, comprehension, speaking, pronunciation, and progress across the full course.
             </div>
           </>
         ) : (
@@ -252,9 +251,7 @@ export default function EvaluationForm({
                 fontSize: 12,
               }}
             >
-              수강 시작일부터 해당 4주 학습기간 동안의 참여도,
-              이해도, 말하기, 발음 및 학습 성장을 종합하여
-              평가해 주세요. 매 수업마다 작성하는 평가는 아닙니다.
+              Evaluate participation, comprehension, speaking, pronunciation, and progress over these four weeks. This is not a per-lesson evaluation.
             </div>
           </>
         )}
@@ -270,25 +267,25 @@ export default function EvaluationForm({
       >
         <Score
           title="Participation"
-          ko="학습 참여도"
+          ko="Participation"
           value={participation}
           setValue={setParticipation}
         />
         <Score
           title="Comprehension"
-          ko="학습 이해도"
+          ko="Comprehension"
           value={comprehension}
           setValue={setComprehension}
         />
         <Score
           title="Speaking"
-          ko="말하기 능력"
+          ko="Speaking"
           value={speaking}
           setValue={setSpeaking}
         />
         <Score
           title="Pronunciation"
-          ko="발음"
+          ko="Pronunciation"
           value={pronunciation}
           setValue={setPronunciation}
         />
@@ -311,8 +308,8 @@ export default function EvaluationForm({
             }}
           >
             {isFinal
-              ? "전체 수강기간에서 잘한 점"
-              : "이번 4주 학습기간에서 잘한 점"}
+              ? "Strengths during the full course"
+              : "Strengths during these four weeks"}
           </div>
           <textarea
             value={strengths}
@@ -330,7 +327,7 @@ export default function EvaluationForm({
               marginBottom: 8,
             }}
           >
-            보완이 필요한 부분
+            Areas for improvement
           </div>
           <textarea
             value={improvements}
@@ -348,7 +345,7 @@ export default function EvaluationForm({
               marginBottom: 8,
             }}
           >
-            다음 학습을 위한 과제·추천
+            Homework and next steps
           </div>
           <textarea
             value={homework}
@@ -371,8 +368,8 @@ export default function EvaluationForm({
             }}
           >
             {isFinal
-              ? "강사 최종 종합 코멘트"
-              : "이번 학습기간에 대한 강사 종합 코멘트"}
+              ? "Final teacher comment"
+              : "Teacher comments for this period"}
           </div>
           <textarea
             value={comment}
@@ -434,8 +431,8 @@ export default function EvaluationForm({
           }}
         >
           {initialEvaluation
-            ? `${evaluationTitleKo} 수정`
-            : `${evaluationTitleKo} 저장`}
+            ? `${evaluationTitleKo} Update`
+            : `${evaluationTitleKo} Save`}
         </span>
       </button>
     </form>
