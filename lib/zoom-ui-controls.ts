@@ -17,7 +17,7 @@ export function activateZoomControl(root: HTMLElement, action: ZoomAction): bool
  }
  return false;
 }
-export type ZoomAudioUser={userId?:number;audio?:string;muted?:boolean;displayName?:string;sharerOn?:boolean};
+export type ZoomAudioUser={userId?:number;audio?:string;muted?:boolean;bVideoOn?:boolean;displayName?:string;sharerOn?:boolean};
 export function zoomAudioState(user: ZoomAudioUser|null|undefined) {
  return !user ? "unknown" : user.audio!=="computer" && user.audio!=="phone" ? "disconnected" : user.muted===true ? "muted" : user.muted===false ? "ready" : "unknown";
 }
