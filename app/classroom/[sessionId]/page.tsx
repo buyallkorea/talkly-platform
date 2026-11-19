@@ -913,8 +913,8 @@ export default async function ClassroomPage({
         .talkly-classroom-stage {
           position: relative;
           display: grid;
-          grid-template-columns: minmax(240px, .7fr) minmax(0, 1.9fr) minmax(260px, .85fr);
-          gap: 14px;
+          grid-template-columns: minmax(0, 2fr) minmax(0, 5fr) minmax(0, 3fr);
+          gap: 8px;
           align-items: stretch;
           flex: 1 1 auto;
           min-height: 0;
@@ -940,6 +940,9 @@ export default async function ClassroomPage({
         .talkly-classroom-textbook > :first-child { flex: 0 0 auto; margin-bottom: 0; }
         .talkly-classroom-textbook > .talkly-textbook-shell { flex: 1 1 0; height: auto !important; min-height: 0; }
         .talkly-classroom-video { overflow: hidden; }
+        .talkly-classroom-screen-guide { display: none; flex-direction: column; justify-content: center; gap: 12px; padding: 22px; background: #101d30; color: #e2e8f0; }
+        .talkly-classroom-screen-guide strong { font-size: 18px; }
+        .talkly-classroom-screen-guide p { font-size: 14px; line-height: 1.6; color: #cbd5e1; }
         .talkly-zoom-frame { display: block; width: 100%; height: 100%; border: 0; background: #111216; }
         .talkly-zoom-desktop { display: flex; flex-direction: column; height: 100%; min-height: 0; }
         .talkly-zoom-desktop-embed { flex: 1 1 0; min-height: 0; }
@@ -976,27 +979,48 @@ export default async function ClassroomPage({
         }
 
 
-        .talkly-material-controls { flex: 0 0 auto; padding: 10px 14px; border: 1px solid #334155; border-radius: 12px; background: #172033; margin-bottom: 10px; font-size: 13px; line-height: 1.6; }
+        .talkly-material-controls { flex: 0 0 auto; padding: 4px 10px; border: 1px solid #334155; border-radius: 10px; background: #172033; margin-bottom: 5px; font-size: 12px; line-height: 1.4; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; justify-content: space-between; }
+        .talkly-material-controls details { max-width: min(100%, 480px); }
         .talkly-classroom button:focus-visible, .talkly-classroom select:focus-visible, .talkly-classroom summary:focus-visible { outline: 3px solid #facc15; outline-offset: 3px; }
         .talkly-classroom summary { cursor: pointer; padding: 8px 0; font-weight: 700; }
-        .talkly-material-controls select { font-size: 16px; font-weight: 700; min-height: 44px; margin-left: 10px; padding: 7px; background: #0f172a; color: white; border: 1px solid #64748b; border-radius: 8px; max-width: 100%; }
+        .talkly-material-controls select { font-size: 13px; font-weight: 700; min-height: 34px; margin-left: 6px; padding: 4px; background: #0f172a; color: white; border: 1px solid #64748b; border-radius: 8px; max-width: 100%; }
         .talkly-material-controls p { margin: 4px 0 0; color: #cbd5e1; }
         /* The iframe contains camera + shared-material columns, chat stays third. */
         .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video { grid-column: 1 / 3; min-height: 0; }
         .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-textbook { display: none; }
-        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] { grid-template-columns: minmax(260px, 1fr) minmax(260px, .9fr); }
         .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-video { grid-column: 1; }
-        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat { grid-column: 2; grid-row: 1; }
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-screen-guide { display: flex; grid-column: 2; grid-row: 1; }
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat { grid-column: 3; grid-row: 1; }
         @media (min-width: 641px) and (max-width: 1050px) {
           .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat { height: 65dvh; min-height: 420px; }
         }
         @media (max-width: 1050px) {
           .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video { grid-column: 1; height: 62dvh; min-height: 430px; }
           .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] { grid-template-columns: minmax(0, 1fr); }
-          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat { grid-column: 1; grid-row: 2; }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-screen-guide { grid-column: 1; grid-row: 2; height: 220px; }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat { grid-column: 1; grid-row: 3; }
         }
 
-        @media (orientation: landscape) and (max-height: 600px) {
+        /* A landscape tablet has room for the same 20/50/30 teaching layout. */
+        @media (min-width: 900px) and (max-width: 1050px) {
+          .talkly-classroom { height: 100dvh; overflow: hidden; }
+          .talkly-classroom-stage,
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] {
+            grid-template-columns: minmax(0, 2fr) minmax(0, 5fr) minmax(0, 3fr);
+            flex: 1 1 auto; min-height: 0; overflow: hidden;
+          }
+          .talkly-classroom-video, .talkly-classroom-textbook,
+          .talkly-classroom-stage > .talkly-chat,
+          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video,
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat {
+            height: 100%; min-height: 0;
+          }
+          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video { grid-column: 1 / 3; }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-video { grid-column: 1; }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-screen-guide { grid-column: 2; grid-row: 1; height: 100%; }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat { grid-column: 3; grid-row: 1; }
+        }
+                @media (orientation: landscape) and (max-height: 600px) {
           .talkly-classroom-top {
             min-height: 34px;
             margin-bottom: 4px;
@@ -1082,6 +1106,12 @@ export default async function ClassroomPage({
           </section>
 
 
+
+<section className="talkly-classroom-panel talkly-classroom-screen-guide" aria-label={profile.role === "teacher" ? "Shared teaching materials" : "온라인 교재"}>
+            <strong>{profile.role === "teacher" ? "Online textbook sharing" : "온라인 교재 화면 공유"}</strong>
+            <p>{profile.role === "teacher" ? "Open the original textbook in another window and share that tab with Zoom. Keep this classroom visible to see the student and chat." : "원본 교재 창을 Zoom으로 공유하고 이 강의실에서 학생과 채팅을 확인하세요."}</p>
+            <p>{profile.role === "teacher" ? "For textbook sound in Chrome, choose the textbook tab and enable Share tab audio." : "교재 소리는 Chrome 탭 공유에서 탭 오디오 공유를 켜세요."}</p>
+          </section>
 
 <section className="talkly-classroom-panel talkly-classroom-textbook">
   <ClassroomTextbookSelectorRefresh
