@@ -219,6 +219,9 @@ export default function ClassroomZoomEmbed({
   const [sharing, setSharing] = useState(false);
   const [audioState, setAudioState] = useState("unknown");
   const [peerAudio, setPeerAudio] = useState("");
+  const [cameraOn, setCameraOn] = useState<boolean | null>(null);
+  const [cameraControlFailed, setCameraControlFailed] = useState(false);
+  const [micCheckOk, setMicCheckOk] = useState<boolean | null>(null);
   const [controlError, setControlError] = useState("");
   const [micCheckMessage, setMicCheckMessage] = useState("");
   const [micChecking, setMicChecking] = useState(false);
@@ -468,6 +471,7 @@ export default function ClassroomZoomEmbed({
           try {
             const me = client.getCurrentUser?.();
             setAudioState(zoomAudioState(me));
+            setCameraOn(typeof me?.bVideoOn === "boolean" ? me.bVideoOn : null);
             const peers = client.getAttendeeslist?.().filter(person => me?.userId != null && person.userId !== me.userId) || [];
             const currentDisplayName = me?.displayName?.trim().toLocaleLowerCase();
             setSameNameParticipants(currentDisplayName
@@ -682,6 +686,9 @@ export default function ClassroomZoomEmbed({
     setControlError("");
     setMicCheckMessage("");
     setAudioState("unknown");
+    setCameraOn(null);
+    setCameraControlFailed(false);
+    setMicCheckOk(null);
     retryZoom();
   }
   async function checkMicrophone() {
@@ -691,6 +698,7 @@ export default function ClassroomZoomEmbed({
     try {
       const outcome = await checkClassroomMicrophone();
       setMicCheckMessage(hostMode && outcome.message.includes(" · ") ? outcome.message.split(" · ").at(-1)! : outcome.message);
+      setMicCheckOk(outcome.ok);
     } finally {
       setMicChecking(false);
     }
@@ -710,7 +718,9 @@ export default function ClassroomZoomEmbed({
   }
   async function nativeAction(action: ZoomAction) {
     setControlError("");
-    if (!rootRef.current || !await activateZoomControlWithOverflow(rootRef.current, action)) setControlError(ui("Use the matching Zoom toolbar button below or its More (…) menu. · 아래 Zoom 도구 모음 또는 더보기(…)에서 해당 버튼을 눌러주세요."));
+    const clicked = Boolean(rootRef.current && await activateZoomControlWithOverflow(rootRef.current, action));
+    if (action === "video") setCameraControlFailed(!clicked);
+    if (!clicked) setControlError(ui("Use the matching Zoom toolbar button below or its More (…) menu. · 아래 Zoom 도구 모음 또는 더보기(…)에서 해당 버튼을 눌러주세요."));
   }
   function testSpeaker() {
     if (typeof AudioContext === "undefined") { setControlError(ui("Speaker test unavailable in this browser · 이 브라우저에서는 소리 테스트를 지원하지 않습니다.")); return; }
