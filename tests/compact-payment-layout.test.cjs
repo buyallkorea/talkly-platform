@@ -16,7 +16,7 @@ const paymentComponents = [
 test("student and parent have one-line, compact checkout header", () => {
   for (const page of paymentPages) {
     const ui = read(page);
-    assert.match(ui, /수강기간과 결제금액을 확인해 주세요/);
+    assert.match(ui, /수강료 결제/);
     assert.doesNotMatch(ui, /수강기간과\s*<br\s*\/>/);
     assert.match(ui, /"17px 26px"/);
     assert.match(ui, /clamp\(21px, 2\.6vw, 28px\)/);
@@ -47,11 +47,12 @@ test("both checkout pages put the editable duration beside weekly class info", (
 test("unassigned payments do not misleadingly display assigned class", () => {
   for (const file of paymentComponents) {
     const ui = read(file);
-    assert.match(ui, /isUnassignedRecommendation \? "배정 예정" : "배정 완료"/);
+    assert.doesNotMatch(ui, /isUnassignedRecommendation \? "배정 예정" : "배정 완료"/);
     assert.match(ui, /수업정보/);
     assert.doesNotMatch(ui, /\{childName\} ·/);
   }
   const checkout = read("components/payments/PreAssignmentCheckout.tsx");
   assert.match(checkout, /"17px 26px"/);
   assert.match(checkout, /결제 완료 후 관리자가 학생 수준과 강사 일정을 확인해 배정합니다/);
+  assert.doesNotMatch(checkout, /\(결제 후 관리자 확정\)/);
 });
