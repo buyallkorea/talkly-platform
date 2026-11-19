@@ -47,7 +47,7 @@ export default function TeacherNoteForm({
 
       if (userError || !user) {
         setErrorMessage(
-          "Unable to verify your login. / 로그인 정보를 확인할 수 없습니다."
+          "Unable to verify your login."
         );
         setLoading(false);
         return;
@@ -68,7 +68,7 @@ export default function TeacherNoteForm({
         profile.role !== "teacher"
       ) {
         setErrorMessage(
-          "Teacher access is required. / 강사 권한이 필요합니다."
+          "Teacher access is required."
         );
         setLoading(false);
         return;
@@ -93,7 +93,7 @@ export default function TeacherNoteForm({
 
       if (!session) {
         setErrorMessage(
-          "Class not found. / 수업정보를 찾을 수 없습니다."
+          "Class not found."
         );
         setLoading(false);
         return;
@@ -122,7 +122,7 @@ export default function TeacherNoteForm({
         (session.teacher_user_id ?? enrollment.teacher_user_id) !== user.id
       ) {
         setErrorMessage(
-          "This class is not assigned to you. / 본인에게 배정된 수업이 아닙니다."
+          "This class is not assigned to you."
         );
         setLoading(false);
         return;
@@ -157,14 +157,14 @@ export default function TeacherNoteForm({
         updatedSession.length === 0
       ) {
         setErrorMessage(
-          "Teacher note was not saved. / 강사 메모가 저장되지 않았습니다."
+          "Teacher note was not saved."
         );
         setLoading(false);
         return;
       }
 
       setSuccessMessage(
-        "Teacher note saved. / 강사 메모가 저장되었습니다."
+        "Teacher note saved."
       );
 
       router.refresh();
@@ -209,7 +209,7 @@ export default function TeacherNoteForm({
           opacity: 0.55,
         }}
       >
-        수업 메모
+        Class notes
       </div>
 
       <textarea
@@ -222,7 +222,7 @@ export default function TeacherNoteForm({
         }
         rows={7}
         maxLength={3000}
-        placeholder="Add class notes, student progress, homework, or anything the next teacher should know. / 수업내용, 학습진도, 숙제, 특이사항 등을 입력하세요."
+        placeholder="Add class notes, student progress, homework, or anything the next teacher should know."
         style={{
           width: "100%",
           boxSizing: "border-box",
@@ -305,8 +305,8 @@ export default function TeacherNoteForm({
           }}
         >
           {loading
-            ? "저장 중..."
-            : "강사 메모 저장"}
+            ? "Saving..."
+            : "Save teacher note"}
         </div>
       </button>
     </form>
