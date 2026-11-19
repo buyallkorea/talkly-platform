@@ -12,6 +12,7 @@ async function run(hostMode,fail,simulateShare=false,throwAttendees=false) {
   if(name==='@/lib/zoom-layout')return {markZoomLayout:()=>{},zoomLayoutSize:(width,height,split)=>({width:split?260:width,height:Math.max(180,height-100)})};
   if(name==='./zoom-layout.css')return {};
   if(name==='@/lib/zoom-ui-controls')return helper;
+  if(name==='@/lib/classroom-audio-diagnostics')return {checkClassroomMicrophone:async()=>({ok:true,message:'Microphone works'})};
   if(name==='react/jsx-runtime')return {jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})};
   if(name==='react')return {useRef:value=>{const ref={current:refIndex++===0?root:value};refs.push(ref);return ref;},useState:value=>[value,next=>{states.push(next);if(next==='joined'||next==='waiting'||next==='error')resolveDone();}],useCallback:fn=>fn,useEffect:fn=>effects.push(fn)};
   throw Error(name);
