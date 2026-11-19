@@ -76,7 +76,7 @@ test("v5 consent retains prepaid allocation disclosure and preserves historical 
   const consent = read("lib/payments/tuition-consent.ts");
   const migration = read("supabase/migrations/20261118153000_preassignment_tuition_consent_v4.sql");
   assert.match(consent, /2026-11-19-v5/);
-  assert.match(consent, /관리자 추천강사는 결제 완료 후/);
+  assert.match(consent, /관리자 추천강사를 신청한 경우 결제 후/);
   assert.match(migration, /2026-11-18-v4/);
   assert.match(migration, /2026-11-18-v3/);
 });
