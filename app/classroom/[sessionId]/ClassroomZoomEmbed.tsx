@@ -729,13 +729,17 @@ export default function ClassroomZoomEmbed({
           )}
           <div className="talkly-zoom-actions">
             <button type="button" onClick={() => void audioAction()} disabled={audioBusy}>{audioState === "ready" ? ui("Mute · 마이크 끄기") : audioState === "muted" ? ui("Unmute · 마이크 켜기") : ui("1. Connect audio · 오디오 연결")}</button>
+            {audioState !== "ready" && audioState !== "muted" && (
+              <button type="button" onClick={() => void checkMicrophone()} disabled={micChecking}
+                title="마이크를 잠시 열어 권한·장치를 확인합니다. 녹음하거나 저장하지 않습니다.">
+                {micChecking ? "Checking microphone… · 확인 중" : "Check microphone · 마이크 상태 점검"}
+              </button>
+            )}
             <button type="button" onClick={() => void nativeAction("video")}>{ui("2. Camera · 카메라 켜기/끄기")}</button>
             {hostMode && <button type="button" data-action={sharing ? "stop-share" : "share"} onClick={() => void nativeAction(sharing ? "stop-share" : "share")}>{sharing ? ui("Stop sharing · 공유 중지") : ui("3. Share textbook · 교재 화면 공유")}</button>}
           </div>
           <details><summary>{ui("Sound help · 소리가 안 들릴 때")}</summary><div className="talkly-zoom-actions">
-            <button type="button" onClick={() => void checkMicrophone()} disabled={micChecking} aria-label="Check microphone permissions · 마이크 상태 점검">
-              {micChecking ? "Checking microphone… · 마이크 확인 중" : "Check microphone · 마이크 상태 점검"}
-            </button>
+
             <button type="button" onClick={testSpeaker}>{ui("Test speaker · 소리 테스트")}</button>
             <button type="button" onClick={() => void nativeAction("settings")}>{ui("Audio settings · 오디오 설정")}</button>
           </div>
