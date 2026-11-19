@@ -32,7 +32,7 @@ export default function CompleteClassButton({
 
   async function handleCompleteClass() {
     const confirmed = window.confirm(
-      "Mark this class as completed?\n이 수업을 완료 처리하시겠습니까?"
+      "Mark this class as completed?"
     );
 
     if (!confirmed) {
@@ -52,7 +52,7 @@ export default function CompleteClassButton({
 
       if (userError || !user) {
         setErrorMessage(
-          "Unable to verify your login. / 로그인 정보를 확인할 수 없습니다."
+          "Unable to verify your login."
         );
         setLoading(false);
         return;
@@ -73,7 +73,7 @@ export default function CompleteClassButton({
         profile.role !== "teacher"
       ) {
         setErrorMessage(
-          "Teacher access is required. / 강사 권한이 필요합니다."
+          "Teacher access is required."
         );
         setLoading(false);
         return;
@@ -107,7 +107,7 @@ export default function CompleteClassButton({
         updatedSession.length === 0
       ) {
         setErrorMessage(
-          "The class could not be completed. Please refresh and try again. / 수업 완료 처리에 실패했습니다."
+          "The class could not be completed. Please refresh and try again."
         );
         setLoading(false);
         return;
@@ -166,8 +166,8 @@ export default function CompleteClassButton({
           }}
         >
           {loading
-            ? "처리 중..."
-            : "수업 완료"}
+            ? "Processing..."
+            : "Complete class"}
         </div>
       </button>
 
