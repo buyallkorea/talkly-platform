@@ -42,7 +42,7 @@ export default function ClassFeedbackForm({
 
       if (userError || !user) {
         setErrorMessage(
-          "Unable to verify your login. / 로그인 정보를 확인할 수 없습니다."
+          "Unable to verify your login."
         );
         setLoading(false);
         return;
@@ -63,7 +63,7 @@ export default function ClassFeedbackForm({
         profile.role !== "teacher"
       ) {
         setErrorMessage(
-          "Teacher access is required. / 강사 권한이 필요합니다."
+          "Teacher access is required."
         );
         setLoading(false);
         return;
@@ -88,7 +88,7 @@ export default function ClassFeedbackForm({
 
       if (!session) {
         setErrorMessage(
-          "Class not found. / 수업정보를 찾을 수 없습니다."
+          "Class not found."
         );
         setLoading(false);
         return;
@@ -117,7 +117,7 @@ export default function ClassFeedbackForm({
         (session.teacher_user_id ?? enrollment.teacher_user_id) !== user.id
       ) {
         setErrorMessage(
-          "This class is not assigned to you. / 본인에게 배정된 수업이 아닙니다."
+          "This class is not assigned to you."
         );
         setLoading(false);
         return;
@@ -151,14 +151,14 @@ export default function ClassFeedbackForm({
         updatedSession.length === 0
       ) {
         setErrorMessage(
-          "Class feedback was not saved. / 수업 피드백이 저장되지 않았습니다."
+          "Class feedback was not saved."
         );
         setLoading(false);
         return;
       }
 
       setSuccessMessage(
-        "Class feedback saved. / 수업 피드백이 저장되었습니다."
+        "Class feedback saved."
       );
 
       router.refresh();
@@ -203,7 +203,7 @@ export default function ClassFeedbackForm({
           opacity: 0.55,
         }}
       >
-        학생·학부모 공개용 수업 피드백
+        Shareable class feedback
       </div>
 
       <textarea
@@ -214,7 +214,7 @@ export default function ClassFeedbackForm({
         }
         rows={7}
         maxLength={3000}
-        placeholder="Write feedback that can be shared with the student and parent. / 학생과 학부모에게 공개할 수업 피드백을 입력하세요."
+        placeholder="Write feedback that can be shared with the student and parent."
         style={{
           width: "100%",
           boxSizing: "border-box",
@@ -259,7 +259,7 @@ export default function ClassFeedbackForm({
             opacity: 0.6,
           }}
         >
-          이 내용은 학생과 학부모에게 공개됩니다.
+          Your student and their parent can read this feedback.
         </div>
       </div>
 
@@ -320,8 +320,8 @@ export default function ClassFeedbackForm({
           }}
         >
           {loading
-            ? "저장 중..."
-            : "수업 피드백 저장"}
+            ? "Saving..."
+            : "Save class feedback"}
         </div>
       </button>
     </form>
