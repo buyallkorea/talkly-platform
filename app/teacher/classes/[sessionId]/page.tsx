@@ -280,31 +280,31 @@ export default async function TeacherClassDetailPage({
       case "scheduled":
         return {
           en: "Scheduled",
-          ko: "예정",
+          ko: "Scheduled",
         };
 
       case "completed":
         return {
           en: "Completed",
-          ko: "수업 완료",
+          ko: "Completed",
         };
 
       case "cancelled":
         return {
           en: "Cancelled",
-          ko: "수업 취소",
+          ko: "Cancelled",
         };
 
       case "no_show":
         return {
           en: "No Show",
-          ko: "무단결석",
+          ko: "No-show",
         };
 
       case "held":
         return {
           en: "Class Hold",
-          ko: "결석 승인",
+          ko: "Excused",
         };
 
       default:
@@ -320,31 +320,31 @@ export default async function TeacherClassDetailPage({
       case "present":
         return {
           en: "Present",
-          ko: "출석",
+          ko: "Present",
         };
 
       case "late":
         return {
           en: "Late",
-          ko: "지각",
+          ko: "Late",
         };
 
       case "absent":
         return {
           en: "Absent",
-          ko: "결석",
+          ko: "Absent",
         };
 
       case "excused":
         return {
           en: "Excused Absence",
-          ko: "인정결석",
+          ko: "Excused absence",
         };
 
       case "teacher_absent":
         return {
           en: "Teacher Absent",
-          ko: "강사결석",
+          ko: "Teacher absent",
         };
 
       default:
@@ -360,25 +360,25 @@ export default async function TeacherClassDetailPage({
       case "requested":
         return {
           en: "Pending Review",
-          ko: "확인 대기중",
+          ko: "Pending",
         };
 
       case "approved":
         return {
           en: "Approved",
-          ko: "승인 완료",
+          ko: "Approved",
         };
 
       case "rejected":
         return {
           en: "Rejected",
-          ko: "거절",
+          ko: "Rejected",
         };
 
       case "cancelled":
         return {
           en: "Cancelled",
-          ko: "신청 취소",
+          ko: "Withdrawn",
         };
 
       default:
@@ -411,7 +411,7 @@ export default async function TeacherClassDetailPage({
       return "-";
     }
 
-    return new Intl.DateTimeFormat("ko-KR", {
+    return new Intl.DateTimeFormat("en-US", {
       timeZone: "Asia/Seoul",
       year: "numeric",
       month: "2-digit",
@@ -477,27 +477,27 @@ export default async function TeacherClassDetailPage({
     if (currentSessionStatus === "held") {
       return {
         en: "Attendance is not required for an approved Class Hold.",
-        ko: "결석 승인이 완료된 수업은 출석 등록이 필요하지 않습니다.",
+        ko: "No attendance record is needed for an excused lesson.",
       };
     }
 
     if (currentSessionStatus === "cancelled") {
       return {
         en: "Attendance cannot be recorded for a cancelled class.",
-        ko: "취소된 수업은 출석을 등록할 수 없습니다.",
+        ko: "Attendance cannot be recorded for a cancelled lesson.",
       };
     }
 
     if (!isClassStarted) {
       return {
         en: "Attendance will be available after the class starts.",
-        ko: "수업 시작 이후 출석을 등록할 수 있습니다.",
+        ko: "Attendance is available after the lesson starts.",
       };
     }
 
     return {
       en: "Attendance is currently unavailable.",
-      ko: "현재 출석 등록을 사용할 수 없습니다.",
+      ko: "Attendance is currently unavailable.",
     };
   }
 
@@ -527,7 +527,7 @@ export default async function TeacherClassDetailPage({
             opacity: 0.55,
           }}
         >
-          내 수업
+          My classes
         </div>
       </Link>
 
@@ -545,7 +545,7 @@ export default async function TeacherClassDetailPage({
           Lesson {session.lesson_number}
           {isTestClass && (
             <span style={{ marginLeft: "12px", fontSize: "14px", color: "#b54708", fontWeight: 800 }}>
-              TEST CLASS · 테스트 수업
+              TEST CLASS
             </span>
           )}
         </h1>
@@ -556,7 +556,7 @@ export default async function TeacherClassDetailPage({
             opacity: 0.6,
           }}
         >
-          {session.lesson_number}회차 수업
+          Lesson {session.lesson_number} overview
         </div>
       </div>
 
@@ -584,7 +584,7 @@ export default async function TeacherClassDetailPage({
             marginBottom: "22px",
           }}
         >
-          수업 상세
+          Lesson details
         </div>
 
         <p>
@@ -600,7 +600,7 @@ export default async function TeacherClassDetailPage({
             opacity: 0.55,
           }}
         >
-          학생
+          Student
         </div>
 
         <p>
@@ -616,7 +616,7 @@ export default async function TeacherClassDetailPage({
             opacity: 0.55,
           }}
         >
-          과정
+          Course
         </div>
 
         <p>
@@ -656,7 +656,7 @@ export default async function TeacherClassDetailPage({
             opacity: 0.55,
           }}
         >
-          수업시간
+          Lesson duration
         </div>
 
         <p>
@@ -688,15 +688,15 @@ export default async function TeacherClassDetailPage({
             opacity: 0.55,
           }}
         >
-          화상수업 플랫폼
+          Video platform
         </div>
 
         <div style={{ padding: 18, border: "2px solid #2563eb", borderRadius: 12, background: "#eff6ff" }}>
-          <strong style={{ display: "block", marginBottom: 12 }}>Classroom · 강의실 입장</strong>
+          <strong style={{ display: "block", marginBottom: 12 }}>Enter Classroom</strong>
           {session.meeting_provider === "zoom" ? <TeacherClassroomLink sessionId={session.id}
             enabled={Boolean(session.meeting_id || session.meeting_url) && ["scheduled", "in_progress"].includes(session.status) && !session.ended_at && new Date(session.scheduled_end).getTime() > new Date().getTime()} />
             : session.meeting_url ? <a href={session.meeting_url} target="_blank" rel="noreferrer" style={{ color: "#1d4ed8", fontWeight: 800 }}>Open external class ↗</a> : <p>Meeting is not available yet.</p>}
-          <p style={{ marginTop: 10, fontSize: 13, color: "#334155" }}>Choose lesson materials, then enter the classroom. · 교재 방식을 선택한 뒤 입장합니다.</p>
+          <p style={{ marginTop: 10, fontSize: 13, color: "#334155" }}>Choose the lesson materials, then enter the classroom.</p>
         </div>
       </section>
 
@@ -725,7 +725,7 @@ export default async function TeacherClassDetailPage({
               marginBottom: "22px",
             }}
           >
-            결석신청
+            Excused absence request
           </div>
 
           <p>
@@ -766,7 +766,7 @@ export default async function TeacherClassDetailPage({
               opacity: 0.55,
             }}
           >
-            신청사유
+            Reason for request
           </div>
 
           {hold.admin_note && (
@@ -799,7 +799,7 @@ export default async function TeacherClassDetailPage({
                   opacity: 0.55,
                 }}
               >
-                관리자 안내
+                Administrator note
               </div>
             </>
           )}
@@ -829,7 +829,7 @@ export default async function TeacherClassDetailPage({
             marginBottom: "22px",
           }}
         >
-          출석 관리
+          Attendance
         </div>
 
         {attendance ? (
@@ -900,7 +900,7 @@ export default async function TeacherClassDetailPage({
                     opacity: 0.55,
                   }}
                 >
-                  출석 메모
+                  Attendance note
                 </div>
               </>
             )}
@@ -924,7 +924,7 @@ export default async function TeacherClassDetailPage({
                 opacity: 0.55,
               }}
             >
-              아직 출석정보가 등록되지 않았습니다.
+              No attendance has been recorded yet.
             </div>
           </div>
         )}
@@ -965,8 +965,8 @@ export default async function TeacherClassDetailPage({
                 }}
               >
                 {attendance
-                  ? "출석 수정"
-                  : "출석 등록"}
+                  ? "Edit attendance"
+                  : "Record attendance"}
               </span>
             </Link>
           ) : (
@@ -1026,7 +1026,7 @@ export default async function TeacherClassDetailPage({
             opacity: 0.6,
           }}
         >
-          강사 내부 메모
+          Private teacher notes
         </div>
 
         {isAssignedTeacher ? (
@@ -1036,7 +1036,7 @@ export default async function TeacherClassDetailPage({
           />
         ) : (
           <div style={{ whiteSpace: "pre-wrap", marginTop: "18px" }}>
-            {session.teacher_notes || "등록된 수업 메모가 없습니다."}
+            {session.teacher_notes || "No lesson notes have been recorded."}
           </div>
         )}
       </section>
@@ -1062,9 +1062,9 @@ export default async function TeacherClassDetailPage({
         </h2>
 
         <div style={{ fontSize: "13px", opacity: 0.6 }}>
-          {process.env.TALKLY_ASSESSMENTS_ENABLED === "true" ? "월간 관찰 평가서 작성·확인" : evaluationLabel?.ko ?? (isFinalLesson
-            ? "최종 강사 종합평가"
-            : "회차별 평가는 TALKLY AI가 분석합니다.")}
+          {process.env.TALKLY_ASSESSMENTS_ENABLED === "true" ? "Write or review monthly observation" : evaluationLabel?.ko ?? (isFinalLesson
+            ? "Final teacher evaluation"
+            : "Individual lessons are evaluated by TALKLY AI.")}
         </div>
 
         {process.env.TALKLY_ASSESSMENTS_ENABLED === "true" ? (
@@ -1097,8 +1097,8 @@ export default async function TeacherClassDetailPage({
             </strong>
             <div style={{ marginTop: "6px", fontSize: "12px", opacity: 0.65 }}>
               {isFinalLesson && session.status !== "completed"
-                ? "마지막 수업 완료 후 최종 종합평가를 작성해 주세요."
-                : "회차별 수업은 TALKLY AI가 분석하며, 강사 평가는 수강 시작일 기준 4주마다 및 최종 수업 완료 시 작성합니다."}
+                ? "Please complete the final evaluation after the last lesson."
+                : "TALKLY AI evaluates each lesson. Teachers submit evaluations every four weeks and after the final lesson."}
             </div>
           </div>
         )}
