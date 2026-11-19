@@ -5,7 +5,7 @@ import AssessmentEditor from "./AssessmentEditor";
 type Props = { params: Promise<{kind: string; sourceId: string}>; searchParams: Promise<{period?: string}>; administrator?: boolean };
 async function loadDetail({params, searchParams, administrator=false}: Props) {
     const ctx = await assessmentContext();
-    if ((ctx.role === "admin") !== administrator) throw new AssessmentError("Open the assessment from your own dashboard. / 권한에 맞는 메뉴를 이용해 주세요.", 403);
+    if ((ctx.role === "admin") !== administrator) throw new AssessmentError(administrator ? "Open the assessment from your own dashboard. / 권한에 맞는 메뉴를 이용해 주세요." : "Open the assessment from your own dashboard.", 403);
     const { kind: rawKind, sourceId: rawId } = await params;
     if (!["initial", "monthly"].includes(rawKind) || !/^[1-9]\d*$/.test(rawId) || !Number.isSafeInteger(Number(rawId))) throw new AssessmentError("Invalid assessment target.", 404);
     const kind = rawKind as AssessmentKind, sourceId = Number(rawId);
@@ -13,7 +13,7 @@ async function loadDetail({params, searchParams, administrator=false}: Props) {
     if (typeof period !== "string" || (kind === "monthly" && !validProgressPeriod(period))) throw new AssessmentError("Select a due four-week or final review from the assessment list.");
     const source = await assessmentSource(ctx, kind, sourceId);
     const { data: record, error } = await ctx.db.from("teacher_assessments").select("id,values,status,revision,updated_at").eq("kind", kind).eq("source_id", sourceId).eq("period_key", period).maybeSingle();
-    if (error) throw new AssessmentError("Assessment storage is not ready. Please contact the administrator. / 평가서 저장소 준비 상태를 확인해 주세요.", 503);
+    if (error) throw new AssessmentError(administrator ? "Assessment storage is not ready. Please contact the administrator. / 평가서 저장소 준비 상태를 확인해 주세요." : "Assessment storage is not ready. Please contact the administrator.", 503);
     const teacherId = source[kind === "initial" ? "tester_user_id" : "teacher_user_id"];
     const teacher = teacherId ? await ctx.db.from("profiles").select("name").eq("id", teacherId).maybeSingle() : null;
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
@@ -47,13 +47,13 @@ export default async function AssessmentDetail(props: Props) {
   const {administrator=false}=props;
   const result=await loadDetail(props).then(value=>({value,error:null}),error=>({value:null,error}));
   if (!result.value) { const error=result.error;
-return <main className="talkly-assessment-page talkly-assessment-error"><h1 className="talkly-assessment-form-title">TALKLY · Assessment form</h1><p role="alert" className="talkly-assessment-form-info">{error instanceof AssessmentError ? error.message : "Unable to load this assessment. Please retry. / 평가서를 불러오지 못했습니다."}</p><Link href={administrator ? "/admin/evaluations" : "/teacher/reviews"} className="talkly-assessment-back">← Back to evaluations</Link></main>;
+return <main className="talkly-assessment-page talkly-assessment-error"><h1 className="talkly-assessment-form-title">TALKLY · Assessment form</h1><p role="alert" className="talkly-assessment-form-info">{error instanceof AssessmentError ? error.message : (administrator ? "Unable to load this assessment. Please retry. / 평가서를 불러오지 못했습니다." : "Unable to load this assessment. Please retry.")}</p><Link href={administrator ? "/admin/evaluations" : "/teacher/reviews"} className="talkly-assessment-back">← Back to evaluations</Link></main>;
   }
   const {kind, sourceId, period, values, record, attendance, history, source, back}=result.value;
 return <>
       <AssessmentEditor kind={kind} sourceId={sourceId} period={period} initialValues={values} initialRevision={record?.revision ?? 0} initialStatus={(record?.status ?? "draft") as AssessmentStatus} administrator={administrator} attendance={attendance} />
-      <section className="talkly-assessment-history"><h2 className="talkly-assessment-section-heading">Revision history / 변경 이력</h2>
-        {history.error ? <p>Unable to load history. / 이력을 불러오지 못했습니다.</p> : <ul className="talkly-assessment-history-list">{(history.data ?? []).map(row => <li key={row.revision}>Version {row.revision} · {row.status} · {new Date(row.created_at).toLocaleString("ko-KR", {timeZone:"Asia/Seoul"})} · {row.actor_id}</li>)}</ul>}
+      <section className="talkly-assessment-history"><h2 className="talkly-assessment-section-heading">{administrator ? "Revision history / 변경 이력" : "Revision history"}</h2>
+        {history.error ? <p>{administrator ? "Unable to load history. / 이력을 불러오지 못했습니다." : "Unable to load history."}</p> : <ul className="talkly-assessment-history-list">{(history.data ?? []).map(row => <li key={row.revision}>Version {row.revision} · {row.status} · {new Date(row.created_at).toLocaleString(administrator ? "ko-KR" : "en-US", {timeZone:"Asia/Seoul"})} · {row.actor_id}</li>)}</ul>}
         {!history.data?.length && !history.error && <p className="mt-3 text-sm">No saved revisions yet.</p>}
         <p className="mt-4"><Link href={kind === "initial" ? (administrator ? `/admin/level-tests/${source.level_test_id}` : `/teacher/level-tests/${sourceId}`) : (administrator ? `/admin/enrollments/${sourceId}` : `/teacher/students/${sourceId}`)} className="talkly-assessment-back">Related learner / level test →</Link> · <Link href={back} className="talkly-assessment-back">Assessment list →</Link></p>
       </section>
