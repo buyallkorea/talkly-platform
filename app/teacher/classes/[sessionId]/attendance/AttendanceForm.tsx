@@ -79,7 +79,7 @@ export default function AttendanceForm({
 
       if (userError || !user) {
         setErrorMessage(
-          "Unable to verify your login. / 로그인 정보를 확인할 수 없습니다."
+          "Unable to verify your login."
         );
         setLoading(false);
         return;
@@ -100,7 +100,7 @@ export default function AttendanceForm({
         profile.role !== "teacher"
       ) {
         setErrorMessage(
-          "Teacher access is required. / 강사 권한이 필요합니다."
+          "Teacher access is required."
         );
         setLoading(false);
         return;
@@ -125,7 +125,7 @@ export default function AttendanceForm({
 
       if (!session) {
         setErrorMessage(
-          "Class not found. / 수업정보를 찾을 수 없습니다."
+          "Class not found."
         );
         setLoading(false);
         return;
@@ -154,7 +154,7 @@ export default function AttendanceForm({
         (session.teacher_user_id ?? enrollment.teacher_user_id) !== user.id
       ) {
         setErrorMessage(
-          "This class is not assigned to you. / 본인에게 배정된 수업이 아닙니다."
+          "This class is not assigned to you."
         );
         setLoading(false);
         return;
@@ -190,7 +190,7 @@ export default function AttendanceForm({
           updatedAttendance.length === 0
         ) {
           setErrorMessage(
-            "Attendance was not updated. / 출석정보가 수정되지 않았습니다."
+            "Attendance was not updated."
           );
           setLoading(false);
           return;
@@ -222,7 +222,7 @@ export default function AttendanceForm({
 
         if (!insertedAttendance) {
           setErrorMessage(
-            "Attendance could not be saved. / 출석정보를 저장하지 못했습니다."
+            "Attendance could not be saved."
           );
           setLoading(false);
           return;
@@ -274,7 +274,7 @@ export default function AttendanceForm({
           marginBottom: "24px",
         }}
       >
-        출석 상태
+        Attendance status
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -360,7 +360,7 @@ export default function AttendanceForm({
               opacity: 0.55,
             }}
           >
-            출석 메모
+            Attendance note
           </div>
 
           <textarea
@@ -371,7 +371,7 @@ export default function AttendanceForm({
             }
             rows={6}
             maxLength={1000}
-            placeholder="Add a note if needed. / 필요한 경우 메모를 입력하세요."
+            placeholder="Add a note if needed."
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -436,8 +436,8 @@ export default function AttendanceForm({
               }}
             >
               {existingAttendance
-                ? "출석 수정"
-                : "출석 저장"}
+                ? "Update attendance"
+                : "Save attendance"}
             </div>
           </button>
 
@@ -472,7 +472,7 @@ export default function AttendanceForm({
                 opacity: 0.6,
               }}
             >
-              취소
+              Cancel
             </div>
           </button>
         </div>
