@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 type View = "checking" | "embedded" | "mobile";
 
-function safeZoomMeetingUrl(raw: string | null): string | null {
+export function safeZoomMeetingUrl(raw: string | null): string | null {
   if (!raw) return null;
   try {
     const url = new URL(raw);
