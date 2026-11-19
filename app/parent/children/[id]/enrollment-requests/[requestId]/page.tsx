@@ -555,7 +555,7 @@ export default async function ParentEnrollmentRequestPaymentPage({
                   "-0.04em",
               }}
             >
-              수강기간과 결제금액을 확인해 주세요
+              수강료 결제
             </h1>
 
 
