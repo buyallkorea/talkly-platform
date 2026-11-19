@@ -169,7 +169,7 @@ export default async function TeacherAttendancePage({
     >
       {isTestClass && (
         <div style={{ marginBottom: "16px", padding: "12px 16px", border: "1px solid #f59e0b", borderRadius: "10px", background: "#fffbeb", color: "#92400e", fontWeight: 800 }}>
-          TEST CLASS · 테스트 수업 출결 (실제 수업 실적에서 제외)
+          TEST CLASS · Attendance excluded from official teaching records
         </div>
       )}
       <h1
@@ -187,7 +187,7 @@ export default async function TeacherAttendancePage({
           marginBottom: "28px",
         }}
       >
-        출석 관리
+        Attendance management
       </div>
 
       <section
@@ -210,7 +210,7 @@ export default async function TeacherAttendancePage({
             opacity: 0.55,
           }}
         >
-          학생
+          Student
         </div>
 
         <p>
@@ -226,7 +226,7 @@ export default async function TeacherAttendancePage({
             opacity: 0.55,
           }}
         >
-          과정
+          Course
         </div>
 
         <p>
@@ -242,7 +242,7 @@ export default async function TeacherAttendancePage({
             opacity: 0.55,
           }}
         >
-          {session.lesson_number}회차
+          Lesson {session.lesson_number}
         </div>
 
         <p>
