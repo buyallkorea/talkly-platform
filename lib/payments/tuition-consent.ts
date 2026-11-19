@@ -11,7 +11,7 @@ export const TUITION_CONSENT_ITEMS = [
   {
     key: "finalConfirmation",
     label: "② 위 사항을 모두 확인하고 수강료 결제에 동의합니다.",
-    text: "위 수강 조건과 환불 기준, 최종 결제금액을 확인하였습니다.",
+    text: "위 수강 조건과 환불 기준, 최종 결제금액을 확인하였습니다. 관리자 추천강사를 신청한 경우 결제 후 관리자가 강사 및 일정을 배정하며, 배정 완료 전에는 수업이 시작되지 않습니다.",
     positive: "확인",
     negative: "미확인",
   },
