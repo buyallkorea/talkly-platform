@@ -152,7 +152,7 @@ export default async function TeacherStudentDetailPage({
     if (childData) {
       const child = childData as Child;
       studentName = child.name;
-      studentSubLabel = child.grade ? `${child.grade} · 자녀 학생` : "자녀 학생";
+      studentSubLabel = child.grade ? `${child.grade} · Child student` : "Child student";
       schoolName = child.school_name;
       learningGoal = child.learning_goal;
     }
@@ -170,7 +170,7 @@ export default async function TeacherStudentDetailPage({
     if (studentData) {
       const student = studentData as Student;
       studentName = student.name || "Adult Student";
-      studentSubLabel = "성인 학생";
+      studentSubLabel = "Adult student";
     }
   }
 
@@ -290,17 +290,17 @@ export default async function TeacherStudentDetailPage({
   function getSessionStatusLabel(status: string) {
     switch (status) {
       case "scheduled":
-        return "예정";
+        return "Scheduled";
       case "in_progress":
-        return "수업 진행 중";
+        return "In progress";
       case "completed":
-        return "수업 완료";
+        return "Completed";
       case "cancelled":
-        return "수업 취소";
+        return "Cancelled";
       case "no_show":
-        return "결석";
+        return "Absent";
       case "held":
-        return "수업 연기";
+        return "On hold";
       default:
         return status;
     }
@@ -321,17 +321,17 @@ export default async function TeacherStudentDetailPage({
   function getAttendanceLabel(status: string | null) {
     switch (status) {
       case "present":
-        return "출석";
+        return "Present";
       case "late":
-        return "지각";
+        return "Late";
       case "absent":
-        return "결석";
+        return "Absent";
       case "excused":
-        return "인정결석";
+        return "Excused absence";
       case "teacher_absent":
-        return "강사결석";
+        return "Teacher absent";
       default:
-        return "미등록";
+        return "Not recorded";
     }
   }
 
@@ -463,7 +463,7 @@ export default async function TeacherStudentDetailPage({
               fontWeight: 800,
             }}
           >
-            ← 담당 학생
+            ← My students
           </Link>
         </div>
 
@@ -540,7 +540,7 @@ export default async function TeacherStudentDetailPage({
 
             <span className="talkly-badge talkly-badge-blue">
               {enrollment.status === "active"
-                ? "수강중"
+                ? "Enrolled"
                 : enrollment.status}
             </span>
           </div>
@@ -549,7 +549,7 @@ export default async function TeacherStudentDetailPage({
         <section className="talkly-stat-grid">
           <div className="talkly-card talkly-stat-card">
             <div className="talkly-stat-label">
-              완료 수업
+              Completed lessons
             </div>
 
             <div className="talkly-stat-value">
@@ -563,13 +563,13 @@ export default async function TeacherStudentDetailPage({
                 fontSize: "13px",
               }}
             >
-              전체 {sessions.length}회 중
+              Total {sessions.length}회 중
             </div>
           </div>
 
           <div className="talkly-card talkly-stat-card">
             <div className="talkly-stat-label">
-              출석률
+              Present률
             </div>
 
             <div className="talkly-stat-value">
@@ -583,13 +583,13 @@ export default async function TeacherStudentDetailPage({
                 fontSize: "13px",
               }}
             >
-              출석·지각·결석 기준
+              Present·Late·Absent 기준
             </div>
           </div>
 
           <div className="talkly-card talkly-stat-card">
             <div className="talkly-stat-label">
-              평균 학습평가
+              Average learning evaluation
             </div>
 
             <div className="talkly-stat-value">
@@ -615,7 +615,7 @@ export default async function TeacherStudentDetailPage({
                 fontSize: "13px",
               }}
             >
-              등록된 회차 평가 평균
+              등록된 Lesson evaluation 평균
             </div>
           </div>
         </section>
@@ -636,7 +636,7 @@ export default async function TeacherStudentDetailPage({
               fontSize: "22px",
             }}
           >
-            영역별 평균
+            Average by category
           </h2>
 
           <div
@@ -648,10 +648,10 @@ export default async function TeacherStudentDetailPage({
             }}
           >
             {[
-              ["참여도", participationAverage],
-              ["이해도", comprehensionAverage],
-              ["말하기", speakingAverage],
-              ["발음", pronunciationAverage],
+              ["Participation", participationAverage],
+              ["Comprehension", comprehensionAverage],
+              ["Speaking", speakingAverage],
+              ["Pronunciation", pronunciationAverage],
             ].map(([label, value]) => (
               <div
                 key={String(label)}
@@ -701,7 +701,7 @@ export default async function TeacherStudentDetailPage({
                     fontSize: "12px",
                   }}
                 >
-                  등록된 전체 평가 평균
+                  등록된 Total 평가 평균
                 </div>
               </div>
             ))}
@@ -726,7 +726,7 @@ export default async function TeacherStudentDetailPage({
               fontSize: "23px",
             }}
           >
-            학생 정보
+            Student information
           </h2>
 
           <div
@@ -738,19 +738,19 @@ export default async function TeacherStudentDetailPage({
             }}
           >
             {[
-              ["과정", course?.name || "-"],
-              ["학생 유형", studentSubLabel],
-              ["학교", schoolName || "-"],
-              ["수강 시작일", enrollment.start_date || "-"],
-              ["수강 종료일", enrollment.end_date || "-"],
+              ["Course", course?.name || "-"],
+              ["Student type", studentSubLabel],
+              ["School", schoolName || "-"],
+              ["Enrollment start date", enrollment.start_date || "-"],
+              ["Enrollment end date", enrollment.end_date || "-"],
               [
-                "주당 수업",
+                "Lessons per week",
                 enrollment.lessons_per_week != null
                   ? `${enrollment.lessons_per_week}회`
                   : "-",
               ],
               [
-                "총 수업",
+                "Total lessons",
                 enrollment.total_lessons != null
                   ? `${enrollment.total_lessons}회`
                   : "-",
@@ -806,7 +806,7 @@ export default async function TeacherStudentDetailPage({
                   fontWeight: 700,
                 }}
               >
-                학습 목표
+                Learning goals
               </div>
 
               <div
@@ -852,7 +852,7 @@ export default async function TeacherStudentDetailPage({
                   fontSize: "23px",
                 }}
               >
-                수업 기록
+                Lesson history
               </h2>
             </div>
 
@@ -877,7 +877,7 @@ export default async function TeacherStudentDetailPage({
                 color: "var(--text-muted)",
               }}
             >
-              등록된 수업이 없습니다.
+              No lessons have been recorded.
             </div>
           ) : (
             <div
@@ -918,7 +918,7 @@ export default async function TeacherStudentDetailPage({
                         color: "var(--talkly-navy)",
                       }}
                     >
-                      {session.lesson_number}회차
+                      {session.lesson_number} lessons
                     </strong>
 
                     <div>
@@ -939,7 +939,7 @@ export default async function TeacherStudentDetailPage({
                           fontSize: "12px",
                         }}
                       >
-                        입장:{" "}
+                        Classroom:{" "}
                         {formatDateTime(
                           attendance?.attended_at ?? null
                         )}
@@ -973,7 +973,7 @@ export default async function TeacherStudentDetailPage({
                     >
                       {sessionEvaluationAverage
                         ? `${sessionEvaluationAverage} / 5`
-                        : "평가 없음"}
+                        : "No evaluation"}
                     </div>
 
                     <span
