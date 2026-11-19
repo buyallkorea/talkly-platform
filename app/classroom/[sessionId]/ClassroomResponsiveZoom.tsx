@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-type View = "checking" | "embedded" | "mobile";
+type View = "checking" | "embedded" | "mobile" | "external";
 
 export function safeZoomMeetingUrl(raw: string | null): string | null {
   if (!raw) return null;
@@ -41,7 +41,35 @@ export default function ClassroomResponsiveZoom({
   if (view === "checking") {
     return <div className="talkly-mobile-zoom-access" role="status">화상수업 연결 준비 중 · Checking video connection…</div>;
   }
-  if (view === "embedded") return <>{children}</>;
+  if (view === "embedded") {
+    return (
+      <div className="talkly-zoom-desktop">
+        {safeJoinUrl && (
+          <details className="talkly-zoom-app-fallback">
+            <summary>오디오 연결 문제? Zoom 앱에서 열기 · Audio not working?</summary>
+            <p>브라우저 Zoom에서 음성이 계속 연결되지 않으면 Zoom 앱으로 참여할 수 있습니다.
+              앱으로 전환하면 기존 내장 Zoom은 종료되어 중복 접속을 줄입니다.</p>
+            {hostMode && <p>강사: Zoom 앱에서는 TALKLY 호스트 권한이 자동 전달되지 않습니다.
+              해당 Zoom 호스트 계정으로 로그인해야 할 수 있습니다.</p>}
+            <a href={safeJoinUrl} target="_blank" rel="noopener noreferrer"
+              onClick={() => setView("external")}>Zoom 앱에서 수업 열기 · Open in Zoom</a>
+          </details>
+        )}
+        <div className="talkly-zoom-desktop-embed">{children}</div>
+      </div>
+    );
+  }
+  if (view === "external") {
+    return (
+      <div className="talkly-mobile-zoom-access">
+        <strong className="talkly-mobile-zoom-heading">Zoom 앱으로 참여 중 · Using Zoom app</strong>
+        <p>이 강의실의 수업시간·출석 상태는 그대로 유지됩니다.
+          Zoom 앱에서 소리를 연결하고 TALKLY로 돌아와 교재와 채팅을 이용하세요.</p>
+        <button type="button" className="talkly-mobile-zoom-browser"
+          onClick={() => setView("embedded")}>내장 Zoom으로 돌아가기 (앱에서 먼저 나가기)</button>
+      </div>
+    );
+  }
 
   return (
     <div className="talkly-mobile-zoom-access">
@@ -57,7 +85,7 @@ export default function ClassroomResponsiveZoom({
         </p>
       )}
       {safeJoinUrl ? (
-        <a className="talkly-mobile-zoom-launch" href={safeJoinUrl} target="_blank" rel="noopener noreferrer">
+        <a className="talkly-mobile-zoom-launch" href={safeJoinUrl} target="_blank" rel="noopener noreferrer" onClick={() => setView("external")}>
           Zoom 앱으로 수업 참여 · Open Zoom
         </a>
       ) : (
