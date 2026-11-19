@@ -1,5 +1,6 @@
 "use client";
 import { getClassroomText } from "@/lib/classroom-language";
+import { checkClassroomMicrophone } from "@/lib/classroom-audio-diagnostics";
 import { activateZoomControlWithOverflow, zoomAudioState, type ZoomAction, type ZoomAudioUser } from "@/lib/zoom-ui-controls";
 import "./zoom-layout.css";
 import { markZoomLayout, zoomLayoutSize } from "@/lib/zoom-layout";
@@ -216,6 +217,9 @@ export default function ClassroomZoomEmbed({
   const [audioState, setAudioState] = useState("unknown");
   const [peerAudio, setPeerAudio] = useState("");
   const [controlError, setControlError] = useState("");
+  const [micCheckMessage, setMicCheckMessage] = useState("");
+  const [micChecking, setMicChecking] = useState(false);
+  const [sameNameParticipants, setSameNameParticipants] = useState(0);
   const [audioBusy, setAudioBusy] = useState(false);
   const audioBusyRef = useRef(false);
   const measureVideo = useCallback(() => {
@@ -460,6 +464,10 @@ export default function ClassroomZoomEmbed({
             const me = client.getCurrentUser?.();
             setAudioState(zoomAudioState(me));
             const peers = client.getAttendeeslist?.().filter(person => me?.userId != null && person.userId !== me.userId) || [];
+            const currentDisplayName = me?.displayName?.trim().toLocaleLowerCase();
+            setSameNameParticipants(currentDisplayName
+              ? peers.filter(person => person.displayName?.trim().toLocaleLowerCase() === currentDisplayName).length
+              : 0);
             setPeerAudio(peers.length === 0 ? ui("Waiting for the other participant · 상대방 입장 대기") : peers.some(person => zoomAudioState(person) === "disconnected") ? ui("Other participant: audio not connected · 상대방 오디오 미연결") : peers.some(person => zoomAudioState(person) === "unknown") ? ui("Other participant: checking audio · 상대방 오디오 확인 중") : peers.some(person => zoomAudioState(person) === "muted") ? ui("Other participant: microphone muted · 상대방 마이크 음소거") : ui("Other participant: audio connected · 상대방 오디오 연결됨"));
           } catch { setAudioState("unknown"); }
         };
@@ -659,6 +667,17 @@ export default function ClassroomZoomEmbed({
         value + 1
     );
   }
+  async function checkMicrophone() {
+    if (micChecking) return;
+    setMicChecking(true);
+    setMicCheckMessage("");
+    try {
+      const outcome = await checkClassroomMicrophone();
+      setMicCheckMessage(outcome.message);
+    } finally {
+      setMicChecking(false);
+    }
+  }
   async function audioAction() {
     if (audioBusyRef.current) return;
     setControlError("");
@@ -701,15 +720,29 @@ export default function ClassroomZoomEmbed({
         {screen === "joined" && <>
           <p className={audioState !== "ready" ? "talkly-audio-warning" : undefined}>{audioState === "ready" ? ui("Microphone on · 마이크 켜짐") : audioState === "muted" ? ui("Microphone muted · 마이크 꺼짐") : audioState === "disconnected" ? ui("Audio NOT connected — click Connect audio · 오디오 미연결: 오디오 연결을 누르세요") : ui("Checking audio · 오디오 상태 확인 중")}</p>
           <p>{ui(peerAudio)}</p>
+          {sameNameParticipants > 0 && (
+            <p role="status" className="talkly-audio-warning">
+              {hostMode
+                ? "Another participant has the same display name. If you opened this lesson in two tabs or devices, close the unused session to avoid microphone conflicts. · 동일 이름 중복 참가 가능성: 다른 강의실 탭/기기를 확인하세요."
+                : "동일 이름의 참가자가 여럿 있습니다. 같은 수업을 여러 탭·기기에서 열었는지 확인해 주세요."}
+            </p>
+          )}
           <div className="talkly-zoom-actions">
             <button type="button" onClick={() => void audioAction()} disabled={audioBusy}>{audioState === "ready" ? ui("Mute · 마이크 끄기") : audioState === "muted" ? ui("Unmute · 마이크 켜기") : ui("1. Connect audio · 오디오 연결")}</button>
             <button type="button" onClick={() => void nativeAction("video")}>{ui("2. Camera · 카메라 켜기/끄기")}</button>
             {hostMode && <button type="button" data-action={sharing ? "stop-share" : "share"} onClick={() => void nativeAction(sharing ? "stop-share" : "share")}>{sharing ? ui("Stop sharing · 공유 중지") : ui("3. Share textbook · 교재 화면 공유")}</button>}
           </div>
           <details><summary>{ui("Sound help · 소리가 안 들릴 때")}</summary><div className="talkly-zoom-actions">
+            <button type="button" onClick={() => void checkMicrophone()} disabled={micChecking} aria-label="Check microphone permissions · 마이크 상태 점검">
+              {micChecking ? "Checking microphone… · 마이크 확인 중" : "Check microphone · 마이크 상태 점검"}
+            </button>
             <button type="button" onClick={testSpeaker}>{ui("Test speaker · 소리 테스트")}</button>
             <button type="button" onClick={() => void nativeAction("settings")}>{ui("Audio settings · 오디오 설정")}</button>
-          </div><p>{ui("Both participants must connect audio and unmute. Allow microphone and sound in browser site settings; check the selected speaker/microphone and device volume. · 양쪽 모두 오디오 연결 후 마이크를 켜세요. 브라우저 사이트 설정의 마이크·소리 허용, 사용 장치와 볼륨을 확인하세요.")}</p></details>
+          </div>
+          <p>{ui("Both participants must connect audio and unmute. Allow microphone and sound in browser site settings; check the selected speaker/microphone and device volume. · 양쪽 모두 오디오 연결 후 마이크를 켜세요. 브라우저 사이트 설정의 마이크·소리 허용, 사용 장치와 볼륨을 확인하세요.")}</p>
+          <p style={{ fontSize: 12, opacity: 0.8 }}>마이크 상태 점검은 직접 눌렀을 때만 마이크를 잠시 열어 권한을 확인합니다. 녹음·저장·전송하지 않습니다. · The test checks microphone access and immediately closes it; no recording.</p>
+          </details>
+          {micCheckMessage && <p role="status" className="talkly-audio-warning">{micCheckMessage}</p>}
           {hostMode && <p className="talkly-audio-warning">Textbook sound: Chrome tab → textbook tab → enable Share tab audio. Window/screen sharing may have no sound.<br />{ui("교재 소리: Chrome 탭 → 교재 탭 선택 → ‘탭 오디오 공유’ 체크. 체크하지 않았다면 공유를 중지하고 다시 시작하세요.")}</p>}
           {controlError && <p role="alert" className="talkly-audio-warning">{controlError}</p>}
         </>}
