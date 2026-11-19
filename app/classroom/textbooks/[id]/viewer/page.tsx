@@ -71,7 +71,7 @@ export default async function ClassroomTextbookViewerPage({
 
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error(
-      "Supabase 서버 환경변수가 설정되지 않았습니다."
+      "The textbook service is not configured."
     );
   }
 
@@ -135,8 +135,8 @@ export default async function ClassroomTextbookViewerPage({
           <span className="talkly-badge talkly-badge-blue">TALKLY · TEXTBOOK</span>
           <h1 className="talkly-dashboard-title" style={{ marginTop: 16, fontSize: 25, overflowWrap: "anywhere" }}>{textbook.title}</h1>
           <div style={{ marginTop: 18, borderRadius: 12, padding: "20px 22px", border: "1px solid #dce6f5", background: "#f5f8ff" }}>
-            <strong style={{ display: "block", color: "#0a1f44", fontSize: 16 }}>교재 준비 중</strong>
-            <p style={{ margin: "9px 0 0", color: "#667085", lineHeight: 1.85, fontSize: 14 }}>아직 수업용 교재 페이지가 준비되지 않았습니다. 담당자에게 등록 상태를 확인해 주세요.</p>
+            <strong style={{ display: "block", color: "#0a1f44", fontSize: 16 }}>{profile.role === "teacher" ? "Textbook is being prepared" : "교재 준비 중"}</strong>
+            <p style={{ margin: "9px 0 0", color: "#667085", lineHeight: 1.85, fontSize: 14 }}>{profile.role === "teacher" ? "No textbook pages are ready yet. Ask the administrator to check the material setup." : "아직 수업용 교재 페이지가 준비되지 않았습니다. 담당자에게 등록 상태를 확인해 주세요."}</p>
           </div>
         </section>
       </main>
@@ -188,12 +188,12 @@ export default async function ClassroomTextbookViewerPage({
   }
   const signedPages = pageRows.map(page => {
     const imageUrl = pageUrls.get(page.page_image_url);
-    if (!imageUrl) throw new Error(`${page.page_number}페이지 이미지를 불러오지 못했습니다.`);
+    if (!imageUrl) throw new Error(`Could not load textbook page ${page.page_number}.`);
     return {
       id: page.id, pageNumber: page.page_number, imageUrl,
       hotspots: (hotspotsByPage.get(page.id) ?? []).flatMap(h => {
         const audioUrl = audioUrls.get(h.audio_url as string);
-        return audioUrl ? [{ id: h.id, label: h.label || "듣기", xPercent: Number(h.x_percent), yPercent: Number(h.y_percent), widthPercent: Number(h.width_percent), heightPercent: Number(h.height_percent), audioUrl }] : [];
+        return audioUrl ? [{ id: h.id, label: h.label || (profile.role === "teacher" ? "Listen" : "듣기"), xPercent: Number(h.x_percent), yPercent: Number(h.y_percent), widthPercent: Number(h.width_percent), heightPercent: Number(h.height_percent), audioUrl }] : [];
       }),
     };
   });
