@@ -9,6 +9,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 
 import ClassroomZoomFrame from "./ClassroomZoomFrame";
+import ClassroomResponsiveZoom from "./ClassroomResponsiveZoom";
 import ClassroomTextbookPanel from "./ClassroomTextbookPanel";
 import ClassSessionControls from "./ClassSessionControls";
 import ClassroomWaitingRoom from "./ClassroomWaitingRoom";
@@ -741,7 +742,7 @@ export default async function ClassroomPage({
   }
 
   const materialMode = session.material_mode === "screen" ? "screen" : "textbook";
-  if (hostMode && materials !== "ready") {
+  if (hostMode && materials !== "ready" && session.status !== "in_progress") {
     return <ClassroomPreparation sessionId={session.id} initialMode={materialMode}
       selectedTextbookId={session.selected_textbook_id} returnHref="/teacher"
       textbooks={(assignedTextbooks ?? []).flatMap(item => {
@@ -940,20 +941,38 @@ export default async function ClassroomPage({
         .talkly-classroom-textbook > .talkly-textbook-shell { flex: 1 1 0; height: auto !important; min-height: 0; }
         .talkly-classroom-video { overflow: hidden; }
         .talkly-zoom-frame { display: block; width: 100%; height: 100%; border: 0; background: #111216; }
+        .talkly-zoom-desktop { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+        .talkly-zoom-desktop-embed { flex: 1 1 0; min-height: 0; }
+        .talkly-zoom-app-fallback { flex: 0 0 auto; padding: 4px 10px; font-size: 11px; line-height: 1.6; background: #172033; color: #cbd5e1; }
+        .talkly-zoom-app-fallback summary { cursor: pointer; min-height: 30px; color: #fef08a; }
+        .talkly-zoom-app-fallback p { margin: 4px 0; }
+        .talkly-zoom-app-fallback a { display: inline-flex; justify-content: center; min-height: 42px; align-items: center; padding: 6px 12px; margin: 5px 0; border-radius: 8px; background: #1d4ed8; color: #fff; font-weight: 800; text-decoration: none; }
+        .talkly-mobile-zoom-access { height: 100%; min-height: 0; overflow-y: auto; box-sizing: border-box; padding: 22px; display: flex; flex-direction: column; justify-content: center; align-items: stretch; gap: 13px; background: #111827; color: #f8fafc; line-height: 1.6; }
+        .talkly-mobile-zoom-heading { font-size: 18px; }
+        .talkly-mobile-zoom-access p { font-size: 13px; margin: 0; color: #dbeafe; }
+        .talkly-mobile-zoom-warning { border: 1px solid #f59e0b; border-radius: 10px; padding: 10px; background: #3b2f1e; }
+        .talkly-mobile-zoom-launch, .talkly-mobile-zoom-browser { display: inline-flex; width: 100%; box-sizing: border-box; min-height: 49px; align-items: center; justify-content: center; border-radius: 10px; font-size: 14px; font-weight: 900; text-align: center; text-decoration: none; padding: 10px; }
+        .talkly-mobile-zoom-launch { background: #2563eb; border: 1px solid #93c5fd; color: #fff; }
+        .talkly-mobile-zoom-browser { background: #263243; border: 1px solid #64748b; color: #e2e8f0; cursor: pointer; }
+        .talkly-mobile-zoom-note { font-size: 12px !important; }
+
 
 
         @media (max-width: 1050px) {
-          .talkly-classroom { height: auto; min-height: 100dvh; overflow: auto; }
-          .talkly-classroom-stage { grid-template-columns: minmax(260px, .65fr) minmax(0, 1.35fr); overflow: visible; flex: none; }
-          .talkly-classroom-video, .talkly-classroom-textbook { height: 65dvh; min-height: 420px; }
+          .talkly-classroom { height: auto; min-height: 100dvh; overflow: auto; padding: 6px 8px; }
+          .talkly-classroom-stage { grid-template-columns: minmax(0, 1fr); gap: 9px; overflow: visible; flex: none; }
+          .talkly-classroom-video { height: 62dvh; min-height: 430px; grid-column: 1 / -1; }
+          .talkly-classroom-textbook { height: 65dvh; min-height: 430px; grid-column: 1 / -1; }
           .talkly-classroom-stage > .talkly-chat { grid-column: 1 / -1; height: 320px; }
+          .talkly-classroom-top { flex-wrap: wrap; gap: 8px; }
+          .talkly-classroom-title { font-size: 17px; }
+          .talkly-classroom-control { gap: 8px; padding: 6px 8px; }
+          .talkly-mobile-zoom-access { padding: 16px; justify-content: flex-start; }
         }
         @media (max-width: 640px) {
-          .talkly-classroom-stage { grid-template-columns: minmax(0, 1fr); }
-          .talkly-classroom-video { height: 360px; min-height: 360px; }
-          .talkly-classroom-textbook { height: 70dvh; min-height: 480px; }
-          .talkly-classroom-top { flex-wrap: wrap; }
-          .talkly-classroom-title { font-size: 17px; }
+          .talkly-classroom-video { height: 60dvh; min-height: 400px; }
+          .talkly-classroom-textbook { height: 66dvh; min-height: 420px; }
+          .talkly-mobile-zoom-access { padding: 13px; }
         }
 
 
@@ -971,8 +990,8 @@ export default async function ClassroomPage({
         @media (min-width: 641px) and (max-width: 1050px) {
           .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat { height: 65dvh; min-height: 420px; }
         }
-        @media (max-width: 640px) {
-          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video { grid-column: 1; height: 65dvh; min-height: 420px; }
+        @media (max-width: 1050px) {
+          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video { grid-column: 1; height: 62dvh; min-height: 430px; }
           .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] { grid-template-columns: minmax(0, 1fr); }
           .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat { grid-column: 1; grid-row: 2; }
         }
@@ -1053,11 +1072,13 @@ export default async function ClassroomPage({
 
         <ClassroomMaterialStage sessionId={session.id} initialMode={materialMode} canControl={hostMode}>
           <section className="talkly-classroom-panel talkly-classroom-video">
-            <ClassroomZoomFrame
-              key={`${user.id}-${profile.role}-${session.id}`}
-              sessionId={session.id}
-              testStudentMode={isVerifiedTestStudent}
-            />
+            <ClassroomResponsiveZoom meetingUrl={session.meeting_url} hostMode={hostMode}>
+              <ClassroomZoomFrame
+                key={`${user.id}-${profile.role}-${session.id}`}
+                sessionId={session.id}
+                testStudentMode={isVerifiedTestStudent}
+              />
+            </ClassroomResponsiveZoom>
           </section>
 
 

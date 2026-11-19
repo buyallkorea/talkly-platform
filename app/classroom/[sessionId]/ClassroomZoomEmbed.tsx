@@ -170,6 +170,9 @@ export default function ClassroomZoomEmbed({
   const shareCleanupRef = useRef<(() => void) | null>(null);
   const generationRef = useRef(0);
   const joinedRef = useRef(false);
+  // Do not initialize a replacement Zoom client while the previous
+  // microphone/media connection is still leaving the meeting.
+  const teardownRef = useRef<Promise<void>>(Promise.resolve());
 
   const disposeClient = useCallback(async () => {
     shareCleanupRef.current?.();
@@ -269,6 +272,8 @@ export default function ClassroomZoomEmbed({
         }
       };
       try {
+        await teardownRef.current;
+        ensureCurrent();
         setScreen(
           "loading"
         );
@@ -634,7 +639,9 @@ export default function ClassroomZoomEmbed({
       window.clearTimeout(timer);
       generationRef.current += 1;
       runningRef.current = false;
-      void disposeClient();
+      const previousCleanup = disposeClient();
+      teardownRef.current = previousCleanup;
+      void previousCleanup.catch((error) => console.warn("[TALKLY] Zoom cleanup failed:", error));
     };
   }, [startZoom, disposeClient, attempt]);
   useEffect(() => {
@@ -666,6 +673,16 @@ export default function ClassroomZoomEmbed({
       (value) =>
         value + 1
     );
+  }
+  function reconnectClassroom() {
+    if (runningRef.current) return;
+    if (!window.confirm(hostMode
+      ? "Reconnect Zoom? The lesson and remaining time are not reset. Computer audio must be reconnected afterward. · 화상 연결을 다시 시작할까요?"
+      : "Zoom 연결을 다시 시작할까요? 수업시간·출석은 초기화되지 않으며 오디오도 다시 연결해야 합니다.")) return;
+    setControlError("");
+    setMicCheckMessage("");
+    setAudioState("unknown");
+    retryZoom();
   }
   async function checkMicrophone() {
     if (micChecking) return;
@@ -716,9 +733,9 @@ export default function ClassroomZoomEmbed({
   return (
     <div lang={hostMode ? "en" : "ko"} className="talkly-zoom-shell" data-split={split ? "true" : "false"} data-receiving={receiving ? "true" : "false"}>
       <div className="talkly-zoom-status" role="status">
-        <strong>{hostMode ? ui("Teacher · 강사") : ui("Video · 영상")} · {screen === "joined" ? ui("Zoom connected · Zoom 연결됨") : screen === "joining" ? ui("Joining · 입장 중") : ui("Connecting · 연결 준비")}</strong>
+        <strong>{hostMode ? ui("Teacher · 강사") : ui("Video · 영상")} · {screen === "joined" ? ui("Meeting joined · 영상 입장 완료") : screen === "joining" ? ui("Joining · 입장 중") : ui("Connecting · 연결 준비")}</strong>
         {screen === "joined" && <>
-          <p className={audioState !== "ready" ? "talkly-audio-warning" : undefined}>{audioState === "ready" ? ui("Microphone on · 마이크 켜짐") : audioState === "muted" ? ui("Microphone muted · 마이크 꺼짐") : audioState === "disconnected" ? ui("Audio NOT connected — click Connect audio · 오디오 미연결: 오디오 연결을 누르세요") : ui("Checking audio · 오디오 상태 확인 중")}</p>
+          <p className={audioState !== "ready" ? "talkly-audio-warning" : undefined}>{audioState === "ready" ? ui("Computer audio connected · 컴퓨터 오디오 연결됨") : audioState === "muted" ? ui("Audio joined, microphone muted · 오디오 연결됨 · 마이크 꺼짐") : audioState === "disconnected" ? ui("Audio not joined. Click the Zoom headphone icon below to connect computer audio. · 소리 연결 전입니다. 아래 Zoom 헤드셋 버튼으로 오디오를 연결하세요.") : ui("Checking audio · 오디오 상태 확인 중")}</p>
           <p>{ui(peerAudio)}</p>
           {sameNameParticipants > 0 && (
             <p role="status" className="talkly-audio-warning">
@@ -728,15 +745,19 @@ export default function ClassroomZoomEmbed({
             </p>
           )}
           <div className="talkly-zoom-actions">
-            <button type="button" onClick={() => void audioAction()} disabled={audioBusy}>{audioState === "ready" ? ui("Mute · 마이크 끄기") : audioState === "muted" ? ui("Unmute · 마이크 켜기") : ui("1. Connect audio · 오디오 연결")}</button>
+            <button type="button" onClick={() => void audioAction()} disabled={audioBusy}>{audioState === "ready" ? ui("Mute · 마이크 끄기") : audioState === "muted" ? ui("Unmute · 마이크 켜기") : ui("Connect computer audio · 오디오 연결")}</button>
             {audioState !== "ready" && audioState !== "muted" && (
               <button type="button" onClick={() => void checkMicrophone()} disabled={micChecking}
                 title="마이크를 잠시 열어 권한·장치를 확인합니다. 녹음하거나 저장하지 않습니다.">
                 {micChecking ? "Checking microphone… · 확인 중" : "Check microphone · 마이크 상태 점검"}
               </button>
             )}
-            <button type="button" onClick={() => void nativeAction("video")}>{ui("2. Camera · 카메라 켜기/끄기")}</button>
-            {hostMode && <button type="button" data-action={sharing ? "stop-share" : "share"} onClick={() => void nativeAction(sharing ? "stop-share" : "share")}>{sharing ? ui("Stop sharing · 공유 중지") : ui("3. Share textbook · 교재 화면 공유")}</button>}
+            <button type="button" onClick={() => void nativeAction("video")}>{ui("Camera · 카메라 켜기/끄기")}</button>
+            <button type="button" onClick={reconnectClassroom} disabled={runningRef.current}
+              title="수업시간은 유지하고 Zoom 연결만 새로 시작합니다. 오디오는 다시 연결해야 합니다.">
+              {ui("Reconnect Zoom · 다시 연결")}
+            </button>
+            {hostMode && <button type="button" data-action={sharing ? "stop-share" : "share"} onClick={() => void nativeAction(sharing ? "stop-share" : "share")}>{sharing ? ui("Stop sharing · 공유 중지") : ui("Share textbook · 교재 화면 공유")}</button>}
           </div>
           <details><summary>{ui("Sound help · 소리가 안 들릴 때")}</summary><div className="talkly-zoom-actions">
 
@@ -747,7 +768,10 @@ export default function ClassroomZoomEmbed({
           <p style={{ fontSize: 12, opacity: 0.8 }}>마이크 상태 점검은 직접 눌렀을 때만 마이크를 잠시 열어 권한을 확인합니다. 녹음·저장·전송하지 않습니다. · The test checks microphone access and immediately closes it; no recording.</p>
           </details>
           {micCheckMessage && <p role="status" className="talkly-audio-warning">{micCheckMessage}</p>}
-          {hostMode && <p className="talkly-audio-warning">Textbook sound: Chrome tab → textbook tab → enable Share tab audio. Window/screen sharing may have no sound.<br />{ui("교재 소리: Chrome 탭 → 교재 탭 선택 → ‘탭 오디오 공유’ 체크. 체크하지 않았다면 공유를 중지하고 다시 시작하세요.")}</p>}
+          {hostMode && <details className="talkly-textbook-audio-help">
+            <summary>Textbook sound help · 교재 소리 공유 안내</summary>
+            <p className="talkly-audio-warning">Textbook sound: in Chrome, share the textbook tab and turn on Share tab audio. Window or whole-screen sharing may have no audio.<br />{ui("교재 소리: Chrome에서 교재 탭을 선택한 뒤 ‘탭 오디오 공유’를 켜세요. 일반 창 공유 시 소리가 전달되지 않을 수 있습니다.")}</p>
+          </details>}
           {controlError && <p role="alert" className="talkly-audio-warning">{controlError}</p>}
         </>}
       </div>
