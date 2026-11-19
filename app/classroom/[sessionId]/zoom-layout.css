@@ -83,7 +83,9 @@
   background:#162338; border-top:1px solid #42526b; font-size:11px;
 }
 .talkly-zoom-shell .talkly-zoom-status > strong,
-.talkly-zoom-shell .talkly-zoom-status > p:not(.talkly-zoom-peer) { display:none; }
+.talkly-zoom-shell .talkly-zoom-status > .talkly-zoom-audio-copy { display:none; }
+.talkly-zoom-shell .talkly-zoom-status > .talkly-zoom-error,
+.talkly-zoom-shell .talkly-zoom-status > p[role=alert] { color:#fecaca; font-weight:700; }
 .talkly-zoom-shell .talkly-zoom-indicators {
   display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:3px;
 }
