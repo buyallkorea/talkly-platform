@@ -348,9 +348,9 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (consentError || !consentRecord ||
       consentRecord.order_id !== payment.order_id ||
-      consentRecord.decisions?.discount !== true ||
+      (consentRecord.terms_version !== "2026-11-19-v5" && consentRecord.decisions?.discount !== true) ||
       consentRecord.decisions?.refund !== true ||
-       (["2026-11-18-v3", "2026-11-18-v4"].includes(consentRecord.terms_version) && consentRecord.decisions?.finalConfirmation !== true) ||
+       (["2026-11-18-v3", "2026-11-18-v4", "2026-11-19-v5"].includes(consentRecord.terms_version) && consentRecord.decisions?.finalConfirmation !== true) ||
       Number(consentRecord.pricing_snapshot?.finalPrice) !== Number(payment.amount)) {
       return NextResponse.json({
         success: false, error: "필수 동의 증빙이 없는 결제는 승인할 수 없습니다."

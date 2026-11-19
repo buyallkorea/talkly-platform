@@ -89,7 +89,7 @@ export default async function PreAssignmentCheckout({
 
   const pricing = pricingResult.data;
   const schedule = `${(request.preferred_days ?? []).map((day) => weekdayNames[day] ?? day).join(" · ")}
-     / 희망시간 ${(request.preferred_time_candidates ?? []).join(" / ")} (결제 후 관리자 확정)`;
+     / 희망시간 ${(request.preferred_time_candidates ?? []).join(" / ")}`;
   return (
     <main style={{ minHeight: "100vh", background: "linear-gradient(180deg,#f5f8ff 0%,#fff 56%)" }}>
       <div style={{ maxWidth: 1120, margin: "0 auto", padding: "30px 18px 85px" }}>
@@ -101,7 +101,7 @@ export default async function PreAssignmentCheckout({
         }}>
           <span style={{ fontSize: 11, letterSpacing: 1.4, color: "#c7d9ff" }}>TALKLY PAYMENT</span>
           <h1 style={{ margin: "5px 0 0", fontSize: "clamp(21px, 2.6vw, 28px)", lineHeight: 1.25 }}>
-            수강료 결제 · 관리자 강사 배정
+            수강료 결제
           </h1>
         </header>
         <p style={{ fontSize: 12, color: "#52617a", margin: "12px 2px 0", lineHeight: 1.6 }}>

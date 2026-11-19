@@ -169,7 +169,6 @@ export default function PaymentPreparation({
   discountPolicies,
   savedSelection,
 }: Props) {
-  const isUnassignedRecommendation = teacherName === "관리자 배정 예정";
   const initialMonths =
     discountPolicies.some(
       (policy) =>
@@ -341,7 +340,6 @@ export default function PaymentPreparation({
             consent: {
               version: TUITION_CONSENT_VERSION,
               answers: {
-                discount: consentAnswers.discount === "yes",
                 refund: consentAnswers.refund === "yes",
                 finalConfirmation: consentAnswers.finalConfirmation === "yes",
               },
@@ -519,31 +517,6 @@ export default function PaymentPreparation({
 
 
               </div>
-
-              <span
-                style={{
-                  display:
-                    "inline-flex",
-                  alignItems:
-                    "center",
-                  minHeight:
-                    "25px",
-                  padding:
-                    "0 10px",
-                  borderRadius:
-                    "999px",
-                  background:
-                    isUnassignedRecommendation ? "#fff4e5" : "#ecfdf3",
-                  color:
-                    isUnassignedRecommendation ? "#9a5700" : "#067647",
-                  fontSize:
-                    "11px",
-                  fontWeight:
-                    900,
-                }}
-              >
-                {isUnassignedRecommendation ? "배정 예정" : "배정 완료"}
-              </span>
             </div>
 
             <div
