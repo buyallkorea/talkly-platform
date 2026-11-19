@@ -251,11 +251,11 @@ export default async function TeacherLevelTestDetailPage({
     value: string | null
   ) {
     if (!value) {
-      return "일정 미정";
+      return "Not scheduled";
     }
 
     return new Intl.DateTimeFormat(
-      "ko-KR",
+      "en-US",
       {
         timeZone: "Asia/Seoul",
         year: "numeric",
@@ -276,7 +276,7 @@ export default async function TeacherLevelTestDetailPage({
       case "scheduled":
         return {
           en: "Scheduled",
-          ko: "예정",
+          ko: "Scheduled",
           color: "#175cd3",
           background: "#eef4ff",
           border: "#b2ccff",
@@ -285,7 +285,7 @@ export default async function TeacherLevelTestDetailPage({
       case "in_progress":
         return {
           en: "In Progress",
-          ko: "진행 중",
+          ko: "In progress",
           color: "#027a48",
           background: "#ecfdf3",
           border: "#abefc6",
@@ -294,7 +294,7 @@ export default async function TeacherLevelTestDetailPage({
       case "completed":
         return {
           en: "Completed",
-          ko: "완료",
+          ko: "Completed",
           color: "#344054",
           background: "#f2f4f7",
           border: "#d0d5dd",
@@ -304,7 +304,7 @@ export default async function TeacherLevelTestDetailPage({
       case "canceled":
         return {
           en: "Cancelled",
-          ko: "취소",
+          ko: "Cancelled",
           color: "#b42318",
           background: "#fff1f0",
           border: "#fecdca",
@@ -379,7 +379,7 @@ export default async function TeacherLevelTestDetailPage({
               color: "#98a2b3",
             }}
           >
-            레벨테스트 목록 · 강사 메인
+            Level tests · Teacher home
           </span>
         </nav>
 
@@ -496,8 +496,8 @@ export default async function TeacherLevelTestDetailPage({
                 "rgba(255,255,255,0.58)",
             }}
           >
-            배정된 화상 레벨테스트를 진행한 뒤
-            강사 평가를 작성합니다.
+            Complete the assigned video level test, then
+            submit the teacher evaluation.
           </div>
         </section>
 
@@ -531,9 +531,9 @@ export default async function TeacherLevelTestDetailPage({
                 lineHeight: 1.6,
               }}
             >
-              이 인터뷰는 현재 진행 대상이 아닌
-              과거 또는 취소된 기록입니다.
-              입장 및 평가 저장은 할 수 없습니다.
+              This is an archived or cancelled interview.
+              
+              You cannot enter or save an evaluation.
             </div>
           </div>
         )}
@@ -569,7 +569,7 @@ export default async function TeacherLevelTestDetailPage({
               fontSize: "11px",
             }}
           >
-            레벨테스트 상세정보
+            Level test details
           </div>
 
           <div
@@ -583,7 +583,7 @@ export default async function TeacherLevelTestDetailPage({
           >
             <InfoCard
               label="DATE & TIME"
-              korean="테스트 일시"
+              korean="Test date and time"
               value={formatEnglishDateTime(
                 interview.scheduled_at
               )}
@@ -594,7 +594,7 @@ export default async function TeacherLevelTestDetailPage({
 
             <InfoCard
               label="DURATION"
-              korean="테스트 시간"
+              korean="Test duration"
               value={`${
                 interview.duration_minutes ??
                 20
@@ -602,12 +602,12 @@ export default async function TeacherLevelTestDetailPage({
               sub={`${
                 interview.duration_minutes ??
                 20
-              }분`}
+              } min`}
             />
 
             <InfoCard
               label="MEETING"
-              korean="화상 시스템"
+              korean="Video platform"
               value={
                 interview.meeting_provider ||
                 "TALKLY"
@@ -642,9 +642,9 @@ export default async function TeacherLevelTestDetailPage({
                   registered yet.
                 </strong>
                 <br />
-                화상 접속 링크가 아직 등록되지
-                않았습니다. 관리자가 링크를 등록한
-                뒤 테스트에 입장할 수 있습니다.
+                The video meeting link is not yet registered.
+                The administrator must provide the link
+                before you can enter the test.
               </div>
             )}
         </section>
