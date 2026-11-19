@@ -50,18 +50,19 @@ test("both learner and parent enrollment pages use revised guidance", () => {
   }
 });
 
-test("three required payment consents are stored and verified", () => {
+test("two required payment consents are stored and verified", () => {
   const source = read("lib/payments/tuition-consent.ts");
-  assert.match(source, /key: "discount"/);
+  assert.doesNotMatch(source, /key: "discount"/);
   assert.match(source, /key: "refund"/);
-  assert.match(source, /answers\.discount === "yes" && answers\.refund === "yes"/);
+  assert.match(source, /answers\.refund === "yes"/);
   assert.match(source, /key: "finalConfirmation"/);
   assert.match(source, /answers\.finalConfirmation === "yes"/);
-  assert.match(source, /③/);
+  assert.match(source, /②/);
   const prepare = read("app/api/parent/enrollment-requests/[id]/payment/prepare/route.ts");
   const confirm = read("app/api/parent/payments/confirm/route.ts");
   assert.match(prepare, /consent\?\.answers\?\.finalConfirmation !== true/);
   assert.match(confirm, /consentRecord\.decisions\?\.finalConfirmation !== true/);
+  assert.match(prepare, /2026-11-19-v5|TUITION_CONSENT_VERSION/);
 });
 
 test("November 18 schedule and enrollment status controls", () => {
