@@ -3,7 +3,7 @@
  * media APIs; a missing/changed label returns false and leaves native UI intact. */
 export type ZoomAction = "audio" | "video" | "share" | "stop-share" | "settings";
 const labels: Record<ZoomAction, RegExp> = {
- audio:/^(join audio|connect audio|오디오 연결|오디오 참가|음소거 해제|unmute|mute|음소거)$/i,
+ audio:/^(join audio(?: by computer)?|join (?:with )?computer audio|connect audio|오디오 연결|오디오 참가|컴퓨터 오디오로 참가|음소거 해제|unmute|mute|음소거)$/i,
  video:/^(start video|stop video|비디오 시작|비디오 중지|비디오 정지)$/i,
  "stop-share":/^(stop share|stop sharing|공유 중지)$/i,
  share:/^(share screen|화면 공유)$/i,
