@@ -941,6 +941,12 @@ export default async function ClassroomPage({
         .talkly-classroom-textbook > .talkly-textbook-shell { flex: 1 1 0; height: auto !important; min-height: 0; }
         .talkly-classroom-video { overflow: hidden; }
         .talkly-zoom-frame { display: block; width: 100%; height: 100%; border: 0; background: #111216; }
+        .talkly-zoom-desktop { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+        .talkly-zoom-desktop-embed { flex: 1 1 0; min-height: 0; }
+        .talkly-zoom-app-fallback { flex: 0 0 auto; padding: 4px 10px; font-size: 11px; line-height: 1.6; background: #172033; color: #cbd5e1; }
+        .talkly-zoom-app-fallback summary { cursor: pointer; min-height: 30px; color: #fef08a; }
+        .talkly-zoom-app-fallback p { margin: 4px 0; }
+        .talkly-zoom-app-fallback a { display: inline-flex; justify-content: center; min-height: 42px; align-items: center; padding: 6px 12px; margin: 5px 0; border-radius: 8px; background: #1d4ed8; color: #fff; font-weight: 800; text-decoration: none; }
         .talkly-mobile-zoom-access { height: 100%; min-height: 0; overflow-y: auto; box-sizing: border-box; padding: 22px; display: flex; flex-direction: column; justify-content: center; align-items: stretch; gap: 13px; background: #111827; color: #f8fafc; line-height: 1.6; }
         .talkly-mobile-zoom-heading { font-size: 18px; }
         .talkly-mobile-zoom-access p { font-size: 13px; margin: 0; color: #dbeafe; }
