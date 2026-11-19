@@ -5,7 +5,7 @@ test('Zoom join does not imply audio connected; mute and missing media state are
  for(const [user,expected] of [[null,'unknown'],[{},'disconnected'],[{audio:''},'disconnected'],[{audio:'computer',muted:true},'muted'],[{audio:'computer',muted:false},'ready'],[{audio:'phone',muted:false},'ready'],[{audio:'computer'},'unknown']])assert.equal(api.zoomAudioState(user),expected);
 });
 test('visible native audio action is activated synchronously in the click gesture',()=>{
- for(const name of ['Join Audio','오디오 연결']){const b=button(name);assert.equal(api.activateZoomControl({querySelectorAll:()=>[b]},'audio'),true);assert.equal(b.clicks,1);assert.equal(b.focused,true)}
+ for(const name of ['Join Audio','Join Audio by Computer','Join with Computer Audio','컴퓨터 오디오로 참가','오디오 연결']){const b=button(name);assert.equal(api.activateZoomControl({querySelectorAll:()=>[b]},'audio'),true);assert.equal(b.clicks,1);assert.equal(b.focused,true)}
 });
 test('unrelated, disabled and hidden SDK controls are never activated',()=>{
  const buttons=[button('Share Screen'),button('Join Audio',{disabled:true}),button('오디오 연결',{hidden:true})];assert.equal(api.activateZoomControl({querySelectorAll:()=>buttons},'audio'),false);assert(buttons.every(b=>!b.clicks));
