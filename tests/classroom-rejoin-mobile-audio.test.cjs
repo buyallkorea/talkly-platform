@@ -38,6 +38,10 @@ test("Zoom mobile app URL accepts only https Zoom meeting links", () => {
     "https://zoom.us/evil/123456", "", null,
   ]) assert.equal(exports.safeZoomMeetingUrl(invalid), null);
   assert.match(source, /setView\(handheld \? "mobile" : "embedded"\)/);
+  assert.match(source, /view === "external"/);
+  assert.match(source, /setView\("external"\)/);
+  assert.match(source, /오디오 연결 문제\? Zoom 앱에서 열기/);
+  assert.match(source, /Zoom 앱에서 수업 열기/);
   assert.match(source, /view === "checking"/);
   assert.match(source, /target="_blank" rel="noopener noreferrer"/);
   assert.match(source, /브라우저 화면으로 시도 \(모바일 지원 제한\)/);
