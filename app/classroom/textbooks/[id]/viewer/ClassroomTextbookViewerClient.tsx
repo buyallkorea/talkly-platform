@@ -394,7 +394,7 @@ export default function ClassroomTextbookViewerClient({
                     >
                       <img
                         src={page.imageUrl}
-                        alt={`${english ? `Page ${page.pageNumber}` : `${page.pageNumber}페이지`}`}
+                        alt={english ? `Page ${page.pageNumber}` : `${page.pageNumber}페이지`}
                         draggable={false}
                         loading="lazy"
                         style={{
