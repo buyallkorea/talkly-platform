@@ -742,11 +742,17 @@ export default function ClassroomZoomEmbed({
       "error";
   return (
     <div lang={hostMode ? "en" : "ko"} className="talkly-zoom-shell" data-split={split ? "true" : "false"} data-receiving={receiving ? "true" : "false"}>
-      <div className="talkly-zoom-status" role="status">
+      <div className="talkly-zoom-status" role="group" aria-label={hostMode ? "Your camera and audio controls" : "내 영상과 오디오 설정"}>
         <strong>{hostMode ? ui("Teacher · 강사") : ui("Video · 영상")} · {screen === "joined" ? ui("Meeting joined · 영상 입장 완료") : screen === "joining" ? ui("Joining · 입장 중") : ui("Connecting · 연결 준비")}</strong>
         {screen === "joined" && <>
+          <div className="talkly-zoom-indicators" role="status" aria-live="polite">
+            <span className="talkly-zoom-health" data-health="ok">{hostMode ? "Zoom connected" : "Zoom 연결됨"}</span>
+            <span className="talkly-zoom-health" data-health={audioState === "disconnected" ? "error" : audioState === "ready" || audioState === "muted" ? "ok" : "unknown"}>{audioState === "disconnected" ? (hostMode ? "Audio disconnected" : "오디오 미연결") : audioState === "ready" || audioState === "muted" ? (hostMode ? "Audio connected" : "오디오 연결") : (hostMode ? "Audio checking" : "오디오 확인 중")}</span>
+            <span className="talkly-zoom-health" data-health={micCheckOk === false ? "error" : audioState === "ready" || micCheckOk === true ? "ok" : "unknown"}>{micCheckOk === false ? (hostMode ? "Microphone issue" : "마이크 문제") : audioState === "ready" ? (hostMode ? "Mic on" : "마이크 켜짐") : audioState === "muted" ? (hostMode ? "Mic muted" : "마이크 음소거") : micCheckOk === true ? (hostMode ? "Mic access OK" : "마이크 권한 정상") : (hostMode ? "Mic not checked" : "마이크 점검 전")}</span>
+            <span className="talkly-zoom-health" data-health={cameraControlFailed ? "error" : cameraOn === true ? "ok" : "unknown"}>{cameraControlFailed ? (hostMode ? "Camera control issue" : "카메라 조작 오류") : cameraOn === true ? (hostMode ? "Camera on" : "카메라 켜짐") : cameraOn === false ? (hostMode ? "Camera off" : "카메라 꺼짐") : (hostMode ? "Camera checking" : "카메라 확인 중")}</span>
+          </div>
           <p className={audioState !== "ready" ? "talkly-audio-warning" : undefined}>{audioState === "ready" ? ui("Computer audio connected · 컴퓨터 오디오 연결됨") : audioState === "muted" ? ui("Audio joined, microphone muted · 오디오 연결됨 · 마이크 꺼짐") : audioState === "disconnected" ? ui("Audio not joined. Click the Zoom headphone icon below to connect computer audio. · 소리 연결 전입니다. 아래 Zoom 헤드셋 버튼으로 오디오를 연결하세요.") : ui("Checking audio · 오디오 상태 확인 중")}</p>
-          <p>{ui(peerAudio)}</p>
+          <p className="talkly-zoom-peer" data-health={peerAudio.includes("audio not connected") || peerAudio.includes("오디오 미연결") ? "error" : "unknown"}><span>{hostMode ? "Other participant (read only): " : "상대방 상태 (읽기 전용): "}</span>{ui(peerAudio)}</p>
           {sameNameParticipants > 0 && (
             <p role="status" className="talkly-audio-warning">
               {hostMode
@@ -755,14 +761,14 @@ export default function ClassroomZoomEmbed({
             </p>
           )}
           <div className="talkly-zoom-actions">
-            <button type="button" onClick={() => void audioAction()} disabled={audioBusy}>{audioState === "ready" ? ui("Mute · 마이크 끄기") : audioState === "muted" ? ui("Unmute · 마이크 켜기") : ui("Connect computer audio · 오디오 연결")}</button>
-            {audioState !== "ready" && audioState !== "muted" && (
-              <button type="button" onClick={() => void checkMicrophone()} disabled={micChecking}
+            <button type="button" onClick={() => void audioAction()} disabled={audioBusy} data-health={audioState === "disconnected" ? "error" : "unknown"}>{audioState === "ready" ? ui("Mute · 마이크 끄기") : audioState === "muted" ? ui("Unmute · 마이크 켜기") : ui("Connect computer audio · 오디오 연결")}</button>
+            {(
+              <button type="button" onClick={() => void checkMicrophone()} disabled={micChecking} data-health={micCheckOk === false ? "error" : "unknown"}
                 title={hostMode ? "Briefly checks microphone permission and device access. No recording or storage." : "마이크를 잠시 열어 권한·장치를 확인합니다. 녹음하거나 저장하지 않습니다."}>
                 {micChecking ? (hostMode ? "Checking microphone…" : "Checking microphone… · 확인 중") : (hostMode ? "Check microphone" : "Check microphone · 마이크 상태 점검")}
               </button>
             )}
-            <button type="button" onClick={() => void nativeAction("video")}>{ui("Camera · 카메라 켜기/끄기")}</button>
+            <button type="button" onClick={() => void nativeAction("video")} data-health={cameraControlFailed ? "error" : "unknown"}>{ui("Camera · 카메라 켜기/끄기")}</button>
             <button type="button" onClick={reconnectClassroom} disabled={runningRef.current}
               title={hostMode ? "Restart Zoom without resetting class time. Reconnect computer audio afterward." : "수업시간은 유지하고 Zoom 연결만 새로 시작합니다. 오디오는 다시 연결해야 합니다."}>
               {ui("Reconnect Zoom · 다시 연결")}
