@@ -32,16 +32,16 @@ export default function AssessmentEditor({ kind, sourceId, period, initialValues
       if (!response.ok || result?.success !== true || (!Number.isSafeInteger(result.revision) || result.revision !== revision + 1 || result.status !== nextStatus)) throw Error(result?.error || "Save could not be confirmed. Your text remains here. Copy it before leaving.");
       setRevision(result.revision); setStatus(result.status); setDirty(false);
       router.refresh();
-      setMessage(nextStatus === "submitted" ? "Submitted for administrator review. No parent notification has been sent. / 제출 완료 · 관리자 확인 대기" : "Draft saved. / 임시저장 완료");
+      setMessage(nextStatus === "submitted" ? (administrator ? "Submitted for administrator review. No parent notification has been sent. / 제출 완료 · 관리자 확인 대기" : "Submitted for administrator review. No parent notification has been sent.") : (administrator ? "Draft saved. / 임시저장 완료" : "Draft saved."));
     } catch (error) {
-      setMessage(error instanceof Error && !["TimeoutError", "AbortError"].includes(error.name) ? error.message : "Save result is uncertain. Keep this page and retry. / 저장 결과를 확인하지 못했습니다.");
+      setMessage(error instanceof Error && !["TimeoutError", "AbortError"].includes(error.name) ? error.message : (administrator ? "Save result is uncertain. Keep this page and retry. / 저장 결과를 확인하지 못했습니다." : "Save result is uncertain. Keep this page and retry."));
     } finally { guard.current = false; setBusy(false); }
   }
   return <div className="talkly-assessment-form">
-    <Link onClick={event => { if (dirty && !window.confirm("Unsaved changes will be lost. Leave this page? / 저장하지 않은 변경사항을 버리고 이동할까요?")) event.preventDefault(); }} href={administrator ? "/admin/assessments" : "/teacher/assessments"} className="talkly-assessment-back">← {administrator ? "평가서 목록" : "Assessment forms"}</Link>
+    <Link onClick={event => { if (dirty && !window.confirm(administrator ? "Unsaved changes will be lost. Leave this page? / 저장하지 않은 변경사항을 버리고 이동할까요?" : "Unsaved changes will be lost. Leave this page?")) event.preventDefault(); }} href={administrator ? "/admin/assessments" : "/teacher/assessments"} className="talkly-assessment-back">← {administrator ? "평가서 목록" : "Assessment forms"}</Link>
     <header className="talkly-assessment-form-hero"><p className="talkly-assessment-eyebrow">TALKLY · {administrator ? "관리자 조회·수정" : "TEACHER ASSESSMENT"}</p>
       <h1 className="talkly-assessment-form-title">{kind === "initial" ? "Level Test Evaluation" : "Monthly Observation Review"}</h1>
-      <p className="talkly-assessment-form-info">{period !== "initial" ? `Review period: ${period} · ` : ""}Status: {status} · Version: {revision} {dirty ? "· Unsaved changes / 저장하지 않은 변경사항" : ""}</p>
+      <p className="talkly-assessment-form-info">{period !== "initial" ? `Review period: ${period} · ` : ""}Status: {status} · Version: {revision} {dirty ? (administrator ? "· Unsaved changes / 저장하지 않은 변경사항" : "· Unsaved changes") : ""}</p>
       <p className="talkly-assessment-form-description">E = Emerging · D = Developing · I = Independent · NYO = Not Yet Observed. Use concrete examples; do not infer an unobserved skill. This form does not change the learner’s assigned level, course or textbook.</p>
       {kind === "initial" && <div className="talkly-assessment-rating-guide" aria-label="Skill evaluation rating scale">
         <p><strong>E · Emerging</strong><span>Limited or inconsistent response; needs frequent modeling.</span></p>
@@ -49,7 +49,7 @@ export default function AssessmentEditor({ kind, sourceId, period, initialValues
         <p><strong>I · Independent</strong><span>Responds accurately and confidently with little or no support.</span></p>
         <p><strong>NYO · Not Yet Observed</strong><span>Not assessed or not age-appropriate.</span></p>
       </div>}
-      <p className="talkly-assessment-form-description">Visible to the assigned teacher and administrators. Parent/student publication is not enabled. / 담당 강사·관리자 전용이며 학생·학부모에게 자동 공개되지 않습니다.</p>
+      <p className="talkly-assessment-form-description">{administrator ? "Visible to the assigned teacher and administrators. Parent/student publication is not enabled. / 담당 강사·관리자 전용이며 학생·학부모에게 자동 공개되지 않습니다." : "Visible to the assigned teacher and administrators. Not automatically shared with students or parents."}</p>
       {attendance && <p className="talkly-assessment-attendance">Recorded attendance in the assigned review period: {attendance.attended} attended / {attendance.scheduled} scheduled lessons · {attendance.completed} completed. Based on attendance records; cancelled and test lessons excluded.</p>}
     </header>
     <form className="talkly-assessment-form-body" onSubmit={event => { event.preventDefault(); void save("submitted"); }}>
@@ -62,19 +62,19 @@ export default function AssessmentEditor({ kind, sourceId, period, initialValues
               {field.type === "multi" ? <fieldset className="talkly-assessment-check-field"><legend className="talkly-assessment-label">{field.label}</legend><div className="talkly-assessment-check-grid">{field.options?.map(option => <label key={option} className="talkly-assessment-check-option"><input type="checkbox" checked={Array.isArray(value) && value.includes(option)} onChange={event => change(field.key, event.target.checked ? [...(Array.isArray(value) ? value : []), option] : (Array.isArray(value) ? value : []).filter(v => v !== option))} />{option}</label>)}</div></fieldset>
               : <><label htmlFor={id} className="talkly-assessment-label">{field.label}{field.required ? " *" : ""}</label>
                 {field.hint && <p id={`${id}-hint`} className="talkly-assessment-field-hint">{field.hint}</p>}
-                {field.type === "select" ? <select id={id} aria-describedby={field.hint ? `${id}-hint` : undefined} value={String(value)} onChange={event => change(field.key, event.target.value)} className="talkly-assessment-control"><option value="">Select / 선택</option>{field.options?.map(option => <option key={option}>{option}</option>)}</select>
+                {field.type === "select" ? <select id={id} aria-describedby={field.hint ? `${id}-hint` : undefined} value={String(value)} onChange={event => change(field.key, event.target.value)} className="talkly-assessment-control"><option value="">{administrator ? "Select / 선택" : "Select"}</option>{field.options?.map(option => <option key={option}>{option}</option>)}</select>
                 : field.type === "textarea" ? <textarea id={id} value={String(value)} maxLength={2000} rows={3} onChange={event => change(field.key, event.target.value)} className="talkly-assessment-control talkly-assessment-textarea" />
                 : <input id={id} type={field.type === "date" ? "date" : field.type === "number" ? "number" : "text"} min={field.type === "number" ? 0 : undefined} maxLength={200} value={String(value)} onChange={event => change(field.key, event.target.value)} className="talkly-assessment-control" />}</>}
             </div>;
           })}</div>
         </section>)}
-        <p className="talkly-assessment-form-help">* Required for submission. Drafts may be incomplete. / 필수항목은 제출 시 검사합니다.</p>
-        <div className="talkly-assessment-actions"><button disabled={conflict} type="button" onClick={() => void save(status)} className="talkly-assessment-button talkly-assessment-button-secondary">{status === "submitted" ? "Save changes / 수정 저장" : "Save draft / 임시저장"}</button>
-          {status === "draft" && <button disabled={conflict} type="submit" className="talkly-assessment-button talkly-assessment-button-primary">Submit for review / 제출</button>}
-          <button type="button" onClick={() => window.print()} className="talkly-assessment-button talkly-assessment-button-ghost">Print / 인쇄</button></div>
+        <p className="talkly-assessment-form-help">{administrator ? "* Required for submission. Drafts may be incomplete. / 필수항목은 제출 시 검사합니다." : "* Required to submit. You can save incomplete drafts."}</p>
+        <div className="talkly-assessment-actions"><button disabled={conflict} type="button" onClick={() => void save(status)} className="talkly-assessment-button talkly-assessment-button-secondary">{status === "submitted" ? (administrator ? "Save changes / 수정 저장" : "Save changes") : (administrator ? "Save draft / 임시저장" : "Save draft")}</button>
+          {status === "draft" && <button disabled={conflict} type="submit" className="talkly-assessment-button talkly-assessment-button-primary">{administrator ? "Submit for review / 제출" : "Submit for review"}</button>}
+          <button type="button" onClick={() => window.print()} className="talkly-assessment-button talkly-assessment-button-ghost">{administrator ? "Print / 인쇄" : "Print"}</button></div>
       </fieldset>
     </form>
-    <p role="status" aria-live="polite" className="talkly-assessment-feedback">{busy ? "Saving… / 저장 중…" : message || "Keep this page open until saving is confirmed. / 저장 완료를 확인해 주세요."}</p>
-    {conflict && <p role="alert" className="talkly-assessment-conflict">A newer version may exist. Copy your text before reloading. / 입력 내용을 복사한 뒤 새로고침해 최신 내용을 확인해 주세요.</p>}
+    <p role="status" aria-live="polite" className="talkly-assessment-feedback">{busy ? (administrator ? "Saving… / 저장 중…" : "Saving…") : message || (administrator ? "Keep this page open until saving is confirmed. / 저장 완료를 확인해 주세요." : "Keep this page open until saving is confirmed.")}</p>
+    {conflict && <p role="alert" className="talkly-assessment-conflict">{administrator ? "A newer version may exist. Copy your text before reloading. / 입력 내용을 복사한 뒤 새로고침해 최신 내용을 확인해 주세요." : "A newer version may exist. Copy your text before reloading."}</p>}
   </div>;
 }

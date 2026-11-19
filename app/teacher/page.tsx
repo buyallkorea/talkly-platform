@@ -900,7 +900,7 @@ export default async function TeacherPage({
                 "rgba(255,255,255,0.58)",
             }}
           >
-            오늘 해야 할 수업·레벨테스트·월간 및 최종 학생평가를 우선 확인합니다.
+            Prioritize today's classes, level tests, and monthly or final student evaluations.
           </div>
           {nextClassroom && <div style={{ marginTop: 22, padding: 16, border: "1px solid #60a5fa", borderRadius: 12 }}>
             <strong style={{ display: "block", marginBottom: 10 }}>Next classroom · {formatEnglishDateTime(nextClassroom.scheduled_start)}</strong>

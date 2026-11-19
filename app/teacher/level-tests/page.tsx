@@ -186,7 +186,7 @@ export default async function TeacherLevelTestsPage() {
     value: string
   ) {
     return new Intl.DateTimeFormat(
-      "ko-KR",
+      "en-US",
       {
         timeZone: "Asia/Seoul",
         year: "numeric",
@@ -205,7 +205,7 @@ export default async function TeacherLevelTestsPage() {
       case "scheduling":
         return {
           en: "Scheduling",
-          ko: "일정 조율 중",
+          ko: "Scheduling",
           background: "#fff8e7",
           color: "#b54708",
           border: "#fedf89",
@@ -214,7 +214,7 @@ export default async function TeacherLevelTestsPage() {
       case "scheduled":
         return {
           en: "Scheduled",
-          ko: "예정",
+          ko: "Scheduled",
           background: "#eef4ff",
           color: "#175cd3",
           border: "#b2ccff",
@@ -223,7 +223,7 @@ export default async function TeacherLevelTestsPage() {
       case "in_progress":
         return {
           en: "In Progress",
-          ko: "진행 중",
+          ko: "In progress",
           background: "#ecfdf3",
           color: "#027a48",
           border: "#abefc6",
@@ -232,7 +232,7 @@ export default async function TeacherLevelTestsPage() {
       case "completed":
         return {
           en: "Completed",
-          ko: "완료",
+          ko: "Completed",
           background: "#f2f4f7",
           color: "#344054",
           border: "#d0d5dd",
@@ -242,7 +242,7 @@ export default async function TeacherLevelTestsPage() {
       case "canceled":
         return {
           en: "Cancelled",
-          ko: "취소",
+          ko: "Cancelled",
           background: "#fff1f0",
           color: "#b42318",
           border: "#fecdca",
@@ -354,7 +354,7 @@ export default async function TeacherLevelTestsPage() {
               color: "#98a2b3",
             }}
           >
-            이전으로 · 강사 메인
+            Back · Teacher home
           </span>
         </nav>
 
@@ -398,7 +398,7 @@ export default async function TeacherLevelTestsPage() {
                 "rgba(255,255,255,0.72)",
             }}
           >
-            나에게 배정된 원어민 레벨테스트
+            Assigned level tests
           </div>
 
           <p
@@ -424,8 +424,8 @@ export default async function TeacherLevelTestsPage() {
                 "rgba(255,255,255,0.6)",
             }}
           >
-            배정 확인부터 테스트 입장, 평가 작성까지
-            이곳에서 진행합니다.
+            Manage assignments, attend level tests,
+            and complete evaluations here.
           </div>
         </section>
 
@@ -442,21 +442,21 @@ export default async function TeacherLevelTestsPage() {
           <SummaryCard
             label="UPCOMING"
             title="Upcoming"
-            korean="예정 테스트"
+            korean="Upcoming tests"
             value={upcoming.length}
           />
 
           <SummaryCard
             label="COMPLETED"
             title="Completed"
-            korean="완료 테스트"
+            korean="Completed tests"
             value={completed.length}
           />
 
           <SummaryCard
             label="TOTAL"
             title="All Tests"
-            korean="전체 테스트"
+            korean="All tests"
             value={interviews.length}
           />
         </section>
@@ -470,13 +470,13 @@ export default async function TeacherLevelTestsPage() {
           <SectionHeader
             label="UPCOMING"
             title="Upcoming Level Tests"
-            korean="예정된 레벨테스트"
+            korean="Upcoming level tests"
           />
 
           {upcoming.length === 0 ? (
             <EmptyCard
               english="No upcoming level tests."
-              korean="현재 예정된 레벨테스트가 없습니다."
+              korean="No upcoming tests"
             />
           ) : (
             <div style={listStyle}>
@@ -517,7 +517,7 @@ export default async function TeacherLevelTestsPage() {
             <SectionHeader
               label="COMPLETED"
               title="Completed Tests"
-              korean="완료된 레벨테스트"
+              korean="Completed level tests"
               muted
             />
 
@@ -558,7 +558,7 @@ export default async function TeacherLevelTestsPage() {
           >
             <SectionHeader
               title="Other Tests"
-              korean="취소 또는 종료된 기타 테스트 기록"
+              korean="Cancelled or archived tests"
               muted
             />
 
@@ -615,7 +615,7 @@ export default async function TeacherLevelTestsPage() {
               color: "#98a2b3",
             }}
           >
-            강사 메인으로 돌아가기
+            Return to teacher home
           </span>
         </div>
       </div>
@@ -923,7 +923,7 @@ function LevelTestCard({
       >
         <InfoBox
           label="DATE & TIME"
-          korean="테스트 일시"
+          korean="Test date and time"
           value={
             interview.scheduled_at
               ? formatEnglishDateTime(
@@ -936,13 +936,13 @@ function LevelTestCard({
               ? `${formatKoreanDateTime(
                   interview.scheduled_at
                 )} · KST`
-              : "일정 미정"
+              : "Not scheduled"
           }
         />
 
         <InfoBox
           label="DURATION"
-          korean="테스트 시간"
+          korean="Test duration"
           value={`${
             interview.duration_minutes ??
             20
@@ -950,12 +950,12 @@ function LevelTestCard({
           subValue={`${
             interview.duration_minutes ??
             20
-          }분`}
+          } min`}
         />
 
         <InfoBox
           label="MEETING"
-          korean="화상 시스템"
+          korean="Video platform"
           value={
             interview.meeting_provider ||
             "TALKLY"
@@ -1000,7 +1000,7 @@ function LevelTestCard({
               color: "#98a2b3",
             }}
           >
-            강사 작업
+            Teacher actions
           </div>
         </div>
 

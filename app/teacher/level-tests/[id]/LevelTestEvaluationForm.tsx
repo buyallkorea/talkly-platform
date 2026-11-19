@@ -167,7 +167,7 @@ export default function LevelTestEvaluationForm({
    *
    * scheduled 상태인 동안 15초마다 갱신합니다.
    * 페이지를 새로고침하지 않아도
-   * 테스트 시작 10분 전이 되면
+   * You can enter 10 minutes 전이 되면
    * 입장 버튼이 자동으로 활성화됩니다.
    * =====================================================
    */
@@ -225,7 +225,7 @@ export default function LevelTestEvaluationForm({
     );
 
   /*
-   * 테스트 시작 10분 전
+   * You can enter 10 minutes 전
    */
   const entryOpenAtMs =
     hasValidSchedule
@@ -619,7 +619,7 @@ export default function LevelTestEvaluationForm({
           eyebrow="LEVEL TEST RECORD"
           title="Archived Level Test"
           description="This is a previous level-test record and can no longer be modified."
-          korean="과거 레벨테스트 기록으로, 현재는 수정할 수 없습니다."
+          korean="Archived record; editing is disabled."
         />
 
         <NoticeBox
@@ -628,9 +628,9 @@ export default function LevelTestEvaluationForm({
           This level test is
           read-only.
           <br />
-          현재 유효한 테스트가
-          아니므로 입장하거나 평가를
-          변경할 수 없습니다.
+          This test is no longer active,
+          so you cannot enter or
+          modify its evaluation.
         </NoticeBox>
       </section>
     );
@@ -658,7 +658,7 @@ export default function LevelTestEvaluationForm({
           eyebrow="LEVEL TEST"
           title="Level Test Cancelled"
           description="This level test has been cancelled."
-          korean="취소된 레벨테스트입니다."
+          korean="This level test has been cancelled."
         />
 
         <NoticeBox
@@ -691,7 +691,7 @@ export default function LevelTestEvaluationForm({
           eyebrow="LEVEL TEST ENTRY"
           title="Enter Level Test"
           description="You can enter the video level test starting 10 minutes before the scheduled time."
-          korean="예정된 테스트 시작 10분 전부터 입장할 수 있습니다."
+          korean="Entry opens 10 minutes before the scheduled start."
         />
 
         {!meetingUrl ? (
@@ -712,10 +712,10 @@ export default function LevelTestEvaluationForm({
 
             <br />
 
-            관리자가 화상
-            레벨테스트 링크를
-            등록해야 입장할 수
-            있습니다.
+            The administrator must register
+            the level-test video link
+            before you can
+            enter.
           </NoticeBox>
         ) : !hasValidSchedule ? (
           <NoticeBox
@@ -733,8 +733,8 @@ export default function LevelTestEvaluationForm({
 
             <br />
 
-            테스트 일정 정보를
-            확인할 수 없습니다.
+            The test schedule
+            is unavailable.
           </NoticeBox>
         ) : !canEnterByTime ? (
           <>
@@ -749,9 +749,8 @@ export default function LevelTestEvaluationForm({
 
               <br />
 
-              테스트 시작 10분
-              전부터 입장할 수
-              있습니다.
+              You can enter 10 minutes
+              before the scheduled start.
 
               {minutesUntilEntry >
                 0 && (
@@ -808,9 +807,7 @@ export default function LevelTestEvaluationForm({
 
               <br />
 
-              지금 화상
-              레벨테스트에 입장할
-              수 있습니다.
+              You can enter the video level test now.
             </NoticeBox>
 
             <button
@@ -888,7 +885,7 @@ export default function LevelTestEvaluationForm({
           eyebrow="EVALUATION COMPLETE"
           title="Level Test Evaluation"
           description="Your evaluation has been submitted. The administrator will make the final level and course decision."
-          korean="강사 평가는 제출 완료되었습니다. 최종 레벨 및 과정은 관리자가 확정합니다."
+          korean="Teacher evaluation submitted. The administrator confirms the final level and course."
         />
 
         <NoticeBox
@@ -943,7 +940,7 @@ export default function LevelTestEvaluationForm({
 
         <ReadOnlyItem
           label="Suggested Level"
-          korean="강사 제안 레벨"
+          korean="Suggested level"
           value={
             suggestedLevel
           }
@@ -951,7 +948,7 @@ export default function LevelTestEvaluationForm({
 
         <ReadOnlyItem
           label="Strengths"
-          korean="강점"
+          korean="Strengths"
           value={
             strengths
           }
@@ -959,7 +956,7 @@ export default function LevelTestEvaluationForm({
 
         <ReadOnlyItem
           label="Areas to Improve"
-          korean="보완점"
+          korean="Areas for improvement"
           value={
             weaknesses
           }
@@ -967,7 +964,7 @@ export default function LevelTestEvaluationForm({
 
         <ReadOnlyItem
           label="Teacher Comment"
-          korean="강사 의견"
+          korean="Teacher comments"
           value={
             teacherComment
           }
@@ -1005,7 +1002,7 @@ export default function LevelTestEvaluationForm({
           eyebrow="LEVEL TEST IN PROGRESS"
           title="Level Test Evaluation"
           description="Complete the evaluation after the video level test."
-          korean="화상 레벨테스트 종료 후 학생 평가를 입력해주세요."
+          korean="Complete the student's evaluation after the video level test."
         />
 
         <div
@@ -1066,9 +1063,7 @@ export default function LevelTestEvaluationForm({
                 the meeting if
                 necessary.
                 <br />
-                필요하면 화상
-                레벨테스트에 다시
-                입장할 수 있습니다.
+                If needed, you can rejoin the level-test meeting.
               </div>
             </div>
 
@@ -1126,7 +1121,7 @@ export default function LevelTestEvaluationForm({
           >
             <ScoreSelect
               label="Speaking"
-              korean="말하기"
+              korean="Speaking"
               value={
                 speakingLevel
               }
@@ -1140,7 +1135,7 @@ export default function LevelTestEvaluationForm({
 
             <ScoreSelect
               label="Listening"
-              korean="듣기"
+              korean="Listening"
               value={
                 listeningLevel
               }
@@ -1154,7 +1149,7 @@ export default function LevelTestEvaluationForm({
 
             <ScoreSelect
               label="Pronunciation"
-              korean="발음"
+              korean="Pronunciation"
               value={
                 pronunciationLevel
               }
@@ -1168,7 +1163,7 @@ export default function LevelTestEvaluationForm({
 
             <ScoreSelect
               label="Comprehension"
-              korean="이해도"
+              korean="Comprehension"
               value={
                 comprehensionLevel
               }
@@ -1189,7 +1184,7 @@ export default function LevelTestEvaluationForm({
           >
             <FieldLabel
               label="Suggested Level"
-              korean="강사 제안 레벨"
+              korean="Suggested level"
               required
             />
 
@@ -1241,10 +1236,10 @@ export default function LevelTestEvaluationForm({
               decides the final
               level and course.
               <br />
-              강사는 추천 레벨만
-              입력하며 최종 레벨과
-              과정은 관리자가
-              확정합니다.
+              The teacher recommends a level,
+              but the administrator determines
+              the final level and
+              course.
             </p>
           </div>
 
@@ -1256,7 +1251,7 @@ export default function LevelTestEvaluationForm({
           >
             <FieldLabel
               label="Strengths"
-              korean="강점"
+              korean="Strengths"
             />
 
             <textarea
@@ -1291,7 +1286,7 @@ export default function LevelTestEvaluationForm({
           >
             <FieldLabel
               label="Areas to Improve"
-              korean="보완점"
+              korean="Areas for improvement"
             />
 
             <textarea
@@ -1326,7 +1321,7 @@ export default function LevelTestEvaluationForm({
           >
             <FieldLabel
               label="Teacher Comment"
-              korean="강사 의견"
+              korean="Teacher comments"
             />
 
             <textarea
@@ -1412,7 +1407,7 @@ export default function LevelTestEvaluationForm({
         eyebrow="LEVEL TEST"
         title="Level Test"
         description="This level test is not currently available."
-        korean="현재 진행할 수 없는 레벨테스트 상태입니다."
+        korean="This level test is not currently available."
       />
 
       <NoticeBox

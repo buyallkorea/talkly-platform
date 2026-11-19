@@ -42,6 +42,7 @@ export default function ClassroomTextbookViewerClient({
   viewerRole,
   viewerName,
 }: Props) {
+  const english = viewerRole === "teacher";
   const [currentIndex, setCurrentIndex] = useState(0);
   const [zoom, setZoom] = useState(100);
   const [playingHotspotId, setPlayingHotspotId] =
@@ -102,12 +103,12 @@ export default function ClassroomTextbookViewerClient({
       audio.currentTime = 0;
 
       setPlayingHotspotId(hotspot.id);
-      setAudioMessage(`재생 중: ${hotspot.label}`);
+      setAudioMessage(english ? `Playing: ${hotspot.label}` : `재생 중: ${hotspot.label}`);
 
       await audio.play();
     } catch {
       setPlayingHotspotId(null);
-      setAudioMessage("오디오를 재생하지 못했습니다.");
+      setAudioMessage(english ? "Could not play this audio." : "오디오를 재생하지 못했습니다.");
     }
   }
 
@@ -226,7 +227,7 @@ export default function ClassroomTextbookViewerClient({
                 opacity: 0.5,
               }}
             >
-              교재 ID {textbookId}
+              {english ? "Textbook ID" : "교재 ID"} {textbookId}
               {viewerName ? ` · ${viewerName}` : ""}
               {viewerRole ? ` · ${viewerRole}` : ""}
             </div>
@@ -273,7 +274,7 @@ export default function ClassroomTextbookViewerClient({
               onClick={fitToScreen}
               style={toolbarButton}
             >
-              화면 맞춤
+              {english ? "Fit to screen" : "화면 맞춤"}
             </button>
 
             <select
@@ -292,7 +293,7 @@ export default function ClassroomTextbookViewerClient({
             >
               {pages.map((page, index) => (
                 <option key={page.id} value={index}>
-                  {page.pageNumber}페이지
+                  {english ? `Page ${page.pageNumber}` : `${page.pageNumber}페이지`}
                 </option>
               ))}
             </select>
@@ -346,7 +347,7 @@ export default function ClassroomTextbookViewerClient({
                   "1px solid rgba(255,255,255,0.08)",
               }}
             >
-              페이지
+              {english ? "Pages" : "페이지"}
             </div>
 
             <div
@@ -393,7 +394,7 @@ export default function ClassroomTextbookViewerClient({
                     >
                       <img
                         src={page.imageUrl}
-                        alt={`${page.pageNumber}페이지`}
+                        alt={english ? `Page ${page.pageNumber}` : `${page.pageNumber}페이지`}
                         draggable={false}
                         loading="lazy"
                         style={{
@@ -412,7 +413,7 @@ export default function ClassroomTextbookViewerClient({
                         fontWeight: 700,
                       }}
                     >
-                      {page.pageNumber}페이지
+                      {english ? `Page ${page.pageNumber}` : `${page.pageNumber}페이지`}
                       {page.hotspots.length > 0
                         ? ` · 🎧${page.hotspots.length}`
                         : ""}
@@ -463,7 +464,7 @@ export default function ClassroomTextbookViewerClient({
                 >
                   <img
                     src={currentPage.imageUrl}
-                    alt={`${title} ${currentPage.pageNumber}페이지`}
+                    alt={english ? `${title} Page ${currentPage.pageNumber}` : `${title} ${currentPage.pageNumber}페이지`}
                     draggable={false}
                     style={{
                       display: "block",
@@ -482,7 +483,7 @@ export default function ClassroomTextbookViewerClient({
                         key={hotspot.id}
                         type="button"
                         onClick={() => playHotspot(hotspot)}
-                        title={`${hotspot.label} 재생`}
+                        title={english ? `Play ${hotspot.label}` : `${hotspot.label} 재생`}
                         style={{
                           position: "absolute",
                           left: `${hotspot.xPercent}%`,
@@ -496,7 +497,7 @@ export default function ClassroomTextbookViewerClient({
                           padding: 0,
                           zIndex: 4,
                         }}
-                        aria-label={`${hotspot.label} 오디오 재생`}
+                        aria-label={english ? `Play audio: ${hotspot.label}` : `${hotspot.label} 오디오 재생`}
                       >
                         <span
                           style={{
@@ -554,7 +555,7 @@ export default function ClassroomTextbookViewerClient({
                   disabled={currentIndex === 0}
                   style={navButton}
                 >
-                  ← 이전 페이지
+                  {english ? "← Previous page" : "← 이전 페이지"}
                 </button>
               </div>
 
@@ -581,7 +582,7 @@ export default function ClassroomTextbookViewerClient({
                   }
                   style={navButton}
                 >
-                  다음 페이지 →
+                  {english ? "Next page →" : "다음 페이지 →"}
                 </button>
               </div>
             </footer>

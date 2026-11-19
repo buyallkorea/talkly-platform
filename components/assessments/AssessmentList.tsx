@@ -4,7 +4,7 @@ import { getTeacherEvaluationRequirements, type TeacherEvaluationSession, type E
 type Props={searchParams:Promise<{period?:string;enrollment?:string}>;administrator?:boolean};
 async function loadList({administrator=false,searchParams}:Props){
  const ctx=await assessmentContext();
- if((ctx.role==='admin')!==administrator)throw new AssessmentError("Please use your own dashboard. / 권한에 맞는 메뉴를 이용해 주세요.",403);
+ if((ctx.role==='admin')!==administrator)throw new AssessmentError((administrator ? "Please use your own dashboard. / 권한에 맞는 메뉴를 이용해 주세요." : "Please use your own dashboard."),403);
  let interviewsQuery=ctx.db.from('level_test_interviews').select('id,status,level_test_id,level_tests(student_name)').order('id',{ascending:false}).limit(100);
  let enrollmentsQuery=ctx.db.from('enrollments').select('id,status,student_user_id,child_id,start_date,total_lessons').eq('is_test',false).order('id',{ascending:false}).limit(100);
  if(!administrator){interviewsQuery=interviewsQuery.eq('tester_user_id',ctx.user.id);enrollmentsQuery=enrollmentsQuery.eq('teacher_user_id',ctx.user.id)}
@@ -18,7 +18,7 @@ async function loadList({administrator=false,searchParams}:Props){
  ids2.length?ctx.db.from('teacher_assessments').select('source_id,status,revision,period_key').eq('kind','monthly').in('source_id',ids2).limit(1000):{data:[],error:null},
  ids2.length?ctx.db.from('class_sessions').select('id,enrollment_id,lesson_number,scheduled_start,status').eq('is_test',false).in('enrollment_id',ids2).limit(1000):{data:[],error:null},
  ]);
- if(initial.error||monthly.error||sessions.error||(sessions.data?.length??0)>=1000||(monthly.data?.length??0)>=1000)throw new AssessmentError("Unable to load assessment storage or review schedules. / 평가서 저장소·평가 일정을 확인해 주세요.",503);
+ if(initial.error||monthly.error||sessions.error||(sessions.data?.length??0)>=1000||(monthly.data?.length??0)>=1000)throw new AssessmentError((administrator ? "Unable to load assessment storage or review schedules. / 평가서 저장소·평가 일정을 확인해 주세요." : "Unable to load assessment storage or review schedules."),503);
  const sessionIds=(sessions.data??[]).map(row=>row.id);
  const legacy=sessionIds.length?await ctx.db.from('evaluations').select('class_session_id,evaluation_type,period_number').in('class_session_id',sessionIds).limit(1000):{data:[],error:null};
  if(legacy.error||(legacy.data?.length??0)>=1000)throw new AssessmentError("Unable to verify existing reviews.",503);
@@ -29,7 +29,7 @@ async function loadList({administrator=false,searchParams}:Props){
  ]);
  if(children.error||students.error)throw new AssessmentError("Unable to load learner names.",503);
  const rows=[
- ...(interviews.data??[]).map(row=>({id:row.id,kind:'initial',period:'initial',name:(Array.isArray(row.level_tests)?row.level_tests[0]:row.level_tests)?.student_name??'Learner',label:'Initial diagnostic / 초기 진단',record:initial.data?.find(r=>r.source_id===row.id)})),
+ ...(interviews.data??[]).map(row=>({id:row.id,kind:'initial',period:'initial',name:(Array.isArray(row.level_tests)?row.level_tests[0]:row.level_tests)?.student_name??'Learner',label: administrator ? 'Initial diagnostic / 초기 진단' : 'Initial diagnostic',record:initial.data?.find(r=>r.source_id===row.id)})),
  ...(enrollments.data??[]).flatMap(row=>{
   const learner=row.child_id?children.data?.find(c=>c.id===row.child_id):students.data?.find(s=>s.id===row.student_user_id);
   const own=(sessions.data??[]).filter(s=>s.enrollment_id===row.id);
@@ -38,7 +38,7 @@ async function loadList({administrator=false,searchParams}:Props){
    const period=progressKey(requirement),anchor=own.find(s=>s.id===requirement.sessionId);
    const day=anchor?new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul'}).format(new Date(anchor.scheduled_start)):row.start_date;
    const window=row.start_date&&day?progressWindow(row.start_date,requirement,day):null;
-   return {id:row.id,kind:'monthly',period,name:learner?.name??'Learner',label:`${requirement.type==='final'?'Final progress review / 최종 관찰평가':`Month ${requirement.periodNumber} / ${requirement.periodNumber}차 관찰평가`} · ${window?.from??''} ~ ${window?.to??''}`,record:monthly.data?.find(r=>r.source_id===row.id&&r.period_key===period)};
+   return {id:row.id,kind:'monthly',period,name:learner?.name??'Learner',label:`${requirement.type==='final'?(administrator ? 'Final progress review / 최종 관찰평가' : 'Final progress review') : (administrator ? `Month ${requirement.periodNumber} / ${requirement.periodNumber}차 관찰평가` : `Month ${requirement.periodNumber} progress review`)} · ${window?.from??''} ~ ${window?.to??''}`,record:monthly.data?.find(r=>r.source_id===row.id&&r.period_key===period)};
   });
  }),
  ];return rows;
@@ -51,8 +51,8 @@ export default async function AssessmentList(props:Props) {
   if(!result.rows) return (
     <div className="talkly-assessment-page">
       <div className="talkly-assessment-empty talkly-assessment-error">
-        <h1>Assessment forms / 평가서</h1>
-        <p role="alert">{result.error instanceof AssessmentError?result.error.message:"Unable to load assessment forms. / 평가서를 불러올 수 없습니다."}</p>
+        <h1>{administrator ? "Assessment forms / 평가서" : "Assessment forms"}</h1>
+        <p role="alert">{result.error instanceof AssessmentError?result.error.message:(administrator ? "Unable to load assessment forms. / 평가서를 불러올 수 없습니다." : "Unable to load assessment forms.")}</p>
         <Link className="talkly-assessment-button talkly-assessment-button-secondary" href={dashboard}>{administrator?"관리자로 돌아가기":"Back to dashboard"}</Link>
       </div>
     </div>
