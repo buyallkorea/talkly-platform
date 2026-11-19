@@ -677,7 +677,7 @@ export default function ClassroomZoomEmbed({
   function reconnectClassroom() {
     if (runningRef.current) return;
     if (!window.confirm(hostMode
-      ? "Reconnect Zoom? The lesson and remaining time are not reset. Computer audio must be reconnected afterward. · 화상 연결을 다시 시작할까요?"
+      ? "Reconnect Zoom? The lesson and remaining time are not reset. Computer audio must be reconnected afterward."
       : "Zoom 연결을 다시 시작할까요? 수업시간·출석은 초기화되지 않으며 오디오도 다시 연결해야 합니다.")) return;
     setControlError("");
     setMicCheckMessage("");
@@ -690,7 +690,7 @@ export default function ClassroomZoomEmbed({
     setMicCheckMessage("");
     try {
       const outcome = await checkClassroomMicrophone();
-      setMicCheckMessage(outcome.message);
+      setMicCheckMessage(hostMode && outcome.message.includes(" · ") ? outcome.message.split(" · ").at(-1)! : outcome.message);
     } finally {
       setMicChecking(false);
     }
@@ -740,7 +740,7 @@ export default function ClassroomZoomEmbed({
           {sameNameParticipants > 0 && (
             <p role="status" className="talkly-audio-warning">
               {hostMode
-                ? "Another participant has the same display name. If you opened this lesson in two tabs or devices, close the unused session to avoid microphone conflicts. · 동일 이름 중복 참가 가능성: 다른 강의실 탭/기기를 확인하세요."
+                ? "Another participant has the same display name. If you opened this lesson in two tabs or devices, close the unused session to avoid microphone conflicts."
                 : "동일 이름의 참가자가 여럿 있습니다. 같은 수업을 여러 탭·기기에서 열었는지 확인해 주세요."}
             </p>
           )}
@@ -748,13 +748,13 @@ export default function ClassroomZoomEmbed({
             <button type="button" onClick={() => void audioAction()} disabled={audioBusy}>{audioState === "ready" ? ui("Mute · 마이크 끄기") : audioState === "muted" ? ui("Unmute · 마이크 켜기") : ui("Connect computer audio · 오디오 연결")}</button>
             {audioState !== "ready" && audioState !== "muted" && (
               <button type="button" onClick={() => void checkMicrophone()} disabled={micChecking}
-                title="마이크를 잠시 열어 권한·장치를 확인합니다. 녹음하거나 저장하지 않습니다.">
-                {micChecking ? "Checking microphone… · 확인 중" : "Check microphone · 마이크 상태 점검"}
+                title={hostMode ? "Briefly checks microphone permission and device access. No recording or storage." : "마이크를 잠시 열어 권한·장치를 확인합니다. 녹음하거나 저장하지 않습니다."}>
+                {micChecking ? (hostMode ? "Checking microphone…" : "Checking microphone… · 확인 중") : (hostMode ? "Check microphone" : "Check microphone · 마이크 상태 점검")}
               </button>
             )}
             <button type="button" onClick={() => void nativeAction("video")}>{ui("Camera · 카메라 켜기/끄기")}</button>
             <button type="button" onClick={reconnectClassroom} disabled={runningRef.current}
-              title="수업시간은 유지하고 Zoom 연결만 새로 시작합니다. 오디오는 다시 연결해야 합니다.">
+              title={hostMode ? "Restart Zoom without resetting class time. Reconnect computer audio afterward." : "수업시간은 유지하고 Zoom 연결만 새로 시작합니다. 오디오는 다시 연결해야 합니다."}>
               {ui("Reconnect Zoom · 다시 연결")}
             </button>
             {hostMode && <button type="button" data-action={sharing ? "stop-share" : "share"} onClick={() => void nativeAction(sharing ? "stop-share" : "share")}>{sharing ? ui("Stop sharing · 공유 중지") : ui("Share textbook · 교재 화면 공유")}</button>}
@@ -765,12 +765,12 @@ export default function ClassroomZoomEmbed({
             <button type="button" onClick={() => void nativeAction("settings")}>{ui("Audio settings · 오디오 설정")}</button>
           </div>
           <p>{ui("Both participants must connect audio and unmute. Allow microphone and sound in browser site settings; check the selected speaker/microphone and device volume. · 양쪽 모두 오디오 연결 후 마이크를 켜세요. 브라우저 사이트 설정의 마이크·소리 허용, 사용 장치와 볼륨을 확인하세요.")}</p>
-          <p style={{ fontSize: 12, opacity: 0.8 }}>마이크 상태 점검은 직접 눌렀을 때만 마이크를 잠시 열어 권한을 확인합니다. 녹음·저장·전송하지 않습니다. · The test checks microphone access and immediately closes it; no recording.</p>
+          <p style={{ fontSize: 12, opacity: 0.8 }}>{hostMode ? "The test checks microphone access only when you click it, then immediately closes the microphone. Nothing is recorded, stored or sent." : "마이크 상태 점검은 직접 눌렀을 때만 마이크를 잠시 열어 권한을 확인합니다. 녹음·저장·전송하지 않습니다. · The test checks microphone access and immediately closes it; no recording."}</p>
           </details>
           {micCheckMessage && <p role="status" className="talkly-audio-warning">{micCheckMessage}</p>}
           {hostMode && <details className="talkly-textbook-audio-help">
-            <summary>Textbook sound help · 교재 소리 공유 안내</summary>
-            <p className="talkly-audio-warning">Textbook sound: in Chrome, share the textbook tab and turn on Share tab audio. Window or whole-screen sharing may have no audio.<br />{ui("교재 소리: Chrome에서 교재 탭을 선택한 뒤 ‘탭 오디오 공유’를 켜세요. 일반 창 공유 시 소리가 전달되지 않을 수 있습니다.")}</p>
+            <summary>Textbook sound help</summary>
+            <p className="talkly-audio-warning">Textbook sound: in Chrome, share the textbook tab and turn on Share tab audio. Window or whole-screen sharing may have no audio.</p>
           </details>}
           {controlError && <p role="alert" className="talkly-audio-warning">{controlError}</p>}
         </>}
