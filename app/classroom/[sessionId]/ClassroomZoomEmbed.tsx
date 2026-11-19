@@ -170,6 +170,9 @@ export default function ClassroomZoomEmbed({
   const shareCleanupRef = useRef<(() => void) | null>(null);
   const generationRef = useRef(0);
   const joinedRef = useRef(false);
+  // Do not initialize a replacement Zoom client while the previous
+  // microphone/media connection is still leaving the meeting.
+  const teardownRef = useRef<Promise<void>>(Promise.resolve());
 
   const disposeClient = useCallback(async () => {
     shareCleanupRef.current?.();
@@ -269,6 +272,8 @@ export default function ClassroomZoomEmbed({
         }
       };
       try {
+        await teardownRef.current;
+        ensureCurrent();
         setScreen(
           "loading"
         );
@@ -634,7 +639,9 @@ export default function ClassroomZoomEmbed({
       window.clearTimeout(timer);
       generationRef.current += 1;
       runningRef.current = false;
-      void disposeClient();
+      const previousCleanup = disposeClient();
+      teardownRef.current = previousCleanup;
+      void previousCleanup.catch((error) => console.warn("[TALKLY] Zoom cleanup failed:", error));
     };
   }, [startZoom, disposeClient, attempt]);
   useEffect(() => {
