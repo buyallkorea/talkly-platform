@@ -125,7 +125,7 @@
 }
 .talkly-zoom-shell .talkly-zoom-status details p { margin:4px 0; overflow-wrap:anywhere; }
 .talkly-zoom-shell[data-split=true] .talkly-zoom-status {
-  width:var(--video-column); max-width:100%; margin-right:auto;
+  display:block; width:var(--video-column); max-width:100%; margin-right:auto;
 }
 @media(max-width:640px) {
   .talkly-zoom-shell .talkly-zoom-status { max-height:152px; }
