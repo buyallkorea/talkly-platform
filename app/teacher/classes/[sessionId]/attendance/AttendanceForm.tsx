@@ -19,27 +19,27 @@ const ATTENDANCE_OPTIONS = [
   {
     value: "present",
     en: "Present",
-    ko: "출석",
+    ko: "Present",
   },
   {
     value: "late",
     en: "Late",
-    ko: "지각",
+    ko: "Late",
   },
   {
     value: "absent",
     en: "Absent",
-    ko: "결석",
+    ko: "Absent",
   },
   {
     value: "excused",
     en: "Excused Absence",
-    ko: "인정결석",
+    ko: "Excused",
   },
   {
     value: "teacher_absent",
     en: "Teacher Absent",
-    ko: "강사결석",
+    ko: "Teacher absent",
   },
 ];
 
