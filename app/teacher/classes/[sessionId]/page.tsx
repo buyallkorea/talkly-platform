@@ -1062,7 +1062,7 @@ export default async function TeacherClassDetailPage({
         </h2>
 
         <div style={{ fontSize: "13px", opacity: 0.6 }}>
-          {process.env.TALKLY_ASSESSMENTS_ENABLED === "true" ? "Write or review monthly observation" : evaluationLabel?.ko ?? (isFinalLesson
+          {process.env.TALKLY_ASSESSMENTS_ENABLED === "true" ? "Write or review monthly observation" : evaluationLabel?.en ?? (isFinalLesson
             ? "Final teacher evaluation"
             : "Individual lessons are evaluated by TALKLY AI.")}
         </div>
