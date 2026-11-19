@@ -35,3 +35,40 @@
 .talkly-zoom-shell[data-split=true] .talkly-zoom-status>p{margin:0;font-size:13px}
 .talkly-zoom-shell[data-split=true] .talkly-zoom-actions{margin-top:0}
 .talkly-zoom-shell[data-split=true] .talkly-zoom-status>details[open]{flex-basis:100%}
+
+/* Tablet and handheld fallback: keep SDK controls usable if the user
+   explicitly opts into the unsupported in-browser experience. Never
+   move Zoom-owned media nodes or interfere with its toolbar. */
+@media (max-width: 1050px) {
+  .talkly-zoom-shell { --video-column: min(40vw, 280px); }
+  .talkly-zoom-status {
+    box-sizing: border-box;
+    max-height: min(43dvh, 205px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 7px 9px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .talkly-zoom-status > strong { font-size: 12px; }
+  .talkly-zoom-status > p { margin: 2px 0; font-size: 12px; }
+  .talkly-zoom-actions { display: flex; flex-wrap: nowrap; gap: 6px; margin-top: 6px; overflow-x: auto; scrollbar-width: thin; }
+  .talkly-zoom-actions button {
+    flex: 0 0 auto; min-height: 43px;
+    padding: 6px 10px; font-size: 12px;
+    white-space: nowrap;
+  }
+  .talkly-zoom-status > details { font-size: 12px; }
+  .talkly-zoom-status > details > summary { cursor: pointer; min-height: 30px; }
+  .talkly-zoom-body { min-height: 240px; }
+  .talkly-zoom-shell[data-split=true] .talkly-zoom-status { align-items: flex-start; }
+}
+@media (max-width: 640px) {
+  .talkly-zoom-shell[data-split=true] .talkly-zoom-status { gap: 4px; }
+  .talkly-zoom-shell[data-split=true] .talkly-zoom-actions { width: 100%; }
+  .talkly-zoom-shell[data-split=true] .talkly-zoom-status > p { font-size: 11px; }
+  .talkly-zoom-shell[data-split=true][data-receiving=true] .talkly-sdk-share { height: 50dvh; min-height: 240px; }
+}
+@media (orientation: landscape) and (max-height: 480px) {
+  .talkly-zoom-status { max-height: 120px; }
+}
