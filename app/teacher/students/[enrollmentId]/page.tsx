@@ -128,7 +128,7 @@ export default async function TeacherStudentDetailPage({
   const enrollment = enrollmentData as Enrollment;
 
   let studentName = "Student";
-  let studentSubLabel = "학생";
+  let studentSubLabel = "Student";
   let schoolName: string | null = null;
   let learningGoal: string | null = null;
 
@@ -553,7 +553,7 @@ export default async function TeacherStudentDetailPage({
             </div>
 
             <div className="talkly-stat-value">
-              {completedSessions.length}회
+              {completedSessions.length} lessons
             </div>
 
             <div
@@ -563,13 +563,13 @@ export default async function TeacherStudentDetailPage({
                 fontSize: "13px",
               }}
             >
-              Total {sessions.length}회 중
+              Out of {sessions.length} lessons
             </div>
           </div>
 
           <div className="talkly-card talkly-stat-card">
             <div className="talkly-stat-label">
-              Present률
+              Attendance rate
             </div>
 
             <div className="talkly-stat-value">
@@ -583,7 +583,7 @@ export default async function TeacherStudentDetailPage({
                 fontSize: "13px",
               }}
             >
-              Present·Late·Absent 기준
+              Based on present, late, and absent records
             </div>
           </div>
 
@@ -615,7 +615,7 @@ export default async function TeacherStudentDetailPage({
                 fontSize: "13px",
               }}
             >
-              등록된 Lesson evaluation 평균
+              Average of recorded lesson evaluations
             </div>
           </div>
         </section>
@@ -701,7 +701,7 @@ export default async function TeacherStudentDetailPage({
                     fontSize: "12px",
                   }}
                 >
-                  등록된 Total 평가 평균
+                  Average of all recorded evaluations
                 </div>
               </div>
             ))}
@@ -746,13 +746,13 @@ export default async function TeacherStudentDetailPage({
               [
                 "Lessons per week",
                 enrollment.lessons_per_week != null
-                  ? `${enrollment.lessons_per_week}회`
+                  ? `${enrollment.lessons_per_week} lessons`
                   : "-",
               ],
               [
                 "Total lessons",
                 enrollment.total_lessons != null
-                  ? `${enrollment.total_lessons}회`
+                  ? `${enrollment.total_lessons} lessons`
                   : "-",
               ],
             ].map(([label, value]) => (
@@ -863,7 +863,7 @@ export default async function TeacherStudentDetailPage({
                 fontWeight: 700,
               }}
             >
-              총 {sessions.length}회
+              Total {sessions.length} lessons
             </div>
           </div>
 
@@ -918,7 +918,7 @@ export default async function TeacherStudentDetailPage({
                         color: "var(--talkly-navy)",
                       }}
                     >
-                      {session.lesson_number} lessons
+                      Lesson {session.lesson_number}
                     </strong>
 
                     <div>
