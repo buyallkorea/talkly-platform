@@ -15,6 +15,7 @@ const englishCopy: Record<string, string> = {
   "Zoom 호스트로 입장하는 중...": "Joining as the teacher host...",
   "Zoom 수업에 입장하는 중...": "Joining the Zoom classroom...",
   "교재 소리: Chrome 탭 → 교재 탭 선택 → ‘탭 오디오 공유’ 체크. 체크하지 않았다면 공유를 중지하고 다시 시작하세요.": "For textbook sound: select its Chrome tab and enable Share tab audio. If it was not selected, stop sharing and share the tab again.",
+  "교재 소리: Chrome에서 교재 탭을 선택한 뒤 ‘탭 오디오 공유’를 켜세요. 일반 창 공유 시 소리가 전달되지 않을 수 있습니다.": "For textbook sound, share the Chrome tab with Share tab audio enabled. Sharing a window may not transmit sound.",
   "수업 시작 전입니다": "The class has not started yet",
   "아직 Zoom 수업이 시작되지 않았습니다.": "The teacher has not started the Zoom meeting yet.",
   "강사가 Zoom을 시작하면 10초 간격으로 자동 재입장합니다.": "We will retry joining every 10 seconds while waiting for the host.",
