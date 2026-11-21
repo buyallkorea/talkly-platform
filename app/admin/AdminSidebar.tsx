@@ -28,6 +28,10 @@ const menuGroups: MenuGroup[] = [
         href: "/admin/calendar",
         exact: true,
       },
+      {
+        label: "실시간 수업 현황",
+        href: "/admin/live-classes",
+      },
     ],
   },
   {
