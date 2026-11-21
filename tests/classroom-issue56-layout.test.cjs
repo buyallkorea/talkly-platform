@@ -39,6 +39,15 @@ test("Issue 56: device controls below video and errors marked red without moving
   assert.match(zoom, /onClick=\{\(\) => void nativeAction\(sharing \? "stop-share" : "share"\)\}/);
   assert.match(zoom, /<div className="talkly-zoom-diagnostic-panel">/);
   assert.match(zoom, /await teardownRef\.current/);
+  // Native Zoom controls stay in the SDK DOM; only their visual weight changes.
+  const sdkLayout = read("lib/zoom-layout.ts");
+  assert.match(sdkLayout, /function markNativeToolbar\(widget: HTMLElement\)/);
+  assert.match(sdkLayout, /addLayoutClass\(parent, "talkly-sdk-native-toolbar"\)/);
+  assert.match(css, /\.talkly-sdk-native-toolbar:hover/);
+  assert.match(css, /\.talkly-sdk-native-toolbar:focus-within/);
+  assert.match(css, /@media \(hover:none\), \(pointer:coarse\)/);
+  assert.doesNotMatch(css, /\.talkly-sdk-native-toolbar\s*\{[^}]*display\s*:\s*none/s);
+  assert.doesNotMatch(css, /\.talkly-sdk-native-toolbar\s*\{[^}]*pointer-events\s*:\s*none/s);
   assert.doesNotMatch(css, /appendChild|removeChild/);
 });
 
