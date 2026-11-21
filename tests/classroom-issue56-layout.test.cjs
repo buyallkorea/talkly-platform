@@ -24,6 +24,7 @@ test("Issue 56: device controls below video and errors marked red without moving
   assert.match(css, /\.talkly-zoom-health\[data-health=error\]/);
   assert.match(css, /flex:0 0 38px/);
   assert.match(css, /talkly-zoom-diagnostic-panel/);
+  assert.match(css, /talkly-zoom-diagnostics:not\(\[open\]\) > \.talkly-zoom-diagnostic-panel \{ display:none/);
   assert.match(zoom, /className="talkly-zoom-quick-actions"/);
   assert.match(zoom, /className="talkly-zoom-diagnostics"/);
   assert.match(css, /\.talkly-zoom-health\[data-health=ok\]/);
