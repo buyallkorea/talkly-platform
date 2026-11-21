@@ -70,11 +70,11 @@ const menuGroups: MenuGroup[] = [
         label: "수강신청 설정",
         href: "/admin/enrollment-settings",
       },
+      { label: "수강료·결제관리", href: "/admin/tuition-payments" },
       {
         label: "토스 테스트 결제",
         href: "/admin/payment-test",
       },
-      { label: "결제 동의 증빙", href: "/admin/payment-consents" },
     ],
   },
   {
