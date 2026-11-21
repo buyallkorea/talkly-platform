@@ -229,6 +229,31 @@ export default function ClassroomZoomEmbed({
   const [sameNameParticipants, setSameNameParticipants] = useState(0);
   const [audioBusy, setAudioBusy] = useState(false);
   const audioBusyRef = useRef(false);
+
+  // A lightweight, best-effort browser SDK presence signal for administrators.
+  // It is deliberately distinct from attendance and Zoom server membership.
+  useEffect(() => {
+    if (screen !== "joined") return;
+    const report = (state: "joined" | "left", keepalive = false) => {
+      void fetch("/api/classroom/live-presence", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, state }),
+        cache: "no-store",
+        keepalive,
+      }).catch(() => { /* Never interrupt a lesson due to monitoring failures. */ });
+    };
+    report("joined");
+    const timer = window.setInterval(() => {
+      if (joinedRef.current) report("joined");
+    }, 25_000);
+    return () => {
+      window.clearInterval(timer);
+      report("left", true);
+    };
+  }, [screen, sessionId]);
+
   const measureVideo = useCallback(() => {
     const root = rootRef.current;
     const width = root?.parentElement?.clientWidth || root?.clientWidth || 420;
