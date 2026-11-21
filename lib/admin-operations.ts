@@ -196,7 +196,7 @@ export async function loadAdminOperationsSnapshot(): Promise<AdminOperationsSnap
   const counts: WorkItem[] = [
     { key: "requests", label: "미처리 수강신청", count: pendingRequests, href: "/admin/enrollment-requests?status=pending", detail: "관리자 검토 대기", priority: "high" },
     { key: "assignment", label: "강사 미배정 수강", count: unassignedCount, href: "/admin/enrollments", detail: "활성 수강 중 배정 없음", priority: "high" },
-    { key: "payments", label: "결제 대기", count: pendingPayments, href: "/admin/tuition-payments?tab=payments&status=pending", detail: "결제 준비·대기 상태 포함", priority: "normal" },
+    { key: "payments", label: "결제 대기", count: pendingPayments, href: "/admin/tuition-payments?tab=payments", detail: "결제 준비·대기 상태 포함(전체 내역에서 확인)", priority: "normal" },
     { key: "holds", label: "결석 승인 대기", count: pendingHolds, href: "/admin/class-holds", detail: "결석 신청 검토 필요", priority: "high" },
     { key: "meeting", label: "수업 링크 미등록", count: missingMeeting, href: "/admin/live-classes", detail: "오늘 수업의 Zoom 정보 확인", priority: "high" },
     { key: "attendance", label: "출결 확인 필요", count: missingAttendance, href: "/admin/calendar", detail: "종료시간 경과 후 출결 미등록", priority: "high" },
