@@ -10,6 +10,8 @@ function addLayoutClass(element: HTMLElement, name: string) {
  * its audio/video buttons; if Zoom changes its markup, leave it untouched.
  */
 function markNativeToolbar(widget: HTMLElement) {
+  // Some test/fallback wrappers only implement querySelector; never alter their layout.
+  if (typeof widget.querySelectorAll !== "function") return;
   const buttons = Array.from(widget.querySelectorAll<HTMLElement>('button,[role="button"]'));
   const label = (button: HTMLElement) =>
     (button.getAttribute("aria-label") || button.getAttribute("title") || button.textContent || "").trim();
@@ -21,6 +23,7 @@ function markNativeToolbar(widget: HTMLElement) {
   let parent = audio.parentElement;
   while (parent && parent !== widget && !parent.contains(video)) parent = parent.parentElement;
   if (!parent || parent === widget) return;
+  if (typeof parent.getBoundingClientRect !== "function") return;
   const rect = parent.getBoundingClientRect();
   // Never tag the whole video/share panel or a popup by accident.
   if (rect.height > 0 && rect.height <= 96 && rect.width >= 110) {
