@@ -1044,7 +1044,6 @@ export default async function ClassroomPage({
             padding-bottom: 4px;
           }
         }
-      `}
         /* Follow-up to #56: the Zoom component cannot be split into arbitrary
            React-owned video/share nodes. In screen-share mode give its native
            share viewer the full 70% stage instead of wasting 50% on a guide. */
@@ -1090,7 +1089,7 @@ export default async function ClassroomPage({
             grid-column:1; grid-row:2;
           }
         }
-</style>
+      `}</style>
 
       <main className="talkly-classroom" lang={profile.role === "teacher" ? "en" : "ko"}>
         <ClassSessionEndWatcher sessionId={session.id} />
