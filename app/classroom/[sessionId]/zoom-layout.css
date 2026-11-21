@@ -164,3 +164,28 @@
   .talkly-zoom-shell[data-split=true] .talkly-zoom-status { width:100%; }
   .talkly-zoom-shell .talkly-zoom-quick-actions button { font-size:10px; }
 }
+
+/* Issue #56 final polish: de-emphasize (never display:none/visibility:hidden)
+   the Zoom-owned bottom toolbar. Audio, video, share, menus, and keyboard
+   focus remain fully accessible; no SDK DOM relocation or click interception. */
+.talkly-zoom-shell .talkly-sdk-native-toolbar {
+  opacity:.58;
+  filter:saturate(.68);
+  transition:opacity 160ms ease,filter 160ms ease;
+}
+.talkly-zoom-shell .talkly-sdk-native-toolbar:hover,
+.talkly-zoom-shell .talkly-sdk-native-toolbar:focus-within {
+  opacity:1;
+  filter:none;
+}
+@media (hover:none), (pointer:coarse) {
+  .talkly-zoom-shell .talkly-sdk-native-toolbar {
+    opacity:.82;
+    filter:saturate(.8);
+  }
+}
+@media (prefers-reduced-motion:reduce) {
+  .talkly-zoom-shell .talkly-sdk-native-toolbar { transition:none; }
+}
+/* Keep native toolbar accessible even when our three-button controls are
+   displayed. A camera/microphone error still requires the Zoom fallback. */
