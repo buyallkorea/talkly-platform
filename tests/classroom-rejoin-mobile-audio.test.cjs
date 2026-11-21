@@ -45,7 +45,7 @@ test("Zoom mobile app URL accepts only https Zoom meeting links", () => {
   assert.match(source, /view === "checking"/);
   assert.match(source, /target="_blank" rel="noopener noreferrer"/);
   assert.match(source, /브라우저 화면으로 시도 \(모바일 지원 제한\)/);
-  assert.match(source, /강사 호스트 권한은 Zoom 앱에 자동으로 전달되지 않습니다/);
+  assert.match(source, /Host privileges do not transfer automatically/);
 });
 
 test("Zoom reconnect explicitly confirms and keeps backend class state unchanged", () => {
