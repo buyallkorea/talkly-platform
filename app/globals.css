@@ -1565,3 +1565,54 @@ img {
 .talkly-public-teacher-specialties-text{color:#475467;font-size:14px;white-space:normal;overflow-wrap:anywhere}
 @media(max-width:730px){.talkly-public-teacher-credentials-card{grid-column:1}}
 
+
+
+/* ADMIN TUITION PAYMENT CENTER · read-only unified payment and evidence view */
+.talkly-payment-center { max-width: 1320px; margin: 0 auto; color: var(--text-primary); }
+.talkly-payment-center-heading { background: #fff; border:1px solid var(--border); border-radius:16px; padding:28px; margin-bottom:18px; }
+.talkly-payment-eyebrow { color:var(--talkly-blue); font-size:11px; font-weight:900; letter-spacing:.08em; }
+.talkly-payment-center-heading h1 { margin:6px 0 8px; color:var(--talkly-navy); font-size:28px; line-height:1.35; }
+.talkly-payment-center-heading p { margin:0; color:var(--text-secondary); font-size:13px; line-height:1.75; }
+.talkly-payment-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+.talkly-payment-tabs a { display:inline-flex; justify-content:center; align-items:center; min-height:42px; padding:10px 17px; border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:#334155; text-decoration:none; font-weight:800; font-size:13px; }
+.talkly-payment-tabs a[aria-current="page"] { background:var(--talkly-navy); color:#fff; border-color:var(--talkly-navy); }
+.talkly-payment-filter { background:#fff; border:1px solid var(--border); border-radius:13px; padding:18px; display:flex; align-items:flex-end; flex-wrap:wrap; gap:12px; }
+.talkly-payment-filter label { display:flex; flex:1 1 140px; flex-direction:column; gap:6px; color:#344054; font-size:12px; font-weight:800; }
+.talkly-payment-filter input,.talkly-payment-filter select { min-height:42px; width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:9px 11px; background:#fff; color:#101828; font-size:13px; }
+.talkly-payment-filter button,.talkly-payment-filter > a { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:9px 15px; border:1px solid #cbd5e1; border-radius:8px; text-decoration:none; cursor:pointer; font-size:13px; font-weight:800; }
+.talkly-payment-filter button { background:var(--talkly-navy); color:#fff; border-color:var(--talkly-navy); }
+.talkly-payment-filter > a { background:#fff; color:#475467; }
+.talkly-payment-section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:24px 0 12px; }
+.talkly-payment-section-heading h2 { font-size:18px; font-weight:900; color:var(--talkly-navy); margin:0; }
+.talkly-payment-section-heading span { font-size:13px; color:var(--text-muted); }
+.talkly-payment-warning { background:#fff7e6; color:#7a4b05; border:1px solid #f7dea8; border-radius:9px; padding:12px 14px; font-size:12px; line-height:1.65; }
+.talkly-payment-error { color:#b42318; background:#fff1f0; border:1px solid #fda29b; border-radius:9px; padding:12px; }
+.talkly-payment-table-wrap { border:1px solid var(--border); border-radius:12px; background:#fff; overflow-x:auto; }
+.talkly-payment-table { width:100%; border-collapse:collapse; min-width:720px; font-size:12px; }
+.talkly-payment-table thead { background:#eef3fb; color:#344054; }
+.talkly-payment-table th,.talkly-payment-table td { text-align:left; padding:14px 13px; border-bottom:1px solid #eaecf0; vertical-align:top; overflow-wrap:anywhere; }
+.talkly-payment-table th { font-size:12px; font-weight:800; white-space:nowrap; }
+.talkly-payment-table tr:last-child td { border-bottom:0; }
+.talkly-payment-table small { display:block; margin-top:5px; color:#667085; font-size:11px; }
+.talkly-payment-money { font-weight:800; white-space:nowrap; }
+.talkly-payment-status { display:inline-flex; border:1px solid #cbd5e1; border-radius:99px; padding:3px 9px; font-size:11px; font-weight:900; white-space:nowrap; background:#f1f5f9; color:#334155; }
+.talkly-payment-status.is-success { background:#ecfdf3; border-color:#a6f4c5; color:#027a48; }
+.talkly-payment-status.is-danger { background:#fff1f3; border-color:#fecdd6; color:#b42318; }
+.talkly-payment-empty { padding:40px 15px !important; text-align:center !important; color:#667085; }
+.talkly-payment-table summary { cursor:pointer; font-weight:800; color:#1d4ed8; }
+.talkly-payment-evidence { max-width:680px; margin-top:12px; border:1px solid #e4e7ec; background:#fafcff; border-radius:9px; padding:12px; }
+.talkly-payment-evidence p { overflow-wrap:anywhere; }
+.talkly-payment-evidence pre { max-width:100%; white-space:pre-wrap; overflow-wrap:anywhere; background:#f2f5fa; padding:10px; border-radius:7px; font-family:inherit; font-size:11px; }
+.talkly-payment-pages { display:flex; align-items:center; justify-content:flex-end; gap:9px; margin:17px 0 23px; font-size:12px; color:var(--text-secondary); }
+.talkly-payment-pages a { min-width:58px; padding:7px 12px; background:#fff; text-align:center; border-radius:7px; text-decoration:none; border:1px solid #cbd5e1; font-weight:800; color:var(--talkly-navy); }
+.talkly-payment-foot { border-top:1px solid var(--border); padding-top:17px; display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; font-size:12px; }
+.talkly-payment-foot p { width:100%; margin:0; color:#667085; line-height:1.7; }
+.talkly-payment-foot a { color:#1d4ed8; font-weight:800; }
+@media (max-width:700px) {
+  .talkly-payment-center-heading { padding:19px; }
+  .talkly-payment-center-heading h1 { font-size:23px; }
+  .talkly-payment-tabs a { flex:1 1 130px; font-size:12px; padding:8px; }
+  .talkly-payment-filter { padding:12px; gap:10px; }
+  .talkly-payment-filter label { flex:1 1 130px; }
+  .talkly-payment-section-heading { align-items:flex-start; }
+}
