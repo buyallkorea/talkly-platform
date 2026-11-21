@@ -124,7 +124,7 @@ export default function AdminOperationsPanel({ mode }: { mode: Mode }) {
               {!item.meetingReady && <small className="talkly-operations-alert">Zoom 링크 확인 필요</small>}</td>
             <td><Status who="강사" seen={item.teacherBrowserJoined} time={item.teacherLastSeen}/></td>
             <td><Status who="학생측" seen={item.studentBrowserJoined} time={item.studentLastSeen}/></td>
-            <td><Link href={"/classroom/" + item.id}>강의실 보기</Link><Link href="/admin/calendar">일정 관리</Link></td>
+            <td><Link href={`/classroom/${item.id}`}>강의실 보기</Link><Link href="/admin/calendar">일정 관리</Link></td>
           </tr>)}
           {!list.length && <tr><td colSpan={6} className="talkly-operations-nodata">
             {!snapshot ? "운영 정보 조회 중…" : "선택한 구분에 해당하는 수업이 없습니다."}</td></tr>}
