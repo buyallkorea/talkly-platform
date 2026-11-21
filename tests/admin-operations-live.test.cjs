@@ -36,7 +36,7 @@ test("SDK reporting is best effort and real-time view does not claim Zoom app su
   assert.match(ui, /Zoom 앱/);
   assert.match(data, /90_000/);
   assert.match(data, /!participant\?\.teacher && !participant\?\.student/);
-  assert.match(data, /today.*수업/i);
+  assert.match(data, /현재 수업 시간대/);
   assert.doesNotMatch(data, /\.insert\(|\.update\(|\.delete\(/);
 });
 
