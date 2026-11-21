@@ -41,9 +41,9 @@ test("teacher-specific Zoom sound, reconnect and mic diagnostics use English whi
   const zoom = read("app/classroom/[sessionId]/ClassroomZoomEmbed.tsx");
   assert.match(zoom, /getClassroomText\(hostMode\)/);
   assert.match(zoom, /setMicCheckMessage\(hostMode && outcome\.message\.includes/);
-  assert.match(zoom, /title=\{hostMode \? "Briefly checks microphone/);
-  assert.match(zoom, /hostMode \? "Restart Zoom without resetting class time/);
-  assert.match(zoom, /: "마이크를 잠시 열어 권한·장치를 확인합니다/);
+  assert.match(zoom, /hostMode \? "Check microphone" : "마이크 점검"/);
+  assert.match(zoom, /hostMode \? "Reconnect Zoom" : "Zoom 재연결"/);
+  assert.match(zoom, /hostMode \? "Connection settings" : "연결 설정"/);
 });
 
 test("textbook controls render English for teacher but keep Korean for student", () => {
