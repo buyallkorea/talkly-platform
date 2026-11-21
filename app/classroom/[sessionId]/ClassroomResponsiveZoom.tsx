@@ -46,11 +46,10 @@ export default function ClassroomResponsiveZoom({
       <div className="talkly-zoom-desktop">
         {safeJoinUrl && (
           <details className="talkly-zoom-app-fallback">
-            <summary>오디오 연결 문제? Zoom 앱에서 열기 · Audio not working?</summary>
+            <summary>{hostMode ? "Audio trouble? Open in Zoom app" : "오디오 연결 문제? Zoom 앱에서 열기"}</summary>
             <p>브라우저 Zoom에서 음성이 계속 연결되지 않으면 Zoom 앱으로 참여할 수 있습니다.
               앱으로 전환하면 기존 내장 Zoom은 종료되어 중복 접속을 줄입니다.</p>
-            {hostMode && <p>강사: Zoom 앱에서는 TALKLY 호스트 권한이 자동 전달되지 않습니다.
-              해당 Zoom 호스트 계정으로 로그인해야 할 수 있습니다.</p>}
+            {hostMode && <p>Teacher: Zoom app does not automatically inherit host privileges. Sign in to the Zoom host account if required.</p>}
             <a href={safeJoinUrl} target="_blank" rel="noopener noreferrer"
               onClick={() => setView("external")}>Zoom 앱에서 수업 열기 · Open in Zoom</a>
           </details>
@@ -73,20 +72,17 @@ export default function ClassroomResponsiveZoom({
 
   return (
     <div className="talkly-mobile-zoom-access">
-      <strong className="talkly-mobile-zoom-heading">모바일·태블릿 화상수업</strong>
+      <strong className="talkly-mobile-zoom-heading">{hostMode ? "Tablet and phone video" : "모바일·태블릿 화상수업"}</strong>
       <p>
         TALKLY 내장 Zoom 화면은 PC 브라우저에 최적화되어 있습니다.
         휴대폰과 태블릿에서는 Zoom 앱으로 입장하면 카메라·음성 연결이 더 안정적입니다.
       </p>
       {hostMode && (
-        <p className="talkly-mobile-zoom-warning">
-          강사 호스트 권한은 Zoom 앱에 자동으로 전달되지 않습니다. 강사는 PC에서 수업을 시작하는 것을 권장합니다.
-          모바일 Zoom 앱에서 호스트가 되려면 해당 Zoom 호스트 계정으로 별도 로그인해야 할 수 있습니다.
-        </p>
+        <p className="talkly-mobile-zoom-warning">Host privileges do not transfer automatically to the Zoom app. Start lessons on a PC where possible; on mobile, sign in with the Zoom host account.</p>
       )}
       {safeJoinUrl ? (
         <a className="talkly-mobile-zoom-launch" href={safeJoinUrl} target="_blank" rel="noopener noreferrer" onClick={() => setView("external")}>
-          Zoom 앱으로 수업 참여 · Open Zoom
+          {hostMode ? "Open Zoom app" : "Zoom 앱으로 수업 참여"}
         </a>
       ) : (
         <p role="alert" className="talkly-mobile-zoom-warning">Zoom 수업 참여 링크를 확인할 수 없습니다. 관리자에게 문의해 주세요.</p>
@@ -97,7 +93,7 @@ export default function ClassroomResponsiveZoom({
       </p>
       <button type="button" className="talkly-mobile-zoom-browser"
         onClick={() => setView("embedded")}>
-        브라우저 화면으로 시도 (모바일 지원 제한) · Try web version
+        {hostMode ? "Try browser (limited support)" : "브라우저 화면으로 시도 (모바일 지원 제한)"}
       </button>
     </div>
   );
