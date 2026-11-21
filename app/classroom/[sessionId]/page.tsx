@@ -1044,6 +1044,67 @@ export default async function ClassroomPage({
             padding-bottom: 4px;
           }
         }
+        /* Keep the Zoom-app fallback available but no longer let its yellow
+           troubleshooting summary compete with the lesson video. */
+        .talkly-zoom-app-fallback {
+          padding:2px 7px; background:#101827;
+          border-bottom:1px solid rgba(148,163,184,.15);
+        }
+        .talkly-zoom-app-fallback summary {
+          min-height:24px; padding:2px 0; color:#aab7cc;
+          font-size:10px; font-weight:600; line-height:1.35;
+        }
+        .talkly-zoom-app-fallback[open] {
+          padding:7px 9px; background:#192439;
+        }
+        .talkly-zoom-app-fallback[open] summary {
+          color:#fde68a; font-size:11px;
+        }
+        /* Follow-up to #56: the Zoom component cannot be split into arbitrary
+           React-owned video/share nodes. In screen-share mode give its native
+           share viewer the full 70% stage instead of wasting 50% on a guide. */
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-video {
+          grid-column:1 / 3;
+        }
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-screen-guide {
+          display:none;
+        }
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat {
+          grid-column:3; grid-row:1;
+        }
+        .talkly-mobile-zoom-access {
+          justify-content:flex-start; gap:10px; padding:12px; font-size:12px;
+        }
+        .talkly-mobile-zoom-heading { font-size:14px; }
+        .talkly-mobile-zoom-warning { font-size:11px; line-height:1.45; }
+        .talkly-mobile-zoom-launch, .talkly-mobile-zoom-browser {
+          min-height:40px; font-size:12px; padding:7px 8px;
+        }
+        /* Landscape touch devices need a wider video/fallback rail than 20%.
+           Zoom Component View remains unsupported in tablet browsers. */
+        @media (min-width:900px) and (pointer:coarse) {
+          .talkly-classroom-stage {
+            grid-template-columns:minmax(0,3fr) minmax(0,4.5fr) minmax(0,2.5fr);
+          }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] {
+            grid-template-columns:minmax(0,3fr) minmax(0,4.5fr) minmax(0,2.5fr);
+          }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-video {
+            grid-column:1 / 3;
+          }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat {
+            grid-column:3; grid-row:1;
+          }
+        }
+        /* Preserve single-column order on narrow devices. */
+        @media (max-width:899px) {
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-video {
+            grid-column:1; grid-row:1;
+          }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat {
+            grid-column:1; grid-row:2;
+          }
+        }
       `}</style>
 
       <main className="talkly-classroom" lang={profile.role === "teacher" ? "en" : "ko"}>

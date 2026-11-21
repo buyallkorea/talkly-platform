@@ -19,9 +19,14 @@ test("Issue 56: device controls below video and errors marked red without moving
   const css = read("app/classroom/[sessionId]/zoom-layout.css");
   const zoom = read("app/classroom/[sessionId]/ClassroomZoomEmbed.tsx");
   assert.match(css, /ISSUE-56/);
-  assert.match(css, /\.talkly-zoom-body \{ order:0/);
+  assert.match(css, /\.talkly-zoom-body \{\s*order:0/);
   assert.match(css, /\.talkly-zoom-status \{[\s\S]*?order:1/);
   assert.match(css, /\.talkly-zoom-health\[data-health=error\]/);
+  assert.match(css, /flex:0 0 38px/);
+  assert.match(css, /talkly-zoom-diagnostic-panel/);
+  assert.match(css, /talkly-zoom-diagnostics:not\(\[open\]\) > \.talkly-zoom-diagnostic-panel \{ display:none/);
+  assert.match(zoom, /className="talkly-zoom-quick-actions"/);
+  assert.match(zoom, /className="talkly-zoom-diagnostics"/);
   assert.match(css, /\.talkly-zoom-health\[data-health=ok\]/);
   assert.match(zoom, /cameraOn === false \? \(hostMode \? "Camera off" : "카메라 꺼짐"\)/);
   assert.match(zoom, /data-health=\{audioState === "disconnected" \? "error"/);
@@ -31,7 +36,18 @@ test("Issue 56: device controls below video and errors marked red without moving
   assert.match(zoom, /onClick=\{reconnectClassroom\}/);
   assert.match(zoom, /onClick=\{\(\) => void checkMicrophone\(\)\}/);
   assert.match(zoom, /onClick=\{\(\) => void nativeAction\("video"\)\}/);
+  assert.match(zoom, /onClick=\{\(\) => void nativeAction\(sharing \? "stop-share" : "share"\)\}/);
+  assert.match(zoom, /<div className="talkly-zoom-diagnostic-panel">/);
   assert.match(zoom, /await teardownRef\.current/);
+  // Native Zoom controls stay in the SDK DOM; only their visual weight changes.
+  const sdkLayout = read("lib/zoom-layout.ts");
+  assert.match(sdkLayout, /function markNativeToolbar\(widget: HTMLElement\)/);
+  assert.match(sdkLayout, /addLayoutClass\(parent, "talkly-sdk-native-toolbar"\)/);
+  assert.match(css, /\.talkly-sdk-native-toolbar:hover/);
+  assert.match(css, /\.talkly-sdk-native-toolbar:focus-within/);
+  assert.match(css, /@media \(hover:none\), \(pointer:coarse\)/);
+  assert.doesNotMatch(css, /\.talkly-sdk-native-toolbar\s*\{[^}]*display\s*:\s*none/s);
+  assert.doesNotMatch(css, /\.talkly-sdk-native-toolbar\s*\{[^}]*pointer-events\s*:\s*none/s);
   assert.doesNotMatch(css, /appendChild|removeChild/);
 });
 
