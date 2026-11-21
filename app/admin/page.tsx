@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/server-user";
 import Link from "next/link";
+import AdminOperationsPanel from "@/components/admin/AdminOperationsPanel";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 
@@ -1407,6 +1408,8 @@ export default async function AdminDashboardPage() {
           기준일: {seoulDate}
         </div>
       </div>
+
+      <AdminOperationsPanel mode="summary" />
 
       {/* ======================================
           DASHBOARD CARDS
