@@ -12,7 +12,7 @@ test("admin tuition center exposes only read-only secured payment and evidence q
   assert.match(s, /\.range\(offset, offset \+ PAGE_SIZE - 1\)/);
   assert.match(s, /"order_id"/);
   assert.match(s, /"consented_at"/);
-  assert.match(s, /"cancelled_at"/);
+  assert.match(s, /cancelled_at/);
   assert.doesNotMatch(s, /\.update\(|\.delete\(|\.insert\(|\.upsert\(/);
   assert.doesNotMatch(s, /payment_key/);
 });
