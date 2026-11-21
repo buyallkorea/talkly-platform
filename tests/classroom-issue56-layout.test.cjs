@@ -19,7 +19,7 @@ test("Issue 56: device controls below video and errors marked red without moving
   const css = read("app/classroom/[sessionId]/zoom-layout.css");
   const zoom = read("app/classroom/[sessionId]/ClassroomZoomEmbed.tsx");
   assert.match(css, /ISSUE-56/);
-  assert.match(css, /\.talkly-zoom-body \{ order:0/);
+  assert.match(css, /\.talkly-zoom-body \{\s*order:0/);
   assert.match(css, /\.talkly-zoom-status \{[\s\S]*?order:1/);
   assert.match(css, /\.talkly-zoom-health\[data-health=error\]/);
   assert.match(css, /flex:0 0 38px/);
