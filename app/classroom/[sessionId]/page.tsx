@@ -1044,6 +1044,22 @@ export default async function ClassroomPage({
             padding-bottom: 4px;
           }
         }
+        /* Keep the Zoom-app fallback available but no longer let its yellow
+           troubleshooting summary compete with the lesson video. */
+        .talkly-zoom-app-fallback {
+          padding:2px 7px; background:#101827;
+          border-bottom:1px solid rgba(148,163,184,.15);
+        }
+        .talkly-zoom-app-fallback summary {
+          min-height:24px; padding:2px 0; color:#aab7cc;
+          font-size:10px; font-weight:600; line-height:1.35;
+        }
+        .talkly-zoom-app-fallback[open] {
+          padding:7px 9px; background:#192439;
+        }
+        .talkly-zoom-app-fallback[open] summary {
+          color:#fde68a; font-size:11px;
+        }
         /* Follow-up to #56: the Zoom component cannot be split into arbitrary
            React-owned video/share nodes. In screen-share mode give its native
            share viewer the full 70% stage instead of wasting 50% on a guide. */
