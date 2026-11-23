@@ -277,9 +277,15 @@ export default function Home() {
           </nav>
 
           <div className="talkly-home-desktop-auth">
+            <Link href="/talkly-ai" className="talkly-home-ai-link" aria-label="TALKLY AI 홈페이지">
+              TALKLY <strong>AI</strong> <span aria-hidden="true">↗</span>
+            </Link>
             <HomeAuthMenu />
           </div>
 
+          <Link href="/talkly-ai" className="talkly-home-ai-mobile-link" aria-label="TALKLY AI 홈페이지">
+            TALKLY <strong>AI</strong> <span aria-hidden="true">↗</span>
+          </Link>
           <HomeMobileMenu />
         </div>
       </header>
