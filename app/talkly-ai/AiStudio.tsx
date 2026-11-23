@@ -9,6 +9,8 @@ import {
 } from "@/lib/talkly-ai/client-connection";
 import { CheckpointQueue } from "@/lib/talkly-ai/checkpoint-queue";
 import { TurnCoordinator } from "@/lib/talkly-ai/turn-coordinator";
+import SessionLearningTools from "./SessionLearningTools";
+import type { DailyLessonNotes } from "@/lib/talkly-ai/daily-pdf";
 type Account = {
   needsAdultConsent: boolean;
   latestReport: null | { month: string; published_at: string };
@@ -92,6 +94,8 @@ export default function AiStudio() {
     [paymentMessage, setPaymentMessage] = useState(""),
     [pendingMemoryRetry, setPendingMemoryRetry] = useState(false),
     [memoryRetryBusy, setMemoryRetryBusy] = useState(false);
+  const [lessonNotes, setLessonNotes] = useState<DailyLessonNotes | null>(null);
+  const [studyMessage, setStudyMessage] = useState("");
   const connectionEpoch = useRef(new ConnectionEpoch());
   const audio = useRef<HTMLAudioElement>(null),
     pc = useRef<RTCPeerConnection | null>(null),
@@ -239,6 +243,7 @@ export default function AiStudio() {
         // Settlement and memory status determine the primary message.
         // Summary recording is optional and must not hold up renewal or account refresh.
         if (summarySnapshot.length) {
+          setStudyMessage("오늘의 문법과 표현을 정리하고 있어요…");
           void api("session/summary", {
             sessionId: id,
             turns: summarySnapshot,
@@ -246,8 +251,19 @@ export default function AiStudio() {
             // "not_saved" is a valid HTTP response but not a successful report write.
             if (summary?.status === "not_saved" || summary?.status === "failed")
               throw new Error("Learning summary not persisted");
+            if (summary?.status === "ready" && summary.notes) {
+              setLessonNotes(summary.notes as DailyLessonNotes);
+              setStudyMessage("생활 문법 정리가 완료됐어요. ‘생활 문법 보기’를 눌러 확인해 주세요.");
+            } else if (summary?.status === "not_enabled" || summary?.status === "before_consent") {
+              setStudyMessage("학습 요약 저장에 동의하면 다음 수업부터 생활 문법 정리가 제공돼요. 대화 PDF는 지금도 저장할 수 있어요.");
+            } else if (summary?.status === "ready") {
+              setStudyMessage("학습 요약은 저장됐지만 이 화면에 문법 정리를 불러오지 못했어요.");
+            } else {
+              setStudyMessage("이번 대화의 문법 정리를 제공하지 못했어요. 대화 PDF는 저장할 수 있어요.");
+            }
           }).catch(() => {
             // Preserve more important transcript, settlement and subsequent lesson warnings.
+            setStudyMessage("문법 정리 생성에 실패했어요. 대화 PDF는 저장할 수 있어요.");
             if (result[0].status === "fulfilled")
               setError((current) => current || "수업은 종료됐지만 학습 요약 저장에 실패했어요. 월간 리포트에 일부 기록이 빠질 수 있어요.");
           });
@@ -548,6 +564,8 @@ export default function AiStudio() {
       if (!continuation) {
         history.current = [];
         setTurns([]);
+        setLessonNotes(null);
+        setStudyMessage("");
       }
       const a = await refresh();
       connectionEpoch.current.assert(attempt);
@@ -972,22 +990,13 @@ export default function AiStudio() {
                 쉬어 갈 때는 ‘일시정지’를 눌러 주세요.
               </small>
               <audio ref={audio} autoPlay />
-              <div className="tai-transcript" aria-live="polite">
-                {turns.length ? (
-                  turns.map((t, i) => (
-                    <p key={i} className={`tai-turn-${t.role}`}>
-                      <b>
-                        {t.role === "user"
-                          ? "나"
-                          : TUTORS.find((x) => x.id === tutor)?.name}
-                      </b>
-                      {t.text}
-                    </p>
-                  ))
-                ) : (
-                  <p>대화를 시작하면 여기에 자막이 표시돼요.</p>
-                )}
-              </div>
+              <SessionLearningTools
+                tutor={TUTORS.find((x) => x.id === tutor)?.name || "AI 튜터"}
+                turns={turns}
+                notes={lessonNotes}
+                studyMessage={studyMessage}
+                connected={state === "live" || state === "connecting"}
+              />
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
