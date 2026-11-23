@@ -63,7 +63,7 @@ export default function TalklyAiPublicIntroduction() {
         <div className="talkly-ai-teaser-footer-brand">TALKLY <span>AI</span></div>
         <p>운영사업자: 토클리 Talkly　|　대표자: 박선희　|　사업자등록번호: 617-28-89258</p>
         <p>통신판매업 신고번호: 제2010-부산남구-221호　|　주소: 부산광역시 남구 용호로216번길 8</p>
-        <p>개인정보보호책임자: 박선희　|　<Link href="/privacy-policy">개인정보처리방침</Link> · <Link href="/">TALKLY 홈</Link></p>
+        <p>개인정보보호책임자: 박선희　|　<Link href="/">TALKLY 홈</Link></p>
         <p>© 2026 TALKLY. All rights reserved.</p>
       </footer>
     </div>
