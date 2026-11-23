@@ -816,3 +816,74 @@
 @media(prefers-reduced-motion:reduce) {
   .tai-benefit-card,.tai-ai-hero .tai-hero-cta {transition:none;}
 }
+
+
+/* TALKLY AI scene player: no videos, no extra scene requests, no animated GIFs. */
+.tai-tutor-portrait { display:block; width:100%; height:auto; overflow:visible; transform-origin:center bottom; }
+.tai-avatar-lipsync { transform-box:fill-box; transform-origin:center center; transform:scaleY(calc(.10 + var(--tai-mouth, 0) * 3.1)); }
+.tai-live-stage { --tai-mouth:0; --tai-nod:0deg; position:relative; isolation:isolate; overflow:hidden; min-height:383px; margin:22px 0 24px; border-radius:19px; background:linear-gradient(145deg,#e0d8ec,#f4e8e2); border:1px solid #d7cbeb; box-shadow:0 12px 30px #30204b1c; text-align:left;}
+.tai-live-stage-scene {position:absolute;inset:0; overflow:hidden;pointer-events:none;z-index:0;transition:background 500ms ease;}
+.tai-live-stage--home .tai-live-stage-scene {background:linear-gradient(110deg,#dfd6ef 0%,#f7edee 48%,#ded4c5 100%);}
+.tai-live-stage--cafe .tai-live-stage-scene {background:linear-gradient(110deg,#a79582 0%,#e9d0ad 50%,#a6bfaa 100%);}
+.tai-live-stage--office .tai-live-stage-scene {background:linear-gradient(110deg,#7b95b1 0%,#d6e6ee 52%,#8caabf 100%);}
+.tai-live-stage--airport .tai-live-stage-scene {background:linear-gradient(110deg,#88b6ce 0%,#e7f4fb 55%,#b3c1cc 100%);}
+.tai-live-stage--restaurant .tai-live-stage-scene {background:linear-gradient(110deg,#6d5167 0%,#e8c6a2 55%,#7d555c 100%);}
+.tai-live-stage--park .tai-live-stage-scene {background:linear-gradient(110deg,#8db596 0%,#e4efb7 54%,#a5ccae 100%);}
+.tai-scene-window {position:absolute;top:14px;right:8%;width:37%;height:46%;border:8px solid #ffffff87;border-radius:14px;background:linear-gradient(90deg,#ffffff28 48%,#ffffff8a 49%,#ffffff8a 51%,#ffffff28 52%),linear-gradient(0deg,#ffffff14 47%,#ffffff8a 48%,#ffffff8a 50%,#ffffff14 51%),#c4dfe6a1;box-shadow:inset 0 0 25px #ffffff60;}
+.tai-scene-highlight {position:absolute;top:-150px;left:-100px;width:57%;height:460px;border-radius:50%;background:radial-gradient(circle,#ffffffb8,transparent 67%);filter:blur(8px);}
+.tai-scene-furniture {position:absolute;bottom:68px;left:-8%;width:116%;height:83px;background:linear-gradient(#d2b6a083 0 13px,#64494b73 13px 100%);box-shadow:0 -8px 17px #3e30531c;}
+.tai-live-stage--park .tai-scene-window {border:0;border-radius:50% 50% 0 0;background:radial-gradient(ellipse at 50% 0%,#f6ffc7 0%,#8bc7a6 70%);width:60%;height:80%;right:-12%;top:-20%;opacity:.7;}
+.tai-live-stage--park .tai-scene-furniture {background:linear-gradient(#aec6a6 0 12px,#629078 13px 100%);}
+.tai-live-stage--office .tai-scene-furniture {background:linear-gradient(#d5e0ed 0 16px,#7390a9 17px 100%);}
+.tai-live-stage--airport .tai-scene-furniture {background:linear-gradient(#e7f0f7 0 15px,#9baac3 16px 100%);}
+.tai-live-stage--restaurant .tai-scene-window {border-radius:50% 50% 0 0;border-color:#d2b18b;background:linear-gradient(#f3cd9b,#ae7272);box-shadow:inset 0 0 50px #885d56a3;}
+.tai-live-stage-person {position:relative;z-index:1;width:clamp(228px,60%,330px);margin:-6px auto 86px;filter:drop-shadow(0 12px 21px #271f4246);will-change:auto;}
+.tai-live-stage-person .tai-tutor-portrait {max-height:370px;}
+.tai-live-stage.is-animated .tai-live-stage-person {animation:taiAvatarBreath 6.5s ease-in-out infinite;}
+.tai-live-stage.is-animated .tai-avatar-eyes {transform-box:fill-box;transform-origin:center center;animation:taiAvatarBlink 7.7s ease-in-out infinite;}
+.tai-live-stage.is-animated .tai-avatar-head {transform-box:fill-box;transform-origin:center bottom;transform:rotate(var(--tai-nod,0deg));}
+.tai-live-stage.is-still .tai-avatar-lipsync,.tai-live-stage:not(.is-live) .tai-avatar-lipsync {transform:scaleY(.1);}
+.tai-live-stage-label {position:absolute;left:13px;right:13px;bottom:72px;z-index:3;display:flex;align-items:center;gap:10px;min-height:51px;background:#26213ccf;border:1px solid #ffffff38;color:#fff;padding:8px 13px;border-radius:11px;backdrop-filter:blur(6px);}
+.tai-live-stage-label-icon {width:35px;height:35px;background:#ffffff22;display:grid;place-items:center;font-size:18px;border-radius:10px;}
+.tai-live-stage-label > span:nth-child(2) {font-size:13px;font-weight:900;}
+.tai-live-stage-label small {display:block;font-size:10px;color:#d7cbeb;margin-top:2px;font-weight:500;}
+.tai-live-stage-voice {margin-left:auto;color:#abf5df;font-size:10px;font-weight:900;white-space:nowrap;}
+.tai-stage-customize {position:absolute;bottom:20px;left:15px;right:15px;z-index:4;display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.tai-stage-customize label {display:flex;align-items:center;gap:9px;margin:0;color:#2f2749;font-size:11px;font-weight:900;line-height:1.2;}
+.tai-stage-customize select {min-height:35px;border:1px solid #ffffffae;border-radius:8px;background:#fffefa;padding:7px;color:#433560;font-size:11px;}
+.tai .tai-stage-customize button {min-height:35px;border:1px solid #ffffffb0;border-radius:8px;background:#ffffffd9;color:#433560;padding:6px 12px;font-size:11px;box-shadow:none;}
+.tai .tai-stage-customize button:hover {background:#ffffff;}
+.tai-stage-note {position:absolute;top:10px;left:14px;right:14px;margin:0!important;z-index:4;text-align:center;color:#342e49;background:#ffffffbc;border-radius:12px;padding:5px 10px;font-size:9px!important;line-height:1.6!important;opacity:.93;}
+.tai-tutors button {display:flex;flex-direction:column;align-items:flex-start;gap:2px;}
+.tai-tutors .tai-picker-portrait {width:63px;height:67px;align-self:center;background:#e8def0;border-radius:50%;overflow:hidden;}
+.tai-hero-real-portrait {position:absolute;right:-14px;top:-13px;width:75%;max-width:375px;height:345px;overflow:hidden;border-radius:45% 45% 20px 20px;background:radial-gradient(circle at 50% 30%,#e8d9ff 0%,#7066a5 100%);box-shadow:0 12px 42px #100a225e;z-index:1;}
+.tai-hero-real-portrait .tai-tutor-portrait {width:90%;height:auto;margin:0 auto;}
+.tai-ai-hero .tai-mock-window {z-index:2;max-width:350px;margin:125px 0 0 -48px;transform:rotate(-1deg);}
+.tai-ai-hero .tai-mock-floating {z-index:3;}
+.tai-business-details {color:#8d83a5;font-size:11px;line-height:1.85;letter-spacing:-.05px;max-width:1050px;}
+.tai-business-details strong {color:#493966;}
+.tai-business-details a {color:#c2a6fd;text-decoration:underline;}
+@keyframes taiAvatarBreath {0%,100%{transform:translateY(0px)}50%{transform:translateY(2px)}}
+@keyframes taiAvatarBlink {0%,24%,25%,52%,53%,77%,78%,100%{transform:scaleY(1)}24.4%,52.4%,77.4%{transform:scaleY(.075)}}
+@media (max-width:800px) {
+  .tai-live-stage {min-height:355px;}
+  .tai-live-stage-person {width:65%;max-width:285px;}
+  .tai-hero-real-portrait {right:4%;top:0;width:71%;max-width:350px;}
+  .tai-ai-hero .tai-mock-window {margin:140px auto 0 0;max-width:320px;}
+}
+@media (max-width:480px) {
+  .tai-live-stage {min-height:339px;}
+  .tai-live-stage-person {width:72%;margin:0 auto 86px;}
+  .tai-live-stage-label {left:9px;right:9px;bottom:74px;padding:7px;}
+  .tai-stage-customize {left:9px;right:9px;bottom:20px;}
+  .tai-stage-note {font-size:8px!important;}
+  .tai-hero-real-portrait {width:71%;height:258px;right:-4px;top:5px;}
+  .tai-ai-hero .tai-mock-window {width:92%;margin-top:128px;}
+}
+@media (prefers-reduced-motion:reduce) {
+  .tai-live-stage.is-animated .tai-live-stage-person,
+  .tai-live-stage.is-animated .tai-avatar-eyes {animation:none!important;}
+  .tai-live-stage .tai-avatar-head {transform:none!important;}
+  .tai-live-stage .tai-avatar-lipsync {transform:scaleY(.1)!important;}
+  .tai-live-stage-scene {transition:none!important;}
+}
