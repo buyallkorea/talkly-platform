@@ -1680,15 +1680,24 @@ img {
 
 
 /* Reciprocal TALKLY ↔ TALKLY AI navigation & safe public AI intro. */
-.talkly-home-desktop-auth{display:flex;align-items:center;gap:12px}
-.talkly-home-ai-link,.talkly-home-ai-mobile-link{display:inline-flex;align-items:center;justify-content:center;gap:5px;flex-shrink:0;min-height:43px;padding:8px 13px;text-decoration:none;border:1px solid #d6d0e9;border-radius:11px;background:#f6f2ff;color:#5c3c9e;font-size:12px;font-weight:900;white-space:nowrap;letter-spacing:-.01em}
-.talkly-home-ai-link strong,.talkly-home-ai-mobile-link strong{color:#8b5ce0}
-.talkly-home-ai-link:hover,.talkly-home-ai-mobile-link:hover{background:#ebe3fc;border-color:#baa7e8}
-.talkly-home-ai-mobile-link{display:none}
+.talkly-home-desktop-auth{display:flex;align-items:center;justify-content:flex-end}
 .talkly-home-mobile-ai-entry{background:#f6f2ff!important;color:#5c3c9e!important}
-@media(max-width:1040px){.talkly-home-ai-mobile-link{display:inline-flex;margin-left:auto}}
-@media(max-width:480px){.talkly-home-ai-mobile-link{font-size:10px;min-height:37px;padding:6px 8px;letter-spacing:-.02em}.talkly-main-header{gap:8px!important}.talkly-main-header img{max-width:115px!important;height:auto!important}}
-@media(max-width:360px){.talkly-home-ai-mobile-link{padding:5px 6px;font-size:9px}.talkly-main-header img{max-width:99px!important}}
+.talkly-utility-inner{gap:12px!important}
+.talkly-utility-inner>a{white-space:nowrap}
+.talkly-utility-ai{display:inline-flex;align-items:center;min-height:24px;padding:3px 9px;border:1px solid rgba(192,173,238,.42);border-radius:7px;background:rgba(124,96,190,.26);color:#eee7ff!important;font-size:11px;font-weight:900;text-decoration:none;letter-spacing:-.02em;white-space:nowrap}
+.talkly-utility-ai:hover{background:rgba(167,135,247,.4);border-color:rgba(227,211,255,.7)}
+@media(max-width:680px){
+  .talkly-utility{display:block!important}
+  .talkly-utility-inner{width:calc(100% - 16px)!important;gap:7px!important;min-height:33px!important}
+  .talkly-utility-inner>a{font-size:10px!important}
+  .talkly-utility-ai{padding:3px 6px!important;font-size:10px!important}
+}
+@media(max-width:370px){
+  .talkly-utility-inner{gap:4px!important}
+  .talkly-utility-inner>a{font-size:9px!important}
+  .talkly-utility-inner>span{display:none}
+  .talkly-utility-ai{font-size:9px!important;padding:3px 4px!important}
+}
 .talkly-ai-teaser{--ai-ink:#292140;--ai-purple:#7150ce;min-height:100vh;background:#fbfaff;color:var(--ai-ink)}
 .talkly-ai-teaser-nav{border-bottom:1px solid #e8e2f3;background:#fff}
 .talkly-ai-teaser-nav-inner{display:flex;align-items:center;justify-content:space-between;width:min(1200px,calc(100% - 34px));margin:auto;min-height:82px;gap:14px}

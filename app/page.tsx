@@ -143,6 +143,7 @@ export default function Home() {
             alignItems: "center",
             gap: "18px",
           }}
+          className="talkly-utility-inner"
         >
           <Link href="/level-test" style={utilityLinkStyle}>
             레벨테스트신청
@@ -154,6 +155,9 @@ export default function Home() {
           <span style={{ opacity: 0.25 }}>|</span>
           <Link href="/consultation" style={utilityLinkStyle}>
             1:1상담
+          </Link>
+          <Link href="/talkly-ai" className="talkly-utility-ai" aria-label="TALKLY AI 홈페이지">
+            TALKLY AI ↗
           </Link>
         </div>
       </div>
@@ -277,15 +281,9 @@ export default function Home() {
           </nav>
 
           <div className="talkly-home-desktop-auth">
-            <Link href="/talkly-ai" className="talkly-home-ai-link" aria-label="TALKLY AI 홈페이지">
-              TALKLY <strong>AI</strong> <span aria-hidden="true">↗</span>
-            </Link>
             <HomeAuthMenu />
           </div>
 
-          <Link href="/talkly-ai" className="talkly-home-ai-mobile-link" aria-label="TALKLY AI 홈페이지">
-            TALKLY <strong>AI</strong> <span aria-hidden="true">↗</span>
-          </Link>
           <HomeMobileMenu />
         </div>
       </header>
@@ -1426,7 +1424,7 @@ export default function Home() {
 
         @media (max-width: 680px) {
           .talkly-utility {
-            display: none !important;
+            display: block !important;
           }
 
           .talkly-main-header {
