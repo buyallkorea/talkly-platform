@@ -116,6 +116,28 @@ export function validateSummary(
   };
 }
 
+export type GrammarNote = { before: string; after: string; rule: string; example: string };
+
+/** One-time, in-memory grammar help drawn from what the learner actually said.
+ * It is NOT added to the saved monthly summary without a separate consent. */
+export function validateGrammarNotes(value: unknown, turns: Turn[]): GrammarNote[] {
+  const userPhrases = turns.filter(t => t.role === "user").map(t => t.text.toLowerCase());
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const r = item as Record<string, unknown>;
+    const valid = (x: unknown, max: number) =>
+      typeof x === "string" && x.trim().length > 0 && x.length <= max;
+    if (!valid(r.before, 160) || !valid(r.after, 160) ||
+        !valid(r.rule, 220) || !valid(r.example, 160) ||
+        !(userPhrases.some(phrase => phrase.includes((r.before as string).toLowerCase())))) return [];
+    return [{
+      before: r.before as string, after: r.after as string,
+      rule: r.rule as string, example: r.example as string,
+    }];
+  }).slice(0, 3);
+}
+
 // Persisted JSON may predate the current writer or contain malformed values.
 // Validate its shape without inventing content or re-assessing transcript evidence.
 export function storedLearningSummary(value: unknown): LearningSummary | null {
