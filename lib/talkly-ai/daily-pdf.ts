@@ -25,10 +25,26 @@ export function downloadDailyLessonPdf(input: {
     timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit",
   }).format(date);
   const W = 1240, H = 1754, margin = 84, endY = H - 116, available = W - margin * 2;
-  const pages: HTMLCanvasElement[] = [];
-  let canvas!: HTMLCanvasElement, ctx!: CanvasRenderingContext2D, y = 0;
+  // Convert each finished page immediately; avoid holding many large canvases
+  // in memory on phones and tablets.
+  const images: Uint8Array[] = [];
+  let canvas!: HTMLCanvasElement, ctx!: CanvasRenderingContext2D, y = 0, pageNo = 0;
 
+  function flushPage() {
+    if (!pageNo) return;
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = '23px "Noto Sans KR", Arial, sans-serif';
+    ctx.fillText("TALKLY AI  ·  내 기기에서 생성한 수업 기록", margin, H - 80);
+    ctx.textAlign = "right";
+    ctx.fillText(String(pageNo), W - margin, H - 80);
+    ctx.textAlign = "left";
+    images.push(base64ToBytes(canvas.toDataURL("image/jpeg", 0.86).split(",")[1] ?? ""));
+    canvas.width = 0;
+    canvas.height = 0;
+  }
   function makePage() {
+    flushPage();
+    pageNo++;
     canvas = document.createElement("canvas");
     canvas.width = W;
     canvas.height = H;
@@ -44,7 +60,6 @@ export function downloadDailyLessonPdf(input: {
     ctx.fillStyle = "#57479a";
     ctx.fillText("TALKLY AI  /  DAILY CONVERSATION", margin, 49);
     y = 115;
-    pages.push(canvas);
   }
   function color(fill: string) { ctx.fillStyle = fill; }
   function font(size: number, bold = false) {
@@ -126,18 +141,7 @@ export function downloadDailyLessonPdf(input: {
     section("다음 수업에 연습할 내용");
     paragraph(input.notes.nextPractice);
   }
-  pages.forEach((page, i) => {
-    const c = page.getContext("2d");
-    if (!c) return;
-    c.fillStyle = "#94a3b8";
-    c.font = '23px "Noto Sans KR", Arial, sans-serif';
-    c.fillText("TALKLY AI  ·  내 기기에서 생성한 수업 기록", margin, H - 80);
-    c.textAlign = "right";
-    c.fillText(String(i + 1) + " / " + pages.length, W - margin, H - 80);
-  });
-
-  const images = pages.map((page) =>
-    base64ToBytes(page.toDataURL("image/jpeg", 0.86).split(",")[1] ?? ""));
+  flushPage();
   const blob = new Blob([pdfWithJpegPages(images, W, H).buffer as ArrayBuffer], {
     type: "application/pdf",
   });
