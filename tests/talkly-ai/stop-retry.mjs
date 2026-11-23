@@ -14,7 +14,7 @@ const session = { current: 'session-a' }, segmentTurns = { current: [{role:'user
 const stopping = { current: false };
 const harness = {
   session, segmentTurns, stopping,
-  localClose() {}, setState() {}, setError() {},
+  localClose() {}, setState() {}, setError() {}, setStudyMessage() {}, setLessonNotes() {},
   checkpoint: async id => assert.equal(id, 'session-a'),
   refresh: async () => { refreshes++; return {remaining:120}; },
   api: async (path, body) => {
