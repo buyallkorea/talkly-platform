@@ -607,3 +607,212 @@
   .tai-tutors button { min-height: 62px; }
   .tai-orb { width: 90px; height: 90px; margin: 20px auto; font-size: 45px; }
 }
+
+
+/* TALKLY AI 2026 · Premium conversation-first visual system.
+ * Familiar TALKLY spacing, visual hierarchy and editorial sections;
+ * independent amethyst/ink/mint palette for the AI service. */
+.tai-landing {
+  --tai-primary: #7150d7;
+  --tai-primary-dark: #5235ae;
+  --tai-ink: #25203c;
+  --tai-muted: #67637b;
+  --tai-line: #e8e4f3;
+  --tai-soft: #f4f0fd;
+  background: #fbfaff;
+}
+.tai-nav-rich { min-height: 93px; padding: 20px 0; border-bottom: 1px solid #e8e5f0; }
+.tai-landing-nav { display:flex; gap:27px; align-items:center; margin-left:auto; }
+.tai-landing-nav a { color:#504967; font-size:13px; font-weight:750; text-decoration:none; padding:12px 0; }
+.tai-landing-nav a:hover { color:#7150d7; }
+.tai-nav-rich .tai-home-link { border-radius:10px; margin-left:8px; font-weight:700; }
+.tai-nav-rich .tai-wordmark { color:#22203a; font-size:28px; font-weight:950; }
+.tai-nav-rich .tai-wordmark span { background:linear-gradient(135deg,#7655e9,#52369f); box-shadow:0 5px 15px #7150d72b; }
+.tai-ai-hero {
+  position:relative; isolation:isolate; overflow:hidden;
+  display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);
+  gap:27px; align-items:center;
+  margin-top:24px; padding:clamp(40px,5.5vw,78px) clamp(25px,4.5vw,63px);
+  min-height:555px; border-radius:27px; color:#fff;
+  background:
+    radial-gradient(ellipse at 88% 13%,#7a59a66b 0%,transparent 39%),
+    radial-gradient(ellipse at 6% 84%,#684a9b72 0%,transparent 42%),
+    linear-gradient(127deg,#211b3e 2%,#342551 57%,#554087 100%);
+  border:1px solid #47396a;
+  box-shadow:0 20px 60px #26184a27;
+}
+.tai-ai-hero:before {
+  content:""; position:absolute; inset:0; opacity:.25; z-index:-1; pointer-events:none;
+  background:radial-gradient(circle at 85% 90%,#7fe0cf 0,transparent 22%);
+}
+.tai-ai-hero-copy { min-width:0; position:relative; z-index:1; }
+.tai-hero-overline { display:inline-flex;align-items:center;gap:8px;
+  border:1px solid #ffffff35; border-radius:99px; padding:8px 13px;
+  background:#ffffff0e; font-size:10px; letter-spacing:2px; font-weight:900; color:#e4d7ff; }
+.tai-hero-overline i { width:7px;height:7px;border-radius:50%;background:#7fe0cf;box-shadow:0 0 0 4px #7fe0cf27; }
+.tai-ai-hero .tai-kicker { color:#baa9f7 !important; letter-spacing:2.4px; margin-top:31px; }
+.tai-ai-hero h1 { color:#fff; font-size:clamp(35px,3.5vw,55px); letter-spacing:-2.8px; line-height:1.29; font-weight:900; margin:12px 0 22px; word-break:keep-all; }
+.tai-ai-hero h1 span { color:#a7f2df; }
+.tai-ai-hero .tai-hero-description { color:#ece5fa; font-size:15px; line-height:1.95; max-width:480px; word-break:keep-all; }
+.tai-hero-actions { display:flex;gap:11px;align-items:center;flex-wrap:wrap;margin-top:32px; }
+.tai-ai-hero .tai-hero-cta { display:inline-flex; align-items:center; gap:12px; min-height:52px;
+  padding:13px 20px; border-radius:12px; background:#85e3d1; color:#201a42; text-decoration:none;
+  font-size:14px; font-weight:900; box-shadow:0 9px 24px #00ad9140; transition:transform .2s ease, background .2s ease; }
+.tai-ai-hero .tai-hero-cta:hover { background:#b8fae9; transform:translateY(-2px); }
+.tai-ai-hero .tai-hero-secondary { color:#f7f2ff; text-decoration:none; font-size:12px; font-weight:800; border:1px solid #ffffff50; border-radius:11px; padding:15px 13px; min-height:51px; }
+.tai-ai-hero .tai-hero-secondary:hover { background:#ffffff1d; }
+.tai-ai-hero .tai-hero-tags { margin-top:29px; gap:7px; }
+.tai-ai-hero .tai-hero-tags span { background:#ffffff12; border:1px solid #ffffff2b; color:#efebfc; font-size:10px; font-weight:700; padding:7px 11px; }
+.tai-ai-hero .tai-hero-smallprint { margin:16px 0 0; color:#bcb5d0; font-size:10px; }
+.tai-hero-visual { position:relative; min-width:0; display:flex;justify-content:center;align-items:center;min-height:400px; }
+.tai-visual-halo { position:absolute;border-radius:50%; pointer-events:none; }
+.tai-visual-halo-one { width:390px;height:390px;border:1px solid #bda9eb45;box-shadow:0 0 0 29px #a988d111,0 0 0 58px #a988d10a;right:0;top:-14px; }
+.tai-visual-halo-two { width:135px;height:135px;background:#80dfcc1a;filter:blur(24px);bottom:15px;left:5px; }
+.tai-mock-window { position:relative; z-index:1; width:min(100%,445px); background:#fff;
+  border-radius:20px; border:1px solid #e5dffa; padding:20px 19px 15px; color:#272342; box-shadow:0 35px 70px #120e3280; transform:rotate(-1.2deg); }
+.tai-mock-heading { display:flex;align-items:center;gap:10px;border-bottom:1px solid #f0edf7;padding:0 0 14px; }
+.tai-mock-avatar { width:43px;height:43px;display:grid;place-items:center;border-radius:15px;background:linear-gradient(145deg,#7957ce,#382260); color:#fff;font-size:14px;font-weight:900; }
+.tai-mock-heading div { display:flex;flex-direction:column;gap:3px;min-width:0; }
+.tai-mock-heading strong { font-size:12px; color:#29243f; }
+.tai-mock-heading small { font-size:9px;letter-spacing:1px;color:#87809c; }
+.tai-mock-live { margin-left:auto;color:#168b76;font-weight:850;font-size:10px;white-space:nowrap; }
+.tai-mock-content { padding:22px 0 10px; display:flex;flex-direction:column; gap:13px; }
+.tai-mock-bubble { width:85%; background:#f4f1fa;border:1px solid #eae5f4;border-radius:14px 14px 14px 3px;padding:12px 15px; }
+.tai-mock-bubble.is-student { align-self:flex-end;background:#e7f8f5;border-color:#caeee6;border-radius:14px 14px 3px 14px; }
+.tai-mock-bubble small { display:block;color:#7b72a2;font-weight:900;letter-spacing:.9px;font-size:9px; }
+.tai-mock-bubble p,.tai-mock-window .tai-mock-note p { margin:5px 0 0; color:#29243c; font-size:14px;line-height:1.5; }
+.tai-mock-note { background:#f7f4fe;border:1px solid #e5dbfd;border-radius:15px;padding:15px 15px;box-shadow:0 8px 18px #7150d713; }
+.tai-mock-note > span { display:block;color:#8059cf;font-size:10px;font-weight:900;letter-spacing:.6px;margin-bottom:7px; }
+.tai-mock-note strong { color:#32246d;font-size:15px;font-weight:850; }
+.tai-mock-window .tai-mock-note p {font-size:11px;color:#67627c; }
+.tai-mock-foot { display:flex;align-items:center;gap:8px;border-top:1px solid #eee9f8;padding-top:13px;font-size:10px;color:#898198; }
+.tai-mock-microphone { display:grid;place-items:center; background:#efe9ff;color:#6840ce;border-radius:50%;width:26px;height:26px;font-weight:800; }
+.tai-mock-wave {margin-left:auto;color:#7a54c5;letter-spacing:2px;}
+.tai-mock-floating {position:absolute; z-index:2; left:-12px; bottom:12px; padding:12px 16px;
+  border:1px solid #eee9f7; border-radius:12px; background:#fff; box-shadow:0 12px 29px #14102c5c;
+  color:#383258; font-size:12px;font-weight:800; transform:rotate(2.5deg);white-space:nowrap; }
+.tai-mock-floating span { color:#7150d7; margin-right:6px; }
+.tai-hero-visual .tai-mock-disclaimer { position:absolute;left:0;right:0;bottom:-32px;color:#b9b0d1;font-size:9px;text-align:center;margin:0; }
+.tai-landing-section { padding:89px 0 18px; scroll-margin-top:24px; }
+.tai-section-heading { margin:0 0 30px; }
+.tai-section-heading > span { color:#7454d0;font-size:11px;letter-spacing:2.1px;font-weight:900; }
+.tai-section-heading h2 { color:#25203c; font-size:clamp(28px,3.1vw,40px);font-weight:900;line-height:1.35;letter-spacing:-1.4px;margin:12px 0 16px; }
+.tai-section-heading h2 em { font-style:normal;color:#7551cc; }
+.tai-section-heading p { font-size:14px; color:#666279; }
+.tai-benefit-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px; }
+.tai-benefit-card { min-width:0;min-height:252px;padding:28px;border:1px solid #e7e1f3;background:#fff;border-radius:19px;box-shadow:0 10px 25px #2114430b;transition:transform .18s ease,box-shadow .18s ease; }
+.tai-benefit-card:hover { transform:translateY(-4px);box-shadow:0 15px 33px #21144316; }
+.tai-benefit-top {display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:17px;}
+.tai-benefit-icon {width:51px;height:51px;display:grid;place-items:center;border-radius:17px;background:#ede9ff;color:#6041b2;font-size:24px;font-weight:900;}
+.tai-benefit-top small { color:#c5bdd6;font-weight:900;font-size:15px; }
+.tai-benefit-en {color:#8465c4;font-size:10px;letter-spacing:1.1px;font-weight:900;}
+.tai-benefit-card h3 {color:#25203c;font-size:20px;font-weight:900;letter-spacing:-.7px;margin:11px 0;}
+.tai-benefit-card p {font-size:13px;color:#625e71;line-height:1.9;margin:0;}
+.tai-how-section { padding-top:90px; }
+.tai-step-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin:25px 0 39px; }
+.tai-step-grid article {border-top:2px solid #b9a5f3;padding:21px 8px 9px 0;}
+.tai-step-grid article > span { font-size:12px;font-weight:900;color:#7150d7; }
+.tai-step-grid h3 {font-size:17px;font-weight:850;color:#211a41;margin:12px 0;}
+.tai-step-grid p {color:#666078;font-size:12px;line-height:1.8;max-width:290px;}
+.tai-price-strip { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:22px;padding:30px 34px;
+  border-radius:19px;color:#fff;background:linear-gradient(113deg,#312454,#59418e);
+  border:1px solid #604b8d;box-shadow:0 12px 34px #241b4626; }
+.tai-price-strip > div:first-child {display:flex;flex-direction:column;gap:7px;}
+.tai-price-strip > div:first-child > span {font-size:10px;letter-spacing:1.5px;font-weight:900;color:#b8a4f5;}
+.tai-price-strip > div:first-child strong {font-size:23px;font-weight:900;}
+.tai-price-strip > div:first-child small {font-size:11px;color:#ddd2f1;line-height:1.7;}
+.tai-price-action {display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.tai-price-action > strong {font-size:34px;font-weight:900;white-space:nowrap;}
+.tai-price-action > strong small {font-size:16px;margin-left:3px;}
+.tai-price-action a {border-radius:10px;background:#85e3d1;color:#201a42;font-size:13px;font-weight:900;padding:13px 18px;text-decoration:none;}
+.tai-price-action a:hover {background:#bcf7ea;}
+.tai-landing-studio { padding:84px 0 28px; scroll-margin-top:25px;}
+.tai-landing-studio > .tai-section-heading {text-align:center;margin-bottom:30px;}
+.tai-landing-studio > .tai-section-heading h2 {font-size:clamp(26px,3vw,36px);}
+.tai-landing-studio > .tai-section-heading p {max-width:600px;margin:auto;}
+.tai-landing-footer {border-top:1px solid #e2dded;display:flex;flex-direction:column;gap:7px;padding-top:30px;}
+.tai-landing-footer .tai-footer-brand {font-size:22px; font-weight:900; color:#30234f;}
+.tai-landing-footer .tai-footer-brand span {color:#7150d7;}
+.tai-landing-footer .tai-footer-brand p {font-size:11px;color:#827896;margin:2px 0;}
+
+/* Transcript, context-specific grammar and local PDF study desk. */
+.tai-study-desk {margin-top:23px;padding:21px;border:1px solid #e4def3;border-radius:16px;background:#fcfbff;text-align:left;}
+.tai-study-top {display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.tai-study-eyebrow {font-size:10px;font-weight:900;color:#7454cf;letter-spacing:1.2px;}
+.tai-study-top h3 {font-size:17px;color:#25203c;margin:6px 0 4px;font-weight:900;}
+.tai-study-top p {font-size:11px;margin:0;color:#70697f;}
+.tai-study-actions {display:flex;flex-wrap:wrap;gap:6px;align-items:center;max-width:100%;}
+.tai .tai-study-actions button {font-size:11px;font-weight:800;border:1px solid #cfc5e9;background:#fff;color:#55438b;box-shadow:none;border-radius:8px;padding:9px 12px;min-height:38px;}
+.tai .tai-study-actions button[aria-pressed=true],.tai .tai-study-actions button[aria-expanded=true] {background:#eee8fc;color:#4d319e;}
+.tai .tai-study-actions button.tai-study-download {background:#5842ac;border-color:#5842ac;color:white;}
+.tai .tai-study-actions button.tai-study-download:hover {background:#412e89;}
+.tai .tai-study-actions button:disabled {opacity:.48;cursor:not-allowed;}
+.tai-study-desk .tai-transcript {border-top:0;height:245px;border-radius:12px;background:#fff;overflow-y:auto;margin:16px 0 8px;padding:14px;border:1px solid #ece8f2;}
+.tai-study-desk .tai-transcript p {width:max-content;max-width:92%;line-height:1.7;}
+.tai-study-desk .tai-transcript span {display:block;}
+.tai-study-hidden {background:#f4f0fc;padding:18px;border-radius:10px;margin:14px 0;}
+.tai-study-footnote {font-size:10px !important;color:#827b92 !important;line-height:1.8 !important;margin:8px 0 !important;}
+.tai-context-grammar {margin:16px 0 5px;border:1px solid #ded4f3;border-radius:13px;background:#fff;padding:18px;}
+.tai-context-grammar > h4 {color:#35265e;font-size:16px;font-weight:900;margin:0 0 4px;}
+.tai-context-grammar > p {font-size:12px;margin:4px 0 17px;}
+.tai-grammar-example {margin-top:12px;padding:16px;background:#f9f7ff;border:1px solid #ece7fa;border-radius:11px;}
+.tai-grammar-num {font-size:9px;font-weight:900;color:#7857c4;letter-spacing:1px;}
+.tai-grammar-example p {margin:11px 0;font-size:13px;}
+.tai-grammar-example p b {display:block;font-size:10px;margin-bottom:4px;color:#736b87;}
+.tai-grammar-example p span {display:block;font-size:14px;color:#35275c;font-weight:800;}
+.tai-grammar-example p.tai-grammar-better {background:#eaf9f3;border-radius:8px;padding:10px;}
+.tai-grammar-example p.tai-grammar-better span {color:#08735e;}
+.tai-grammar-example p.tai-grammar-reason {color:#52516a;line-height:1.75;}
+.tai-grammar-example small {display:block;color:#715e90;font-size:11px;line-height:1.8;}
+.tai-today-expressions {padding:14px 0;}
+.tai-today-expressions h4 {font-size:14px;color:#35265e;}
+.tai-today-expressions li {font-size:13px;margin:8px 0;color:#51436e;}
+.tai-study-hint {background:#f7f4fd;padding:13px;border-radius:9px;font-size:12px !important;line-height:1.7 !important;}
+.tai-study-hint a {color:#5a38ae;text-decoration:underline;}
+.tai-study-download-status {background:#edf8f2;border:1px solid #bee7ce;border-radius:9px;padding:9px 12px;color:#126d51 !important;font-size:12px !important;}
+@media(max-width:1040px) {
+  .tai-landing-nav {gap:13px;}
+  .tai-ai-hero {grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:50px 30px;}
+  .tai-mock-window {padding:16px 14px;}
+  .tai-ai-hero h1 {font-size:clamp(32px,4vw,43px);}
+}
+@media(max-width:800px) {
+  .tai-landing-nav {display:none;}
+  .tai-ai-hero {grid-template-columns:1fr;gap:34px;padding:39px 25px 57px;}
+  .tai-hero-visual {max-width:500px;width:100%;margin:auto;min-height:340px;}
+  .tai-mock-window {width:94%;}
+  .tai-mock-floating {bottom:0;left:0;}
+  .tai-hero-visual .tai-mock-disclaimer {bottom:-27px;}
+  .tai-benefit-grid,.tai-step-grid {grid-template-columns:1fr;gap:12px;}
+  .tai-benefit-card {min-height:auto;padding:23px;}
+  .tai-landing-section {padding-top:66px;}
+  .tai-step-grid {margin-bottom:27px;}
+  .tai-landing-studio {padding-top:65px;}
+  .tai-study-top {flex-direction:column;}
+}
+@media(max-width:480px) {
+  .tai-nav-rich .tai-brand-group {gap:8px;}
+  .tai-nav-rich .tai-wordmark {font-size:24px;}
+  .tai-ai-hero {padding:34px 17px 45px;border-radius:19px;margin-top:14px;}
+  .tai-ai-hero h1 {font-size:clamp(31px,9vw,40px);letter-spacing:-1.6px;}
+  .tai-ai-hero .tai-hero-description {font-size:13px;}
+  .tai-hero-actions {flex-direction:column;align-items:stretch;gap:8px;}
+  .tai-ai-hero .tai-hero-cta,.tai-ai-hero .tai-hero-secondary {justify-content:center;text-align:center;}
+  .tai-hero-visual {min-height:333px;}
+  .tai-mock-window {transform:none;width:100%;padding:12px;}
+  .tai-mock-heading small {letter-spacing:0;font-size:8px;}
+  .tai-mock-bubble p {font-size:12px;}
+  .tai-mock-floating {font-size:10px;left:-1px;bottom:6px;padding:9px 11px;}
+  .tai-visual-halo-one {width:250px;height:250px;}
+  .tai-price-strip {padding:22px;}
+  .tai-price-action {width:100%;justify-content:space-between;}
+  .tai-price-action a {font-size:12px;}
+  .tai-study-desk {padding:12px;}
+  .tai-study-actions {width:100%;}
+  .tai .tai-study-actions button {flex:1 1 auto;font-size:10px;padding:9px 7px;}
+  .tai-study-desk .tai-transcript {padding:8px;}
+  .tai-study-desk .tai-transcript p {max-width:100%;}
+}
+@media(prefers-reduced-motion:reduce) {
+  .tai-benefit-card,.tai-ai-hero .tai-hero-cta {transition:none;}
+}
