@@ -63,13 +63,14 @@ const harness = {
   body: async () => ({ sessionId: requestedId, turns: learnerTurns }),
   summaryTurns: (turns) => turns,
   validateSummary: (value) => value,
+  validateGrammarNotes: () => [],
   failure: (error) => Response.json({ error: error.message }, { status: error.status ?? 500 }),
   AiError,
   API_MODELS: { learning_summary: "test-model" },
   queueApiEvent: (event) => events.push(event),
 };
 globalThis.__summaryHarness = harness;
-const code = `const { context, requireMember, body, summaryTurns, validateSummary, failure, AiError, API_MODELS, queueApiEvent } = globalThis.__summaryHarness;\n` + fn.getText(ast);
+const code = `const { context, requireMember, body, summaryTurns, validateSummary, validateGrammarNotes, failure, AiError, API_MODELS, queueApiEvent } = globalThis.__summaryHarness;\n` + fn.getText(ast);
 const compiled = ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
 const originalFetch = globalThis.fetch;
 try {
