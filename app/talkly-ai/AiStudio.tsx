@@ -10,6 +10,8 @@ import {
 import { CheckpointQueue } from "@/lib/talkly-ai/checkpoint-queue";
 import { TurnCoordinator } from "@/lib/talkly-ai/turn-coordinator";
 import SessionLearningTools from "./SessionLearningTools";
+import AiTutorStage from "./AiTutorStage";
+import TutorPortrait from "./TutorPortrait";
 import type { DailyLessonNotes } from "@/lib/talkly-ai/daily-pdf";
 type Account = {
   needsAdultConsent: boolean;
@@ -923,6 +925,7 @@ export default function AiStudio() {
                     disabled={state === "live" || state === "connecting"}
                     onClick={() => setTutor(t.id)}
                   >
+                    <TutorPortrait tutorId={t.id} scene="home" className="tai-picker-portrait" />
                     <b>{t.name}</b>
                     <small>
                       {t.style} · {t.gender}
@@ -944,9 +947,13 @@ export default function AiStudio() {
                 </span>
                 <b>{clock(remaining)}</b>
               </div>
-              <div className="tai-orb" aria-hidden="true">
-                〰
-              </div>
+              <AiTutorStage
+                tutorId={tutor}
+                tutorName={TUTORS.find((t) => t.id === tutor)?.name || "AI 튜터"}
+                state={state}
+                turns={turns}
+                audioRef={audio}
+              />
               <h2>
                 {TUTORS.find((t) => t.id === tutor)?.name}와 오늘의 이야기
               </h2>
