@@ -61,7 +61,7 @@ export default function TalklyAiPage() {
             <a className="tai-hero-secondary" href="#tai-benefits">어떤 방식으로 배우나요? <span aria-hidden="true">↓</span></a>
           </div>
           <div className="tai-features tai-hero-tags" aria-label="AI 회화의 특징">
-            <span>6명의 AI 튜터</span>
+            <span>3가지 성격의 AI 튜터 6명</span>
             <span>말한 문장 자막</span>
             <span>생활 문법 정리</span>
             <span>수업 PDF 저장</span>
