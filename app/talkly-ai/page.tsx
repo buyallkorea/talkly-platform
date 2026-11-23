@@ -1,5 +1,6 @@
 import Link from "next/link";
 import AiStudio from "./AiStudio";
+import TutorPortrait from "./TutorPortrait";
 
 export const metadata = {
   title: "TALKLY AI | 나의 생각이 영어가 되는 시간",
@@ -72,6 +73,7 @@ export default function TalklyAiPage() {
         <div className="tai-hero-visual" aria-label="AI 영어회화의 대화 및 문법 복습 화면 구성 예시">
           <div className="tai-visual-halo tai-visual-halo-one" aria-hidden="true" />
           <div className="tai-visual-halo tai-visual-halo-two" aria-hidden="true" />
+          <div className="tai-hero-real-portrait" role="img" aria-label="Emma AI 튜터의 고정 얼굴 아바타 그림"><TutorPortrait tutorId="lively-female" scene="cafe" /></div>
           <div className="tai-mock-window">
             <div className="tai-mock-heading">
               <span className="tai-mock-avatar" aria-hidden="true">AI</span>
@@ -148,6 +150,11 @@ export default function TalklyAiPage() {
       <footer className="tai-footer tai-landing-footer">
         <div className="tai-footer-brand">TALKLY <span>AI</span><p>Speak naturally. Grow every day.</p></div>
         <p>실제 사람이 아닌 AI 튜터예요. 발화 전사와 AI 문법 교정은 부정확할 수 있으며, 정식 서비스 출시 전 실제 이용 환경 검증이 필요합니다.</p>
+        <p className="tai-business-details">
+          <strong>토클리 Talkly</strong>　|　대표자 박선희　|　사업자등록번호 617-28-89258　|　통신판매업 신고번호 제2010-부산남구-221호
+          <br />부산광역시 남구 용호로216번길 8　|　개인정보보호책임자 박선희
+          <br />© 2026 TALKLY. All rights reserved.
+        </p>
         <p><Link href="/talkly-ai/privacy">AI 정보 처리 안내</Link> · <Link href="/talkly-ai/terms">AI 이용 안내</Link> · <Link href="/">TALKLY 화상영어</Link></p>
       </footer>
     </main>
