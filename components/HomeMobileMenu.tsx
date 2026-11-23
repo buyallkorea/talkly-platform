@@ -98,6 +98,10 @@ export default function HomeMobileMenu() {
           </MobileSection>
 
           <div className="talkly-home-mobile-main-links">
+            <Link href="/talkly-ai" onClick={closeMenu} className="talkly-home-mobile-ai-entry">
+              TALKLY AI 회화 서비스
+              <span aria-hidden="true">↗</span>
+            </Link>
             <Link href="/level-test" onClick={closeMenu}>
               레벨테스트
               <span>›</span>
