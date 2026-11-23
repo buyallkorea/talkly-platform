@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Turn } from "@/lib/talkly-ai/config";
 import type { DailyLessonNotes } from "@/lib/talkly-ai/daily-pdf";
 import { downloadDailyLessonPdf } from "@/lib/talkly-ai/daily-pdf";
@@ -18,6 +18,15 @@ export default function SessionLearningTools({
   const [captions, setCaptions] = useState(true);
   const [grammarOpen, setGrammarOpen] = useState(false);
   const [pdfMessage, setPdfMessage] = useState("");
+  const transcriptRef = useRef<HTMLDivElement | null>(null);
+  const lastTurnCount = useRef(0);
+  useEffect(() => {
+    const box = transcriptRef.current;
+    if (!box || !captions) return;
+    const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 160;
+    if (atBottom || lastTurnCount.current === 0) box.scrollTop = box.scrollHeight;
+    lastTurnCount.current = turns.length;
+  }, [turns.length, captions]);
   const canDownload = turns.length > 0;
   function savePdf() {
     setPdfMessage("");
@@ -48,7 +57,7 @@ export default function SessionLearningTools({
         </button>
       </div>
     </div>
-    {captions ? <div className="tai-transcript" aria-live="polite" role="log" aria-label="영어회화 자막">
+    {captions ? <div ref={transcriptRef} className="tai-transcript" aria-live="polite" role="log" aria-label="영어회화 자막">
       {turns.length ? turns.map((turn, index) =>
         <p key={index} className={"tai-turn-" + turn.role}>
           <b>{turn.role === "user" ? "나 · MY ENGLISH" : tutor + " · AI TUTOR"}</b>
