@@ -111,9 +111,52 @@ export async function sendTalklyVerificationSms(
   const responseText = await response.text();
 
   if (!response.ok) {
-    console.error("SOLAPI SEND ERROR:", response.status, responseText);
-    throw new Error("인증문자 발송에 실패했습니다.");
+    // Do not log raw Solapi bodies: they can contain the recipient or message.
+    console.error("SOLAPI SEND HTTP ERROR:", response.status);
+    throw new Error("인증문자 접수에 실패했습니다.");
   }
 
+  // Solapi may return HTTP 200 even when individual messages could not be
+  // registered (e.g. insufficient balance or unregistered sender number).
+  // A successful HTTP request is not proof that this SMS was accepted.
+  let delivery: {
+    failedMessageList?: unknown[];
+    groupInfo?: {
+      count?: {
+        registeredFailed?: number;
+        registeredSuccess?: number;
+      };
+    };
+  };
+  try {
+    delivery = JSON.parse(responseText);
+  } catch {
+    console.error("SOLAPI SEND RESPONSE INVALID");
+    throw new Error("인증문자 접수 결과를 확인하지 못했습니다.");
+  }
+
+  const counts = delivery?.groupInfo?.count;
+  const failedCount = Array.isArray(delivery?.failedMessageList)
+    ? delivery.failedMessageList.length
+    : 0;
+  if (
+    failedCount > 0 ||
+    (typeof counts?.registeredFailed === "number" &&
+      counts.registeredFailed > 0) ||
+    (typeof counts?.registeredSuccess === "number" &&
+      counts.registeredSuccess < 1)
+  ) {
+    console.error("SOLAPI SMS NOT REGISTERED");
+    throw new Error("인증문자 접수에 실패했습니다. 솔라피 잔액과 발신번호를 확인해주세요.");
+  }
+
+  // No registration count is ambiguous; fail closed rather than claiming
+  // that an SMS has been sent when Solapi did not confirm its acceptance.
+  if (counts?.registeredSuccess !== 1) {
+    console.error("SOLAPI SEND REGISTRATION UNCONFIRMED");
+    throw new Error("인증문자 접수 여부를 확인하지 못했습니다.");
+  }
+
+  // Registration does not mean delivery to the recipient's handset.
   return responseText;
 }
