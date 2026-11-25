@@ -844,10 +844,11 @@ export default function ClassroomZoomEmbed({
     screen ===
       "error";
   return (
-    <div lang={hostMode ? "en" : "ko"} className="talkly-zoom-shell" data-split={split ? "true" : "false"} data-receiving={receiving ? "true" : "false"}>
+    <div lang={hostMode ? "en" : "ko"} className="talkly-zoom-shell" data-host={hostMode ? "true" : "false"} data-sharing={sharing ? "true" : "false"} data-split={split ? "true" : "false"} data-receiving={receiving ? "true" : "false"}>
       <div className="talkly-zoom-status" role="group" aria-label={hostMode ? "Class audio, video and sharing" : "오디오 및 비디오 조작"}>
         {screen === "joined" && <>
           <div className="talkly-zoom-quick-actions" role="toolbar" aria-label={hostMode ? "Lesson controls" : "수업 조작"}>
+            {hostMode && <button type="button" onClick={testSpeaker} title="Play a sound to check the laptop speaker">Speaker</button>}
             <button type="button" onClick={() => void audioAction()} disabled={audioBusy}
               data-health={["disconnected", "failed"].includes(audioState) ? "error" : "unknown"}
               title={!audioConnected ? (hostMode ? "Join computer audio" : "컴퓨터 오디오 연결") : hostMode ? "Audio / microphone" : "오디오 / 마이크"}>
@@ -867,7 +868,7 @@ export default function ClassroomZoomEmbed({
               <span className="talkly-zoom-sharing-readonly" aria-label={sharing ? "교재 공유 중" : "교재 공유 대기"}>{sharing ? "공유 중" : "교재 공유"}</span>
             )}
           </div>
-          <details className="talkly-zoom-diagnostics" open={diagnosticsOpen}
+          {(!hostMode || audioAttention || controlError || cameraControlFailed || diagnosticsOpen) && <details className="talkly-zoom-diagnostics" open={diagnosticsOpen}
             onToggle={event => setDiagnosticsOpen(event.currentTarget.open)}>
             <summary title={hostMode ? "More connection settings" : "추가 연결 설정"} aria-label={hostMode ? "More connection settings" : "추가 연결 설정"}>⋯</summary>
             <div className="talkly-zoom-diagnostic-panel">
@@ -894,10 +895,10 @@ export default function ClassroomZoomEmbed({
               {hostMode && <details className="talkly-textbook-audio-help"><summary>Textbook audio help</summary><p>In Chrome, share the textbook tab and enable Share tab audio.</p></details>}
               <p className="talkly-zoom-help">{hostMode ? "Check your browser's audio and camera permissions if a device cannot connect." : "연결이 안 되면 브라우저의 마이크·카메라 권한을 확인하세요."}</p>
             </div>
-          </details>
+          </details>}
         </>}
       </div>
-      {screen === "joined" && (
+      {screen === "joined" && !hostMode && (
         <button type="button" className="talkly-zoom-camera-access"
           onClick={() => void nativeAction("video")}
           aria-label={cameraOn === true ? (hostMode ? "Turn camera off" : "카메라 끄기") : (hostMode ? "Turn camera on" : "카메라 켜기")}
