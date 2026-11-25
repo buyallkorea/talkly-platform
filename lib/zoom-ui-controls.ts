@@ -50,7 +50,7 @@ function activateZoomAudioDialog(root: HTMLElement): boolean {
    const name = button.getAttribute("aria-label") || button.getAttribute("title") || button.textContent?.trim() || "";
    if (!labels["join-audio"].test(name.replace(/[.…]+$/, "").trim()) ||
        button.getAttribute("aria-disabled") === "true" ||
-       (button instanceof HTMLButtonElement && button.disabled) ||
+       (button as HTMLButtonElement).disabled === true ||
        !button.getClientRects().length) continue;
    button.focus(); button.click(); return true;
  }
