@@ -281,9 +281,12 @@ export default function ClassroomZoomEmbed({
     const root = rootRef.current;
     if (!root) return;
     const observer = new MutationObserver(() => markZoomLayout(root));
-    observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+    observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "aria-label", "title"] });
     markZoomLayout(root);
-    return () => observer.disconnect();
+    // Zoom SDK can hydrate its toolbar after the first widget render or change
+    // its labels in place; re-check without touching media/meeting state.
+    const toolbarRefresh = window.setInterval(() => markZoomLayout(root), 1800);
+    return () => { observer.disconnect(); window.clearInterval(toolbarRefresh); };
   }, []);
   useEffect(() => {
     const configure = (event: MessageEvent) => {
