@@ -215,6 +215,7 @@ export default function ClassroomZoomEmbed({
     useState(0);
   const [split, setSplit] = useState(false);
   const splitRef = useRef(false);
+  const cameraColumnPixelsRef = useRef<number | null>(null);
   const [receiving, setReceiving] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [audioState, setAudioState] = useState("unknown");
@@ -267,9 +268,12 @@ export default function ClassroomZoomEmbed({
     const width = root?.parentElement?.clientWidth || root?.clientWidth || 420;
     const height = root?.parentElement?.clientHeight || root?.clientHeight || 430;
     const size = zoomLayoutSize(width, height, splitRef.current);
+    const cameraWidth = cameraColumnPixelsRef.current == null
+      ? Math.min(320, Math.max(160, width * .275))
+      : Math.max(40, Math.min(cameraColumnPixelsRef.current, width - 40));
     root?.style?.setProperty("--zoom-content-height", `${size.height}px`);
-    root?.style?.setProperty("--video-column", `${size.width}px`);
-    root?.parentElement?.style.setProperty("--video-column", `${size.width}px`);
+    root?.style?.setProperty("--video-column", `${cameraWidth}px`);
+    root?.parentElement?.style.setProperty("--video-column", `${cameraWidth}px`);
     return size;
   }, []);
   useEffect(() => {
@@ -282,7 +286,15 @@ export default function ClassroomZoomEmbed({
   }, []);
   useEffect(() => {
     const configure = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin || event.source !== window.parent || event.data?.type !== "talkly-zoom-layout" || event.data.sessionId !== sessionId || typeof event.data.split !== "boolean") return;
+      if (event.origin !== window.location.origin || event.source !== window.parent || event.data?.sessionId !== sessionId) return;
+      if (event.data.type === "talkly-zoom-camera-width") {
+        if (typeof event.data.pixels !== "number" || !Number.isFinite(event.data.pixels)) return;
+        cameraColumnPixelsRef.current = Math.max(40, event.data.pixels);
+        const size = measureVideo();
+        if (joinedRef.current) clientRef.current?.updateVideoOptions?.({ viewSizes: { default: size, ribbon: size } });
+        return;
+      }
+      if (event.data.type !== "talkly-zoom-layout" || typeof event.data.split !== "boolean") return;
       splitRef.current = !hostMode && event.data.split;
       setSplit(splitRef.current);
       const size = measureVideo();
@@ -819,8 +831,27 @@ export default function ClassroomZoomEmbed({
   }
   async function nativeAction(action: ZoomAction) {
     setControlError("");
+    if (action === "video" && typeof navigator !== "undefined" && navigator.permissions?.query) {
+      try {
+        const permission = await navigator.permissions.query({ name: "camera" as PermissionName });
+        if (permission.state === "denied") {
+          setCameraControlFailed(true);
+          setControlError(hostMode
+            ? "Camera blocked in browser settings. Allow camera access for TALKLY and reload the classroom."
+            : "브라우저에서 카메라 사용이 차단되어 있습니다. 주소창의 사이트 설정에서 카메라를 허용한 뒤 새로고침해 주세요.");
+          setDiagnosticsOpen(true);
+          return;
+        }
+      } catch { /* Camera permissions may not be queryable: Zoom handles its own permission prompt. */ }
+    }
     const clicked = Boolean(rootRef.current && await activateZoomControlWithOverflow(rootRef.current, action));
-    if (action === "video") setCameraControlFailed(!clicked);
+    if (action === "video") {
+      setCameraControlFailed(!clicked);
+      if (clicked) window.setTimeout(() => {
+        const me = clientRef.current?.getCurrentUser?.();
+        setCameraOn(typeof me?.bVideoOn === "boolean" ? me.bVideoOn : null);
+      }, 900);
+    }
     if (!clicked) { setDiagnosticsOpen(true); setControlError(ui("Use the matching Zoom toolbar button below or its More (…) menu. · 아래 Zoom 도구 모음 또는 더보기(…)에서 해당 버튼을 눌러주세요.")); }
   }
   function testSpeaker() {
