@@ -6,7 +6,7 @@ export default function ClassroomZoomFrame({ sessionId, testStudentMode }: { ses
   useEffect(() => {
     const configure = () => {
       const stage = frame.current?.closest(".talkly-classroom-stage");
-      frame.current?.contentWindow?.postMessage({ type: "talkly-zoom-layout", sessionId, split: stage?.getAttribute("data-material-mode") === "screen" && stage?.getAttribute("data-presenter") !== "true" }, window.location.origin);
+      frame.current?.contentWindow?.postMessage({ type: "talkly-zoom-layout", sessionId, split: stage?.getAttribute("data-material-mode") === "screen" }, window.location.origin);
       const cameraPercent = Number(stage?.getAttribute("data-camera-percent"));
       if (stage && Number.isFinite(cameraPercent) && cameraPercent >= 10) {
         frame.current?.contentWindow?.postMessage({

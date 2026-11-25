@@ -296,7 +296,7 @@ export default function ClassroomZoomEmbed({
         return;
       }
       if (event.data.type !== "talkly-zoom-layout" || typeof event.data.split !== "boolean") return;
-      splitRef.current = !hostMode && event.data.split;
+      splitRef.current = event.data.split;
       setSplit(splitRef.current);
       const size = measureVideo();
       if (joinedRef.current) clientRef.current?.updateVideoOptions?.({ viewSizes: { default: size, ribbon: size } });
@@ -536,7 +536,7 @@ export default function ClassroomZoomEmbed({
           } catch { setAudioState("unknown"); }
         };
         const emitShare = (active: boolean) => {
-          setReceiving(active && !hostMode);
+          setReceiving(active);
           // Ribbon enforces a 615px base height when receiving a share. Gallery
           // honours the compact video dimensions and avoids a clipped camera rail.
           if (active && !hostMode) window.setTimeout(() => {
@@ -1110,7 +1110,7 @@ export default function ClassroomZoomEmbed({
             240,
         }}
       />
-      {split && !receiving && screen === "joined" && <div className="talkly-share-waiting"><strong>{ui("Shared textbook · 공유 교재")}</strong><p>{ui("Waiting for the teacher to share · 강사의 교재 화면 공유를 기다립니다.")}</p></div>}
+      {split && !sharing && screen === "joined" && <div className="talkly-share-waiting"><strong>{ui("Shared textbook · 공유 교재")}</strong><p>{ui("Waiting for the teacher to share · 강사의 교재 화면 공유를 기다립니다.")}</p></div>}
       </div>
     </div>
   );
