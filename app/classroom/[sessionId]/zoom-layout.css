@@ -245,3 +245,29 @@
 .talkly-zoom-shell .talkly-zoom-camera-access:focus-visible {
   outline:3px solid #facc15; outline-offset:2px;
 }
+
+/* Teacher primary controls belong to the camera/Zoom side, not below shared
+   teaching material. Keep the SDK toolbar untouched for emergency fallback. */
+.talkly-zoom-shell[data-host=true] .talkly-zoom-status {
+  position:absolute; left:0; bottom:0; z-index:30;
+  order:unset; flex:none; width:100%; max-width:100%;
+  box-shadow:0 -4px 16px rgba(0,0,0,.4);
+}
+.talkly-zoom-shell[data-host=true][data-sharing=true] .talkly-zoom-status {
+  width:min(320px, 34%); max-width:100%;
+}
+.talkly-zoom-shell[data-host=true] .talkly-zoom-quick-actions button {
+  min-width:0; font-size:11px; padding:3px 2px;
+}
+.talkly-zoom-shell[data-host=true] .talkly-sdk-native-toolbar {
+  opacity:.12; transition:opacity 150ms ease;
+}
+.talkly-zoom-shell[data-host=true] .talkly-sdk-native-toolbar:hover,
+.talkly-zoom-shell[data-host=true] .talkly-sdk-native-toolbar:focus-within {
+  opacity:1;
+}
+@media(max-width:640px) {
+  .talkly-zoom-shell[data-host=true][data-sharing=true] .talkly-zoom-status {
+    width:100%;
+  }
+}
