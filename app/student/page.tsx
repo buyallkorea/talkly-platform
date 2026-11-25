@@ -452,9 +452,8 @@ export default async function StudentPage() {
                 lineHeight: 1.75,
               }}
             >
-              다음 수업을 확인하고 TALKLY Classroom에서 바로 수업을 시작하세요.
-              <br />
-              수업 후에는 출결과 학습평가, 수강 완료 후 강사평가까지 한 곳에서 이어집니다.
+              다가오는 수업을 확인하고, 강의실에 편리하게 입장하세요.
+              수업 일정과 학습 기록도 이곳에서 확인할 수 있습니다.
             </p>
           </div>
 
@@ -472,7 +471,180 @@ export default async function StudentPage() {
           />
         </section>
 
-        <section className="talkly-card" style={{ marginTop: 16, padding: "16px 22px" }}>
+        <section
+          className="student-next-class-grid"
+          style={{
+            marginTop: "18px",
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1.35fr) minmax(320px, 0.65fr)",
+            gap: "20px",
+            alignItems: "stretch",
+          }}
+        >
+          <div
+            className="talkly-card student-next-class-primary"
+            style={{
+              padding: "28px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "20px",
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <div className="talkly-section-label">NEXT CLASS</div>
+                <h2
+                  style={{
+                    margin: "6px 0 0",
+                    color: "var(--talkly-navy)",
+                    fontSize: "24px",
+                    letterSpacing: "-0.03em",
+                  }}
+                >
+                  다음 수업
+                </h2>
+              </div>
+
+              {nextSession && (
+                <span className="talkly-badge talkly-badge-blue">
+                  {nextSession.started_at ? "수업 진행 중" : "예정"}
+                </span>
+              )}
+            </div>
+
+            {nextSession ? (
+              <div style={{ marginTop: "26px" }}>
+                <div
+                  style={{
+                    fontSize: "clamp(21px, 2.8vw, 28px)",
+                    fontWeight: 900,
+                    color: "var(--talkly-navy)",
+                  }}
+                >
+                  {nextSessionCourse} · {nextSession.lesson_number}회차
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "8px",
+                    color: "var(--text-secondary)",
+                    fontSize: "15px",
+                  }}
+                >
+                  {nextSessionTeacher}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "5px",
+                    color: "var(--text-muted)",
+                    fontSize: "14px",
+                  }}
+                >
+                  {formatDateTime(nextSession.scheduled_start)}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "24px",
+                    display: "flex",
+                    gap: "10px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Link
+                    href={`/classroom/${nextSession.id}`}
+                    className="talkly-button talkly-button-primary"
+                  >
+                    강의실 입장 →
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  marginTop: "24px",
+                  padding: "24px",
+                  border: "1px dashed var(--border)",
+                  borderRadius: "12px",
+                  color: "var(--text-muted)",
+                }}
+              >
+                예정된 수업이 없습니다.
+              </div>
+            )}
+          </div>
+
+          <div
+            className="talkly-card"
+            style={{
+              padding: "28px",
+              background:
+                "linear-gradient(145deg, #0a1f44 0%, #15386f 100%)",
+              color: "#ffffff",
+              border: "none",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "12px",
+                fontWeight: 900,
+                letterSpacing: "0.08em",
+                opacity: 0.7,
+              }}
+            >
+              TALKLY CLASSROOM
+            </div>
+
+            <h2
+              style={{
+                margin: "8px 0 0",
+                fontSize: "24px",
+                lineHeight: 1.35,
+              }}
+            >
+              수업에만
+              <br />
+              집중하세요.
+            </h2>
+
+            <p
+              style={{
+                margin: "14px 0 0",
+                color: "rgba(255,255,255,0.72)",
+                lineHeight: 1.75,
+                fontSize: "14px",
+              }}
+            >
+              화상수업과 디지털 교재가 하나의 화면에 연결됩니다.
+              수업이 시작되면 Classroom에서 바로 참여할 수 있습니다.
+            </p>
+
+            {nextSession && (
+              <Link
+                href={`/classroom/${nextSession.id}`}
+                style={{
+                  display: "inline-flex",
+                  marginTop: "22px",
+                  color: "#ffffff",
+                  textDecoration: "none",
+                  fontWeight: 800,
+                  fontSize: "14px",
+                }}
+              >
+                강의실 바로가기 →
+              </Link>
+            )}
+          </div>
+        </section>
+
+
+        <section className="talkly-card student-enrollment-summary" style={{ marginTop: 18, padding: "16px 22px" }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <div>
               <strong style={{ color: "var(--talkly-navy)" }}>수강신청 내역</strong>
@@ -570,7 +742,7 @@ export default async function StudentPage() {
           </section>
         )}
 
-        <section className="talkly-stat-grid">
+        <section className="talkly-stat-grid" aria-label="나의 학습 현황">
           <div className="talkly-card talkly-stat-card">
             <div className="talkly-stat-label">완료 수업</div>
             <div className="talkly-stat-value">
@@ -629,178 +801,6 @@ export default async function StudentPage() {
             >
               등록된 회차 평가 평균
             </div>
-          </div>
-        </section>
-
-        <section
-          className="student-next-class-grid"
-          style={{
-            marginTop: "28px",
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1.35fr) minmax(320px, 0.65fr)",
-            gap: "20px",
-            alignItems: "stretch",
-          }}
-        >
-          <div
-            className="talkly-card"
-            style={{
-              padding: "28px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: "20px",
-                flexWrap: "wrap",
-              }}
-            >
-              <div>
-                <div className="talkly-section-label">NEXT CLASS</div>
-                <h2
-                  style={{
-                    margin: "6px 0 0",
-                    color: "var(--talkly-navy)",
-                    fontSize: "24px",
-                    letterSpacing: "-0.03em",
-                  }}
-                >
-                  다음 수업
-                </h2>
-              </div>
-
-              {nextSession && (
-                <span className="talkly-badge talkly-badge-blue">
-                  {nextSession.started_at ? "수업 진행 중" : "예정"}
-                </span>
-              )}
-            </div>
-
-            {nextSession ? (
-              <div style={{ marginTop: "26px" }}>
-                <div
-                  style={{
-                    fontSize: "21px",
-                    fontWeight: 900,
-                    color: "var(--talkly-navy)",
-                  }}
-                >
-                  {nextSessionCourse} · {nextSession.lesson_number}회차
-                </div>
-
-                <div
-                  style={{
-                    marginTop: "8px",
-                    color: "var(--text-secondary)",
-                    fontSize: "15px",
-                  }}
-                >
-                  {nextSessionTeacher}
-                </div>
-
-                <div
-                  style={{
-                    marginTop: "5px",
-                    color: "var(--text-muted)",
-                    fontSize: "14px",
-                  }}
-                >
-                  {formatDateTime(nextSession.scheduled_start)}
-                </div>
-
-                <div
-                  style={{
-                    marginTop: "24px",
-                    display: "flex",
-                    gap: "10px",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <Link
-                    href={`/classroom/${nextSession.id}`}
-                    className="talkly-button talkly-button-primary"
-                  >
-                    TALKLY Classroom 입장 →
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <div
-                style={{
-                  marginTop: "24px",
-                  padding: "24px",
-                  border: "1px dashed var(--border)",
-                  borderRadius: "12px",
-                  color: "var(--text-muted)",
-                }}
-              >
-                예정된 수업이 없습니다.
-              </div>
-            )}
-          </div>
-
-          <div
-            className="talkly-card"
-            style={{
-              padding: "28px",
-              background:
-                "linear-gradient(145deg, #0a1f44 0%, #15386f 100%)",
-              color: "#ffffff",
-              border: "none",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "12px",
-                fontWeight: 900,
-                letterSpacing: "0.08em",
-                opacity: 0.7,
-              }}
-            >
-              TALKLY CLASSROOM
-            </div>
-
-            <h2
-              style={{
-                margin: "8px 0 0",
-                fontSize: "24px",
-                lineHeight: 1.35,
-              }}
-            >
-              수업에만
-              <br />
-              집중하세요.
-            </h2>
-
-            <p
-              style={{
-                margin: "14px 0 0",
-                color: "rgba(255,255,255,0.72)",
-                lineHeight: 1.75,
-                fontSize: "14px",
-              }}
-            >
-              화상수업과 디지털 교재가 하나의 화면에 연결됩니다.
-              수업이 시작되면 Classroom에서 바로 참여할 수 있습니다.
-            </p>
-
-            {nextSession && (
-              <Link
-                href={`/classroom/${nextSession.id}`}
-                style={{
-                  display: "inline-flex",
-                  marginTop: "22px",
-                  color: "#ffffff",
-                  textDecoration: "none",
-                  fontWeight: 800,
-                  fontSize: "14px",
-                }}
-              >
-                Classroom 바로가기 →
-              </Link>
-            )}
           </div>
         </section>
 
@@ -1084,6 +1084,8 @@ export default async function StudentPage() {
           }
         }
 
+        .student-next-class-primary { border: 1px solid #cdddf8; box-shadow: 0 12px 34px rgba(10,31,68,.09); }
+        .student-next-class-primary .talkly-button-primary { min-height: 48px; padding: 12px 22px; font-size: 15px; }
         @media (max-width: 620px) {
           .talkly-dashboard-main {
             padding-left: 16px !important;
@@ -1091,8 +1093,14 @@ export default async function StudentPage() {
           }
 
           .talkly-stat-grid {
-            grid-template-columns: 1fr !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 10px;
           }
+          .talkly-stat-card { padding: 16px; }
+          .talkly-stat-value { font-size: 24px; }
+          .student-next-class-primary { padding: 20px !important; }
+          .student-next-class-primary .talkly-button-primary { width: 100%; justify-content: center; }
+          .student-enrollment-summary { padding: 16px !important; }
 
           .student-learning-grid {
             grid-template-columns: 1fr !important;
