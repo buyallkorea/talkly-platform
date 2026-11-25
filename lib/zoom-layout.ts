@@ -9,72 +9,77 @@ function addLayoutClass(element: HTMLElement, name: string) {
  * this toolbar. Restrict styling to the smallest visible shared ancestor of
  * its audio/video buttons; if Zoom changes its markup, leave it untouched.
  */
+function nativeLabel(button: HTMLElement) {
+  const attributes = ["aria-label", "title", "data-tooltip", "data-testid", "data-state"];
+  const texts = attributes.map(attribute => button.getAttribute(attribute) || "");
+  texts.push(button.textContent || "");
+  const svgTitle = button.querySelector("svg title");
+  texts.push(svgTitle?.textContent || "");
+  return texts.filter(Boolean).join(" ").replace(/\\s+/g, " ").trim();
+}
+const AUDIO_BUTTON = /join.{0,18}audio|computer audio|connect audio|leave audio|^audio$|^mute$|^unmute$|microphone|^mic$|음소거|오디오|마이크/i;
+const VIDEO_BUTTON = /start video|stop video|video on|video off|turn.{0,12}(?:camera|video)|camera|^video$|비디오|카메라/i;
+const SHARE_BUTTON = /share screen|screen share|stop share|sharing screen|공유/i;
+const OPTIONAL_BUTTON = /participants?|attendees?|people|chat|message|reactions?|emoji|raise hand|captions?|subtitles?|transcript|whiteboard|recording?|polls?|apps|meeting info|invite|security|more|settings|leave meeting|end meeting|참가자|채팅|메시지|반응|손 들기|자막|녹화|설정|더보기|초대|보안|나가기|종료/i;
+const VIEW_BUTTON = /speaker view|gallery view|ribbon view|multi.{0,3}speaker|side.by.side|change view|switch view|view options|layout view|grid view|filmstrip|video layout|view layout|화면 분할|갤러리 보기|발언자 보기|보기 변경|화면 배치|레이아웃 변경/i;
+
+/** Find the shared bottom Zoom toolbar even when buttons have nested labels. */
 function markNativeToolbar(widget: HTMLElement) {
-  // Some test/fallback wrappers only implement querySelector; never alter their layout.
   if (typeof widget.querySelectorAll !== "function") return;
   const buttons = Array.from(widget.querySelectorAll<HTMLElement>('button,[role="button"]'));
-  const label = (button: HTMLElement) =>
-    (button.getAttribute("aria-label") || button.getAttribute("title") || button.textContent || "").trim();
-  const audio = buttons.find(button =>
-    /^(audio|join audio(?: by computer)?|join (?:with )?computer audio|connect audio|mute|unmute|microphone|mic|음소거|음소거 해제|오디오 연결|오디오 참가|컴퓨터 오디오로 참가)$/i.test(label(button)));
-  const video = buttons.find(button =>
-    /^(video|camera|camera on|camera off|start video|stop video|turn on camera|turn off camera|비디오 시작|비디오 중지|비디오 정지|카메라 켜기|카메라 끄기)$/i.test(label(button)));
+  const audio = buttons.find(button => AUDIO_BUTTON.test(nativeLabel(button)));
+  const video = buttons.find(button => VIDEO_BUTTON.test(nativeLabel(button)));
   if (!audio || !video) return;
   let parent = audio.parentElement;
   while (parent && parent !== widget && !parent.contains(video)) parent = parent.parentElement;
-  if (!parent || parent === widget) return;
-  if (typeof parent.getBoundingClientRect !== "function") return;
+  if (!parent || parent === widget || typeof parent.getBoundingClientRect !== "function") return;
   const rect = parent.getBoundingClientRect();
-  // Never tag the whole video/share panel or a popup by accident.
-  if (rect.height > 0 && rect.height <= 96 && rect.width >= 110) {
+  const widgetRect = widget.getBoundingClientRect();
+  // Only a narrow, horizontal native toolbar may be tagged. Never tag the
+  // video region, a large modal, or an overlapping media canvas.
+  if (rect.height > 0 && rect.height <= 120 && rect.width >= 110 &&
+      rect.top >= widgetRect.top + widgetRect.height * .48) {
     addLayoutClass(parent, "talkly-sdk-native-toolbar");
   }
 }
-/**
- * Meeting SDK Component View has no supported option to replace individual
- * stock toolbar items. Decorate only clearly identified Zoom-owned controls;
- * never clone, click, or reparent SDK React elements.
- *
- * The native audio (join/mute/settings), video and share controls are retained.
- * Unknown/unlabelled controls stay visible rather than risking their removal.
- * Clicking the native audio caret still lets a participant choose a speaker.
- */
+
+/** Hide only optional Zoom-owned buttons; preserve SDK event handlers. */
 function simplifyZoomControls(widget: HTMLElement) {
   const toolbar = widget.querySelector<HTMLElement>(".talkly-sdk-native-toolbar");
-  if (toolbar) {
-    const all = Array.from(toolbar.querySelectorAll<HTMLElement>('button,[role="button"]'));
-    const nativeLabel = (button: HTMLElement) => [
-      button.getAttribute("aria-label"),
-      button.getAttribute("title"),
-      button.getAttribute("data-tooltip"),
-      button.textContent,
-      button.querySelector("svg title")?.textContent,
-    ].filter(Boolean).join(" ").trim();
-    const keep = /join audio|computer audio|connect audio|leave audio|mute|unmute|microphone|mic|start video|stop video|turn (?:on|off) (?:camera|video)|camera|share screen|stop share|screen share|sharing screen|audio settings|speaker|select (?:microphone|speaker)|음소거|마이크|카메라|비디오|오디오|스피커|화면 공유|공유 중지|공유 시작/i;
-    const omit = /participants?|people|chat|message|reactions?|emoji|raise hand|caption|subtitles?|closed captions?|transcript|whiteboard|record|poll|apps|settings|more|meeting info|invite|security|leave meeting|end meeting|참가자|채팅|메시지|반응|손 들기|자막|녹화|설정|더보기|초대|보안|종료|나가기/i;
-    for (const button of all) {
-      const label = nativeLabel(button);
-      if (!label) continue; // Do not guess for unknown SDK versions.
-      // Zoom native media controls must always be kept, even if they mention
-      // a settings/dropdown suboption.
-      if (keep.test(label)) continue;
-      if (omit.test(label)) button.classList.add("talkly-zoom-optional-control");
+  const all = Array.from(widget.querySelectorAll<HTMLElement>('button,[role="button"]'));
+  const widgetRect = widget.getBoundingClientRect();
+  const lowerBoundary = widgetRect.top + widgetRect.height * .65;
+
+  for (const button of all) {
+    const label = nativeLabel(button);
+    const rect = button.getBoundingClientRect();
+    if (!label || rect.height <= 0 || rect.width <= 0) continue;
+    const isToolbar = Boolean(toolbar?.contains(button)) ||
+      (rect.top > lowerBoundary && rect.height <= 65);
+    if (isToolbar) {
+      // Keep original Zoom join-audio/microphone, camera/video and sharing.
+      if (AUDIO_BUTTON.test(label) || VIDEO_BUTTON.test(label) || SHARE_BUTTON.test(label)) continue;
+      if (OPTIONAL_BUTTON.test(label)) addLayoutClass(button, "talkly-zoom-optional-control");
     }
+    if (VIEW_BUTTON.test(label) &&
+      rect.top >= widgetRect.top - 3 && rect.top < widgetRect.top + 100 &&
+      !isToolbar) addLayoutClass(button, "talkly-zoom-view-selector");
   }
 
-  // Hide only native view-layout selectors at the top of the Zoom widget,
-  // never generic speaker/audio configuration or the in-meeting toolbar.
-  const viewSelector = /speaker view|gallery view|ribbon view|multi(?:-)?speaker|side.by.side|change view|switch view|view options|layout view|grid view|filmstrip|video layout|view layout|화면 분할|갤러리 보기|발언자 보기|보기 변경|화면 배치|레이아웃 변경/i;
-  const widgetRect = typeof widget.getBoundingClientRect === "function" ? widget.getBoundingClientRect() : null;
-  if (!widgetRect) return;
-  for (const button of Array.from(widget.querySelectorAll<HTMLElement>('button,[role="button"]'))) {
-    if (toolbar?.contains(button)) continue;
-    const label = [button.getAttribute("aria-label"), button.getAttribute("title"), button.getAttribute("data-tooltip"), button.textContent].filter(Boolean).join(" ");
-    if (!viewSelector.test(label)) continue;
-    const rect = typeof button.getBoundingClientRect === "function" ? button.getBoundingClientRect() : null;
-    if (rect && rect.top >= widgetRect.top - 3 && rect.top < widgetRect.top + 115) {
-      button.classList.add("talkly-zoom-view-selector");
-    }
+  // Zoom 6.x sometimes renders the upper layout-mode toolbar as unlabeled
+  // icon buttons. Hide a verified cluster of 3+ small, adjacent icons in the
+  // upper right, never solitary controls or native media buttons.
+  const topRightIcons = all.filter(button => {
+    const rect = button.getBoundingClientRect();
+    const label = nativeLabel(button);
+    return rect.height > 14 && rect.height <= 46 && rect.width > 14 && rect.width <= 52 &&
+      rect.top >= widgetRect.top - 3 && rect.top <= widgetRect.top + 83 &&
+      rect.left > widgetRect.left + widgetRect.width * .48 &&
+      !AUDIO_BUTTON.test(label) && !VIDEO_BUTTON.test(label) && !SHARE_BUTTON.test(label) &&
+      !/leave|exit|나가기|종료|fullscreen|전체 화면/i.test(label);
+  });
+  if (topRightIcons.length >= 3) {
+    for (const button of topRightIcons) addLayoutClass(button, "talkly-zoom-view-selector");
   }
 }
 

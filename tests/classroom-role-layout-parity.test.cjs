@@ -48,3 +48,14 @@ test("native Zoom audio, microphone, camera and share remain while labelled opti
   assert.match(css, /talkly-sdk-native-toolbar \.talkly-zoom-optional-control/);
   assert.match(css, /\.talkly-zoom-view-selector/);
 });
+
+test("native Zoom control classification works without toolbar wrapper and handles icon-only view cluster", () => {
+  const adapter = read("lib/zoom-layout.ts");
+  assert.match(adapter, /function nativeLabel/);
+  assert.match(adapter, /const lowerBoundary/);
+  assert.match(adapter, /isToolbar/);
+  assert.match(adapter, /topRightIcons\.length >= 3/);
+  assert.match(adapter, /leave\|exit/);
+  assert.match(adapter, /addLayoutClass\(button, "talkly-zoom-optional-control"\)/);
+  assert.match(adapter, /AUDIO_BUTTON\.test\(label\) \|\| VIDEO_BUTTON\.test\(label\) \|\| SHARE_BUTTON\.test\(label\)/);
+});
