@@ -30,10 +30,10 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
       if (Array.isArray(stored?.panes) && stored.panes.length === 3 &&
         stored.panes.every((v: unknown) => typeof v === "number" && Number.isFinite(v)) &&
         Math.abs(stored.panes.reduce((a: number, b: number) => a + b, 0) - 100) < 0.1 &&
-        stored.panes[0] >= 15 && stored.panes[1] >= 30 && stored.panes[2] >= 15) {
+        stored.panes.every((v: number) => v >= 10)) {
         setPaneWidths(stored.panes as [number, number, number]);
       }
-      if (typeof stored?.shared === "number" && stored.shared >= 35 && stored.shared <= 85) {
+      if (typeof stored?.shared === "number" && stored.shared >= 10 && stored.shared <= 90) {
         setSharedVideoWidth(stored.shared);
       }
     } catch { /* Storage may be blocked. Defaults remain usable. */ }
@@ -48,14 +48,14 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
     const at = (clientX - rect.left) / rect.width * 100;
     const constrain = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
     if (kind === "shared") {
-      const next = constrain(at, 35, 85);
+      const next = constrain(at, 10, 90);
       setSharedVideoWidth(next);
       saveLayout(paneWidths, next);
     } else {
       const [video, , chat] = paneWidths;
       const next: [number, number, number] = kind === "video"
-        ? [constrain(at, 15, 100 - chat - 30), 0, chat]
-        : [video, 0, constrain(100 - at, 15, 100 - video - 30)];
+        ? [constrain(at, 10, 100 - chat - 10), 0, chat]
+        : [video, 0, constrain(100 - at, 10, 100 - video - 10)];
       next[1] = 100 - next[0] - next[2];
       setPaneWidths(next);
       saveLayout(next, sharedVideoWidth);
@@ -143,16 +143,16 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
         : `minmax(0, ${paneWidths[0]}fr) minmax(0, ${paneWidths[1]}fr) minmax(0, ${paneWidths[2]}fr)` } as CSSProperties) : undefined}>
       {children}
       {desktop && (expanded ? <div className="talkly-pane-resizer" data-kind="shared" role="separator" aria-label={canControl ? "Resize Zoom and chat panels" : "Zoom과 채팅 영역 너비 조절"}
-        aria-orientation="vertical" aria-valuenow={Math.round(sharedVideoWidth)} aria-valuemin={35} aria-valuemax={85}
+        aria-orientation="vertical" aria-valuenow={Math.round(sharedVideoWidth)} aria-valuemin={10} aria-valuemax={90}
         tabIndex={0} style={{ left: `${sharedVideoWidth}%` }}
         onPointerDown={handleDown("shared")} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp} onKeyDown={handleKey("shared")} />
       : <>
         <div className="talkly-pane-resizer" role="separator" aria-label={canControl ? "Resize video and textbook panels" : "Zoom과 교재 영역 너비 조절"}
-          aria-orientation="vertical" aria-valuenow={Math.round(paneWidths[0])} aria-valuemin={15} aria-valuemax={55}
+          aria-orientation="vertical" aria-valuenow={Math.round(paneWidths[0])} aria-valuemin={10} aria-valuemax={80}
           tabIndex={0} style={{ left: `${paneWidths[0]}%` }}
           onPointerDown={handleDown("video")} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp} onKeyDown={handleKey("video")} />
         <div className="talkly-pane-resizer" role="separator" aria-label={canControl ? "Resize textbook and chat panels" : "교재와 채팅 영역 너비 조절"}
-          aria-orientation="vertical" aria-valuenow={Math.round(100 - paneWidths[2])} aria-valuemin={45} aria-valuemax={85}
+          aria-orientation="vertical" aria-valuenow={Math.round(100 - paneWidths[2])} aria-valuemin={20} aria-valuemax={90}
           tabIndex={0} style={{ left: `${100 - paneWidths[2]}%` }}
           onPointerDown={handleDown("chat")} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp} onKeyDown={handleKey("chat")} />
       </>)}
