@@ -278,8 +278,8 @@ export default function ClassroomChat({
   return (
     <>
       <style>{`
-        .talkly-chat { min-width: 0; min-height: 0; height: 100%; display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid #303744; border-radius: 16px; background: #111318; color: #f8fafc; box-sizing: border-box; }
-        .talkly-chat-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+        .talkly-chat { min-width: 0; min-height: 0; height: 100%; display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid #303744; border-radius: 16px; background: #111318; color: #f8fafc; box-sizing: border-box; }
+        .talkly-chat-head { display: flex; align-items:center; font-size:13px; min-height:25px; }
         .talkly-chat-title { display: flex; align-items: center; gap: 8px; }
         .talkly-chat-live { width: 8px; height: 8px; border-radius: 50%; background: #35d07f; }
         .talkly-chat-title-copy strong { font-size: 16px; }
@@ -301,27 +301,12 @@ export default function ClassroomChat({
 
       <section className="talkly-chat">
         <div className="talkly-chat-head">
-          <div className="talkly-chat-title">
-            <span className="talkly-chat-live" />
-
-            <div className="talkly-chat-title-copy">
-              <strong>CHAT</strong>
-              <small>{ui("채팅")}</small>
-            </div>
-          </div>
-
-          <div className="talkly-chat-hint">
-            {currentUserRole === "admin" && !testStudentMode
-              ? ui("관리자 참관 · 채팅 읽기 전용")
-              : testStudentMode
-                ? classInProgress ? ui("테스트 학생 · 실시간 메시지") : ui("강사가 수업을 시작하면 채팅할 수 있습니다.")
-                : ui("Enter to send · 실시간 메시지")}
-          </div>
+          <strong>{ui("채팅")}</strong>
         </div>
 
         <div ref={listRef} className="talkly-chat-list">
           {messages.length === 0 ? (
-            <div className="talkly-chat-empty">{ui("No messages yet. · 아직 메시지가 없습니다.")}</div>
+            <div className="talkly-chat-empty">{ui("아직 메시지가 없습니다.")}</div>
           ) : (
             messages.map((item) => {
               const mine =
