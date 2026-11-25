@@ -17,8 +17,9 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
   const stageRef = useRef<HTMLDivElement>(null);
   const [desktop, setDesktop] = useState(false);
   const [paneWidths, setPaneWidths] = useState<[number, number, number]>([22, 58, 20]);
-  const [sharedVideoWidth, setSharedVideoWidth] = useState(75);
-  const dragging = useRef<"video" | "chat" | "shared" | null>(null);
+  const [sharedVideoWidth, setSharedVideoWidth] = useState(80);
+  const [sharedCameraWidth, setSharedCameraWidth] = useState(22);
+  const dragging = useRef<"video" | "chat" | "shared" | "camera" | null>(null);
   const storageKey = "talkly-classroom-layout-v1";
   useEffect(() => {
     const media = window.matchMedia("(min-width: 1051px) and (pointer: fine)");
@@ -30,38 +31,45 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
       if (Array.isArray(stored?.panes) && stored.panes.length === 3 &&
         stored.panes.every((v: unknown) => typeof v === "number" && Number.isFinite(v)) &&
         Math.abs(stored.panes.reduce((a: number, b: number) => a + b, 0) - 100) < 0.1 &&
-        stored.panes[0] >= 15 && stored.panes[1] >= 30 && stored.panes[2] >= 15) {
+        stored.panes.every((value: number) => value >= 10)) {
         setPaneWidths(stored.panes as [number, number, number]);
       }
-      if (typeof stored?.shared === "number" && stored.shared >= 35 && stored.shared <= 85) {
+      if (typeof stored?.shared === "number" && stored.shared >= 20 && stored.shared <= 90) {
         setSharedVideoWidth(stored.shared);
+      }
+      if (typeof stored?.camera === "number" && stored.camera >= 10 && stored.camera <= 80) {
+        setSharedCameraWidth(stored.camera);
       }
     } catch { /* Storage may be blocked. Defaults remain usable. */ }
     return () => media.removeEventListener("change", check);
   }, []);
-  const saveLayout = (panes: [number, number, number], shared: number) => {
-    try { localStorage.setItem(storageKey, JSON.stringify({ panes, shared })); } catch { /* optional preference */ }
+  const saveLayout = (panes: [number, number, number], shared: number, camera: number) => {
+    try { localStorage.setItem(storageKey, JSON.stringify({ panes, shared, camera })); } catch { /* optional preference */ }
   };
-  const dragTo = (kind: "video" | "chat" | "shared", clientX: number) => {
+  const dragTo = (kind: "video" | "chat" | "shared" | "camera", clientX: number) => {
     const rect = stageRef.current?.getBoundingClientRect();
     if (!rect || rect.width <= 0) return;
     const at = (clientX - rect.left) / rect.width * 100;
     const constrain = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
-    if (kind === "shared") {
-      const next = constrain(at, 35, 85);
+    if (kind === "camera") {
+      const next = constrain(at, 10, sharedVideoWidth - 10);
+      setSharedCameraWidth(next);
+      saveLayout(paneWidths, sharedVideoWidth, next);
+    } else if (kind === "shared") {
+      const next = constrain(at, Math.max(20, sharedCameraWidth + 10), 90);
       setSharedVideoWidth(next);
-      saveLayout(paneWidths, next);
+      saveLayout(paneWidths, next, sharedCameraWidth);
     } else {
       const [video, , chat] = paneWidths;
       const next: [number, number, number] = kind === "video"
-        ? [constrain(at, 15, 100 - chat - 30), 0, chat]
-        : [video, 0, constrain(100 - at, 15, 100 - video - 30)];
+        ? [constrain(at, 10, 100 - chat - 10), 0, chat]
+        : [video, 0, constrain(100 - at, 10, 100 - video - 10)];
       next[1] = 100 - next[0] - next[2];
       setPaneWidths(next);
-      saveLayout(next, sharedVideoWidth);
+      saveLayout(next, sharedVideoWidth, sharedCameraWidth);
     }
   };
-  const handleDown = (kind: "video" | "chat" | "shared") => (event: PointerEvent<HTMLDivElement>) => {
+  const handleDown = (kind: "video" | "chat" | "shared" | "camera") => (event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     dragging.current = kind;
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -76,12 +84,12 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
   };
-  const handleKey = (kind: "video" | "chat" | "shared") => (event: KeyboardEvent<HTMLDivElement>) => {
+  const handleKey = (kind: "video" | "chat" | "shared" | "camera") => (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
     const rect = stageRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const at = kind === "shared" ? sharedVideoWidth : kind === "video" ? paneWidths[0] : 100 - paneWidths[2];
+    const at = kind === "camera" ? sharedCameraWidth : kind === "shared" ? sharedVideoWidth : kind === "video" ? paneWidths[0] : 100 - paneWidths[2];
     dragTo(kind, rect.left + rect.width * (at + (event.key === "ArrowRight" ? 2 : -2)) / 100);
   };
   const busyRef = useRef(false);
@@ -128,6 +136,27 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
     finally { busyRef.current = false; if (mounted.current) setBusy(false); }
   }
   const expanded = mode === "screen" || sharing;
+  // Zoom SDK owns video + screen-share nodes inside its iframe. Propagate
+  // the camera column size without remounting/moving media elements.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage || !expanded) return;
+    const update = () => {
+      const width = stage.getBoundingClientRect().width;
+      const frame = stage.querySelector<HTMLIFrameElement>(".talkly-zoom-frame");
+      frame?.contentWindow?.postMessage({
+        type: "talkly-zoom-camera-width",
+        sessionId,
+        pixels: Math.max(0, Math.floor(width * sharedCameraWidth / 100)),
+      }, window.location.origin);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(stage);
+    const frame = stage.querySelector<HTMLIFrameElement>(".talkly-zoom-frame");
+    frame?.addEventListener("load", update);
+    return () => { observer.disconnect(); frame?.removeEventListener("load", update); };
+  }, [expanded, sharedCameraWidth, sessionId, desktop]);
   return <>
     <section className="talkly-material-controls" aria-label="Lesson materials">
       <div>{canControl ? <label>{ui("Lesson materials · 교재 방식")}<select aria-label="Lesson materials" value={mode} disabled={busy || sharing} onChange={event => void change(event.target.value as Mode)}>
@@ -142,17 +171,30 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
         ? `minmax(0, ${sharedVideoWidth / 2}fr) minmax(0, ${sharedVideoWidth / 2}fr) minmax(0, ${100 - sharedVideoWidth}fr)`
         : `minmax(0, ${paneWidths[0]}fr) minmax(0, ${paneWidths[1]}fr) minmax(0, ${paneWidths[2]}fr)` } as CSSProperties) : undefined}>
       {children}
-      {desktop && (expanded ? <div className="talkly-pane-resizer" data-kind="shared" role="separator" aria-label={canControl ? "Resize Zoom and chat panels" : "Zoom과 채팅 영역 너비 조절"}
-        aria-orientation="vertical" aria-valuenow={Math.round(sharedVideoWidth)} aria-valuemin={35} aria-valuemax={85}
-        tabIndex={0} style={{ left: `${sharedVideoWidth}%` }}
-        onPointerDown={handleDown("shared")} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp} onKeyDown={handleKey("shared")} />
-      : <>
+      {desktop && <button type="button" className="talkly-pane-reset" title={canControl ? "Restore default panel sizes" : "기본 화면 비율 복원"}
+        onClick={() => {
+          const panes: [number, number, number] = [22, 58, 20];
+          setPaneWidths(panes);
+          setSharedVideoWidth(80);
+          setSharedCameraWidth(22);
+          saveLayout(panes, 80, 22);
+        }}>{canControl ? "Reset layout" : "비율 초기화"}</button>}
+      {desktop && (expanded ? <>
+        <div className="talkly-pane-resizer" role="separator" aria-label={canControl ? "Resize Zoom video and shared teaching materials" : "Zoom 영상과 공유 교재 영역 너비 조절"}
+          aria-orientation="vertical" aria-valuenow={Math.round(sharedCameraWidth)} aria-valuemin={10} aria-valuemax={Math.round(sharedVideoWidth - 10)}
+          tabIndex={0} style={{ left: `${sharedCameraWidth}%` }}
+          onPointerDown={handleDown("camera")} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp} onKeyDown={handleKey("camera")} />
+        <div className="talkly-pane-resizer" data-kind="shared" role="separator" aria-label={canControl ? "Resize shared teaching materials and chat panels" : "공유 교재와 채팅 영역 너비 조절"}
+          aria-orientation="vertical" aria-valuenow={Math.round(sharedVideoWidth)} aria-valuemin={20} aria-valuemax={90}
+          tabIndex={0} style={{ left: `${sharedVideoWidth}%` }}
+          onPointerDown={handleDown("shared")} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp} onKeyDown={handleKey("shared")} />
+      </> : <>
         <div className="talkly-pane-resizer" role="separator" aria-label={canControl ? "Resize video and textbook panels" : "Zoom과 교재 영역 너비 조절"}
-          aria-orientation="vertical" aria-valuenow={Math.round(paneWidths[0])} aria-valuemin={15} aria-valuemax={55}
+          aria-orientation="vertical" aria-valuenow={Math.round(paneWidths[0])} aria-valuemin={10} aria-valuemax={80}
           tabIndex={0} style={{ left: `${paneWidths[0]}%` }}
           onPointerDown={handleDown("video")} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp} onKeyDown={handleKey("video")} />
         <div className="talkly-pane-resizer" role="separator" aria-label={canControl ? "Resize textbook and chat panels" : "교재와 채팅 영역 너비 조절"}
-          aria-orientation="vertical" aria-valuenow={Math.round(100 - paneWidths[2])} aria-valuemin={45} aria-valuemax={85}
+          aria-orientation="vertical" aria-valuenow={Math.round(100 - paneWidths[2])} aria-valuemin={20} aria-valuemax={90}
           tabIndex={0} style={{ left: `${100 - paneWidths[2]}%` }}
           onPointerDown={handleDown("chat")} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp} onKeyDown={handleKey("chat")} />
       </>)}
