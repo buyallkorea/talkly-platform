@@ -782,7 +782,7 @@ export default function ClassroomZoomEmbed({
         await activateZoomControlWithOverflow(rootRef.current, "join-audio"));
       if (!clicked) {
         setAudioRecoveryStatus("timeout");
-        setDiagnosticsOpen(true);
+        // Connection errors remain available in the user-opened help panel.
         setControlError(hostMode
           ? "Zoom's Join Audio button was not found. Use the native Zoom toolbar or its audio dialog to connect computer audio."
           : "Zoom의 오디오 참가 버튼을 찾지 못했습니다. Zoom 기본 도구 모음에서 ‘컴퓨터 오디오 참가’를 눌러 주세요.");
@@ -808,7 +808,7 @@ export default function ClassroomZoomEmbed({
             }
             if (delay === 8500) {
               setAudioRecoveryStatus("timeout");
-              setDiagnosticsOpen(true);
+              // Connection errors remain available in the user-opened help panel.
               console.warn("[TALKLY] Computer audio not confirmed after join request", {
                 audioState: current,
               });
@@ -821,7 +821,7 @@ export default function ClassroomZoomEmbed({
       }
     } catch {
       setAudioRecoveryStatus("timeout");
-      setDiagnosticsOpen(true);
+      // Connection errors remain available in the user-opened help panel.
       setControlError(hostMode
         ? "Audio action did not complete. Check Zoom audio settings, browser permissions and the native toolbar."
         : "오디오 연결을 확인하지 못했습니다. Zoom 오디오 설정과 브라우저 마이크 권한을 확인해 주세요.");
@@ -865,7 +865,7 @@ export default function ClassroomZoomEmbed({
           ? "Use the corresponding control in Zoom's native toolbar or More menu."
           : "Zoom 기본 도구 모음 또는 더보기 메뉴에서 해당 버튼을 눌러주세요.");
       }
-      setDiagnosticsOpen(true);
+      // Connection errors remain available in the user-opened help panel.
     }
   }
   function testSpeaker() {
@@ -911,11 +911,21 @@ export default function ClassroomZoomEmbed({
               </button>
             ) : null}
           </div>
-          {(!hostMode || audioAttention || controlError || cameraControlFailed || diagnosticsOpen) && <details className="talkly-zoom-diagnostics" open={diagnosticsOpen}
-            onToggle={event => setDiagnosticsOpen(event.currentTarget.open)}>
-            <summary title={hostMode ? "More connection settings" : "추가 연결 설정"} aria-label={hostMode ? "More connection settings" : "추가 연결 설정"}>⋯</summary>
-            <div className="talkly-zoom-diagnostic-panel">
-              <strong>{hostMode ? "Connection settings" : "연결 설정"}</strong>
+          <div className="talkly-zoom-diagnostics">
+            <button type="button" className="talkly-zoom-help-toggle"
+              aria-expanded={diagnosticsOpen}
+              aria-controls="talkly-zoom-help-panel"
+              title={hostMode ? "Connection help" : "문제 해결"}
+              onClick={() => setDiagnosticsOpen(open => !open)}>
+              {hostMode ? "Help" : "도움"}
+            </button>
+            {diagnosticsOpen && <div id="talkly-zoom-help-panel" className="talkly-zoom-diagnostic-panel">
+              <div className="talkly-zoom-help-heading">
+                <strong>{hostMode ? "Connection help" : "연결 도움말"}</strong>
+                <button type="button" className="talkly-zoom-help-close"
+                  onClick={() => setDiagnosticsOpen(false)}
+                  aria-label={hostMode ? "Close help" : "도움말 닫기"}>{hostMode ? "Close ×" : "닫기 ×"}</button>
+              </div>
               <div className="talkly-zoom-indicators" role="status">
                 <span className="talkly-zoom-health" data-health="ok">{hostMode ? "Zoom connected" : "Zoom 연결됨"}</span>
                 <span className="talkly-zoom-health" data-health={["disconnected", "failed"].includes(audioState) ? "error" : audioConnected ? "ok" : "unknown"}>{audioState === "failed" ? (hostMode ? "Audio connection failed" : "오디오 연결 실패") : audioState === "disconnected" ? (hostMode ? "Audio disconnected" : "오디오 미연결") : audioConnected ? (hostMode ? "Audio joined" : "오디오 연결됨") : (hostMode ? "Audio checking" : "오디오 확인 중")}</span>
@@ -937,18 +947,10 @@ export default function ClassroomZoomEmbed({
               {controlError && <p role="alert" className="talkly-zoom-error">{controlError}</p>}
               {hostMode && <details className="talkly-textbook-audio-help"><summary>Textbook audio help</summary><p>In Chrome, share the textbook tab and enable Share tab audio.</p></details>}
               <p className="talkly-zoom-help">{hostMode ? "Check your browser's audio and camera permissions if a device cannot connect." : "연결이 안 되면 브라우저의 마이크·카메라 권한을 확인하세요."}</p>
-            </div>
-          </details>}
+            </div>}
+          </div>
         </>}
       </div>
-      {screen === "joined" && !hostMode && (
-        <button type="button" className="talkly-zoom-camera-access"
-          onClick={() => void nativeAction("video")}
-          aria-label={cameraOn === true ? (hostMode ? "Turn camera off" : "카메라 끄기") : (hostMode ? "Turn camera on" : "카메라 켜기")}
-          title={hostMode ? "Camera / video" : "카메라 켜기·끄기"}>
-          {cameraOn === true ? (hostMode ? "Camera off" : "카메라 끄기") : (hostMode ? "Camera on" : "카메라 켜기")}
-        </button>
-      )}
       {screen === "joined" && (audioAttention || audioState === "muted") && (
         <div className="talkly-audio-connection-banner" data-health={audioConnected ? "muted" : "needs-audio"}
           role={audioAttention ? "alert" : "status"}>
