@@ -34,3 +34,17 @@ test("untranslated English teacher copy never masquerades as an action failure",
   assert.match(language, /return text;/);
   assert.match(language, /"교재": "Materials"/);
 });
+
+test("native Zoom audio, microphone, camera and share remain while labelled optional menus are hidden", () => {
+  const zoom = read("lib/zoom-layout.ts");
+  const css = read("app/classroom/[sessionId]/zoom-layout.css");
+  assert.match(zoom, /function simplifyZoomControls/);
+  assert.match(zoom, /join audio\|computer audio/);
+  assert.match(zoom, /start video\|stop video/);
+  assert.match(zoom, /share screen\|stop share/);
+  assert.match(zoom, /talkly-zoom-optional-control/);
+  assert.match(zoom, /talkly-zoom-view-selector/);
+  assert.match(zoom, /if \(!label\) continue/);
+  assert.match(css, /talkly-sdk-native-toolbar \.talkly-zoom-optional-control/);
+  assert.match(css, /\.talkly-zoom-view-selector/);
+});
