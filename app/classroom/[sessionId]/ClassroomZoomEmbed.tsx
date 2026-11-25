@@ -296,7 +296,7 @@ export default function ClassroomZoomEmbed({
         return;
       }
       if (event.data.type !== "talkly-zoom-layout" || typeof event.data.split !== "boolean") return;
-      splitRef.current = !hostMode && event.data.split;
+      splitRef.current = event.data.split;
       setSplit(splitRef.current);
       const size = measureVideo();
       if (joinedRef.current) clientRef.current?.updateVideoOptions?.({ viewSizes: { default: size, ribbon: size } });
