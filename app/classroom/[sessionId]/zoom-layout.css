@@ -285,3 +285,45 @@
 .talkly-zoom-shell .talkly-audio-connection-banner[data-health=needs-audio] {
   position:relative; z-index:16;
 }
+
+/* Explicitly dismissible Zoom help, never shown by default or forced on
+   by errors. Keep the popup fully inside the camera pane. */
+.talkly-zoom-shell .talkly-zoom-diagnostics {
+  position:relative; flex:0 0 auto; min-width:48px; height:30px;
+  padding:0; margin:0;
+}
+.talkly-zoom-shell .talkly-zoom-help-toggle {
+  width:100%; height:30px; min-height:30px;
+  border:1px solid #64748b; border-radius:5px;
+  background:#243249; color:#f8fafc; cursor:pointer;
+  font:700 11px/1.2 inherit; padding:3px 6px;
+}
+.talkly-zoom-shell .talkly-zoom-help-toggle:focus-visible,
+.talkly-zoom-shell .talkly-zoom-help-close:focus-visible {
+  outline:2px solid #facc15; outline-offset:2px;
+}
+.talkly-zoom-shell .talkly-zoom-help-heading {
+  display:flex; justify-content:space-between; align-items:center;
+  gap:8px; border-bottom:1px solid #475569; padding-bottom:7px;
+}
+.talkly-zoom-shell .talkly-zoom-help-close {
+  flex:0 0 auto; min-height:30px; padding:4px 8px;
+  border:1px solid #94a3b8; border-radius:5px;
+  background:#334155; color:#fff; cursor:pointer; font-size:12px;
+}
+.talkly-zoom-shell .talkly-zoom-diagnostic-panel {
+  left:auto; right:0; bottom:calc(100% + 8px);
+  width:min(280px, calc(100vw - 28px));
+  max-width:calc(100vw - 28px);
+  max-height:min(45dvh, 320px);
+  overflow-y:auto; overscroll-behavior:contain;
+}
+.talkly-zoom-shell[data-split=true] .talkly-zoom-diagnostic-panel {
+  right:0; left:auto;
+  width:min(280px, max(110px, calc(var(--video-column) - 12px)));
+}
+@media(max-width:640px) {
+  .talkly-zoom-shell .talkly-zoom-diagnostic-panel {
+    width:min(280px, calc(100vw - 28px));
+  }
+}
