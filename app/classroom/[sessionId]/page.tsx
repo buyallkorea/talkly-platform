@@ -1105,6 +1105,26 @@ export default async function ClassroomPage({
             grid-column:1; grid-row:2;
           }
         }
+        /* Adjustable classroom panels: separators float over the grid and do
+           not remount Zoom, textbook or chat components while dragging. */
+        .talkly-pane-resizer {
+          position: absolute; top: 0; bottom: 0; z-index: 18;
+          width: 16px; transform: translateX(-50%);
+          cursor: col-resize; touch-action: none; user-select: none;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .talkly-pane-resizer::before {
+          content: ""; display: block; width: 4px; height: 80px;
+          max-height: 28%; border-radius: 9px;
+          background: rgba(147,197,253,.75);
+          box-shadow: 0 0 0 1px rgba(15,23,42,.8);
+        }
+        .talkly-pane-resizer:hover::before,
+        .talkly-pane-resizer:focus-visible::before {
+          background: #facc15; width: 6px;
+        }
+        .talkly-pane-resizer:focus-visible { outline: 2px solid #facc15; outline-offset: -2px; }
+        @media (max-width:1050px) { .talkly-pane-resizer { display:none; } }
       `}</style>
 
       <main className="talkly-classroom" lang={profile.role === "teacher" ? "en" : "ko"}>
