@@ -1,5 +1,12 @@
 /** System copy only. User messages, names and authored lesson content are not translated. */
 const englishCopy: Record<string, string> = {
+  "교재": "Materials",
+  "교재 방식": "Material mode",
+  "등록 교재": "Registered textbook",
+  "화면 공유": "Screen sharing",
+  "공유 교재": "Shared textbook",
+  "비율 초기화": "Reset layout",
+  "수업 진행 시간": "Lesson duration",
   "수업 전 교재 방식을 선택해 주세요. 수업 중에도 변경할 수 있습니다.": "Choose your lesson materials before entering. You can change them during class.",
   "교재 창과 강의실 창을 좌우에 배치하세요. 교재는 원본 창에서 조작하고 학생은 강의실에서 확인합니다. 학생은 강의실만 열면 됩니다. 교재 소리는 Chrome 탭 → 교재 탭 → ‘탭 오디오 공유’를 체크해야 전달됩니다. 일반 창 공유에서 소리가 안 나면 공유를 중지하고 교재 탭으로 다시 공유하세요.": "Keep the textbook and classroom side by side. Operate the original textbook while watching the student here. For textbook sound, share its Chrome tab with Share tab audio enabled.",
   "Zoom Meeting SDK 준비 중...": "Preparing Zoom...",
@@ -156,7 +163,9 @@ export function classroomText(text: string, english: boolean): string {
   if (englishCopy[text]) return englishCopy[text];
   const numbered = text.replace(/(\d+)페이지/g, "Page $1").replace(/ 재생$/, " Play");
   if (!/[가-힣]/.test(numbered)) return numbered;
-  return "Unable to complete this action. Please try again.";
+  // Untranslated interface copy is not an operation failure. Keep the original
+  // text rather than displaying a false error inside teacher controls.
+  return text;
 }
 const englishText = (text: string) => classroomText(text, true);
 const originalText = (text: string) => text;
