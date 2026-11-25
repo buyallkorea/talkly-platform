@@ -274,6 +274,7 @@ export default function ClassroomZoomEmbed({
     root?.style?.setProperty("--zoom-content-height", `${size.height}px`);
     root?.style?.setProperty("--video-column", `${cameraWidth}px`);
     root?.parentElement?.style.setProperty("--video-column", `${cameraWidth}px`);
+    root?.closest<HTMLElement>(".talkly-zoom-shell")?.style.setProperty("--video-column", `${cameraWidth}px`);
     return size;
   }, []);
   useEffect(() => {
