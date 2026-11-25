@@ -215,6 +215,7 @@ export default function ClassroomZoomEmbed({
     useState(0);
   const [split, setSplit] = useState(false);
   const splitRef = useRef(false);
+  const cameraColumnPixelsRef = useRef<number | null>(null);
   const [receiving, setReceiving] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [audioState, setAudioState] = useState("unknown");
@@ -267,9 +268,12 @@ export default function ClassroomZoomEmbed({
     const width = root?.parentElement?.clientWidth || root?.clientWidth || 420;
     const height = root?.parentElement?.clientHeight || root?.clientHeight || 430;
     const size = zoomLayoutSize(width, height, splitRef.current);
+    const cameraWidth = cameraColumnPixelsRef.current == null
+      ? Math.min(320, Math.max(160, width * .275))
+      : Math.max(40, Math.min(cameraColumnPixelsRef.current, width - 40));
     root?.style?.setProperty("--zoom-content-height", `${size.height}px`);
-    root?.style?.setProperty("--video-column", `${size.width}px`);
-    root?.parentElement?.style.setProperty("--video-column", `${size.width}px`);
+    root?.style?.setProperty("--video-column", `${cameraWidth}px`);
+    root?.parentElement?.style.setProperty("--video-column", `${cameraWidth}px`);
     return size;
   }, []);
   useEffect(() => {
@@ -282,7 +286,15 @@ export default function ClassroomZoomEmbed({
   }, []);
   useEffect(() => {
     const configure = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin || event.source !== window.parent || event.data?.type !== "talkly-zoom-layout" || event.data.sessionId !== sessionId || typeof event.data.split !== "boolean") return;
+      if (event.origin !== window.location.origin || event.source !== window.parent || event.data?.sessionId !== sessionId) return;
+      if (event.data.type === "talkly-zoom-camera-width") {
+        if (typeof event.data.pixels !== "number" || !Number.isFinite(event.data.pixels)) return;
+        cameraColumnPixelsRef.current = Math.max(40, event.data.pixels);
+        const size = measureVideo();
+        if (joinedRef.current) clientRef.current?.updateVideoOptions?.({ viewSizes: { default: size, ribbon: size } });
+        return;
+      }
+      if (event.data.type !== "talkly-zoom-layout" || typeof event.data.split !== "boolean") return;
       splitRef.current = !hostMode && event.data.split;
       setSplit(splitRef.current);
       const size = measureVideo();
@@ -819,9 +831,41 @@ export default function ClassroomZoomEmbed({
   }
   async function nativeAction(action: ZoomAction) {
     setControlError("");
+    // The Zoom SDK toolbar click must happen synchronously in the browser's
+    // transient user-activation window. Never await permissions first.
     const clicked = Boolean(rootRef.current && await activateZoomControlWithOverflow(rootRef.current, action));
-    if (action === "video") setCameraControlFailed(!clicked);
-    if (!clicked) { setDiagnosticsOpen(true); setControlError(ui("Use the matching Zoom toolbar button below or its More (…) menu. · 아래 Zoom 도구 모음 또는 더보기(…)에서 해당 버튼을 눌러주세요.")); }
+    if (action === "video") {
+      setCameraControlFailed(!clicked);
+      if (clicked) window.setTimeout(() => {
+        const me = clientRef.current?.getCurrentUser?.();
+        setCameraOn(typeof me?.bVideoOn === "boolean" ? me.bVideoOn : null);
+      }, 900);
+    }
+    if (!clicked) {
+      if (action === "video" && navigator.permissions?.query) {
+        try {
+          const permission = await navigator.permissions.query({ name: "camera" as PermissionName });
+          if (permission.state === "denied") {
+            setControlError(hostMode
+              ? "Camera is blocked. Allow camera access in browser site settings and reopen the classroom."
+              : "브라우저에서 카메라가 차단되었습니다. 사이트 설정에서 카메라 사용을 허용해주세요.");
+          } else {
+            setControlError(hostMode
+              ? "Zoom camera control was not found. Use Zoom's native Video button or More menu."
+              : "Zoom 카메라 버튼을 찾지 못했습니다. Zoom 기본 비디오 버튼 또는 더보기 메뉴를 확인해주세요.");
+          }
+        } catch {
+          setControlError(hostMode
+            ? "Use Zoom's native Video control or More menu."
+            : "Zoom 기본 비디오 버튼 또는 더보기 메뉴를 사용해주세요.");
+        }
+      } else {
+        setControlError(hostMode
+          ? "Use the corresponding control in Zoom's native toolbar or More menu."
+          : "Zoom 기본 도구 모음 또는 더보기 메뉴에서 해당 버튼을 눌러주세요.");
+      }
+      setDiagnosticsOpen(true);
+    }
   }
   function testSpeaker() {
     if (typeof AudioContext === "undefined") { setControlError(ui("Speaker test unavailable in this browser · 이 브라우저에서는 소리 테스트를 지원하지 않습니다.")); return; }
@@ -848,7 +892,7 @@ export default function ClassroomZoomEmbed({
       <div className="talkly-zoom-status" role="group" aria-label={hostMode ? "Class audio, video and sharing" : "오디오 및 비디오 조작"}>
         {screen === "joined" && <>
           <div className="talkly-zoom-quick-actions" role="toolbar" aria-label={hostMode ? "Lesson controls" : "수업 조작"}>
-            {hostMode && <button type="button" onClick={testSpeaker} title="Play a sound to check the laptop speaker">Speaker</button>}
+            <button type="button" onClick={testSpeaker} title={hostMode ? "Test laptop speaker" : "스피커 소리 테스트"}>{hostMode ? "Speaker" : "스피커"}</button>
             <button type="button" onClick={() => void audioAction()} disabled={audioBusy}
               data-health={["disconnected", "failed"].includes(audioState) ? "error" : "unknown"}
               title={!audioConnected ? (hostMode ? "Join computer audio" : "컴퓨터 오디오 연결") : hostMode ? "Audio / microphone" : "오디오 / 마이크"}>
@@ -864,9 +908,7 @@ export default function ClassroomZoomEmbed({
                 data-action={sharing ? "stop-share" : "share"} title={sharing ? "Stop sharing teaching materials" : "Share teaching materials"}>
                 {sharing ? "Stop share" : "Share"}
               </button>
-            ) : (
-              <span className="talkly-zoom-sharing-readonly" aria-label={sharing ? "교재 공유 중" : "교재 공유 대기"}>{sharing ? "공유 중" : "교재 공유"}</span>
-            )}
+            ) : null}
           </div>
           {(!hostMode || audioAttention || controlError || cameraControlFailed || diagnosticsOpen) && <details className="talkly-zoom-diagnostics" open={diagnosticsOpen}
             onToggle={event => setDiagnosticsOpen(event.currentTarget.open)}>

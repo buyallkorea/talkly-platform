@@ -1124,6 +1124,16 @@ export default async function ClassroomPage({
           background: #facc15; width: 6px;
         }
         .talkly-pane-resizer:focus-visible { outline: 2px solid #facc15; outline-offset: -2px; }
+        .talkly-pane-reset {
+          position:absolute; top:6px; right:6px; z-index:19;
+          padding:5px 9px; border-radius:7px; border:1px solid #64748b;
+          background:#172033; color:#e2e8f0; font-size:10px; font-weight:700;
+          cursor:pointer; opacity:.8;
+        }
+        .talkly-pane-reset:hover, .talkly-pane-reset:focus-visible { opacity:1; }
+        .talkly-classroom-stage[data-material-mode="screen"] .talkly-pane-reset {
+          right:calc(100% - 100% * 0.8 + 6px);
+        }
         @media (max-width:1050px) { .talkly-pane-resizer { display:none; } }
       `}</style>
 

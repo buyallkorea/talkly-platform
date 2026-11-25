@@ -684,7 +684,7 @@ export default function ClassSessionControls({
                   : "End Class"}
               </span>
 
-              <span className="talkly-session-action-sub">{ui("수업 종료")}</span>
+              <span className="talkly-session-action-sub">{ui("수업 끝내기")}</span>
             </button>
           )}
 
