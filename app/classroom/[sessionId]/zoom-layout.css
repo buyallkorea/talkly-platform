@@ -296,7 +296,7 @@
   width:100%; height:30px; min-height:30px;
   border:1px solid #64748b; border-radius:5px;
   background:#243249; color:#f8fafc; cursor:pointer;
-  font:700 11px/1.2 inherit; padding:3px 6px;
+  font-size:11px; font-weight:700; font-family:inherit; line-height:1.2; padding:3px 6px;
 }
 .talkly-zoom-shell .talkly-zoom-help-toggle:focus-visible,
 .talkly-zoom-shell .talkly-zoom-help-close:focus-visible {
@@ -326,4 +326,20 @@
   .talkly-zoom-shell .talkly-zoom-diagnostic-panel {
     width:min(280px, calc(100vw - 28px));
   }
+}
+
+/* Audio is a single compact join action, not a second troubleshooting panel. */
+.talkly-zoom-shell .talkly-audio-connection-banner {
+  min-height:42px; padding:4px 7px; gap:5px; flex-wrap:nowrap;
+}
+.talkly-zoom-shell .talkly-audio-connection-banner > div {
+  flex:1 1 auto; min-width:0;
+}
+.talkly-zoom-shell .talkly-audio-connection-banner strong {
+  font-size:11px; font-weight:700; line-height:1.3;
+}
+.talkly-zoom-shell .talkly-audio-instructions { display:none; }
+.talkly-zoom-shell .talkly-audio-connection-banner button {
+  flex:0 0 auto; min-width:0; min-height:32px;
+  padding:4px 8px; font-size:11px;
 }
