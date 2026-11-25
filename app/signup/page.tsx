@@ -78,6 +78,7 @@ function SignupPageContent() {
     loading,
     setLoading,
   ] = useState(false);
+  const [signupCompleted, setSignupCompleted] = useState(false);
 
   /*
    * 회원가입 전 사용자가
@@ -238,7 +239,7 @@ function SignupPageContent() {
   ) {
     event.preventDefault();
 
-    if (loading) {
+    if (loading || signupCompleted) {
       return;
     }
 
@@ -306,6 +307,17 @@ function SignupPageContent() {
         return;
       }
 
+      if (result?.requiresEmailConfirmation) {
+        setSignupCompleted(true);
+        if (result.confirmationEmailSent) {
+          setSuccessMessage("계정이 생성되었습니다. 가입 이메일로 발송된 인증 링크를 클릭한 뒤 로그인해주세요. 메일이 보이지 않으면 스팸메일함을 확인해주세요.");
+        } else {
+          setErrorMessage("계정은 생성되었지만 인증메일 발송이 확인되지 않았습니다. 다시 가입하지 마시고 고객센터에 문의해주세요.");
+        }
+        return;
+      }
+
+      setSignupCompleted(true);
       setSuccessMessage(
         safeNextPath
           ? "회원가입이 완료되었습니다. 로그인 후 요청하신 페이지로 이동할 수 있습니다."
@@ -1308,7 +1320,7 @@ function SignupPageContent() {
               <button
                 type="submit"
                 disabled={
-                  loading || !phoneVerified
+                  loading || !phoneVerified || signupCompleted
                 }
                 style={{
                   width:
