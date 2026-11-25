@@ -37,7 +37,7 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
       if (typeof stored?.shared === "number" && stored.shared >= 20 && stored.shared <= 90) {
         setSharedVideoWidth(stored.shared);
       }
-      if (typeof stored?.camera === "number" && stored.camera >= 10 && stored.camera <= 80) {
+      if (typeof stored?.camera === "number" && stored.camera >= 10 && stored.camera <= Math.min(80, (typeof stored.shared === "number" ? stored.shared : 80) - 10)) {
         setSharedCameraWidth(stored.camera);
       }
     } catch { /* Storage may be blocked. Defaults remain usable. */ }
