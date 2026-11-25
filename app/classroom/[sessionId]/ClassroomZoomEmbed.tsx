@@ -892,7 +892,7 @@ export default function ClassroomZoomEmbed({
       <div className="talkly-zoom-status" role="group" aria-label={hostMode ? "Class audio, video and sharing" : "오디오 및 비디오 조작"}>
         {screen === "joined" && <>
           <div className="talkly-zoom-quick-actions" role="toolbar" aria-label={hostMode ? "Lesson controls" : "수업 조작"}>
-            {hostMode && <button type="button" onClick={testSpeaker} title="Play a sound to check the laptop speaker">Speaker</button>}
+            <button type="button" onClick={testSpeaker} title={hostMode ? "Test laptop speaker" : "스피커 소리 테스트"}>{hostMode ? "Speaker" : "스피커"}</button>
             <button type="button" onClick={() => void audioAction()} disabled={audioBusy}
               data-health={["disconnected", "failed"].includes(audioState) ? "error" : "unknown"}
               title={!audioConnected ? (hostMode ? "Join computer audio" : "컴퓨터 오디오 연결") : hostMode ? "Audio / microphone" : "오디오 / 마이크"}>
@@ -908,9 +908,7 @@ export default function ClassroomZoomEmbed({
                 data-action={sharing ? "stop-share" : "share"} title={sharing ? "Stop sharing teaching materials" : "Share teaching materials"}>
                 {sharing ? "Stop share" : "Share"}
               </button>
-            ) : (
-              <span className="talkly-zoom-sharing-readonly" aria-label={sharing ? "교재 공유 중" : "교재 공유 대기"}>{sharing ? "공유 중" : "교재 공유"}</span>
-            )}
+            ) : null}
           </div>
           {(!hostMode || audioAttention || controlError || cameraControlFailed || diagnosticsOpen) && <details className="talkly-zoom-diagnostics" open={diagnosticsOpen}
             onToggle={event => setDiagnosticsOpen(event.currentTarget.open)}>
