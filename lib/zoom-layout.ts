@@ -16,9 +16,9 @@ function markNativeToolbar(widget: HTMLElement) {
   const label = (button: HTMLElement) =>
     (button.getAttribute("aria-label") || button.getAttribute("title") || button.textContent || "").trim();
   const audio = buttons.find(button =>
-    /^(join audio(?: by computer)?|join (?:with )?computer audio|connect audio|mute|unmute|음소거|음소거 해제|오디오 연결|오디오 참가|컴퓨터 오디오로 참가)$/i.test(label(button)));
+    /^(audio|join audio(?: by computer)?|join (?:with )?computer audio|connect audio|mute|unmute|microphone|mic|음소거|음소거 해제|오디오 연결|오디오 참가|컴퓨터 오디오로 참가)$/i.test(label(button)));
   const video = buttons.find(button =>
-    /^(start video|stop video|비디오 시작|비디오 중지|비디오 정지)$/i.test(label(button)));
+    /^(video|camera|camera on|camera off|start video|stop video|turn on camera|turn off camera|비디오 시작|비디오 중지|비디오 정지|카메라 켜기|카메라 끄기)$/i.test(label(button)));
   if (!audio || !video) return;
   let parent = audio.parentElement;
   while (parent && parent !== widget && !parent.contains(video)) parent = parent.parentElement;
