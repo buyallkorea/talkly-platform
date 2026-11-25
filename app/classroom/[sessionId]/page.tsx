@@ -1135,6 +1135,42 @@ export default async function ClassroomPage({
           right:calc(100% - 100% * 0.8 + 6px);
         }
         @media (max-width:1050px) { .talkly-pane-resizer { display:none; } }
+        /* ODP layout: one quiet header with lesson, status and elapsed time. */
+        .talkly-classroom { padding:5px 8px; }
+        .talkly-classroom-top {
+          min-height:30px; margin-bottom:0; padding:0 3px;
+          gap:8px;
+        }
+        .talkly-brand-kicker, .talkly-identity { display:none; }
+        .talkly-classroom-title {
+          margin:0; font-size:16px; font-weight:750; line-height:1.3;
+        }
+        .talkly-classroom-title small { display:none; }
+        .talkly-classroom-control {
+          position:absolute; z-index:8; top:6px; right:12px;
+          width:auto; max-width:50%; min-height:26px;
+          padding:0; margin:0; border:0;
+          border-radius:0; background:transparent; box-shadow:none;
+        }
+        .talkly-session-status {
+          min-height:28px!important; padding:0 8px!important;
+        }
+        .talkly-material-controls {
+          min-height:31px; padding:3px 8px;
+          margin-bottom:4px; border-radius:6px; background:#141b29;
+          justify-content:flex-start;
+        }
+        .talkly-material-mode-label { font-size:12px; font-weight:700; }
+        .talkly-material-controls select { margin-left:7px; min-height:28px; }
+        .talkly-material-error { margin:0; font-size:11px; color:#fecaca; }
+        .talkly-classroom-stage { gap:5px; }
+        .talkly-classroom-panel { border-radius:9px; }
+        @media(max-width:640px) {
+          .talkly-classroom-top { padding-bottom:33px; }
+          .talkly-classroom-control { top:37px; left:10px; right:auto; max-width:calc(100% - 20px); }
+          .talkly-classroom-title { font-size:14px; }
+        }
+
       `}</style>
 
       <main className="talkly-classroom" lang={profile.role === "teacher" ? "en" : "ko"}>
@@ -1165,18 +1201,9 @@ export default async function ClassroomPage({
             </h1>
           </div>
 
-          <div className="talkly-identity">
-            <strong>{identityPrimary}</strong>
-            <small>{identitySecondary}</small>
-          </div>
         </header>
 
         <section className="talkly-classroom-control">
-          <div className="talkly-control-copy">
-            <strong>CLASS CONTROL</strong>
-            <small>{ui("수업 제어 · 상태 확인")}</small>
-          </div>
-
           <ClassSessionControls
             sessionId={session.id}
             viewerRole={profile.role}
