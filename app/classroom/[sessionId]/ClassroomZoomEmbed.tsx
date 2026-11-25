@@ -831,19 +831,8 @@ export default function ClassroomZoomEmbed({
   }
   async function nativeAction(action: ZoomAction) {
     setControlError("");
-    if (action === "video" && typeof navigator !== "undefined" && navigator.permissions?.query) {
-      try {
-        const permission = await navigator.permissions.query({ name: "camera" as PermissionName });
-        if (permission.state === "denied") {
-          setCameraControlFailed(true);
-          setControlError(hostMode
-            ? "Camera blocked in browser settings. Allow camera access for TALKLY and reload the classroom."
-            : "브라우저에서 카메라 사용이 차단되어 있습니다. 주소창의 사이트 설정에서 카메라를 허용한 뒤 새로고침해 주세요.");
-          setDiagnosticsOpen(true);
-          return;
-        }
-      } catch { /* Camera permissions may not be queryable: Zoom handles its own permission prompt. */ }
-    }
+    // The Zoom SDK toolbar click must happen synchronously in the browser's
+    // transient user-activation window. Never await permissions first.
     const clicked = Boolean(rootRef.current && await activateZoomControlWithOverflow(rootRef.current, action));
     if (action === "video") {
       setCameraControlFailed(!clicked);
@@ -852,7 +841,31 @@ export default function ClassroomZoomEmbed({
         setCameraOn(typeof me?.bVideoOn === "boolean" ? me.bVideoOn : null);
       }, 900);
     }
-    if (!clicked) { setDiagnosticsOpen(true); setControlError(ui("Use the matching Zoom toolbar button below or its More (…) menu. · 아래 Zoom 도구 모음 또는 더보기(…)에서 해당 버튼을 눌러주세요.")); }
+    if (!clicked) {
+      if (action === "video" && navigator.permissions?.query) {
+        try {
+          const permission = await navigator.permissions.query({ name: "camera" as PermissionName });
+          if (permission.state === "denied") {
+            setControlError(hostMode
+              ? "Camera is blocked. Allow camera access in browser site settings and reopen the classroom."
+              : "브라우저에서 카메라가 차단되었습니다. 사이트 설정에서 카메라 사용을 허용해주세요.");
+          } else {
+            setControlError(hostMode
+              ? "Zoom camera control was not found. Use Zoom's native Video button or More menu."
+              : "Zoom 카메라 버튼을 찾지 못했습니다. Zoom 기본 비디오 버튼 또는 더보기 메뉴를 확인해주세요.");
+          }
+        } catch {
+          setControlError(hostMode
+            ? "Use Zoom's native Video control or More menu."
+            : "Zoom 기본 비디오 버튼 또는 더보기 메뉴를 사용해주세요.");
+        }
+      } else {
+        setControlError(hostMode
+          ? "Use the corresponding control in Zoom's native toolbar or More menu."
+          : "Zoom 기본 도구 모음 또는 더보기 메뉴에서 해당 버튼을 눌러주세요.");
+      }
+      setDiagnosticsOpen(true);
+    }
   }
   function testSpeaker() {
     if (typeof AudioContext === "undefined") { setControlError(ui("Speaker test unavailable in this browser · 이 브라우저에서는 소리 테스트를 지원하지 않습니다.")); return; }
