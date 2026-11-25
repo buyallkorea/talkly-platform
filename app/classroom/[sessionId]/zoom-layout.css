@@ -343,3 +343,17 @@
   flex:0 0 auto; min-width:0; min-height:32px;
   padding:4px 8px; font-size:11px;
 }
+
+/* Native Zoom-only controls. Prior TALKLY camera/audio helpers were removed
+   from ClassroomZoomEmbed. Restore the SDK toolbar to full visibility for both
+   teacher and student, including while sharing teaching materials. */
+.talkly-zoom-shell .talkly-sdk-native-toolbar,
+.talkly-zoom-shell[data-host=true] .talkly-sdk-native-toolbar {
+  opacity:1!important;
+  filter:none!important;
+  visibility:visible!important;
+}
+.talkly-zoom-shell .talkly-zoom-body {
+  flex:1 1 0;
+  min-height:0;
+}
