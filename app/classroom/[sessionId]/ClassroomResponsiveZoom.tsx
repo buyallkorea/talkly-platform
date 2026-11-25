@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 type View = "checking" | "embedded" | "mobile" | "external";
 
@@ -28,6 +28,20 @@ export default function ClassroomResponsiveZoom({
   children: ReactNode;
 }) {
   const [view, setView] = useState<View>("checking");
+  const [zoomFailed, setZoomFailed] = useState(false);
+  const iframeWrapperRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const listen = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin ||
+          event.data?.type !== "talkly-zoom-connection-state" ||
+          typeof event.data.failed !== "boolean") return;
+      const frame = iframeWrapperRef.current?.querySelector("iframe.talkly-zoom-frame");
+      if (!frame || event.source !== frame.contentWindow) return;
+      setZoomFailed(event.data.failed);
+    };
+    window.addEventListener("message", listen);
+    return () => window.removeEventListener("message", listen);
+  }, []);
   const safeJoinUrl = useMemo(() => safeZoomMeetingUrl(meetingUrl), [meetingUrl]);
 
   useEffect(() => {
@@ -44,8 +58,8 @@ export default function ClassroomResponsiveZoom({
   if (view === "embedded") {
     return (
       <div className="talkly-zoom-desktop">
-        {safeJoinUrl && (
-          <details className="talkly-zoom-app-fallback">
+        {safeJoinUrl && zoomFailed && (
+          <details className="talkly-zoom-app-fallback" open>
             <summary>{hostMode ? "Audio trouble? Open in Zoom app" : "오디오 연결 문제? Zoom 앱에서 열기"}</summary>
             <p>{hostMode ? "If browser audio fails, use the Zoom app. The embedded view closes to avoid duplicate sessions." : "브라우저 Zoom 음성이 연결되지 않으면 Zoom 앱을 이용할 수 있습니다."}</p>
             {hostMode && <p>Teacher: Zoom app does not automatically inherit host privileges. Sign in to the Zoom host account if required.</p>}
@@ -53,7 +67,7 @@ export default function ClassroomResponsiveZoom({
               onClick={() => setView("external")}>{hostMode ? "Open Zoom app" : "Zoom 앱에서 수업 열기"}</a>
           </details>
         )}
-        <div className="talkly-zoom-desktop-embed">{children}</div>
+        <div ref={iframeWrapperRef} className="talkly-zoom-desktop-embed">{children}</div>
       </div>
     );
   }
