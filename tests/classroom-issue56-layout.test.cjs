@@ -29,7 +29,7 @@ test("Issue 56: device controls below video and errors marked red without moving
   assert.match(zoom, /className="talkly-zoom-diagnostics"/);
   assert.match(css, /\.talkly-zoom-health\[data-health=ok\]/);
   assert.match(zoom, /cameraOn === false \? \(hostMode \? "Camera off" : "카메라 꺼짐"\)/);
-  assert.match(zoom, /data-health=\{audioState === "disconnected" \? "error"/);
+  assert.match(zoom, /data-health=\{\["disconnected", "failed"\]\.includes\(audioState\) \? "error"/);
   assert.match(zoom, /micCheckOk === false \? "error"/);
   assert.match(zoom, /cameraControlFailed \? "error"/);
   assert.match(zoom, /상대방 상태 \(읽기 전용\)/);

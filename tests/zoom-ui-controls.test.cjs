@@ -2,7 +2,7 @@ const fs=require('node:fs'),vm=require('node:vm'),test=require('node:test'),asse
 const api={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/zoom-ui-controls.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:api,requestAnimationFrame:callback=>callback()});
 function button(name,{disabled=false,hidden=false}={}){return{disabled,clicks:0,focused:false,getAttribute:k=>k==='aria-label'?name:null,getClientRects:()=>hidden?[]:[{}],focus(){this.focused=true},click(){this.clicks++}}}
 test('Zoom join does not imply audio connected; mute and missing media state are distinct',()=>{
- for(const [user,expected] of [[null,'unknown'],[{},'disconnected'],[{audio:''},'disconnected'],[{audio:'computer',muted:true},'muted'],[{audio:'computer',muted:false},'ready'],[{audio:'phone',muted:false},'ready'],[{audio:'computer'},'unknown']])assert.equal(api.zoomAudioState(user),expected);
+ for(const [user,expected] of [[null,'unknown'],[{},'unknown'],[{audio:''},'disconnected'],[{audio:'computer',muted:true},'muted'],[{audio:'computer',muted:false},'ready'],[{audio:'phone',muted:false},'ready'],[{audio:'computer'},'unknown'],[{audio:'computer',muted:false,audioStatus:3},'failed'],[{audio:'computer',muted:false,audioStatus:1},'connecting'],[{audio:'computer',muted:false,audioStatus:0},'disconnected'],[{audio:'computer',muted:false,audioStatus:2},'ready'],[{audio:'computer',muted:false,audioConnectionStatus:3},'failed'],[{audio:'computer',muted:false,audioStatus:2,audioConnectionStatus:3},'ready']])assert.equal(api.zoomAudioState(user),expected);
 });
 test('visible native audio action is activated synchronously in the click gesture',()=>{
  for(const name of ['Join Audio','Join Audio by Computer','Join with Computer Audio','컴퓨터 오디오로 참가','오디오 연결']){const b=button(name);assert.equal(api.activateZoomControl({querySelectorAll:()=>[b]},'audio'),true);assert.equal(b.clicks,1);assert.equal(b.focused,true)}
@@ -29,4 +29,25 @@ test('closed iframe and disabled overflow items cannot trigger a media action',a
 
 test('stop sharing targets the separate native presenter toolbar, never starts another share',async()=>{
  const stop=button('Stop Share'),start=button('Share Screen');const root={querySelectorAll:()=>[start],ownerDocument:{body:{querySelectorAll:()=>[stop]}}};assert.equal(await api.activateZoomControlWithOverflow(root,'stop-share'),true);assert.equal(stop.clicks,1);assert.equal(start.clicks,0);
+});
+
+test('join computer audio does not accidentally toggle Mute/Unmute',()=>{
+ const mute=button('Mute'), unmute=button('Unmute'), join=button('Join Audio');
+ const root={querySelectorAll:()=>[mute,unmute,join]};
+ assert.equal(api.activateZoomControl(root,'join-audio'),true);
+ assert.equal(join.clicks,1); assert.equal(mute.clicks,0); assert.equal(unmute.clicks,0);
+ assert.equal(api.activateZoomControl({querySelectorAll:()=>[mute,unmute]},'join-audio'),false);
+});
+test('join-audio finds Zoom computer-audio confirmation in dialog portal only',async()=>{
+ const join=button('Join with Computer Audio'),unrelated=button('OK');
+ const root={isConnected:true,querySelectorAll:()=>[],
+   ownerDocument:{querySelectorAll:selector=>selector.startsWith('[role="dialog"]')?[unrelated,join]:[]}};
+ assert.equal(await api.activateZoomControlWithOverflow(root,'join-audio'),true);
+ assert.equal(join.clicks,1);assert.equal(unrelated.clicks,0);
+});
+test('unknown Zoom popups are never clicked as an audio recovery fallback',async()=>{
+ const unrelated=button('Agree'),root={isConnected:true,querySelectorAll:()=>[],
+   ownerDocument:{querySelectorAll:()=>[unrelated]}};
+ assert.equal(await api.activateZoomControlWithOverflow(root,'join-audio'),false);
+ assert.equal(unrelated.clicks,0);
 });
