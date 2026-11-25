@@ -5,7 +5,7 @@ export type ZoomAction = "join-audio" | "audio" | "video" | "share" | "stop-shar
 const labels: Record<ZoomAction, RegExp> = {
  "join-audio":/^(?:join audio(?: by computer)?|join (?:with )?computer audio|connect(?: computer)? audio|오디오 연결|오디오 참가|컴퓨터 오디오(?:로)? (?:참가|연결)|컴퓨터 오디오로 참가)(?:\s*\([^)]*\))?$/i,
  audio:/^(join audio(?: by computer)?|join (?:with )?computer audio|connect audio|오디오 연결|오디오 참가|컴퓨터 오디오로 참가|음소거 해제|unmute|mute|음소거)$/i,
- video:/^(start video|stop video|비디오 시작|비디오 중지|비디오 정지)$/i,
+ video:/^(?:start|stop|turn on|turn off|enable|disable)(?: my)? (?:video|camera)|^(?:camera (?:on|off)|비디오 (?:시작|중지|정지|켜기|끄기)|카메라 (?:켜기|끄기))$/i,
  "stop-share":/^(stop share|stop sharing|공유 중지)$/i,
  share:/^(share screen|화면 공유)$/i,
  settings:/^(settings|설정|audio settings|오디오 설정)$/i,
