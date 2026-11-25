@@ -57,7 +57,7 @@ test("Zoom reconnect explicitly confirms and keeps backend class state unchanged
   assert.match(embed, /teardownRef\.current = previousCleanup/);
   assert.match(embed, /Reconnect Zoom/);
   assert.match(embed, /className="talkly-zoom-quick-actions"/);
-  assert.match(embed, /audioState === "disconnected" \? "error"/);
+  assert.match(embed, /\["disconnected", "failed"\]\.includes\(audioState\) \? "error"/);
   assert.match(embed, /<details className="talkly-textbook-audio-help">/);
   assert.doesNotMatch(embed, /fetch\("\/api\/classroom\/session-status",.*reconnectClassroom/s);
 });
