@@ -174,7 +174,7 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
     </section>
     <div ref={stageRef} className="talkly-classroom-stage" data-material-mode={expanded ? "screen" : "textbook"} data-presenter={canControl ? "true" : "false"} data-camera-percent={sharedCameraWidth}
       style={desktop ? ({ gridTemplateColumns: expanded
-        ? `minmax(0, ${sharedVideoWidth / 2}fr) minmax(0, ${sharedVideoWidth / 2}fr) minmax(0, ${100 - sharedVideoWidth}fr)`
+        ? `minmax(0, ${sharedCameraWidth}fr) minmax(0, ${sharedVideoWidth - sharedCameraWidth}fr) minmax(0, ${100 - sharedVideoWidth}fr)`
         : `minmax(0, ${paneWidths[0]}fr) minmax(0, ${paneWidths[1]}fr) minmax(0, ${paneWidths[2]}fr)` } as CSSProperties) : undefined}>
       {children}
       {desktop && <button type="button" className="talkly-pane-reset" title={canControl ? "Restore default panel sizes" : "기본 화면 비율 복원"}
