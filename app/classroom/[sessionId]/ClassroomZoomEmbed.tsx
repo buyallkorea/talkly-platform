@@ -881,6 +881,14 @@ export default function ClassroomZoomEmbed({
   }
   const audioConnected = audioState === "ready" || audioState === "muted";
   const audioAttention = screen === "joined" && !audioConnected;
+  useEffect(() => {
+    if (window.parent === window) return;
+    window.parent.postMessage({
+      type: "talkly-zoom-connection-state",
+      sessionId,
+      failed: screen === "error",
+    }, window.location.origin);
+  }, [screen, sessionId]);
   const showOverlay =
     screen ===
       "loading" ||

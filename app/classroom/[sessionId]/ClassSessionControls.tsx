@@ -78,6 +78,16 @@ export default function ClassSessionControls({
       )
     );
 
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!startedAt || endedAt) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [startedAt, endedAt]);
+  const elapsedMs = startedAt ? Math.max(0, (endedAt ? Date.parse(endedAt) : now) - Date.parse(startedAt)) : 0;
+  const elapsedSeconds = Number.isFinite(elapsedMs) ? Math.floor(elapsedMs / 1000) : 0;
+  const elapsedLabel = `${String(Math.floor(elapsedSeconds / 3600)).padStart(2, "0")}:${String(Math.floor(elapsedSeconds % 3600 / 60)).padStart(2, "0")}:${String(elapsedSeconds % 60).padStart(2, "0")}`;
+
   const [busy, setBusy] =
     useState(false);
 
@@ -502,6 +512,14 @@ export default function ClassSessionControls({
   return (
     <>
       <style>{`
+        .talkly-session-elapsed {
+          font-variant-numeric: tabular-nums;
+          font-size: 13px;
+          font-weight: 800;
+          color: #dbeafe;
+          white-space: nowrap;
+        }
+
         .talkly-session-controls {
           display: flex;
           align-items: center;
@@ -613,6 +631,11 @@ export default function ClassSessionControls({
       `}</style>
 
       <div className="talkly-session-controls">
+        {(startedAt && (effectiveStatus === "in_progress" || Boolean(endedAt))) && (
+          <span className="talkly-session-elapsed" role="timer" aria-label={ui("수업 진행 시간")}>
+            {elapsedLabel}
+          </span>
+        )}
         <div className="talkly-session-status">
           <span
             className="talkly-session-status-dot"

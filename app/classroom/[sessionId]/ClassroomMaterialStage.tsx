@@ -158,13 +158,19 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
     return () => { observer.disconnect(); frame?.removeEventListener("load", update); };
   }, [expanded, sharedCameraWidth, sessionId, desktop]);
   return <>
-    <section className="talkly-material-controls" aria-label="Lesson materials">
-      <div>{canControl ? <label>{ui("Lesson materials · 교재 방식")}<select aria-label="Lesson materials" value={mode} disabled={busy || sharing} onChange={event => void change(event.target.value as Mode)}>
-        <option value="textbook">{ui("Registered textbook · 등록 교재")}</option><option value="screen">{ui("Screen share · 화면 공유")}</option>
-      </select></label> : <strong>{expanded ? ui("Online material · 강사 화면 공유") : ui("Registered textbook · 등록 교재")}</strong>}</div>
-      {expanded && <details className="talkly-material-share-help"><summary>{sharing ? ui("Screen sharing · 화면 공유 중") : canControl ? "Screen share help" : "화면 공유 안내"}</summary><p role="status">{sharing ? ui("Screen sharing · 화면 공유 중") : canControl ? ui("Click Share Screen in Zoom, then select the textbook tab/window. · Zoom의 화면 공유 버튼을 눌러 교재 탭을 선택하세요.") : ui("Waiting for the teacher to share. · 강사의 화면 공유를 기다리고 있습니다.")}</p></details>}
-      {canControl && expanded && <details><summary>{ui("Teaching with online materials · 온라인 교재 사용 안내")}</summary><p>Keep the original textbook tab/window beside this classroom. Operate the textbook there and watch the student here. Share the textbook in Zoom, not this classroom tab. For textbook sound, use Chrome: select Chrome Tab → textbook tab → check Share tab audio (window/entire screen may have no sound). Stop sharing before changing materials.<br />{ui("교재 창과 강의실 창을 좌우에 배치하세요. 교재는 원본 창에서 조작하고 학생은 강의실에서 확인합니다. 학생은 강의실만 열면 됩니다. 교재 소리는 Chrome 탭 → 교재 탭 → ‘탭 오디오 공유’를 체크해야 전달됩니다. 일반 창 공유에서 소리가 안 나면 공유를 중지하고 교재 탭으로 다시 공유하세요.")}</p></details>}
-      {error && <p role="alert" style={{ color: "#fca5a5" }}>{ui(error)}</p>}
+    <section className="talkly-material-controls" aria-label={canControl ? "Lesson material selection" : "교재"}>
+      <div className="talkly-material-mode-label">
+        {canControl ? (
+          <label>{ui("교재")}
+            <select aria-label={ui("교재 방식")} value={mode} disabled={busy || sharing}
+              onChange={event => void change(event.target.value as Mode)}>
+              <option value="textbook">{ui("등록 교재")}</option>
+              <option value="screen">{ui("화면 공유")}</option>
+            </select>
+          </label>
+        ) : <strong>{expanded ? ui("공유 교재") : ui("교재")}</strong>}
+      </div>
+      {error && <p role="alert" className="talkly-material-error">{ui(error)}</p>}
     </section>
     <div ref={stageRef} className="talkly-classroom-stage" data-material-mode={expanded ? "screen" : "textbook"} data-presenter={canControl ? "true" : "false"} data-camera-percent={sharedCameraWidth}
       style={desktop ? ({ gridTemplateColumns: expanded
