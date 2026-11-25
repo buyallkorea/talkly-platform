@@ -23,5 +23,5 @@ export default function TestStudentStartWatcher({ sessionId }: { sessionId: numb
     const timer = window.setInterval(check, 2000);
     return () => { controller.abort(); window.clearInterval(timer); };
   }, [router, sessionId]);
-  return <p role="status" style={{ margin: "0 auto 8px", color: "#bfdbfe", fontSize: 14 }}>테스트 준비 모드 · 교재와 Zoom을 미리 확인할 수 있습니다. 강사가 수업을 시작하면 채팅·전자칠판·출석이 활성화됩니다.</p>;
+  return null;
 }
