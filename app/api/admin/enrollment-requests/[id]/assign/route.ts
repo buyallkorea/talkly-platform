@@ -577,9 +577,11 @@ export async function POST(
     } catch (cause) {
       console.error("[ADMIN ASSIGN] paid enrollment activation pending", cause);
       return NextResponse.json({
-        success: true, assignment: updated, enrollmentActivationPending: true,
-        warning: "강사 배정은 저장되었지만 결제된 수업의 활성화가 완료되지 않았습니다. 수강내역과 오류 로그를 확인해 주세요."
-      });
+        success: false,
+        assignmentSaved: true,
+        enrollmentActivationPending: true,
+        error: "강사 배정은 저장되었지만 수강정보 또는 수업 일정 생성에 실패했습니다. 정상 완료로 처리하지 않았습니다. 신청 상세 화면에서 수강 활성화를 다시 시도해 주세요."
+      }, { status: 409 });
     }
   }
   return NextResponse.json({ success: true, assignment: updated });
