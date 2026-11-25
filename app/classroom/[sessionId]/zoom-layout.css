@@ -189,3 +189,40 @@
 }
 /* Keep native toolbar accessible even when our three-button controls are
    displayed. A camera/microphone error still requires the Zoom fallback. */
+
+
+/* Audio rescue: preserve the existing Zoom native toolbar and compact
+ * classroom controls; a short banner appears only until audio is joined. */
+.talkly-zoom-shell .talkly-zoom-status { order:2; }
+.talkly-zoom-shell .talkly-audio-connection-banner {
+  order:1; flex:0 0 auto; box-sizing:border-box; min-height:60px;
+  display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:8px 12px; padding:8px 12px;
+  border-top:1px solid #fbbf24; border-bottom:1px solid #fbbf24;
+  background:#352514; color:#fff7ed; text-align:left;
+}
+.talkly-zoom-shell .talkly-audio-connection-banner[data-health=muted] {
+  background:#29324c; border-color:#93c5fd;
+}
+.talkly-audio-connection-banner > div { flex:1 1 210px; min-width:0; }
+.talkly-audio-connection-banner strong { display:block; font-size:13px; font-weight:850; line-height:1.35; }
+.talkly-audio-connection-banner small { display:block; margin-top:3px; color:#ffedd5; font-size:11px; line-height:1.4; }
+.talkly-audio-connection-banner[data-health=muted] small { color:#dbeafe; }
+.talkly-zoom-shell .talkly-audio-connection-banner button {
+  flex:0 1 auto; min-height:40px; min-width:155px;
+  padding:8px 15px; border:2px solid #fde68a; border-radius:8px;
+  color:#29210a; background:#fde68a;
+  font:800 12px/1.35 inherit; font-family:inherit; font-weight:800;
+  cursor:pointer;
+}
+.talkly-zoom-shell .talkly-audio-connection-banner button:hover { background:#fef3c7; }
+.talkly-zoom-shell .talkly-audio-connection-banner button:focus-visible { outline:3px solid #fff; outline-offset:2px; }
+.talkly-zoom-shell .talkly-audio-connection-banner button:disabled { opacity:.6; cursor:wait; }
+.talkly-zoom-shell[data-split=true] .talkly-audio-connection-banner {
+  width:var(--video-column); max-width:100%; margin-right:auto;
+}
+@media(max-width:640px) {
+  .talkly-zoom-shell .talkly-audio-connection-banner { padding:7px 9px; }
+  .talkly-zoom-shell[data-split=true] .talkly-audio-connection-banner { width:100%; }
+  .talkly-zoom-shell .talkly-audio-connection-banner button { min-width:145px; min-height:38px; }
+}
