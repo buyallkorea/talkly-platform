@@ -14,7 +14,7 @@ export default function TestClassroomPage() {
   const [teacherUserId, setTeacherUserId] = useState("");
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
   const [textbooks, setTextbooks] = useState<{ id: number; title: string; pages: number }[]>([]);
-  const [materialMode, setMaterialMode] = useState<"textbook" | "screen">("textbook");
+  const [materialMode, setMaterialMode] = useState<"textbook" | "screen">("screen");
   const [textbookId, setTextbookId] = useState("");
   const [optionsError, setOptionsError] = useState("");
   useEffect(() => {
@@ -119,8 +119,8 @@ export default function TestClassroomPage() {
         {optionsError && <p role="alert" style={{ color: "#b91c1c" }}>{optionsError}</p>}
         <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <strong>교재 방식</strong>
-          <select value={materialMode} onChange={event => setMaterialMode(event.target.value as "textbook" | "screen")} style={{ padding: 12, borderRadius: 8 }}>
-            <option value="textbook">등록 교재</option><option value="screen">온라인 교재 · Zoom 화면 공유</option>
+          <select value={materialMode} onChange={event => setMaterialMode(event.target.value as "textbook" | "screen")} style={{ padding: 12, borderRadius: 8, border: "1px solid #aaa" }}>
+            <option value="screen">온라인 교재 · Zoom 화면 공유</option><option value="textbook">등록 교재</option>
           </select>
         </label>
         {materialMode === "screen" && <p>교재 파일 없이 테스트 수업을 만듭니다. 담당 강사가 입장 후 Zoom의 화면 공유 버튼으로 교재 탭·창을 선택합니다. 관리자는 참관 또는 테스트 학생으로 시청합니다.</p>}
