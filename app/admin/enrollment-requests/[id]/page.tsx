@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
 
 import AssignmentManager from "./AssignmentManager";
+import RetryActivationButton from "./RetryActivationButton";
 import RequestStatusControls from "./RequestStatusControls";
 
 type PageProps = {
@@ -452,6 +453,29 @@ export default async function AdminEnrollmentRequestDetailPage({
       enrollmentRequest.assigned_teacher_user_id
     );
 
+  // A paid + assigned request must have both a linked enrollment and all lesson sessions.
+  const { data: linkedEnrollment, error: linkedEnrollmentError } = await adminClient
+    .from("enrollments")
+    .select("id,total_lessons")
+    .eq("source_enrollment_request_id", enrollmentRequest.id)
+    .limit(1).maybeSingle();
+  if (linkedEnrollmentError) throw new Error("수강정보 연결 상태를 확인하지 못했습니다.");
+
+  let createdLessonCount = 0;
+  if (linkedEnrollment) {
+    const { count, error: sessionsCountError } = await adminClient
+      .from("class_sessions")
+      .select("id", { count: "exact", head: true })
+      .eq("enrollment_id", linkedEnrollment.id);
+    if (sessionsCountError) throw new Error("수업 일정 생성 상태를 확인하지 못했습니다.");
+    createdLessonCount = count ?? 0;
+  }
+  const needsActivationRecovery =
+    latestPayment?.status === "paid" &&
+    hasAssignment &&
+    (!linkedEnrollment ||
+      createdLessonCount < Math.max(1, Number(linkedEnrollment.total_lessons ?? 0)));
+
   return (
     <main
       style={{
@@ -703,6 +727,16 @@ export default async function AdminEnrollmentRequestDetailPage({
             {hasAssignment ? " 수업 활성화 여부를 수강내역에서 확인해 주세요." :
               " 학생 수준과 희망 시간을 확인하고 강사 배정 기능에서 강사를 선택해 주세요. 배정 확정 시 수강 등록을 생성합니다."}
           </p>
+        </section>
+      )}
+      {needsActivationRecovery && (
+        <section role="alert" style={{ marginTop: 16, padding: 20, border: "2px solid #fda29b", borderRadius: 12, background: "#fff4f2" }}>
+          <h2 style={{ margin: "0 0 8px", color: "#912018", fontSize: 18 }}>수강 활성화 및 수업 생성 확인 필요</h2>
+          <p style={{ color: "#912018", lineHeight: 1.65, margin: 0 }}>
+            결제와 강사 배정은 확인되었지만 정규 수강정보 또는 예정 수업이 모두 생성되지 않았습니다.
+            학생·강사 페이지에 수업이 누락될 수 있습니다. 수업 생성이 완료되기 전에는 배정 완료로 간주하지 마세요.
+          </p>
+          <RetryActivationButton requestId={enrollmentRequest.id} />
         </section>
       )}
       <RequestStatusControls
