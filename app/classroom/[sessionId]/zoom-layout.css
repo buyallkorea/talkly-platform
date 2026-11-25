@@ -120,8 +120,10 @@
 .talkly-zoom-shell .talkly-zoom-diagnostics:not([open]) > .talkly-zoom-diagnostic-panel { display:none; }
 .talkly-zoom-shell .talkly-zoom-diagnostic-panel {
   position:absolute; right:0; bottom:calc(100% + 7px);
-  box-sizing:border-box; width:min(330px, calc(100vw - 28px));
-  max-height:min(65dvh, 470px); overflow-y:auto; overscroll-behavior:contain;
+  /* The compact camera rail is often only 240–320px wide. An oversized
+     right-aligned panel extends past the iframe's left edge and clips controls. */
+  box-sizing:border-box; width:min(280px, calc(100vw - 28px));
+  max-height:min(55dvh, 360px); overflow-y:auto; overscroll-behavior:contain;
   padding:12px; display:flex; flex-direction:column; gap:9px;
   border:1px solid #64748b; border-radius:10px; background:#172033;
   color:#f8fafc; box-shadow:0 10px 30px rgba(0,0,0,.5);
