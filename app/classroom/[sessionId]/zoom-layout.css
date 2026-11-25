@@ -20,7 +20,9 @@
 .talkly-zoom-shell[data-split=true][data-receiving=true] .talkly-sdk-cameras{order:0;flex:0 0 var(--video-column);width:var(--video-column)!important;max-width:var(--video-column);height:100%!important;overflow:hidden}
 .talkly-zoom-shell[data-split=true][data-receiving=true] .talkly-sdk-divider{display:none!important}
 .talkly-share-waiting{position:absolute;inset:0 0 0 var(--video-column);display:grid;place-content:center;padding:20px;text-align:center;background:#0c1320;border-left:2px solid #475569;pointer-events:none}
-.talkly-zoom-shell[data-split=true][data-receiving=false] #talkly-zoom-sdk-root{width:var(--video-column)}
+/* Keep the Zoom widget full-width before a share begins: restricting its root
+   to the camera rail hid both local and teacher video on student screens. */
+.talkly-zoom-shell[data-split=true][data-receiving=false] #talkly-zoom-sdk-root{width:100%!important}
 @media(max-width:640px){
  .talkly-zoom-body{min-height:300px}
  .talkly-zoom-shell[data-split=true][data-receiving=true] .talkly-sdk-panel:not([hidden]){height:auto}
@@ -270,4 +272,16 @@
   .talkly-zoom-shell[data-host=true][data-sharing=true] .talkly-zoom-status {
     width:100%;
   }
+}
+
+/* Keep recovery controls usable but do not let the diagnostic popup extend
+   beyond the camera rail or cover the center shared textbook. */
+.talkly-zoom-shell .talkly-zoom-diagnostic-panel {
+  left:0; right:auto;
+  width:min(280px, max(110px, calc(var(--video-column) - 12px)));
+  max-width:calc(100vw - 26px);
+  max-height:min(45dvh, 320px);
+}
+.talkly-zoom-shell .talkly-audio-connection-banner[data-health=needs-audio] {
+  position:relative; z-index:16;
 }
