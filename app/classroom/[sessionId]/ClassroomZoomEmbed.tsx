@@ -951,7 +951,7 @@ export default function ClassroomZoomEmbed({
           </div>
         </>}
       </div>
-      {screen === "joined" && (audioAttention || audioState === "muted") && (
+      {screen === "joined" && audioAttention && (
         <div className="talkly-audio-connection-banner" data-health={audioConnected ? "muted" : "needs-audio"}
           role={audioAttention ? "alert" : "status"}>
           <div>
@@ -962,7 +962,7 @@ export default function ClassroomZoomEmbed({
                 : audioState === "connecting" || audioRecoveryStatus === "attempting"
                   ? (hostMode ? "Connecting computer audio…" : "컴퓨터 오디오 연결 확인 중…")
                   : (hostMode ? "Join computer audio to speak and hear" : "서로 말하고 들으려면 컴퓨터 오디오를 연결하세요")}</strong>
-            <small>{audioState === "muted"
+            <small className="talkly-audio-instructions">{audioState === "muted"
               ? (hostMode ? "Unmute to let your student hear you." : "상대방이 내 목소리를 들으려면 음소거를 해제하세요.")
               : audioRecoveryStatus === "attempting"
                 ? (hostMode ? "If Zoom opens a dialog, choose Join with Computer Audio." : "Zoom 창이 뜨면 ‘컴퓨터 오디오로 참가’를 반드시 눌러 주세요.")
