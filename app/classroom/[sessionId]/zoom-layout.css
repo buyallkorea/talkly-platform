@@ -357,3 +357,11 @@
   flex:1 1 0;
   min-height:0;
 }
+
+/* Simplified original Zoom controls. Only buttons identified as optional
+   inside the SDK's native toolbar are hidden; audio/video/share and
+   their built-in device menus remain SDK-owned and functional. */
+.talkly-zoom-shell .talkly-sdk-native-toolbar .talkly-zoom-optional-control,
+.talkly-zoom-shell .talkly-zoom-view-selector {
+  display:none!important;
+}
