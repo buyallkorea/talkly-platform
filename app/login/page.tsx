@@ -173,12 +173,12 @@ function LoginPageContent() {
 
       if (loginError) {
 
+        const isUnconfirmed = /email\s*not\s*confirmed|email\s*unconfirmed/i.test(loginError.message || "");
         setErrorMessage(
-
-          "이메일 또는 비밀번호를 확인해주세요."
-
+          isUnconfirmed
+            ? "이메일 인증이 완료되지 않았습니다. 가입 메일함에서 인증 링크를 클릭한 뒤 로그인해주세요."
+            : "이메일 또는 비밀번호를 확인해주세요."
         );
-
         return;
 
       }
