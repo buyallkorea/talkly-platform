@@ -856,7 +856,7 @@ export default function ClassroomZoomEmbed({
             <button type="button" onClick={() => void nativeAction("video")}
               data-health={cameraControlFailed ? "error" : "unknown"}
               title={cameraControlFailed ? (hostMode ? "Camera action failed — check settings" : "카메라 조작 실패 — 설정 확인") : hostMode ? "Toggle camera" : "카메라 켜기 / 끄기"}>
-              {hostMode ? "Video" : "비디오"}{cameraControlFailed ? " !" : ""}
+              {cameraOn === true ? (hostMode ? "Camera off" : "카메라 끄기") : (hostMode ? "Camera on" : "카메라 켜기")}{cameraControlFailed ? " !" : ""}
             </button>
             {hostMode ? (
               <button type="button" onClick={() => void nativeAction(sharing ? "stop-share" : "share")}
@@ -881,6 +881,7 @@ export default function ClassroomZoomEmbed({
               <p className="talkly-zoom-peer">{hostMode ? "Other participant (read only): " : "상대방 상태 (읽기 전용): "}{ui(peerAudio)}</p>
               {sameNameParticipants > 0 && <p className="talkly-zoom-error">{hostMode ? "Duplicate participant name detected. Close extra Zoom sessions to avoid audio conflicts." : "같은 이름으로 여러 기기에서 접속 중입니다. 중복 연결을 확인해 주세요."}</p>}
               <div className="talkly-zoom-diagnostic-actions">
+                <button type="button" onClick={() => void nativeAction("video")}>{cameraOn === true ? (hostMode ? "Turn camera off" : "카메라 끄기") : (hostMode ? "Turn camera on" : "카메라 켜기")}</button>
                 <button type="button" onClick={() => void checkMicrophone()} disabled={micChecking}
                   data-health={micCheckOk === false ? "error" : "unknown"}>{micChecking ? (hostMode ? "Checking…" : "확인 중…") : hostMode ? "Check microphone" : "마이크 점검"}</button>
                 <button type="button" onClick={reconnectClassroom} disabled={runningRef.current}
@@ -896,6 +897,14 @@ export default function ClassroomZoomEmbed({
           </details>
         </>}
       </div>
+      {screen === "joined" && (
+        <button type="button" className="talkly-zoom-camera-access"
+          onClick={() => void nativeAction("video")}
+          aria-label={cameraOn === true ? (hostMode ? "Turn camera off" : "카메라 끄기") : (hostMode ? "Turn camera on" : "카메라 켜기")}
+          title={hostMode ? "Camera / video" : "카메라 켜기·끄기"}>
+          {cameraOn === true ? (hostMode ? "Camera off" : "카메라 끄기") : (hostMode ? "Camera on" : "카메라 켜기")}
+        </button>
+      )}
       {screen === "joined" && (audioAttention || audioState === "muted") && (
         <div className="talkly-audio-connection-banner" data-health={audioConnected ? "muted" : "needs-audio"}
           role={audioAttention ? "alert" : "status"}>
