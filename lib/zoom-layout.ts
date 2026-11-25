@@ -51,5 +51,5 @@ export function markZoomLayout(root: HTMLElement) {
   for (const child of Array.from(row.children)) if (child !== share && child !== video) addLayoutClass(child as HTMLElement, "talkly-sdk-divider");
 }
 export function zoomLayoutSize(width: number, height: number, split: boolean) {
-  return { width: Math.max(240, Math.floor(split ? Math.min(320, Math.max(240, width * .26923)) : width)), height: Math.max(180, Math.floor(height - 100)) };
+  return { width: Math.max(240, Math.floor(width)), height: Math.max(180, Math.floor(height - 100)) };
 }
