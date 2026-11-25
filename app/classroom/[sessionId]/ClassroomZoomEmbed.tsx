@@ -229,6 +229,14 @@ export default function ClassroomZoomEmbed({
   const [sameNameParticipants, setSameNameParticipants] = useState(0);
   const [audioBusy, setAudioBusy] = useState(false);
   const audioBusyRef = useRef(false);
+  const audioRecoveryTimersRef = useRef<number[]>([]);
+  const [audioRecoveryStatus, setAudioRecoveryStatus] =
+    useState<"idle" | "attempting" | "timeout">("idle");
+  const clearAudioRecoveryTimers = useCallback(() => {
+    audioRecoveryTimersRef.current.forEach(timer => window.clearTimeout(timer));
+    audioRecoveryTimersRef.current = [];
+  }, []);
+  useEffect(() => () => clearAudioRecoveryTimers(), [clearAudioRecoveryTimers]);
 
   // A lightweight, best-effort browser SDK presence signal for administrators.
   // It is deliberately distinct from attendance and Zoom server membership.
@@ -303,6 +311,9 @@ export default function ClassroomZoomEmbed({
       try {
         await teardownRef.current;
         ensureCurrent();
+        clearAudioRecoveryTimers();
+        setAudioRecoveryStatus("idle");
+        setAudioState("unknown");
         setScreen(
           "loading"
         );
@@ -496,14 +507,19 @@ export default function ClassroomZoomEmbed({
         const updateAudio = () => {
           try {
             const me = client.getCurrentUser?.();
-            setAudioState(zoomAudioState(me));
+            const currentAudio = zoomAudioState(me);
+            setAudioState(currentAudio);
+            if (currentAudio === "ready" || currentAudio === "muted") {
+              clearAudioRecoveryTimers();
+              setAudioRecoveryStatus("idle");
+            }
             setCameraOn(typeof me?.bVideoOn === "boolean" ? me.bVideoOn : null);
             const peers = client.getAttendeeslist?.().filter(person => me?.userId != null && person.userId !== me.userId) || [];
             const currentDisplayName = me?.displayName?.trim().toLocaleLowerCase();
             setSameNameParticipants(currentDisplayName
               ? peers.filter(person => person.displayName?.trim().toLocaleLowerCase() === currentDisplayName).length
               : 0);
-            setPeerAudio(peers.length === 0 ? ui("Waiting for the other participant · 상대방 입장 대기") : peers.some(person => zoomAudioState(person) === "disconnected") ? ui("Other participant: audio not connected · 상대방 오디오 미연결") : peers.some(person => zoomAudioState(person) === "unknown") ? ui("Other participant: checking audio · 상대방 오디오 확인 중") : peers.some(person => zoomAudioState(person) === "muted") ? ui("Other participant: microphone muted · 상대방 마이크 음소거") : ui("Other participant: audio connected · 상대방 오디오 연결됨"));
+            setPeerAudio(peers.length === 0 ? ui("Waiting for the other participant · 상대방 입장 대기") : peers.some(person => ["disconnected", "failed"].includes(zoomAudioState(person))) ? ui("Other participant: audio not connected · 상대방 오디오 미연결") : peers.some(person => ["unknown", "connecting"].includes(zoomAudioState(person))) ? ui("Other participant: checking audio · 상대방 오디오 확인 중") : peers.some(person => zoomAudioState(person) === "muted") ? ui("Other participant: microphone muted · 상대방 마이크 음소거") : ui("Other participant: audio connected · 상대방 오디오 연결됨"));
           } catch { setAudioState("unknown"); }
         };
         const emitShare = (active: boolean) => {
@@ -661,6 +677,7 @@ export default function ClassroomZoomEmbed({
       userName,
       hostMode,
       disposeClient,
+      clearAudioRecoveryTimers,
       measureVideo, ui]);
   useEffect(() => {
     generationRef.current += 1;
@@ -711,6 +728,8 @@ export default function ClassroomZoomEmbed({
       : "Zoom 연결을 다시 시작할까요? 수업시간·출석은 초기화되지 않으며 오디오도 다시 연결해야 합니다.")) return;
     setControlError("");
     setMicCheckMessage("");
+    clearAudioRecoveryTimers();
+    setAudioRecoveryStatus("idle");
     setAudioState("unknown");
     setCameraOn(null);
     setCameraControlFailed(false);
@@ -731,16 +750,72 @@ export default function ClassroomZoomEmbed({
   }
   async function audioAction() {
     if (audioBusyRef.current) return;
+    audioBusyRef.current = true;
+    setAudioBusy(true);
     setControlError("");
-    if (audioState !== "ready" && audioState !== "muted") { void nativeAction("audio"); return; }
-    audioBusyRef.current = true; setAudioBusy(true);
     try {
       const client = clientRef.current;
-      if (!client?.mute) throw new Error("Use the Zoom microphone button");
-      await client.mute(audioState === "ready");
-      setAudioState(zoomAudioState(client.getCurrentUser?.()));
-    } catch { setControlError(ui("Microphone change failed. Check browser permissions and Zoom audio settings. · 마이크 변경 실패: 브라우저 권한과 Zoom 오디오 설정을 확인하세요.")); }
-    finally { audioBusyRef.current = false; setAudioBusy(false); }
+      if (audioState === "ready" || audioState === "muted") {
+        if (!client?.mute) throw new Error("Zoom audio mute API unavailable");
+        await client.mute(audioState === "ready");
+        setAudioState(zoomAudioState(client.getCurrentUser?.()));
+        return;
+      }
+
+      // The Zoom embedded Meeting SDK does not expose a public joinAudio API.
+      // Activate only the visible, explicitly named native Join Computer Audio
+      // control from the user's click. Do not auto-click on mount or reconnect.
+      const clicked = Boolean(rootRef.current &&
+        await activateZoomControlWithOverflow(rootRef.current, "join-audio"));
+      if (!clicked) {
+        setAudioRecoveryStatus("timeout");
+        setDiagnosticsOpen(true);
+        setControlError(hostMode
+          ? "Zoom's Join Audio button was not found. Use the native Zoom toolbar or its audio dialog to connect computer audio."
+          : "Zoom의 오디오 참가 버튼을 찾지 못했습니다. Zoom 기본 도구 모음에서 ‘컴퓨터 오디오 참가’를 눌러 주세요.");
+        console.warn("[TALKLY] Zoom Join Computer Audio control unavailable");
+        return;
+      }
+      setAudioRecoveryStatus("attempting");
+      clearAudioRecoveryTimers();
+      const generation = generationRef.current;
+      // Refresh only after a user action; no permanent polling and no
+      // interference with Zoom-owned media streams.
+      for (const delay of [600, 2200, 8500]) {
+        const timer = window.setTimeout(() => {
+          if (generation !== generationRef.current || !joinedRef.current ||
+              !clientRef.current) return;
+          try {
+            const current = zoomAudioState(clientRef.current.getCurrentUser?.());
+            setAudioState(current);
+            if (current === "ready" || current === "muted") {
+              clearAudioRecoveryTimers();
+              setAudioRecoveryStatus("idle");
+              return;
+            }
+            if (delay === 8500) {
+              setAudioRecoveryStatus("timeout");
+              setDiagnosticsOpen(true);
+              console.warn("[TALKLY] Computer audio not confirmed after join request", {
+                audioState: current,
+              });
+            }
+          } catch {
+            if (delay === 8500) setAudioRecoveryStatus("timeout");
+          }
+        }, delay);
+        audioRecoveryTimersRef.current.push(timer);
+      }
+    } catch {
+      setAudioRecoveryStatus("timeout");
+      setDiagnosticsOpen(true);
+      setControlError(hostMode
+        ? "Audio action did not complete. Check Zoom audio settings, browser permissions and the native toolbar."
+        : "오디오 연결을 확인하지 못했습니다. Zoom 오디오 설정과 브라우저 마이크 권한을 확인해 주세요.");
+    } finally {
+      audioBusyRef.current = false;
+      setAudioBusy(false);
+    }
   }
   async function nativeAction(action: ZoomAction) {
     setControlError("");
@@ -759,6 +834,8 @@ export default function ClassroomZoomEmbed({
       tone.start(); tone.stop(context.currentTime + .4);
     }).catch(() => { void context.close(); setControlError(ui("Speaker playback blocked. Check site sound permission. · 사이트 소리 권한을 확인하세요.")); });
   }
+  const audioConnected = audioState === "ready" || audioState === "muted";
+  const audioAttention = screen === "joined" && !audioConnected;
   const showOverlay =
     screen ===
       "loading" ||
@@ -772,9 +849,9 @@ export default function ClassroomZoomEmbed({
         {screen === "joined" && <>
           <div className="talkly-zoom-quick-actions" role="toolbar" aria-label={hostMode ? "Lesson controls" : "수업 조작"}>
             <button type="button" onClick={() => void audioAction()} disabled={audioBusy}
-              data-health={audioState === "disconnected" ? "error" : "unknown"}
-              title={audioState === "disconnected" ? (hostMode ? "Audio disconnected — connect computer audio" : "오디오 미연결 — 연결하기") : hostMode ? "Audio / microphone" : "오디오 / 마이크"}>
-              {audioState === "disconnected" ? (hostMode ? "Audio !" : "오디오 !") : audioState === "muted" ? (hostMode ? "Unmute" : "음소거 해제") : audioState === "ready" ? (hostMode ? "Mute" : "음소거") : (hostMode ? "Audio" : "오디오")}
+              data-health={["disconnected", "failed"].includes(audioState) ? "error" : "unknown"}
+              title={!audioConnected ? (hostMode ? "Join computer audio" : "컴퓨터 오디오 연결") : hostMode ? "Audio / microphone" : "오디오 / 마이크"}>
+              {!audioConnected ? (hostMode ? "Join Audio" : "오디오 연결") : audioState === "muted" ? (hostMode ? "Unmute" : "음소거 해제") : (hostMode ? "Mute" : "음소거")}
             </button>
             <button type="button" onClick={() => void nativeAction("video")}
               data-health={cameraControlFailed ? "error" : "unknown"}
@@ -797,7 +874,7 @@ export default function ClassroomZoomEmbed({
               <strong>{hostMode ? "Connection settings" : "연결 설정"}</strong>
               <div className="talkly-zoom-indicators" role="status">
                 <span className="talkly-zoom-health" data-health="ok">{hostMode ? "Zoom connected" : "Zoom 연결됨"}</span>
-                <span className="talkly-zoom-health" data-health={audioState === "disconnected" ? "error" : audioState === "ready" || audioState === "muted" ? "ok" : "unknown"}>{audioState === "disconnected" ? (hostMode ? "Audio disconnected" : "오디오 미연결") : audioState === "ready" || audioState === "muted" ? (hostMode ? "Audio connected" : "오디오 연결됨") : (hostMode ? "Audio checking" : "오디오 확인 중")}</span>
+                <span className="talkly-zoom-health" data-health={["disconnected", "failed"].includes(audioState) ? "error" : audioConnected ? "ok" : "unknown"}>{audioState === "failed" ? (hostMode ? "Audio connection failed" : "오디오 연결 실패") : audioState === "disconnected" ? (hostMode ? "Audio disconnected" : "오디오 미연결") : audioConnected ? (hostMode ? "Audio joined" : "오디오 연결됨") : (hostMode ? "Audio checking" : "오디오 확인 중")}</span>
                 <span className="talkly-zoom-health" data-health={micCheckOk === false ? "error" : micCheckOk === true ? "ok" : "unknown"}>{micCheckOk === false ? (hostMode ? "Microphone issue" : "마이크 문제") : micCheckOk === true ? (hostMode ? "Microphone checked" : "마이크 확인됨") : (hostMode ? "Microphone not checked" : "마이크 점검 전")}</span>
                 <span className="talkly-zoom-health" data-health={cameraControlFailed ? "error" : cameraOn === true ? "ok" : "unknown"}>{cameraControlFailed ? (hostMode ? "Camera issue" : "카메라 문제") : cameraOn === true ? (hostMode ? "Camera on" : "카메라 켜짐") : cameraOn === false ? (hostMode ? "Camera off" : "카메라 꺼짐") : (hostMode ? "Camera checking" : "카메라 확인 중")}</span>
               </div>
@@ -819,6 +896,30 @@ export default function ClassroomZoomEmbed({
           </details>
         </>}
       </div>
+      {screen === "joined" && (audioAttention || audioState === "muted") && (
+        <div className="talkly-audio-connection-banner" data-health={audioConnected ? "muted" : "needs-audio"}
+          role={audioAttention ? "alert" : "status"}>
+          <div>
+            <strong>{audioState === "muted"
+              ? (hostMode ? "Audio joined · microphone muted" : "오디오 연결됨 · 마이크 음소거")
+              : audioState === "failed" || audioRecoveryStatus === "timeout"
+                ? (hostMode ? "Computer audio needs attention" : "컴퓨터 오디오 연결 확인 필요")
+                : audioState === "connecting" || audioRecoveryStatus === "attempting"
+                  ? (hostMode ? "Connecting computer audio…" : "컴퓨터 오디오 연결 확인 중…")
+                  : (hostMode ? "Join computer audio to speak and hear" : "서로 말하고 들으려면 컴퓨터 오디오를 연결하세요")}</strong>
+            <small>{audioState === "muted"
+              ? (hostMode ? "Unmute to let your student hear you." : "상대방이 내 목소리를 들으려면 음소거를 해제하세요.")
+              : audioRecoveryStatus === "attempting"
+                ? (hostMode ? "If Zoom opens a dialog, choose Join with Computer Audio." : "Zoom 창이 뜨면 ‘컴퓨터 오디오로 참가’를 반드시 눌러 주세요.")
+                : (hostMode ? "A video connection does not connect audio automatically." : "강의실 입장과 소리 연결은 별개입니다. 연결 후 서로 소리가 들리는지 확인하세요.")}</small>
+          </div>
+          <button type="button" onClick={() => void audioAction()} disabled={audioBusy}>
+            {audioState === "muted"
+              ? (hostMode ? "Unmute microphone" : "마이크 음소거 해제")
+              : (hostMode ? "Join computer audio" : "컴퓨터 오디오 연결")}
+          </button>
+        </div>
+      )}
       <div className="talkly-zoom-body">
       {showOverlay && (
         <div
