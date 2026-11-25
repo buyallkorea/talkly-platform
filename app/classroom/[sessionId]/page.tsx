@@ -1171,6 +1171,30 @@ export default async function ClassroomPage({
           .talkly-classroom-title { font-size:14px; }
         }
 
+
+        /* Teacher and learner must share the same three-pane Zoom/share/chat
+           grid. The native Zoom SDK owns the video and shared-content DOM
+           within the spanning left two columns; never remount its iframe. */
+        @media (min-width: 1051px) {
+          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video,
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-video {
+            grid-column: 1 / 3;
+            grid-row: 1;
+            height: 100%;
+            min-height: 0;
+          }
+          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-screen-guide,
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-screen-guide {
+            display: none;
+          }
+          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-chat,
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat {
+            grid-column: 3;
+            grid-row: 1;
+            height: 100%;
+            min-height: 0;
+          }
+        }
       `}</style>
 
       <main className="talkly-classroom" lang={profile.role === "teacher" ? "en" : "ko"}>
