@@ -228,3 +228,20 @@
   .talkly-zoom-shell[data-split=true] .talkly-audio-connection-banner { width:100%; }
   .talkly-zoom-shell .talkly-audio-connection-banner button { min-width:145px; min-height:38px; }
 }
+
+/* Persistent camera access: the Zoom SDK may push its native bottom toolbar
+   below the visible video frame when receiving shared materials. */
+.talkly-zoom-shell { position:relative; }
+.talkly-zoom-shell .talkly-zoom-camera-access {
+  position:absolute; top:8px; left:8px; z-index:25;
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:38px; max-width:calc(100% - 16px);
+  box-sizing:border-box; border:2px solid #bfdbfe; border-radius:8px;
+  padding:7px 12px; background:#1d4ed8; color:#fff;
+  font-size:13px; font-weight:850; font-family:inherit;
+  cursor:pointer; box-shadow:0 3px 12px rgba(0,0,0,.45);
+}
+.talkly-zoom-shell .talkly-zoom-camera-access:hover { background:#1e40af; }
+.talkly-zoom-shell .talkly-zoom-camera-access:focus-visible {
+  outline:3px solid #facc15; outline-offset:2px;
+}
