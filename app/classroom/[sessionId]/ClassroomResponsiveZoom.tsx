@@ -35,7 +35,7 @@ export default function ClassroomResponsiveZoom({
       if (event.origin !== window.location.origin ||
           event.data?.type !== "talkly-zoom-connection-state" ||
           typeof event.data.failed !== "boolean") return;
-      const frame = iframeWrapperRef.current?.querySelector("iframe.talkly-zoom-frame");
+      const frame = iframeWrapperRef.current?.querySelector<HTMLIFrameElement>("iframe.talkly-zoom-frame");
       if (!frame || event.source !== frame.contentWindow) return;
       setZoomFailed(event.data.failed);
     };
