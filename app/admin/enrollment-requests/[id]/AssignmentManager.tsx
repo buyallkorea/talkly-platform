@@ -641,6 +641,9 @@ export default function AssignmentManager({
           result.error ||
             "배정 저장에 실패했습니다."
         );
+        if (result.assignmentSaved) {
+          router.refresh();
+        }
         return;
       }
 
