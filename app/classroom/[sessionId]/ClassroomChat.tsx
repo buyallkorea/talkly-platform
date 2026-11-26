@@ -297,6 +297,9 @@ export default function ClassroomChat({
         .talkly-chat-send { min-height: 44px; padding: 8px 14px; border-radius: 8px; background: #2563eb; color: white; font-size: 15px; cursor: pointer; }
         .talkly-chat-send:disabled { opacity: .5; cursor: default; }
         .talkly-chat-error { color: #fca5a5; font-size: 14px; }
+        .talkly-chat-preclass-note { flex: 0 0 auto; margin: 0; font-size: 11px; line-height: 1.4; color: #cbd5e1; }
+        .talkly-chat-form { flex: 0 0 auto; }
+        .talkly-chat-send:disabled { opacity: .65; }
       `}</style>
 
       <section className="talkly-chat">
@@ -336,8 +339,7 @@ export default function ClassroomChat({
           )}
         </div>
 
-        {canSend && (
-        <form onSubmit={handleSubmit} className="talkly-chat-form">
+        <form onSubmit={handleSubmit} className="talkly-chat-form" aria-label={ui("채팅 메시지 입력")}>
           <input
             aria-label={ui("수업 채팅 메시지")}
             value={message}
@@ -354,12 +356,18 @@ export default function ClassroomChat({
 
           <button
             type="submit"
-            disabled={loading || !message.trim()}
+            disabled={!canSend || loading || !message.trim()}
             className="talkly-chat-send"
           >
             {loading ? "Sending..." : "Send"}
           </button>
         </form>
+        {!canSend && (
+          <p className="talkly-chat-preclass-note" role="status">
+            {currentUserRole === "admin" && !testStudentMode
+              ? ui("관리자 참관 · 채팅 읽기 전용")
+              : ui("강사가 수업을 시작하면 채팅할 수 있습니다.")}
+          </p>
         )}
 
         {errorMessage && (
