@@ -365,3 +365,43 @@
 .talkly-zoom-shell .talkly-zoom-view-selector {
   display:none!important;
 }
+
+/* Pre-class camera/microphone preview lives above the Zoom waiting view.
+   It never replaces the meeting's video, never broadcasts tracks, and
+   disappears once Zoom join succeeds. All tracks release on unmount. */
+.talkly-zoom-body .talkly-preclass-overlay {
+  position:absolute; inset:0; z-index:14;
+  overflow:auto; display:flex; justify-content:center; align-items:center;
+  background:#111827; padding:10px; box-sizing:border-box;
+}
+.talkly-preclass-preview {
+  box-sizing:border-box; width:min(100%,420px); display:flex;
+  flex-direction:column; align-items:center; gap:9px; padding:12px;
+  color:#f8fafc; text-align:center;
+}
+.talkly-preclass-video {
+  width:min(100%,330px); aspect-ratio:4/3; min-height:110px;
+  background:#0b1220; border-radius:9px; border:1px solid #475569;
+  overflow:hidden; display:flex; align-items:center; justify-content:center;
+  color:#cbd5e1; font-size:13px;
+}
+.talkly-preclass-video video {
+  display:block; width:100%; height:100%; object-fit:contain;
+  transform:scaleX(-1);
+}
+.talkly-preclass-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; }
+.talkly-preclass-actions button {
+  background:#1d4ed8; color:#fff; border:1px solid #93c5fd;
+  border-radius:7px; font-size:12px; font-weight:700; font-family:inherit; line-height:1.3; min-height:36px;
+  padding:7px 11px; cursor:pointer;
+}
+.talkly-preclass-actions button:disabled { opacity:.6; cursor:wait; }
+.talkly-preclass-actions button:focus-visible { outline:2px solid #facc15; outline-offset:2px; }
+.talkly-preclass-preview small { font-size:11px; line-height:1.4; color:#bbf7d0; }
+.talkly-preclass-preview small[role=alert] { color:#fecaca; }
+.talkly-preclass-preview p { margin:0; font-size:11px; line-height:1.5; color:#cbd5e1; }
+@media(max-width:640px) {
+  .talkly-zoom-body .talkly-preclass-overlay { align-items:flex-start; }
+  .talkly-preclass-preview { padding:5px; }
+  .talkly-preclass-video { max-height:38dvh; }
+}

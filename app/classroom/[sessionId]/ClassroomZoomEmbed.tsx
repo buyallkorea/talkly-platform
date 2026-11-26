@@ -1,5 +1,6 @@
 "use client";
 import { getClassroomText } from "@/lib/classroom-language";
+import ClassroomDevicePreview from "./ClassroomDevicePreview";
 import { checkClassroomMicrophone } from "@/lib/classroom-audio-diagnostics";
 import { activateZoomControlWithOverflow, zoomAudioState, type ZoomAction, type ZoomAudioUser } from "@/lib/zoom-ui-controls";
 import "./zoom-layout.css";
@@ -1113,6 +1114,11 @@ export default function ClassroomZoomEmbed({
             240,
         }}
       />
+      {!hostMode && (screen === "loading" || screen === "joining" || screen === "waiting") && (
+        <div className="talkly-preclass-overlay">
+          <ClassroomDevicePreview />
+        </div>
+      )}
       {split && !sharing && screen === "joined" && <div className="talkly-share-waiting"><strong>{ui("Shared textbook · 공유 교재")}</strong><p>{ui("Waiting for the teacher to share · 강사의 교재 화면 공유를 기다립니다.")}</p></div>}
       </div>
     </div>
