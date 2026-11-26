@@ -1187,6 +1187,29 @@ export default async function ClassroomPage({
             grid-column: 1; grid-row: 3;
           }
         }
+        /* Full-height resize handles sit inside the grid gutters, not on
+           top of Zoom's camera or its native toolbar. With a 12px gap and
+           a 10px rail, the draggable area stays between adjacent panes. */
+        @media (min-width: 1051px) {
+          .talkly-classroom-stage { gap: 12px; }
+          .talkly-classroom-stage > .talkly-pane-resizer {
+            width: 10px; transform: translateX(-50%);
+            background: #23344d;
+            border-left: 1px solid #6a86a7;
+            border-right: 1px solid #6a86a7;
+            box-sizing: border-box;
+            border-radius: 4px;
+          }
+          .talkly-classroom-stage > .talkly-pane-resizer::before {
+            width: 3px; height: 72px; border-radius: 4px;
+            background: #dbeafe; box-shadow: none;
+          }
+          .talkly-classroom-stage > .talkly-pane-resizer:hover,
+          .talkly-classroom-stage > .talkly-pane-resizer:focus-visible {
+            background: #314e70;
+          }
+        }
+
         /* Teacher and learner must share the same three-pane Zoom/share/chat
            grid. The native Zoom SDK owns the video and shared-content DOM
            within the spanning left two columns; never remount its iframe. */
