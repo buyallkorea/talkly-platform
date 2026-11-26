@@ -4,23 +4,24 @@ const fs = require("node:fs");
 const path = require("node:path");
 const read = name => fs.readFileSync(path.join(__dirname, "..", name), "utf8");
 
-test("teacher and student both receive the native Zoom split-layout instruction", () => {
+test("teacher uses its own Zoom pane while student Zoom retains the shared-video split", () => {
   const frame = read("app/classroom/[sessionId]/ClassroomZoomFrame.tsx");
   const embed = read("app/classroom/[sessionId]/ClassroomZoomEmbed.tsx");
-  assert.match(frame, /split: stage\?\.getAttribute\("data-material-mode"\) === "screen"/);
-  assert.doesNotMatch(frame, /split:.*data-presenter/);
+  assert.match(frame, /split: stage\?\.getAttribute\("data-material-mode"\) === "screen" && stage\?\.getAttribute\("data-presenter"\) !== "true"/);
   assert.match(embed, /splitRef\.current = event\.data\.split;/);
-  assert.doesNotMatch(embed, /splitRef\.current = !hostMode/);
   assert.match(embed, /setReceiving\(active\)/);
-  assert.match(embed, /split && !sharing && screen === "joined"/);
 });
 
-test("teacher and student screen share spans the same first two columns and chat stays third", () => {
+test("teacher and student both have 3 resizable panes, but the teacher Zoom never spans into middle pane", () => {
   const page = read("app/classroom/[sessionId]/page.tsx");
   const stage = read("app/classroom/[sessionId]/ClassroomMaterialStage.tsx");
   assert.match(page, /@media \(min-width: 1051px\)/);
-  assert.match(page, /data-presenter="true"\] > \.talkly-classroom-video \{[\s\S]*?grid-column: 1 \/ 3;/);
-  assert.match(page, /data-presenter="true"\] > \.talkly-chat \{[\s\S]*?grid-column: 3;/);
+  assert.match(page, /grid-column: 1 !important; grid-row: 1;/);
+  assert.match(page, /display: flex !important; grid-column: 2 !important;/);
+  assert.match(page, /grid-column: 3 !important; grid-row: 1;/);
+  assert.match(page, /talkly-classroom-stage \{ gap: 12px; \}/);
+  assert.match(page, /talkly-classroom-stage > \.talkly-pane-resizer \{[\s\S]*?width: 10px/);
+  assert.match(stage, /data-sharing=\{sharing \? "true" : "false"\}/);
   assert.match(stage, /sharedCameraWidth\}fr\)/);
   assert.match(stage, /sharedVideoWidth - sharedCameraWidth/);
   assert.match(stage, /handleDown\("camera"\)/);
@@ -39,9 +40,10 @@ test("native Zoom audio, microphone, camera and share remain while labelled opti
   const zoom = read("lib/zoom-layout.ts");
   const css = read("app/classroom/[sessionId]/zoom-layout.css");
   assert.match(zoom, /function simplifyZoomControls/);
-  assert.match(zoom, /join audio\|computer audio/);
+  assert.match(zoom, /join/);
+  assert.match(zoom, /computer audio/);
   assert.match(zoom, /start video\|stop video/);
-  assert.match(zoom, /share screen\|stop share/);
+  assert.match(zoom, /share screen\|screen share/);
   assert.match(zoom, /talkly-zoom-optional-control/);
   assert.match(zoom, /talkly-zoom-view-selector/);
   assert.match(zoom, /if \(!label\) continue/);
