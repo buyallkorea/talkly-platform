@@ -12,7 +12,6 @@ import ClassroomZoomFrame from "./ClassroomZoomFrame";
 import ClassroomResponsiveZoom from "./ClassroomResponsiveZoom";
 import ClassroomTextbookPanel from "./ClassroomTextbookPanel";
 import ClassSessionControls from "./ClassSessionControls";
-import ClassroomWaitingRoom from "./ClassroomWaitingRoom";
 import ClassSessionEndWatcher from "./ClassSessionEndWatcher";
 import StudentAttendanceRecorder from "./StudentAttendanceRecorder";
 import ClassroomChat from "./ClassroomChat";
@@ -509,35 +508,10 @@ export default async function ClassroomPage({
       </main>
     );
   }
-  /*
-   * =====================================================
-   * 학생/학부모 수업 시작 전 대기실
-   * =====================================================
-   */
-  if (
-    isLearner && !isVerifiedTestStudent && session.status === "scheduled" && !session.started_at && !session.ended_at
-  ) {
-    return (
-      <ClassroomWaitingRoom
-        sessionId={
-          session.id
-        }
-        courseName={
-          course?.name ||
-          "Online English"
-        }
-        lessonNumber={
-          session.lesson_number
-        }
-        studentName={
-          isVerifiedTestStudent ? "Admin (Test Student)" : studentName
-        }
-        teacherName={
-          teacherName
-        }
-      />
-    );
-  }
+  // Learners enter the same Zoom / materials / chat classroom as teachers,
+  // even before the teacher starts the meeting. The embedded Zoom waiting
+  // view provides a local camera and microphone preflight until host join.
+  // Official attendance and class time remain gated on session.started_at.
 
   /*
    * =====================================================
@@ -1199,7 +1173,7 @@ export default async function ClassroomPage({
 
       <main className="talkly-classroom" lang={profile.role === "teacher" ? "en" : "ko"}>
         <ClassSessionEndWatcher sessionId={session.id} />
-        {isVerifiedTestStudent && session.status === "scheduled" && <TestStudentStartWatcher sessionId={session.id} />}
+        {isLearner && session.status === "scheduled" && !session.started_at && <TestStudentStartWatcher sessionId={session.id} />}
 
         <StudentAttendanceRecorder
   sessionId={session.id}
