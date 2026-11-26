@@ -46,10 +46,16 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
   const saveLayout = (panes: [number, number, number], shared: number, camera: number) => {
     try { localStorage.setItem(storageKey, JSON.stringify({ panes, shared, camera })); } catch { /* optional preference */ }
   };
+  // Desktop 3-column grid has two 12px gutters. Separators must track
+  // the center of each gutter, not a raw percentage across the Zoom iframe.
+  const separatorLeft = (percent: number, index: 1 | 2) =>
+    `calc(${percent}% + ${(index === 1 ? 6 : 18) - percent * .24}px)`;
   const dragTo = (kind: "video" | "chat" | "shared" | "camera", clientX: number) => {
     const rect = stageRef.current?.getBoundingClientRect();
     if (!rect || rect.width <= 0) return;
-    const at = (clientX - rect.left) / rect.width * 100;
+    const index = kind === "camera" || kind === "video" ? 1 : 2;
+    const contentWidth = Math.max(1, rect.width - 24);
+    const at = (clientX - rect.left - (index === 1 ? 6 : 18)) / contentWidth * 100;
     const constrain = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
     if (kind === "camera") {
       const next = constrain(at, 10, sharedVideoWidth - 10);
@@ -90,7 +96,9 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
     const rect = stageRef.current?.getBoundingClientRect();
     if (!rect) return;
     const at = kind === "camera" ? sharedCameraWidth : kind === "shared" ? sharedVideoWidth : kind === "video" ? paneWidths[0] : 100 - paneWidths[2];
-    dragTo(kind, rect.left + rect.width * (at + (event.key === "ArrowRight" ? 2 : -2)) / 100);
+    const next = at + (event.key === "ArrowRight" ? 2 : -2);
+    const index = kind === "camera" || kind === "video" ? 1 : 2;
+    dragTo(kind, rect.left + Math.max(1, rect.width - 24) * next / 100 + (index === 1 ? 6 : 18));
   };
   const busyRef = useRef(false);
   const sequence = useRef(0);
@@ -188,20 +196,20 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
       {desktop && (expanded ? <>
         <div className="talkly-pane-resizer" role="separator" aria-label={canControl ? "Resize Zoom video and shared teaching materials" : "Zoom 영상과 공유 교재 영역 너비 조절"}
           aria-orientation="vertical" aria-valuenow={Math.round(sharedCameraWidth)} aria-valuemin={10} aria-valuemax={Math.round(sharedVideoWidth - 10)}
-          tabIndex={0} style={{ left: `${sharedCameraWidth}%` }}
+          tabIndex={0} style={{ left: separatorLeft(sharedCameraWidth, 1) }}
           onPointerDown={handleDown("camera")} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp} onKeyDown={handleKey("camera")} />
         <div className="talkly-pane-resizer" data-kind="shared" role="separator" aria-label={canControl ? "Resize shared teaching materials and chat panels" : "공유 교재와 채팅 영역 너비 조절"}
           aria-orientation="vertical" aria-valuenow={Math.round(sharedVideoWidth)} aria-valuemin={20} aria-valuemax={90}
-          tabIndex={0} style={{ left: `${sharedVideoWidth}%` }}
+          tabIndex={0} style={{ left: separatorLeft(sharedVideoWidth, 2) }}
           onPointerDown={handleDown("shared")} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp} onKeyDown={handleKey("shared")} />
       </> : <>
         <div className="talkly-pane-resizer" role="separator" aria-label={canControl ? "Resize video and textbook panels" : "Zoom과 교재 영역 너비 조절"}
           aria-orientation="vertical" aria-valuenow={Math.round(paneWidths[0])} aria-valuemin={10} aria-valuemax={80}
-          tabIndex={0} style={{ left: `${paneWidths[0]}%` }}
+          tabIndex={0} style={{ left: separatorLeft(paneWidths[0], 1) }}
           onPointerDown={handleDown("video")} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp} onKeyDown={handleKey("video")} />
         <div className="talkly-pane-resizer" role="separator" aria-label={canControl ? "Resize textbook and chat panels" : "교재와 채팅 영역 너비 조절"}
           aria-orientation="vertical" aria-valuenow={Math.round(100 - paneWidths[2])} aria-valuemin={20} aria-valuemax={90}
-          tabIndex={0} style={{ left: `${100 - paneWidths[2]}%` }}
+          tabIndex={0} style={{ left: separatorLeft(100 - paneWidths[2], 2) }}
           onPointerDown={handleDown("chat")} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp} onKeyDown={handleKey("chat")} />
       </>)}
     </div>

@@ -1210,23 +1210,34 @@ export default async function ClassroomPage({
           }
         }
 
-        /* Teacher and learner must share the same three-pane Zoom/share/chat
-           grid. The native Zoom SDK owns the video and shared-content DOM
-           within the spanning left two columns; never remount its iframe. */
+        /* Preserve the common 3-column grid without stretching the Zoom iframe
+           over an unrelated teacher panel. Students receive Zoom's own
+           shared-media canvas inside columns 1 and 2; teachers have separate
+           Zoom, sharing-status, and chat DOM panes. */
         @media (min-width: 1051px) {
-          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video,
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="false"] > .talkly-classroom-video {
+            grid-column: 1 / 3;
+            grid-row: 1;
+            min-height: 0;
+            height: 100%;
+          }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="false"] > .talkly-classroom-screen-guide {
+            display: none;
+          }
           .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-video {
             grid-column: 1;
             grid-row: 1;
-            height: 100%;
             min-height: 0;
+            height: 100%;
           }
-          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-screen-guide,
           .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-screen-guide {
-            display: flex; grid-column: 2; grid-row: 1;
+            display: flex;
+            grid-column: 2;
+            grid-row: 1;
+            min-width: 0;
+            height: 100%;
           }
-          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-chat,
-          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat {
+          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-chat {
             grid-column: 3;
             grid-row: 1;
             height: 100%;
