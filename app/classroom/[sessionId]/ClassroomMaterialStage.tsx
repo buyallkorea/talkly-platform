@@ -172,7 +172,7 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
       </div>
       {error && <p role="alert" className="talkly-material-error">{ui(error)}</p>}
     </section>
-    <div ref={stageRef} className="talkly-classroom-stage" data-material-mode={expanded ? "screen" : "textbook"} data-presenter={canControl ? "true" : "false"} data-camera-percent={sharedCameraWidth}
+    <div ref={stageRef} className="talkly-classroom-stage" data-material-mode={expanded ? "screen" : "textbook"} data-presenter={canControl ? "true" : "false"} data-sharing={sharing ? "true" : "false"} data-camera-percent={sharedCameraWidth}
       style={desktop ? ({ gridTemplateColumns: expanded
         ? `minmax(0, ${sharedCameraWidth}fr) minmax(0, ${sharedVideoWidth - sharedCameraWidth}fr) minmax(0, ${100 - sharedVideoWidth}fr)`
         : `minmax(0, ${paneWidths[0]}fr) minmax(0, ${paneWidths[1]}fr) minmax(0, ${paneWidths[2]}fr)` } as CSSProperties) : undefined}>
