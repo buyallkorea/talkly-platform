@@ -46,7 +46,7 @@ test("native Zoom audio, microphone, camera and share remain while labelled opti
   assert.match(zoom, /share screen\|screen share/);
   assert.match(zoom, /talkly-zoom-optional-control/);
   assert.match(zoom, /talkly-zoom-view-selector/);
-  assert.match(zoom, /if \(!label\) continue/);
+  assert.match(zoom, /if \(!label \|\| rect\.height <= 0 \|\| rect\.width <= 0\) continue/);
   assert.match(css, /talkly-sdk-native-toolbar \.talkly-zoom-optional-control/);
   assert.match(css, /\.talkly-zoom-view-selector/);
 });
