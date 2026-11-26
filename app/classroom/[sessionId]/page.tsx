@@ -1146,20 +1146,84 @@ export default async function ClassroomPage({
         }
 
 
+        /* Teacher screen-share has three real, independent DOM panes.
+           Zoom stays in column 1; column 2 is the teacher's share status.
+           The actual shared tab is transmitted by Zoom, not mirrored here. */
+        @media (min-width: 1051px) {
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-video {
+            grid-column: 1 !important; grid-row: 1;
+            height: 100%; min-height: 0;
+          }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-screen-guide {
+            display: flex !important; grid-column: 2 !important; grid-row: 1;
+            min-width: 0; min-height: 0; height: 100%;
+          }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat {
+            grid-column: 3 !important; grid-row: 1;
+            min-width: 0; min-height: 0;
+          }
+        }
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] .talkly-classroom-screen-guide {
+          align-items: center; text-align: center; padding: 14px;
+          gap: 8px; border: 1px solid #4b617c;
+        }
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] .talkly-classroom-screen-guide strong {
+          font-size: 14px; font-weight: 700;
+        }
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] .talkly-classroom-screen-guide p {
+          max-width: 280px; margin: 0; font-size: 12px; line-height: 1.5;
+        }
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] .talkly-share-guide-active { display: none; }
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"][data-sharing="true"] .talkly-share-guide-active { display: block; }
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"][data-sharing="true"] .talkly-share-guide-idle { display: none; }
+        @media (max-width: 899px) {
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-video {
+            grid-column: 1; grid-row: 1;
+          }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-screen-guide {
+            display: flex; grid-column: 1; grid-row: 2; min-height: 150px;
+          }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat {
+            grid-column: 1; grid-row: 3;
+          }
+        }
+        /* Full-height resize handles sit inside the grid gutters, not on
+           top of Zoom's camera or its native toolbar. With a 12px gap and
+           a 10px rail, the draggable area stays between adjacent panes. */
+        @media (min-width: 1051px) {
+          .talkly-classroom-stage { gap: 12px; }
+          .talkly-classroom-stage > .talkly-pane-resizer {
+            width: 10px; transform: translateX(-50%);
+            background: #23344d;
+            border-left: 1px solid #6a86a7;
+            border-right: 1px solid #6a86a7;
+            box-sizing: border-box;
+            border-radius: 4px;
+          }
+          .talkly-classroom-stage > .talkly-pane-resizer::before {
+            width: 3px; height: 72px; border-radius: 4px;
+            background: #dbeafe; box-shadow: none;
+          }
+          .talkly-classroom-stage > .talkly-pane-resizer:hover,
+          .talkly-classroom-stage > .talkly-pane-resizer:focus-visible {
+            background: #314e70;
+          }
+        }
+
         /* Teacher and learner must share the same three-pane Zoom/share/chat
            grid. The native Zoom SDK owns the video and shared-content DOM
            within the spanning left two columns; never remount its iframe. */
         @media (min-width: 1051px) {
           .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video,
           .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-video {
-            grid-column: 1 / 3;
+            grid-column: 1;
             grid-row: 1;
             height: 100%;
             min-height: 0;
           }
           .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-screen-guide,
           .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-screen-guide {
-            display: none;
+            display: flex; grid-column: 2; grid-row: 1;
           }
           .talkly-classroom-stage[data-material-mode="screen"] > .talkly-chat,
           .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-chat {
@@ -1223,10 +1287,10 @@ export default async function ClassroomPage({
 
 
 
-<section className="talkly-classroom-panel talkly-classroom-screen-guide" aria-label={profile.role === "teacher" ? "Shared teaching materials" : "온라인 교재"}>
-            <strong>{profile.role === "teacher" ? "Online textbook sharing" : "온라인 교재 화면 공유"}</strong>
-            <p>{profile.role === "teacher" ? "Open the original textbook in another window and share that tab with Zoom. Keep this classroom visible to see the student and chat." : "원본 교재 창을 Zoom으로 공유하고 이 강의실에서 학생과 채팅을 확인하세요."}</p>
-            <p>{profile.role === "teacher" ? "For textbook sound in Chrome, choose the textbook tab and enable Share tab audio." : "교재 소리는 Chrome 탭 공유에서 탭 오디오 공유를 켜세요."}</p>
+<section className="talkly-classroom-panel talkly-classroom-screen-guide" aria-label={profile.role === "teacher" ? "Shared teaching materials" : "공유 교재"}>
+            <strong>{profile.role === "teacher" ? "Screen share" : "공유 교재"}</strong>
+            <p className="talkly-share-guide-idle">{profile.role === "teacher" ? "Use Share Screen in Zoom to present your textbook." : "강사가 교재를 공유하면 표시됩니다."}</p>
+            <p className="talkly-share-guide-active">{profile.role === "teacher" ? "You are sharing through Zoom. Students see the shared screen." : "교재 공유 중"}</p>
           </section>
 
 <section className="talkly-classroom-panel talkly-classroom-textbook">
