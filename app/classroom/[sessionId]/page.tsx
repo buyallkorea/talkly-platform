@@ -1210,38 +1210,42 @@ export default async function ClassroomPage({
           }
         }
 
-        /* Preserve the common 3-column grid without stretching the Zoom iframe
-           over an unrelated teacher panel. Students receive Zoom's own
-           shared-media canvas inside columns 1 and 2; teachers have separate
-           Zoom, sharing-status, and chat DOM panes. */
+        /* The Zoom iframe must occupy only the LEFT pane until a real screen
+           share starts. In preclass READY it used to span columns 1/2 and
+           centered the local camera preview across both, leaving an empty
+           left panel and misleading the student. Keep the center material
+           pane physically separate in READY and in joined/no-share state. */
         @media (min-width: 1051px) {
-          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="false"] > .talkly-classroom-video {
-            grid-column: 1 / 3;
-            grid-row: 1;
-            min-height: 0;
-            height: 100%;
-          }
-          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="false"] > .talkly-classroom-screen-guide {
-            display: none;
-          }
+          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-video,
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="false"][data-sharing="false"] > .talkly-classroom-video,
           .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-video {
-            grid-column: 1;
-            grid-row: 1;
-            min-height: 0;
-            height: 100%;
-          }
-          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-screen-guide {
-            display: flex;
-            grid-column: 2;
+            grid-column: 1 !important;
             grid-row: 1;
             min-width: 0;
+            min-height: 0;
             height: 100%;
           }
-          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-chat {
-            grid-column: 3;
+          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-classroom-screen-guide,
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="false"][data-sharing="false"] > .talkly-classroom-screen-guide {
+            display: flex !important;
+            grid-column: 2 !important;
             grid-row: 1;
-            height: 100%;
+            min-width: 0;
             min-height: 0;
+            height: 100%;
+          }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="false"][data-sharing="true"] > .talkly-classroom-video {
+            grid-column: 1 / 3 !important;
+          }
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="false"][data-sharing="true"] > .talkly-classroom-screen-guide {
+            display: none !important;
+          }
+          .talkly-classroom-stage[data-material-mode="screen"] > .talkly-chat {
+            grid-column: 3 !important;
+            grid-row: 1;
+            min-width: 0;
+            min-height: 0;
+            height: 100%;
           }
         }
       `}</style>
