@@ -17,7 +17,7 @@ test("student and parent see the same preclass Zoom/material/chat layout instead
 test("student may preview camera and microphone while Zoom host is absent", () => {
   const embed = read("app/classroom/[sessionId]/ClassroomZoomEmbed.tsx");
   const preview = read("app/classroom/[sessionId]/ClassroomDevicePreview.tsx");
-  assert.match(embed, /!hostMode && \(screen === "loading" \|\| screen === "joining" \|\| screen === "waiting"\)/);
+  assert.match(embed, /!hostMode && \(screen === "loading" \|\| screen === "waiting"\)/);
   assert.match(embed, /<ClassroomDevicePreview \/>/);
   assert.match(embed, /setTimeout\(\(\) => setAttempt\(value => value \+ 1\), 10000\)/);
   assert.match(preview, /getUserMedia\(\{\s*video: \{ facingMode: "user" \},\s*audio: false/);
