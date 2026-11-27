@@ -6,7 +6,7 @@ export default function ClassroomZoomFrame({ sessionId, testStudentMode }: { ses
   useEffect(() => {
     const configure = () => {
       const stage = frame.current?.closest(".talkly-classroom-stage");
-      frame.current?.contentWindow?.postMessage({ type: "talkly-zoom-layout", sessionId, split: stage?.getAttribute("data-material-mode") === "screen" && stage?.getAttribute("data-presenter") !== "true" }, window.location.origin);
+      frame.current?.contentWindow?.postMessage({ type: "talkly-zoom-layout", sessionId, split: stage?.getAttribute("data-material-mode") === "screen" && stage?.getAttribute("data-sharing") === "true" && stage?.getAttribute("data-presenter") !== "true" }, window.location.origin);
       const cameraPercent = Number(stage?.getAttribute("data-camera-percent"));
       if (stage && Number.isFinite(cameraPercent) && cameraPercent >= 10) {
         frame.current?.contentWindow?.postMessage({
@@ -18,7 +18,7 @@ export default function ClassroomZoomFrame({ sessionId, testStudentMode }: { ses
     };
     const stage = frame.current?.closest(".talkly-classroom-stage");
     const observer = new MutationObserver(configure);
-    if (stage) observer.observe(stage, { attributes: true, attributeFilter: ["data-material-mode", "data-presenter", "data-camera-percent"] });
+    if (stage) observer.observe(stage, { attributes: true, attributeFilter: ["data-material-mode", "data-presenter", "data-sharing", "data-camera-percent"] });
     frame.current?.addEventListener("load", configure);
     const currentFrame = frame.current;
     const shareState = (event: MessageEvent) => {
