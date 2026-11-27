@@ -158,9 +158,13 @@ export async function POST(request: Request) {
           settings: {
             host_video: true,
             participant_video: true,
-            join_before_host: false,
+            // Let verified TALKLY students enter Zoom itself up to ten minutes
+            // before lesson time and use Zoom's native audio/video controls.
+            // Waiting rooms override join-before-host, so keep them disabled.
+            join_before_host: true,
+            jbh_time: 10,
             mute_upon_entry: true,
-            waiting_room: true,
+            waiting_room: false,
             auto_recording: "none",
           },
         }),
