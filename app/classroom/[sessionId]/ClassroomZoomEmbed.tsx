@@ -1114,7 +1114,7 @@ export default function ClassroomZoomEmbed({
             240,
         }}
       />
-      {!hostMode && (screen === "loading" || screen === "joining" || screen === "waiting") && (
+      {!hostMode && (screen === "loading" || screen === "waiting") && (
         <div className="talkly-preclass-overlay">
           <ClassroomDevicePreview />
         </div>
