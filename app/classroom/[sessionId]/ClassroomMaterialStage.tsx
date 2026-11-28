@@ -178,6 +178,16 @@ export default function ClassroomMaterialStage({ sessionId, initialMode, canCont
           </label>
         ) : <strong>{expanded ? ui("공유 교재") : ui("교재")}</strong>}
       </div>
+      {canControl && mode === "screen" && !sharing && (
+        <button type="button" className="talkly-material-share-textbook"
+          disabled={busy} onClick={() => void change("textbook")}
+          title="Show and synchronize the selected TALKLY textbook in both classrooms">
+          Share TALKLY textbook
+        </button>
+      )}
+      {canControl && mode === "textbook" && (
+        <span className="talkly-material-share-feedback" role="status">Textbook synced with student</span>
+      )}
       {error && <p role="alert" className="talkly-material-error">{ui(error)}</p>}
     </section>
     <div ref={stageRef} className="talkly-classroom-stage" data-material-mode={expanded ? "screen" : "textbook"} data-presenter={canControl ? "true" : "false"} data-sharing={sharing ? "true" : "false"} data-camera-percent={sharedCameraWidth}
