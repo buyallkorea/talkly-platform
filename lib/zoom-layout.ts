@@ -19,10 +19,6 @@ function nativeLabel(button: HTMLElement) {
 }
 const AUDIO_BUTTON = /join.{0,18}audio|computer audio|connect audio|leave audio|^audio$|^mute$|^unmute$|microphone|^mic$|음소거|오디오|마이크/i;
 const VIDEO_BUTTON = /start video|stop video|video on|video off|turn.{0,12}(?:camera|video)|camera|^video$|비디오|카메라/i;
-const SHARE_BUTTON = /share screen|screen share|stop share|sharing screen|공유/i;
-const OPTIONAL_BUTTON = /participants?|attendees?|people|chat|message|reactions?|emoji|raise hand|captions?|subtitles?|transcript|whiteboard|recording?|polls?|apps|meeting info|invite|security|more|settings|leave meeting|end meeting|참가자|채팅|메시지|반응|손 들기|자막|녹화|설정|더보기|초대|보안|나가기|종료/i;
-const VIEW_BUTTON = /speaker view|gallery view|ribbon view|multi.{0,3}speaker|side.by.side|change view|switch view|view options|layout view|grid view|filmstrip|video layout|view layout|화면 분할|갤러리 보기|발언자 보기|보기 변경|화면 배치|레이아웃 변경/i;
-
 /** Find the shared bottom Zoom toolbar even when buttons have nested labels. */
 function markNativeToolbar(widget: HTMLElement) {
   if (typeof widget.querySelectorAll !== "function") return;
@@ -43,56 +39,13 @@ function markNativeToolbar(widget: HTMLElement) {
   }
 }
 
-/** Hide only optional Zoom-owned buttons; preserve SDK event handlers. */
-function simplifyZoomControls(widget: HTMLElement) {
-  const toolbar = widget.querySelector<HTMLElement>(".talkly-sdk-native-toolbar");
-  const all = Array.from(widget.querySelectorAll<HTMLElement>('button,[role="button"]'));
-  const widgetRect = widget.getBoundingClientRect();
-  const lowerBoundary = widgetRect.top + widgetRect.height * .65;
-
-  for (const button of all) {
-    const label = nativeLabel(button);
-    const rect = button.getBoundingClientRect();
-    if (!label || rect.height <= 0 || rect.width <= 0) continue;
-    const isToolbar = Boolean(toolbar?.contains(button)) ||
-      (rect.top > lowerBoundary && rect.height <= 65);
-    if (isToolbar) {
-      // Keep original Zoom join-audio/microphone, camera/video and sharing.
-      if (AUDIO_BUTTON.test(label) || VIDEO_BUTTON.test(label) || SHARE_BUTTON.test(label)) continue;
-      if (OPTIONAL_BUTTON.test(label)) addLayoutClass(button, "talkly-zoom-optional-control");
-    }
-    if (VIEW_BUTTON.test(label) &&
-      rect.top >= widgetRect.top - 3 && rect.top < widgetRect.top + 100 &&
-      !isToolbar) addLayoutClass(button, "talkly-zoom-view-selector");
-  }
-
-  // Zoom 6.x sometimes renders the upper layout-mode toolbar as unlabeled
-  // icon buttons. Hide a verified cluster of 3+ small, adjacent icons in the
-  // upper right, never solitary controls or native media buttons.
-  const topRightIcons = all.filter(button => {
-    const rect = button.getBoundingClientRect();
-    const label = nativeLabel(button);
-    return rect.height > 14 && rect.height <= 46 && rect.width > 14 && rect.width <= 52 &&
-      rect.top >= widgetRect.top - 3 && rect.top <= widgetRect.top + 83 &&
-      rect.left > widgetRect.left + widgetRect.width * .48 &&
-      !AUDIO_BUTTON.test(label) && !VIDEO_BUTTON.test(label) && !SHARE_BUTTON.test(label) &&
-      !/leave|exit|나가기|종료|fullscreen|전체 화면/i.test(label);
-  });
-  if (topRightIcons.length >= 3) {
-    for (const button of topRightIcons) addLayoutClass(button, "talkly-zoom-view-selector");
-  }
-}
-
 export function markZoomLayout(root: HTMLElement) {
   const widget = root.querySelector<HTMLElement>('[role="region"][aria-label="Zoom Web SDK Widget"]');
   if (!widget) return;
   addLayoutClass(widget, "talkly-sdk-widget");
   markNativeToolbar(widget);
-  // Do not hide Zoom-owned toolbar controls. The Meeting SDK may give a
-  // nested microphone, audio-device or share action a composite label such as
-  // "Audio settings", and prior optional-control filtering hid essentials.
-  // A full Zoom toolbar is safer than a missing mic/share during a live class.
-  // simplifyZoomControls(widget);
+  // Always preserve the full Zoom-native media toolbar. No filtering of
+  // Zoom-owned audio, mic, video or sharing controls is safe across SDK builds.
   for (let parent = widget.parentElement; parent && parent !== root; parent = parent.parentElement) addLayoutClass(parent, "talkly-sdk-container");
   const canvas = widget.querySelector('canvas[aria-label="Screen share"]');
   const panel = canvas?.closest<HTMLElement>('[role="tabpanel"]');
