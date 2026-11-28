@@ -257,7 +257,18 @@ export default async function ClassroomPage({
    * 학생에게 배정된 수업 교재 목록
    * =====================================================
    */
-  const testTextbooks = isVerifiedTestStudent ? (await getTestClassroomOptions()).textbooks : null;
+  // Test teachers also need ready-to-use test books in the classroom;
+  // previously only admin-as-student could choose one. Production teachers
+  // still see only textbooks assigned to their real enrollment.
+  const isTeacherTestSession =
+    profile.role === "teacher" &&
+    session.is_test === true &&
+    enrollment.is_test === true &&
+    session.is_external_teacher !== true &&
+    (session.teacher_user_id ?? enrollment.teacher_user_id) === user.id;
+  const testTextbooks = (isVerifiedTestStudent || isTeacherTestSession)
+    ? (await getTestClassroomOptions()).textbooks
+    : null;
   const {
     data: assignedTextbooks,
     error: assignedTextbooksError,
@@ -1247,6 +1258,45 @@ export default async function ClassroomPage({
             min-height: 0;
             height: 100%;
           }
+        }
+        .talkly-material-share-textbook {
+          min-height:30px; padding:4px 11px; border-radius:7px;
+          border:1px solid #93c5fd; background:#1d4ed8; color:#fff;
+          font-size:12px; font-weight:700; line-height:1.25; font-family:inherit; cursor:pointer;
+        }
+        .talkly-material-share-textbook:disabled { opacity:.6; cursor:wait; }
+        .talkly-material-share-feedback { color:#bbf7d0; font-size:11px; }
+        /* Critical classroom restoration: selecting Zoom Screen Sharing
+           must NEVER remove the synchronized TALKLY textbook pane.
+           Native Zoom screen sharing remains available separately. */
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-screen-guide,
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="false"][data-sharing="false"] > .talkly-classroom-screen-guide {
+          display:none!important;
+        }
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-textbook,
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="false"][data-sharing="false"] > .talkly-classroom-textbook {
+          display:flex!important;
+          flex-direction:column;
+          min-height:0; min-width:0; height:100%;
+        }
+        @media (min-width:1051px) {
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-textbook,
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="false"][data-sharing="false"] > .talkly-classroom-textbook {
+            grid-column:2!important;
+            grid-row:1;
+          }
+        }
+        @media (max-width:1050px) {
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="true"] > .talkly-classroom-textbook,
+          .talkly-classroom-stage[data-material-mode="screen"][data-presenter="false"][data-sharing="false"] > .talkly-classroom-textbook {
+            grid-column:1!important;
+            min-height:320px; height:65dvh;
+          }
+        }
+        /* On the student, an active Zoom screen share occupies the left and
+           middle panes; the textbook is only hidden DURING a real share. */
+        .talkly-classroom-stage[data-material-mode="screen"][data-presenter="false"][data-sharing="true"] > .talkly-classroom-textbook {
+          display:none!important;
         }
       `}</style>
 

@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       await admin
         .from("class_sessions")
         .select(
-          "id, enrollment_id, teacher_user_id, is_external_teacher, status, ended_at"
+          "id, enrollment_id, teacher_user_id, is_external_teacher, is_test, status, ended_at"
         )
         .eq("id", sessionId)
         .maybeSingle();
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
     const { data: enrollment, error: enrollmentError } =
       await admin
         .from("enrollments")
-        .select("id, teacher_user_id")
+        .select("id, teacher_user_id, is_test")
         .eq("id", session.enrollment_id)
         .maybeSingle();
 
@@ -128,6 +128,12 @@ export async function POST(request: Request) {
         404
       );
     }
+
+    const testTeacher = profile.role === "teacher" &&
+      session.is_test === true &&
+      enrollment.is_test === true &&
+      session.is_external_teacher !== true &&
+      (session.teacher_user_id ?? enrollment.teacher_user_id) === user.id;
 
     // 4. 해당 수업 담당 강사 또는 관리자만 허용
     if (profile.role === "teacher") {
@@ -162,7 +168,7 @@ export async function POST(request: Request) {
       throw assignmentError;
     }
 
-    if (!assignment && !testStudent) {
+    if (!assignment && !testStudent && !testTeacher) {
       return jsonError(
         "학생에게 배정되지 않았거나 해제된 교재입니다.",
         403
@@ -192,8 +198,15 @@ export async function POST(request: Request) {
 
     const { data: page, error: pageError } = await admin.from("textbook_pages").select("id").eq("textbook_id", textbookId).limit(1).maybeSingle();
     if (pageError || !page) return jsonError("교재 페이지가 아직 준비되지 않았습니다.", 400);
-    if (!assignment && testStudent) {
-      const { error } = await admin.from("enrollment_textbooks").insert({ enrollment_id: session.enrollment_id, textbook_id: textbookId, assigned_by: user.id, payment_required: false, status: "assigned", admin_note: "관리자 테스트 교재" });
+    if (!assignment && (testStudent || testTeacher)) {
+      const { error } = await admin.from("enrollment_textbooks").insert({
+        enrollment_id: session.enrollment_id,
+        textbook_id: textbookId,
+        assigned_by: user.id,
+        payment_required: false,
+        status: "assigned",
+        admin_note: testTeacher ? "담당 강사 테스트 수업 교재" : "관리자 테스트 교재",
+      });
       if (error) throw error;
     }
     // 7. 수업별 선택 교재 저장

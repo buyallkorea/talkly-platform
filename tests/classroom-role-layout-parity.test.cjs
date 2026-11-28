@@ -36,28 +36,25 @@ test("untranslated English teacher copy never masquerades as an action failure",
   assert.match(language, /"교재": "Materials"/);
 });
 
-test("native Zoom audio, microphone, camera and share remain while labelled optional menus are hidden", () => {
-  const zoom = read("lib/zoom-layout.ts");
+test("no Zoom native toolbar button can be hidden by TALKLY optional menu filters", () => {
+  const adapter = read("lib/zoom-layout.ts");
   const css = read("app/classroom/[sessionId]/zoom-layout.css");
-  assert.match(zoom, /function simplifyZoomControls/);
-  assert.match(zoom, /join/);
-  assert.match(zoom, /computer audio/);
-  assert.match(zoom, /start video\|stop video/);
-  assert.match(zoom, /share screen\|screen share/);
-  assert.match(zoom, /talkly-zoom-optional-control/);
-  assert.match(zoom, /talkly-zoom-view-selector/);
-  assert.match(zoom, /if \(!label \|\| rect\.height <= 0 \|\| rect\.width <= 0\) continue/);
-  assert.match(css, /talkly-sdk-native-toolbar \.talkly-zoom-optional-control/);
-  assert.match(css, /\.talkly-zoom-view-selector/);
+  assert.match(adapter, /markNativeToolbar\(widget\);/);
+  assert.doesNotMatch(adapter, /^\s*simplifyZoomControls\(widget\);/m);
+  assert.doesNotMatch(css, /talkly-zoom-optional-control\s*,?\s*\{\s*display\s*:\s*none/m);
+  assert.doesNotMatch(css, /\.talkly-zoom-view-selector\s*\{\s*display\s*:\s*none/m);
+  assert.match(css, /opacity:1!important/);
+  assert.match(css, /visibility:visible!important/);
 });
 
-test("native Zoom control classification works without toolbar wrapper and handles icon-only view cluster", () => {
-  const adapter = read("lib/zoom-layout.ts");
-  assert.match(adapter, /function nativeLabel/);
-  assert.match(adapter, /const lowerBoundary/);
-  assert.match(adapter, /isToolbar/);
-  assert.match(adapter, /topRightIcons\.length >= 3/);
-  assert.match(adapter, /leave\|exit/);
-  assert.match(adapter, /addLayoutClass\(button, "talkly-zoom-optional-control"\)/);
-  assert.match(adapter, /AUDIO_BUTTON\.test\(label\) \|\| VIDEO_BUTTON\.test\(label\) \|\| SHARE_BUTTON\.test\(label\)/);
+test("teacher screen-sharing mode restores actual synchronized textbook pane", () => {
+  const page = read("app/classroom/[sessionId]/page.tsx");
+  const stage = read("app/classroom/[sessionId]/ClassroomMaterialStage.tsx");
+  const select = read("app/api/classroom/select-textbook/route.ts");
+  assert.match(page, /classroom-textbook \{[\s\S]*?display:flex!important/);
+  assert.match(page, /isTeacherTestSession/);
+  assert.match(stage, /Share TALKLY textbook/);
+  assert.match(stage, /change\("textbook"\)/);
+  assert.match(select, /testTeacher/);
+  assert.match(select, /!assignment && !testStudent && !testTeacher/);
 });
