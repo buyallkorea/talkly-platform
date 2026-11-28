@@ -88,7 +88,11 @@ export function markZoomLayout(root: HTMLElement) {
   if (!widget) return;
   addLayoutClass(widget, "talkly-sdk-widget");
   markNativeToolbar(widget);
-  simplifyZoomControls(widget);
+  // Do not hide Zoom-owned toolbar controls. The Meeting SDK may give a
+  // nested microphone, audio-device or share action a composite label such as
+  // "Audio settings", and prior optional-control filtering hid essentials.
+  // A full Zoom toolbar is safer than a missing mic/share during a live class.
+  // simplifyZoomControls(widget);
   for (let parent = widget.parentElement; parent && parent !== root; parent = parent.parentElement) addLayoutClass(parent, "talkly-sdk-container");
   const canvas = widget.querySelector('canvas[aria-label="Screen share"]');
   const panel = canvas?.closest<HTMLElement>('[role="tabpanel"]');
