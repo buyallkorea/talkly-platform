@@ -361,10 +361,9 @@
 /* Simplified original Zoom controls. Only buttons identified as optional
    inside the SDK's native toolbar are hidden; audio/video/share and
    their built-in device menus remain SDK-owned and functional. */
-.talkly-zoom-shell .talkly-sdk-native-toolbar .talkly-zoom-optional-control,
-.talkly-zoom-shell .talkly-zoom-view-selector {
-  display:none!important;
-}
+/* Zoom owns microphone, Join Computer Audio and Share Screen actions.
+   Never hide its native toolbar/menu descendants via TALKLY classes: Zoom
+   sometimes uses the same wrapper for audio devices and overflow controls. */
 
 /* Pre-class camera/microphone preview lives above the Zoom waiting view.
    It never replaces the meeting's video, never broadcasts tracks, and
