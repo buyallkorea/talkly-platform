@@ -1259,6 +1259,13 @@ export default async function ClassroomPage({
             height: 100%;
           }
         }
+        .talkly-material-share-textbook {
+          min-height:30px; padding:4px 11px; border-radius:7px;
+          border:1px solid #93c5fd; background:#1d4ed8; color:#fff;
+          font-size:12px; font-weight:700; line-height:1.25; font-family:inherit; cursor:pointer;
+        }
+        .talkly-material-share-textbook:disabled { opacity:.6; cursor:wait; }
+        .talkly-material-share-feedback { color:#bbf7d0; font-size:11px; }
         /* Critical classroom restoration: selecting Zoom Screen Sharing
            must NEVER remove the synchronized TALKLY textbook pane.
            Native Zoom screen sharing remains available separately. */
